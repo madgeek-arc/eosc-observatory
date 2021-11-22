@@ -14,7 +14,7 @@
 	<name>observatory</name>
 	<description>EOSC Portal Observatory</description>
 	<properties>
-		<java.version>11</java.version>
+<!--		<java.version>11</java.version>-->
 	</properties>
 	<dependencies>
 		<dependency>
@@ -26,6 +26,18 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>com.vaadin.external.google</groupId>
+					<artifactId>android-json</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<dependency>
+			<groupId>gr.athenarc</groupId>
+			<artifactId>catalogue</artifactId>
+			<version>0.0.3-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 
