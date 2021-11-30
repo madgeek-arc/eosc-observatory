@@ -29,7 +29,11 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
         http
                 .authorizeRequests(authorizeRequests -> authorizeRequests
                         .anyRequest().authenticated())
-                .oauth2Login(withDefaults());
+//                        .regexMatchers("/restore/", "/resources.*", "/resourceType.*", "/search.*").authenticated()
+//                        .anyRequest().permitAll())
+                .oauth2Login(withDefaults())
+                .cors().disable()
+                .csrf().disable();
     }
 
     @Bean

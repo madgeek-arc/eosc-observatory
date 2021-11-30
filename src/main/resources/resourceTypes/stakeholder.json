@@ -1,0 +1,68 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "stakeholder_id",
+      "path": "$.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "name",
+      "label": "Name",
+      "path": "$.name",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "type",
+      "label": "Type",
+      "path": "$.type",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "subType",
+      "label": "Subtype",
+      "path": "$.subType",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "country",
+      "label": "Country",
+      "path": "$.country",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "associationMember",
+      "label": "Association Member",
+      "path": "$.associationMember",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "managers",
+      "label": "Managers",
+      "path": "$.managers[*]",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "contributors",
+      "label": "Contributors",
+      "path": "$.contributors[*]",
+      "type": "java.lang.String"
+    }
+  ],
+  "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
+  "name": "stakeholder",
+  "aliasGroup": "resourceTypes",
+  "payloadType": "json",
+  "properties": {
+    "class": "eu.eosc.observatory.domain.Stakeholder"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+}
