@@ -1,0 +1,75 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "survey_answer_id",
+      "path": "$.answer.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "surveyId",
+      "label": "Survey ID",
+      "path": "$.surveyId",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "stakeholderId",
+      "label": "Stakeholder ID",
+      "path": "$.stakeholderId",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "validated",
+      "label": "Validated",
+      "path": "$.validated",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "multivalued": false,
+      "name": "published",
+      "label": "Published",
+      "path": "$.published",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "multivalued": false,
+      "name": "createdBy",
+      "label": "Created By",
+      "path": "$.metadata.createdBy",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "creationDate",
+      "label": "Creation Date",
+      "path": "$.metadata.creationDate",
+      "type": "java.util.Date"
+    },
+    {
+      "multivalued": true,
+      "name": "modifiedBy",
+      "label": "Modified By",
+      "path": "$.metadata.modifiedBy",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "modificationDate",
+      "label": "Modification Date",
+      "path": "$.metadata.modificationDate",
+      "type": "java.util.Date"
+    }
+  ],
+  "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
+  "name": "survey_answer",
+  "aliasGroup": "resourceTypes",
+  "payloadType": "json",
+  "properties": {
+    "class": "eu.eosc.observatory.domain.SurveyAnswer"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+}

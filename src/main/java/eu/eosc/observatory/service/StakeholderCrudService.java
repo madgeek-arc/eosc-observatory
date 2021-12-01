@@ -11,14 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder> implements CrudItemService<Stakeholder> {
+public class StakeholderCrudService extends AbstractCrudItemService<Stakeholder> implements CrudItemService<Stakeholder> {
 
-    private static final Logger logger = LogManager.getLogger(StakeholderServiceImpl.class);
+    private static final Logger logger = LogManager.getLogger(StakeholderCrudService.class);
 
     private static final String RESOURCE_TYPE = "stakeholder";
 
     @Autowired
-    public StakeholderServiceImpl(ResourceTypeService resourceTypeService,
+    public StakeholderCrudService(ResourceTypeService resourceTypeService,
                                   ResourceService resourceService,
                                   SearchService searchService,
                                   ParserService parserService) {

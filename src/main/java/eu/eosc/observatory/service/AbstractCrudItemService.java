@@ -33,7 +33,7 @@ public abstract class AbstractCrudItemService<T extends Identifiable> extends Ab
     public abstract String getResourceType();
 
     @Override
-    public Stakeholder get(String id) {
+    public T get(String id) {
         return super.get(getResourceType(), id);
     }
 
@@ -50,20 +50,20 @@ public abstract class AbstractCrudItemService<T extends Identifiable> extends Ab
     }
 
     @Override
-    public T add(T stakeholder) {
+    public T add(T resource) {
         ResourceType resourceType = resourceTypeService.getResourceType(getResourceType());
         Resource res = new Resource();
         res.setResourceTypeName(getResourceType());
         res.setResourceType(resourceType);
 
-        String id = createId(stakeholder);
-        stakeholder.setId(id);
-        String payload = parserPool.serialize(stakeholder, ParserService.ParserServiceTypes.fromString(resourceType.getPayloadType()));
+        String id = createId(resource);
+        resource.setId(id);
+        String payload = parserPool.serialize(resource, ParserService.ParserServiceTypes.fromString(resourceType.getPayloadType()));
         res.setPayload(payload);
-        logger.info(LoggingUtils.addResource(getResourceType(), id, stakeholder));
+        logger.info(LoggingUtils.addResource(getResourceType(), id, resource));
         resourceService.addResource(res);
 
-        return stakeholder;
+        return resource;
     }
 
     @Override

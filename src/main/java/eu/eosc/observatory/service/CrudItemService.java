@@ -12,7 +12,7 @@ public interface CrudItemService<T extends Identifiable> {
      * @param id of the resource in the index.
      * @return the resource.
      */
-    Stakeholder get(String id);
+    T get(String id);
 
     /**
      * Returns all resource.
