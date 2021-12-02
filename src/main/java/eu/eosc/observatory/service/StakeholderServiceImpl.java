@@ -1,6 +1,8 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Stakeholder;
+import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.openminted.registry.core.service.ParserService;
 import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
@@ -10,15 +12,18 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-@Service
-public class StakeholderCrudService extends AbstractCrudItemService<Stakeholder> implements CrudItemService<Stakeholder> {
+import java.util.List;
+import java.util.stream.Collectors;
 
-    private static final Logger logger = LogManager.getLogger(StakeholderCrudService.class);
+@Service
+public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder> implements StakeholderService {
+
+    private static final Logger logger = LogManager.getLogger(StakeholderServiceImpl.class);
 
     private static final String RESOURCE_TYPE = "stakeholder";
 
     @Autowired
-    public StakeholderCrudService(ResourceTypeService resourceTypeService,
+    public StakeholderServiceImpl(ResourceTypeService resourceTypeService,
                                   ResourceService resourceService,
                                   SearchService searchService,
                                   ParserService parserService) {
@@ -39,5 +44,22 @@ public class StakeholderCrudService extends AbstractCrudItemService<Stakeholder>
             idSuffix = stakeholder.getAssociationMember();
         }
         return String.format("sh-%s-%s", stakeholder.getType(), idSuffix);
+    }
+
+    @Override
+    public StakeholderMembers getMembers(String id) {
+        Stakeholder stakeholder = this.get(id);
+
+        // TODO: replace 'this::getUser' with call to UserService to get User objects.
+        List<User> managers = stakeholder.getManagers().stream().map(this::getUser).collect(Collectors.toList());
+        List<User> contributors = stakeholder.getContributors().stream().map(this::getUser).collect(Collectors.toList());
+
+        return new StakeholderMembers(contributors, managers);
+    }
+
+    private User getUser(String email) {
+        User user = new User();
+        user.setEmail(email);
+        return user;
     }
 }

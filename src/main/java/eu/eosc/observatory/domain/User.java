@@ -1,5 +1,6 @@
 package eu.eosc.observatory.domain;
 
+import eu.eosc.observatory.service.Identifiable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
@@ -8,7 +9,7 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
-public class User {
+public class User implements Identifiable<String> {
     private static final Logger logger = LogManager.getLogger(User.class);
 
     private String sub;
@@ -84,5 +85,15 @@ public class User {
 
     public void setFullname(String fullname) {
         this.fullname = fullname;
+    }
+
+    @Override
+    public String getId() {
+        return this.email;
+    }
+
+    @Override
+    public void setId(String id) {
+        this.setEmail(id);
     }
 }

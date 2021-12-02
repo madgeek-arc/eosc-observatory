@@ -1,7 +1,8 @@
 package eu.eosc.observatory.controller;
 
-import eu.eosc.observatory.service.CrudItemService;
+import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.eosc.observatory.domain.Stakeholder;
+import eu.eosc.observatory.service.StakeholderService;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -16,12 +17,16 @@ public class StakeholderController {
 
     private static final Logger logger = LogManager.getLogger(StakeholderController.class);
 
-    private final CrudItemService<Stakeholder> stakeholderService;
+    private final StakeholderService stakeholderService;
 
     @Autowired
-    public StakeholderController(CrudItemService<Stakeholder> stakeholderService) {
+    public StakeholderController(StakeholderService stakeholderService) {
         this.stakeholderService = stakeholderService;
     }
+
+    /*---------------------------*/
+    /*        CRUD methods       */
+    /*---------------------------*/
 
     @GetMapping("{id}")
     public ResponseEntity<Stakeholder> get(@PathVariable("id") String id) {
@@ -41,5 +46,14 @@ public class StakeholderController {
     @DeleteMapping("{id}")
     public ResponseEntity<Stakeholder> delete(@PathVariable("id") String id) throws ResourceNotFoundException {
         return new ResponseEntity<>(stakeholderService.delete(id), HttpStatus.OK);
+    }
+
+    /*---------------------------*/
+    /*       Other methods       */
+    /*---------------------------*/
+
+    @GetMapping("{id}/members")
+    public ResponseEntity<StakeholderMembers> getMembers(@PathVariable("id") String stakeholderId) {
+        return new ResponseEntity<>(stakeholderService.getMembers(stakeholderId), HttpStatus.OK);
     }
 }
