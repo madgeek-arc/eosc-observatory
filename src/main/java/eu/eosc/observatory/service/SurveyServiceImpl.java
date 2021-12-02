@@ -9,15 +9,13 @@ import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.json.JSONObject;
+import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class SurveyServiceImpl implements SurveyService {
@@ -45,6 +43,25 @@ public class SurveyServiceImpl implements SurveyService {
         filter.setResourceType("survey");
         Browsing<Survey> surveyBrowsing = this.genericItemService.getResults(filter);
         return surveyBrowsing;
+    }
+
+    @Override
+    public SurveyAnswer getLatest(String surveyId, String stakeholderId) {
+        FacetFilter filter = new FacetFilter();
+        filter.addFilter("surveyId", surveyId);
+        filter.addFilter("stakeholderId", stakeholderId);
+        Map<String, Object> sortBy = new HashMap<>();
+        Map<String, Object> orderType = new HashMap<>();
+        orderType.put("order", "desc");
+        sortBy.put("creationDate", orderType);
+        filter.setOrderBy(sortBy);
+
+        Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
+        SurveyAnswer answer = null;
+        if (answersBrowsing.getTotal() > 0) {
+            answer = answersBrowsing.getResults().get(0);
+        }
+        return answer;
     }
 
     @Override

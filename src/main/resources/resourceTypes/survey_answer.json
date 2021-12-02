@@ -43,21 +43,21 @@
       "type": "java.lang.String"
     },
     {
-      "multivalued": true,
+      "multivalued": false,
       "name": "creationDate",
       "label": "Creation Date",
       "path": "$.metadata.creationDate",
       "type": "java.util.Date"
     },
     {
-      "multivalued": true,
+      "multivalued": false,
       "name": "modifiedBy",
       "label": "Modified By",
       "path": "$.metadata.modifiedBy",
       "type": "java.lang.String"
     },
     {
-      "multivalued": true,
+      "multivalued": false,
       "name": "modificationDate",
       "label": "Modification Date",
       "path": "$.metadata.modificationDate",

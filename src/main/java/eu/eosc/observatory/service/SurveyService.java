@@ -12,5 +12,7 @@ public interface SurveyService {
 
     Browsing<Survey> getByType(FacetFilter filter, String type);
 
+    SurveyAnswer getLatest(String surveyId, String stakeholderId);
+
     List<SurveyAnswer> createNewCycle(Authentication authentication);
 }

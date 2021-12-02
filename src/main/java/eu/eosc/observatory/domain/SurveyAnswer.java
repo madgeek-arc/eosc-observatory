@@ -1,7 +1,7 @@
 package eu.eosc.observatory.domain;
 
 import eu.eosc.observatory.service.Identifiable;
-import org.json.JSONObject;
+import org.json.simple.JSONObject;
 
 public class SurveyAnswer implements Identifiable<String> {
 
@@ -16,7 +16,7 @@ public class SurveyAnswer implements Identifiable<String> {
 
     @Override
     public String getId() {
-        return answer.optString("id");
+        return answer.get("id").toString();
     }
 
     @Override
