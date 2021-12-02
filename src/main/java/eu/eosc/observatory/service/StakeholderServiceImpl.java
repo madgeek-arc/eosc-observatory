@@ -12,7 +12,9 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,8 +53,22 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         Stakeholder stakeholder = this.get(id);
 
         // TODO: replace 'this::getUser' with call to UserService to get User objects.
-        List<User> managers = stakeholder.getManagers().stream().map(this::getUser).collect(Collectors.toList());
-        List<User> contributors = stakeholder.getContributors().stream().map(this::getUser).collect(Collectors.toList());
+        List<User> managers = new ArrayList<>();
+        List<User> contributors = new ArrayList<>();
+        if (stakeholder.getManagers() != null) {
+            managers = stakeholder.getManagers()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .map(this::getUser)
+                    .collect(Collectors.toList());
+        }
+        if (stakeholder.getContributors() != null) {
+            contributors = stakeholder.getContributors()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .map(this::getUser)
+                    .collect(Collectors.toList());
+        }
 
         return new StakeholderMembers(contributors, managers);
     }
