@@ -1,23 +1,28 @@
 package eu.eosc.observatory.configuration;
 
-
+import com.zaxxer.hikari.HikariDataSource;
 import gr.athenarc.authorization.AuthorizationApplication;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
-import org.springframework.context.annotation.*;
+import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 @ComponentScan(basePackages = {
@@ -27,51 +32,47 @@ import java.util.HashMap;
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = AuthorizationApplication.class)
         })
 @EntityScan(basePackages = "gr.athenarc.authorization.domain")
-//@EnableJpaRepositories(basePackages = "gr.athenarc.authorization.repository")
-@EnableJpaRepositories(
-        basePackages = "gr.athenarc.authorization.repository",
-        entityManagerFactoryRef = "authEntityManager",
-        transactionManagerRef = "authTransactionManager")
 @EnableTransactionManagement
+@EnableJpaRepositories(
+        entityManagerFactoryRef = "authEntityManagerFactory",
+        transactionManagerRef = "authTransactionManager",
+        basePackages = {"gr.athenarc.authorization.repository"})
 public class AuthorizationConfiguration {
 
-        @Autowired
-        private Environment env;
+    @Autowired
+    private Environment environment;
 
-        @Bean
-        @ConfigurationProperties(prefix="spring.datasource")
-        public DataSource authDataSource() {
-                return DataSourceBuilder.create().build();
-        }
+    @Bean(name = "authDataSourceProperties")
+    @ConfigurationProperties("spring.datasource-auth")
+    public DataSourceProperties authDataSourceProperties() {
+        return new DataSourceProperties();
+    }
 
-        @Bean
-        public LocalContainerEntityManagerFactoryBean authEntityManager() {
-                LocalContainerEntityManagerFactoryBean em
-                        = new LocalContainerEntityManagerFactoryBean();
-                em.setDataSource(authDataSource());
-                em.setPackagesToScan(
-                        new String[] { "gr.athenarc.authorization.domain" });
+    @Bean(name = "authDataSource")
+    @ConfigurationProperties("spring.datasource-auth.configuration")
+    public DataSource authDataSource(@Qualifier("authDataSourceProperties") DataSourceProperties authDataSourceProperties) {
+        return authDataSourceProperties.initializeDataSourceBuilder().type(HikariDataSource.class).build();
+    }
 
-                HibernateJpaVendorAdapter vendorAdapter
-                        = new HibernateJpaVendorAdapter();
-                em.setJpaVendorAdapter(vendorAdapter);
-                HashMap<String, Object> properties = new HashMap<>();
-                properties.put("hibernate.hbm2ddl.auto",
-                        env.getProperty("hibernate.hbm2ddl.auto"));
-                properties.put("hibernate.dialect",
-                        env.getProperty("spring.jpa.properties.hibernate.dialect"));
-                em.setJpaPropertyMap(properties);
+    @Bean(name = "authEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean authEntityManagerFactory(
+            EntityManagerFactoryBuilder authEntityManagerFactoryBuilder, @Qualifier("authDataSource") DataSource authDataSource) {
 
-                return em;
-        }
+        Map<String, String> authJpaProperties = new HashMap<>();
+        authJpaProperties.put("hibernate.dialect", environment.getRequiredProperty("spring.jpa-auth.hibernate.dialect"));
+        authJpaProperties.put("hibernate.hbm2ddl.auto", environment.getRequiredProperty("spring.jpa-auth.hibernate.hbm2ddl.auto"));
 
-        @Bean
-        public PlatformTransactionManager authTransactionManager() {
+        return authEntityManagerFactoryBuilder
+                .dataSource(authDataSource)
+                .packages("gr.athenarc.authorization.domain")
+                .persistenceUnit("authDataSource")
+                .properties(authJpaProperties)
+                .build();
+    }
 
-                JpaTransactionManager transactionManager
-                        = new JpaTransactionManager();
-                transactionManager.setEntityManagerFactory(
-                        authEntityManager().getObject());
-                return transactionManager;
-        }
+    @Bean(name = "authTransactionManager")
+    public PlatformTransactionManager authTransactionManager(
+            @Qualifier("authEntityManagerFactory") EntityManagerFactory authEntityManagerFactory) {
+        return new JpaTransactionManager(authEntityManagerFactory);
+    }
 }
