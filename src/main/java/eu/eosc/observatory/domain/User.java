@@ -17,12 +17,17 @@ public class User implements Identifiable<String> {
     private String name;
     private String surname;
     private String fullname;
+    private Boolean consent = null;
 
     public User() {
     }
 
     public static User of(Authentication auth) {
-        logger.trace(String.format("Creating User from Authentication: %n%s", auth));
+        return User.of(auth, null);
+    }
+
+    public static User of(Authentication auth, Boolean consent) {
+        logger.trace(String.format("Creating UserService from Authentication: %n%s", auth));
         User user = new User();
         if (auth == null) {
             throw new InsufficientAuthenticationException("You are not authenticated, please log in.");
@@ -43,7 +48,8 @@ public class User implements Identifiable<String> {
         } else {
             throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
         }
-        logger.debug(String.format("User from Authentication: %s", user));
+        user.consent = consent;
+        logger.debug(String.format("UserService from Authentication: %s", user));
         return user;
     }
 
@@ -87,6 +93,31 @@ public class User implements Identifiable<String> {
         this.fullname = fullname;
     }
 
+    public Boolean getConsent() {
+        return consent;
+    }
+
+    public void setConsent(Boolean consent) {
+        this.consent = consent;
+    }
+
+    public static String getId(Authentication auth) {
+        logger.trace(String.format("Retrieving id from Authentication: %n%s", auth));
+        String id = null;
+        if (auth == null) {
+            throw new InsufficientAuthenticationException("You are not authenticated, please log in.");
+        } else if (auth.getPrincipal() instanceof OidcUser) {
+            OidcUser principal = ((OidcUser) auth.getPrincipal());
+            id = principal.getEmail();
+        } else if (auth instanceof OAuth2AuthenticationToken) {
+            OAuth2User principal = ((OAuth2AuthenticationToken) auth).getPrincipal();
+            id = principal.getAttribute("email");
+        } else {
+            throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
+        }
+        return id;
+    }
+
     @Override
     public String getId() {
         return this.email;
@@ -95,5 +126,17 @@ public class User implements Identifiable<String> {
     @Override
     public void setId(String id) {
         this.setEmail(id);
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "sub='" + sub + '\'' +
+                ", email='" + email + '\'' +
+                ", name='" + name + '\'' +
+                ", surname='" + surname + '\'' +
+                ", fullname='" + fullname + '\'' +
+                ", consent=" + consent +
+                '}';
     }
 }

@@ -52,7 +52,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     public StakeholderMembers getMembers(String id) {
         Stakeholder stakeholder = this.get(id);
 
-        // TODO: replace 'this::getUser' with call to UserService to get User objects.
+        // TODO: replace 'this::getUser' with call to UserServiceImpl to get UserService objects.
         List<User> managers = new ArrayList<>();
         List<User> contributors = new ArrayList<>();
         if (stakeholder.getManagers() != null) {

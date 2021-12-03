@@ -1,26 +1,29 @@
 package eu.eosc.observatory.service;
 
-import eu.eosc.observatory.domain.Stakeholder;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.domain.Resource;
 import eu.openminted.registry.core.domain.ResourceType;
-import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import eu.openminted.registry.core.service.ParserService;
 import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
 import eu.openminted.registry.core.service.SearchService;
 import gr.athenarc.catalogue.LoggingUtils;
 import gr.athenarc.catalogue.exception.ResourceException;
+import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.AbstractGenericItemService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
 
+@Component
 public abstract class AbstractCrudItemService<T extends Identifiable> extends AbstractGenericItemService implements CrudItemService<T> {
 
     private static final Logger logger = LogManager.getLogger(AbstractCrudItemService.class);
 
+    @Autowired
     protected AbstractCrudItemService(ResourceTypeService resourceTypeService,
                                       ResourceService resourceService,
                                       SearchService searchService,

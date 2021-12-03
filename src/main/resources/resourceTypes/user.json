@@ -1,0 +1,54 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "user_id",
+      "path": "$.email",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "sub",
+      "label": "Subject Id",
+      "path": "$.sub",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "name",
+      "label": "Name",
+      "path": "$.name",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "surname",
+      "label": "Surname",
+      "path": "$.surname",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "fullname",
+      "label": "Full Name",
+      "path": "$.fullname",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "consent",
+      "label": "User Consent",
+      "path": "$.consent",
+      "type": "java.lang.Boolean"
+    }
+  ],
+  "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
+  "name": "user",
+  "aliasGroup": "resourceTypes",
+  "payloadType": "json",
+  "properties": {
+    "class": "eu.eosc.observatory.domain.User"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+}

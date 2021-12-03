@@ -1,26 +1,14 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.User;
-import eu.openminted.registry.core.service.ParserService;
-import eu.openminted.registry.core.service.ResourceService;
-import eu.openminted.registry.core.service.ResourceTypeService;
-import eu.openminted.registry.core.service.SearchService;
-import org.springframework.stereotype.Service;
+import eu.openminted.registry.core.exception.ResourceNotFoundException;
+import org.springframework.security.core.Authentication;
 
-@Service
-public class UserService extends AbstractCrudItemService<User> implements CrudItemService<User> {
+public interface UserService extends CrudItemService<User> {
 
-    protected UserService(ResourceTypeService resourceTypeService, ResourceService resourceService, SearchService searchService, ParserService parserService) {
-        super(resourceTypeService, resourceService, searchService, parserService);
-    }
+    void updateUserConsent(String id, boolean consent);
 
-    @Override
-    public String createId(User resource) {
-        return resource.getEmail();
-    }
+    void updateUserInfo(Authentication authentication);
 
-    @Override
-    public String getResourceType() {
-        return "user";
-    }
+    void purge(String id) throws ResourceNotFoundException;
 }
