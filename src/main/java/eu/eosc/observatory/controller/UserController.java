@@ -50,7 +50,7 @@ public class UserController {
         return new ResponseEntity<>(info, HttpStatus.OK);
     }
 
-    @PutMapping("/consent")
+    @PatchMapping("/consent")
     public ResponseEntity<Void> setConsent(@RequestParam(value = "consent", defaultValue = "false") boolean consent, @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
         userService.updateUserConsent(User.getId(authentication), consent);
         return new ResponseEntity<>(HttpStatus.OK);

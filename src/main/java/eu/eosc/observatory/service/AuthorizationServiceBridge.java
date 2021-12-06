@@ -14,14 +14,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-public class ResourcePermissionsService implements PermissionsService {
+public class AuthorizationServiceBridge implements PermissionsService {
 
-    private static final Logger logger = LogManager.getLogger(ResourcePermissionsService.class);
+    private static final Logger logger = LogManager.getLogger(AuthorizationServiceBridge.class);
 
     private final AuthorizationService authorizationService;
     private final AuthRepository authRepository;
 
-    public ResourcePermissionsService(AuthorizationService authorizationService,
+    public AuthorizationServiceBridge(AuthorizationService authorizationService,
                                       AuthRepository authRepository) {
         this.authorizationService = authorizationService;
         this.authRepository = authRepository;
@@ -61,5 +61,30 @@ public class ResourcePermissionsService implements PermissionsService {
         }
         authRepository.saveAll(triples);
         return triples;
+    }
+
+    @Override
+    public boolean hasPermission(String user, String action, String resourceId) {
+        return authorizationService.canDo(user, action, resourceId);
+    }
+
+    @Override
+    public boolean canRead(String userId, String resourceId) {
+        return authorizationService.canDo(userId, "read", resourceId);
+    }
+
+    @Override
+    public boolean canWrite(String userId, String resourceId) {
+        return authorizationService.canDo(userId, "write", resourceId);
+    }
+
+    @Override
+    public boolean canValidate(String userId, String resourceId) {
+        return  authorizationService.canDo(userId, "validate", resourceId);
+    }
+
+    @Override
+    public boolean canManage(String userId, String resourceId) {
+        return  authorizationService.canDo(userId, "manage", resourceId);
     }
 }

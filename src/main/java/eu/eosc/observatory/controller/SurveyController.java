@@ -15,6 +15,8 @@ import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
@@ -61,11 +63,13 @@ public class SurveyController {
     /*           Survey Answers            */
     /*-------------------------------------*/
 
-    @PostMapping("answers/{id}")
+    @PutMapping("answers/{id}")
+    @PreAuthorize("hasPermission(#id, 'write')")
     public ResponseEntity<SurveyAnswer> addSurveyAnswer(@PathVariable("id") String id,
                                                         @RequestBody JSONObject object,
                                                         @ApiIgnore Authentication authentication) {
         SurveyAnswer surveyAnswer = surveyAnswerService.get(id);
+        // FIXME: replace add method with update answer method and update survey metadata
         return new ResponseEntity<>(surveyAnswerService.add(surveyAnswer), HttpStatus.CREATED);
     }
 
@@ -84,11 +88,26 @@ public class SurveyController {
     }
 
     @GetMapping("answers/latest")
-    public ResponseEntity<SurveyAnswer> getLatestAnswer(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
-        return new ResponseEntity<>(surveyService.getLatest(surveyId, stakeholderId), HttpStatus.OK);
+    @PostAuthorize("hasPermission(returnObject, 'read')")
+    public ResponseEntity<SurveyAnswer> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
+        SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
+        return new ResponseEntity<>(surveyAnswer, HttpStatus.OK);
+    }
+
+    @GetMapping("answers/{id}")
+    @PreAuthorize("hasPermission(#id, 'read')")
+    public ResponseEntity<SurveyAnswer> getSurveyAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
+        return new ResponseEntity<>(surveyAnswerService.get(id), HttpStatus.OK);
+    }
+
+    @GetMapping("answers/{id}/answer")
+    @PreAuthorize("hasPermission(#id, 'read')")
+    public ResponseEntity<Object> getAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
+        return new ResponseEntity<>(surveyAnswerService.get(id).getAnswer(), HttpStatus.OK);
     }
 
     @PostMapping("cycle/generate")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<List<SurveyAnswer>> generateCycle(@ApiIgnore Authentication authentication) {
         return new ResponseEntity<>(surveyService.createNewCycle(authentication), HttpStatus.CREATED);
     }

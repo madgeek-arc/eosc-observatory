@@ -49,7 +49,7 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
     public void updateUserInfo(Authentication authentication) {
         User user = User.of(authentication);
         try {
-            this.update(user.getId(), user);
+            this.get(user.getId());
         } catch (ResourceNotFoundException e) {
             this.add(user);
         }

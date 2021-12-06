@@ -14,4 +14,11 @@ public interface PermissionsService {
     Set<AuthTriple> addContributors(List<String> users, List<String> resourceIds);
 
     Set<AuthTriple> addPermissions(List<String> users, List<String> actions, List<String> resourceIds);
+
+    boolean hasPermission(String user, String action, String resourceId);
+
+    boolean canRead(String userId, String resourceId);
+    boolean canWrite(String userId, String resourceId);
+    boolean canValidate(String userId, String resourceId);
+    boolean canManage(String userId, String resourceId);
 }
