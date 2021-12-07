@@ -7,9 +7,9 @@ import java.util.Date;
 public class Metadata {
 
     private Date creationDate;
-    private User createdBy;
+    private String createdBy;
     private Date modificationDate;
-    private User modifiedBy;
+    private String modifiedBy;
 
     public Metadata() {}
 
@@ -17,7 +17,7 @@ public class Metadata {
         Date date = new Date();
         this.creationDate = date;
         this.modificationDate = date;
-        this.createdBy = User.of(authentication);
+        this.createdBy = User.of(authentication).getId();
         this.modifiedBy = this.createdBy;
     }
 
@@ -29,11 +29,11 @@ public class Metadata {
         this.creationDate = creationDate;
     }
 
-    public User getCreatedBy() {
+    public String getCreatedBy() {
         return createdBy;
     }
 
-    public void setCreatedBy(User createdBy) {
+    public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
     }
 
@@ -45,11 +45,11 @@ public class Metadata {
         this.modificationDate = modificationDate;
     }
 
-    public User getModifiedBy() {
+    public String getModifiedBy() {
         return modifiedBy;
     }
 
-    public void setModifiedBy(User modifiedBy) {
+    public void setModifiedBy(String modifiedBy) {
         this.modifiedBy = modifiedBy;
     }
 }

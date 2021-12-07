@@ -3,6 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.Metadata;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
+import eu.eosc.observatory.domain.User;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.service.GenericItemService;
@@ -62,6 +63,15 @@ public class SurveyServiceImpl implements SurveyService {
             answer = answersBrowsing.getResults().get(0);
         }
         return answer;
+    }
+
+    @Override
+    public SurveyAnswer updateAnswer(String id, JSONObject answer, User user) {
+        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
+        surveyAnswer.getMetadata().setModifiedBy(user.getId());
+        surveyAnswer.getMetadata().setModificationDate(new Date());
+        surveyAnswer.setAnswer(answer);
+        return null;
     }
 
     @Override

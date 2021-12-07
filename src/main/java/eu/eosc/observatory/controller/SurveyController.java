@@ -1,6 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.SurveyAnswer;
+import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.service.CrudItemService;
 import eu.eosc.observatory.service.SurveyService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -65,12 +66,10 @@ public class SurveyController {
 
     @PutMapping("answers/{id}")
     @PreAuthorize("hasPermission(#id, 'write')")
-    public ResponseEntity<SurveyAnswer> addSurveyAnswer(@PathVariable("id") String id,
+    public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("id") String id,
                                                         @RequestBody JSONObject object,
                                                         @ApiIgnore Authentication authentication) {
-        SurveyAnswer surveyAnswer = surveyAnswerService.get(id);
-        // FIXME: replace add method with update answer method and update survey metadata
-        return new ResponseEntity<>(surveyAnswerService.add(surveyAnswer), HttpStatus.CREATED);
+        return new ResponseEntity<>(surveyService.updateAnswer(id, object, User.of(authentication)), HttpStatus.OK);
     }
 
     @ApiImplicitParams({
@@ -81,6 +80,7 @@ public class SurveyController {
             @ApiImplicitParam(name = "orderField", value = "Order field", dataType = "string", paramType = "query")
     })
     @GetMapping("answers")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Browsing<SurveyAnswer>> getAnswers(@ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
         Browsing<SurveyAnswer> answers = surveyAnswerService.getAll(filter);
