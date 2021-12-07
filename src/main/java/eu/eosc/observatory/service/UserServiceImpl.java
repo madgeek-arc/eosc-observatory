@@ -13,19 +13,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserServiceImpl extends AbstractCrudItemService<User> implements UserService {
 
-    private final StakeholderService stakeholderService;
-    private final PermissionsService permissionsService;
-
     @Autowired
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
                               ResourceService resourceService,
                               SearchService searchService,
-                              ParserService parserService,
-                              StakeholderService stakeholderService,
-                              PermissionsService permissionsService) {
+                              ParserService parserService) {
         super(resourceTypeService, resourceService, searchService, parserService);
-        this.stakeholderService = stakeholderService;
-        this.permissionsService = permissionsService;
     }
 
     @Override

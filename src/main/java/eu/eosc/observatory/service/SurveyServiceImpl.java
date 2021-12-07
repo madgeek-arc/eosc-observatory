@@ -42,6 +42,9 @@ public class SurveyServiceImpl implements SurveyService {
     @Override
     public Browsing<Survey> getByType(FacetFilter filter, String type) {
         filter.setResourceType("survey");
+        if (type != null && !"".equals(type)) {
+            filter.addFilter("type", type);
+        }
         Browsing<Survey> surveyBrowsing = this.genericItemService.getResults(filter);
         return surveyBrowsing;
     }

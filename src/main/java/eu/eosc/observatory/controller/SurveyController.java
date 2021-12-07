@@ -52,8 +52,8 @@ public class SurveyController {
             @ApiImplicitParam(name = "order", value = "asc / desc", dataType = "string", paramType = "query"),
             @ApiImplicitParam(name = "orderField", value = "Order field", dataType = "string", paramType = "query")
     })
-    @GetMapping("surveys/type/{type}")
-    public ResponseEntity<Browsing<Survey>> getSurveysByType(@ApiIgnore @RequestParam Map<String, Object> allRequestParams, @PathVariable("type") String type) {
+    @GetMapping("surveys")
+    public ResponseEntity<Browsing<Survey>> getSurveysByType(@ApiIgnore @RequestParam Map<String, Object> allRequestParams, @RequestParam(value = "type", defaultValue = "") String type) {
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
         Browsing<Survey> surveyBrowsing = surveyService.getByType(filter, type);
         return new ResponseEntity<>(surveyBrowsing, HttpStatus.OK);

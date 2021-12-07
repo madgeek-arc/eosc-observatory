@@ -3,13 +3,22 @@ package eu.eosc.observatory.controller;
 import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.service.StakeholderService;
+import eu.openminted.registry.core.domain.Browsing;
+import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
+import gr.athenarc.catalogue.controller.GenericItemController;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import springfox.documentation.annotations.ApiIgnore;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("stakeholders")
@@ -46,6 +55,21 @@ public class StakeholderController {
     @DeleteMapping("{id}")
     public ResponseEntity<Stakeholder> delete(@PathVariable("id") String id) throws ResourceNotFoundException {
         return new ResponseEntity<>(stakeholderService.delete(id), HttpStatus.OK);
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "query", value = "Keyword to refine the search", dataType = "string", paramType = "query"),
+            @ApiImplicitParam(name = "from", value = "Starting index in the result set", dataType = "string", paramType = "query"),
+            @ApiImplicitParam(name = "quantity", value = "Quantity to be fetched", dataType = "string", paramType = "query"),
+            @ApiImplicitParam(name = "order", value = "asc / desc", dataType = "string", paramType = "query"),
+            @ApiImplicitParam(name = "orderField", value = "Order field", dataType = "string", paramType = "query")
+    })
+    @GetMapping()
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
+        FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
+        Browsing<Stakeholder> stakeholders = stakeholderService.getAll(filter);
+        return new ResponseEntity<>(stakeholders, HttpStatus.OK);
     }
 
     /*---------------------------*/

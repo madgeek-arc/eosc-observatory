@@ -7,6 +7,7 @@ import eu.openminted.registry.core.service.ParserService;
 import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
 import eu.openminted.registry.core.service.SearchService;
+import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,12 +25,16 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
     private static final String RESOURCE_TYPE = "stakeholder";
 
+    private final CrudItemService<User> userService;
+
     @Autowired
     public StakeholderServiceImpl(ResourceTypeService resourceTypeService,
                                   ResourceService resourceService,
                                   SearchService searchService,
-                                  ParserService parserService) {
+                                  ParserService parserService,
+                                  CrudItemService<User> userService) {
         super(resourceTypeService, resourceService, searchService, parserService);
+        this.userService = userService;
     }
 
     @Override
@@ -52,7 +57,6 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     public StakeholderMembers getMembers(String id) {
         Stakeholder stakeholder = this.get(id);
 
-        // TODO: replace 'this::getUser' with call to UserServiceImpl to get UserService objects.
         List<User> managers = new ArrayList<>();
         List<User> contributors = new ArrayList<>();
         if (stakeholder.getManagers() != null) {
@@ -74,8 +78,14 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     private User getUser(String email) {
-        User user = new User();
-        user.setEmail(email);
+        User user = null;
+        try {
+            user = userService.get(email);
+        } catch (ResourceNotFoundException e) {
+            logger.debug("User not found in DB");
+            user = new User();
+            user.setEmail(email);
+        }
         return user;
     }
 }
