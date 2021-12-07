@@ -62,7 +62,7 @@
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>catalogue</artifactId>
-			<version>0.0.4-SNAPSHOT</version>
+			<version>0.0.5-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>gr.athenarc</groupId>
