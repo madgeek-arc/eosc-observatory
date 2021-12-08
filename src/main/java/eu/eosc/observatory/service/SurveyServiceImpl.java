@@ -6,6 +6,7 @@ import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
+import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import org.apache.log4j.LogManager;
@@ -69,12 +70,13 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public SurveyAnswer updateAnswer(String id, JSONObject answer, User user) {
+    public SurveyAnswer updateAnswer(String id, JSONObject answer, User user) throws ResourceNotFoundException {
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(new Date());
         surveyAnswer.setAnswer(answer);
-        return null;
+        surveyAnswer = surveyAnswerCrudService.update(id, surveyAnswer);
+        return surveyAnswer;
     }
 
     @Override

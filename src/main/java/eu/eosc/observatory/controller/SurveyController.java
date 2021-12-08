@@ -6,6 +6,7 @@ import eu.eosc.observatory.service.CrudItemService;
 import eu.eosc.observatory.service.SurveyService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
+import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.controller.GenericItemController;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import io.swagger.annotations.ApiImplicitParam;
@@ -68,7 +69,7 @@ public class SurveyController {
     @PreAuthorize("hasPermission(#id, 'write')")
     public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("id") String id,
                                                         @RequestBody JSONObject object,
-                                                        @ApiIgnore Authentication authentication) {
+                                                        @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
         return new ResponseEntity<>(surveyService.updateAnswer(id, object, User.of(authentication)), HttpStatus.OK);
     }
 
