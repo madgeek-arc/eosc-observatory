@@ -55,7 +55,7 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
                     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                                         Authentication authentication) throws IOException, ServletException {
                         postLogin(authentication);
-                        response.sendRedirect("http://localhost:4200/contributions/home");
+                        response.sendRedirect(applicationProperties.getLoginRedirect());
                     }
                 })
                 .and()

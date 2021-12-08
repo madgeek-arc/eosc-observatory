@@ -11,11 +11,21 @@ public class ApplicationProperties {
 
     private Set<Object> admins;
 
+    private String loginRedirect;
+
     public Set<Object> getAdmins() {
         return admins;
     }
 
     public void setAdmins(Set<Object> admins) {
         this.admins = admins;
+    }
+
+    public String getLoginRedirect() {
+        return loginRedirect;
+    }
+
+    public void setLoginRedirect(String loginRedirect) {
+        this.loginRedirect = loginRedirect;
     }
 }
