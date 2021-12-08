@@ -32,6 +32,9 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
         // convert to Object when resource is a returnObject (@PostConstruct)
         if (resource instanceof ResponseEntity) {
             resource = ((ResponseEntity) resource).getBody();
+            if (resource == null) { // FIXME: throw ResourceNotFound exception ?
+                return false;
+            }
         }
 
         // get resource id
