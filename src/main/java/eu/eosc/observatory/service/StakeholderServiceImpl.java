@@ -3,10 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
-import eu.openminted.registry.core.service.ParserService;
-import eu.openminted.registry.core.service.ResourceService;
-import eu.openminted.registry.core.service.ResourceTypeService;
-import eu.openminted.registry.core.service.SearchService;
+import eu.openminted.registry.core.service.*;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -75,6 +72,20 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         }
 
         return new StakeholderMembers(contributors, managers);
+    }
+
+    @Override
+    public Stakeholder updateContributors(String stakeholderId, List<String> emails) {
+        Stakeholder stakeholder = get(stakeholderId);
+        stakeholder.setContributors(emails);
+        return update(stakeholderId, stakeholder);
+    }
+
+    @Override
+    public Stakeholder updateManagers(String stakeholderId, List<String> emails) {
+        Stakeholder stakeholder = get(stakeholderId);
+        stakeholder.setManagers(emails);
+        return update(stakeholderId, stakeholder);
     }
 
     private User getUser(String email) {

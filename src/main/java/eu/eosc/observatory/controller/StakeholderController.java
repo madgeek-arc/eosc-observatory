@@ -18,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -79,5 +80,17 @@ public class StakeholderController {
     @GetMapping("{id}/members")
     public ResponseEntity<StakeholderMembers> getMembers(@PathVariable("id") String stakeholderId) {
         return new ResponseEntity<>(stakeholderService.getMembers(stakeholderId), HttpStatus.OK);
+    }
+
+    @PatchMapping("{id}/contributors")
+//    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Stakeholder> updateContributors(@PathVariable("id") String stakeholderId, @RequestBody List<String> emails) {
+        return new ResponseEntity<>(stakeholderService.updateContributors(stakeholderId, emails), HttpStatus.OK);
+    }
+
+    @PatchMapping("{id}/managers")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Stakeholder> updateManagers(@PathVariable("id") String stakeholderId, @RequestBody List<String> emails) {
+        return new ResponseEntity<>(stakeholderService.updateManagers(stakeholderId, emails), HttpStatus.OK);
     }
 }
