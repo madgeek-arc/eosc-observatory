@@ -21,6 +21,7 @@ public class RegistryCoreConfig extends HibernateConfiguration {
 
     @Bean(name = "entityManagerFactory")
     @Primary
+    @Override
     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
         return super.entityManagerFactory();
     }
@@ -28,12 +29,14 @@ public class RegistryCoreConfig extends HibernateConfiguration {
     @Bean
     @Primary
     @Autowired
+    @Override
     public EntityManager entityManager(EntityManagerFactory entityManagerFactory) {
         return super.entityManager(entityManagerFactory);
     }
 
     @Bean
     @Primary
+    @Override
     public PlatformTransactionManager transactionManager() {
         return super.transactionManager();
     }

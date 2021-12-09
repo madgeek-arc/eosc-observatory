@@ -32,9 +32,9 @@ import java.util.Set;
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
-public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-    private static final Logger logger = LogManager.getLogger(SecurityConfiguration.class);
+    private static final Logger logger = LogManager.getLogger(SecurityConfig.class);
 
     @Autowired
     private ApplicationProperties applicationProperties;

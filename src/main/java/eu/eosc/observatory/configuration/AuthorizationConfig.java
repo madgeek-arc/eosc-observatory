@@ -37,7 +37,7 @@ import java.util.Map;
         entityManagerFactoryRef = "authEntityManagerFactory",
         transactionManagerRef = "authTransactionManager",
         basePackages = {"gr.athenarc.authorization.repository"})
-public class AuthorizationConfiguration {
+public class AuthorizationConfig {
 
     @Autowired
     private Environment environment;

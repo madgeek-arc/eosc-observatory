@@ -20,7 +20,7 @@ import java.util.HashMap;
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = CatalogueApplication.class),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = RegistryCoreConfiguration.class)
         })
-public class ObservatoryConfiguration {
+public class ObservatoryConfig {
 
         @Bean
         public EntityManagerFactoryBuilder entityManagerFactoryBuilder() {
