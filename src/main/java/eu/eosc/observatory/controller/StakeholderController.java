@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
@@ -39,7 +40,7 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}")
-    @PreAuthorize("isStakeholderMember(#id)")
+//    @PreAuthorize("isStakeholderMember(#id)")
     public ResponseEntity<Stakeholder> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(stakeholderService.get(id), HttpStatus.OK);
     }
@@ -51,7 +52,7 @@ public class StakeholderController {
     }
 
     @PutMapping("{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<Stakeholder> update(@PathVariable("id") String id, @RequestBody Stakeholder stakeholder) throws ResourceNotFoundException {
         return new ResponseEntity<>(stakeholderService.update(id, stakeholder), HttpStatus.OK);
     }
@@ -82,20 +83,45 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}/members")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<StakeholderMembers> getMembers(@PathVariable("id") String stakeholderId) {
         return new ResponseEntity<>(stakeholderService.getMembers(stakeholderId), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/contributors")
-//    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<Stakeholder> updateContributors(@PathVariable("id") String stakeholderId, @RequestBody List<String> emails) {
         return new ResponseEntity<>(stakeholderService.updateContributors(stakeholderId, emails), HttpStatus.OK);
+    }
+
+    @PostMapping("{id}/contributors")
+    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderManager(#stakeholderId)")
+    public ResponseEntity<Stakeholder> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+        return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, email), HttpStatus.OK);
+    }
+
+    @DeleteMapping("{id}/contributors")
+    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderManager(#stakeholderId)")
+    public ResponseEntity<Stakeholder> removeContributor(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+        return new ResponseEntity<>(stakeholderService.removeContributor(stakeholderId, email), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/managers")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Stakeholder> updateManagers(@PathVariable("id") String stakeholderId, @RequestBody List<String> emails) {
         return new ResponseEntity<>(stakeholderService.updateManagers(stakeholderId, emails), HttpStatus.OK);
+    }
+
+
+    @PostMapping("{id}/managers")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Stakeholder> addManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+        return new ResponseEntity<>(stakeholderService.addManager(stakeholderId, email), HttpStatus.OK);
+    }
+
+    @DeleteMapping("{id}/managers")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Stakeholder> removeManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+        return new ResponseEntity<>(stakeholderService.removeManager(stakeholderId, email), HttpStatus.OK);
     }
 }

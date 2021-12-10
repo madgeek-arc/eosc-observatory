@@ -3,7 +3,10 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
-import eu.openminted.registry.core.service.*;
+import eu.openminted.registry.core.service.ParserService;
+import eu.openminted.registry.core.service.ResourceService;
+import eu.openminted.registry.core.service.ResourceTypeService;
+import eu.openminted.registry.core.service.SearchService;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -82,9 +85,43 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
+    public Stakeholder addContributor(String stakeholderId, String email) {
+        Stakeholder stakeholder = get(stakeholderId);
+        if (stakeholder.getContributors() == null) {
+            stakeholder.setContributors(new ArrayList<>());
+        }
+        stakeholder.getContributors().add(email);
+        return update(stakeholderId, stakeholder);
+    }
+
+    @Override
+    public Stakeholder removeContributor(String stakeholderId, String email) {
+        Stakeholder stakeholder = get(stakeholderId);
+        stakeholder.getContributors().remove(email);
+        return update(stakeholderId, stakeholder);
+    }
+
+    @Override
     public Stakeholder updateManagers(String stakeholderId, List<String> emails) {
         Stakeholder stakeholder = get(stakeholderId);
         stakeholder.setManagers(emails);
+        return update(stakeholderId, stakeholder);
+    }
+
+    @Override
+    public Stakeholder addManager(String stakeholderId, String email) {
+        Stakeholder stakeholder = get(stakeholderId);
+        if (stakeholder.getManagers() == null) {
+            stakeholder.setManagers(new ArrayList<>());
+        }
+        stakeholder.getManagers().add(email);
+        return update(stakeholderId, stakeholder);
+    }
+
+    @Override
+    public Stakeholder removeManager(String stakeholderId, String email) {
+        Stakeholder stakeholder = get(stakeholderId);
+        stakeholder.getManagers().remove(email);
         return update(stakeholderId, stakeholder);
     }
 
