@@ -59,7 +59,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     }
                 })
                 .and()
-                .logout().logoutSuccessUrl("/")
+                .logout().logoutSuccessUrl("http://localhost:4200")
                 .and()
                 .cors().disable()
                 .csrf().disable();

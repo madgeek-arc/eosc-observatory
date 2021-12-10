@@ -1,5 +1,6 @@
 package eu.eosc.observatory.configuration.security;
 
+import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.UserService;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,10 +18,13 @@ public class CustomMethodSecurityExpressionHandler extends DefaultMethodSecurity
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private StakeholderService stakeholderService;
+
     @Override
     protected MethodSecurityExpressionOperations createSecurityExpressionRoot(Authentication authentication, MethodInvocation invocation) {
         CustomMethodSecurityExpressionRoot root =
-                new CustomMethodSecurityExpressionRoot(authentication, userService);
+                new CustomMethodSecurityExpressionRoot(authentication, userService, stakeholderService);
         root.setPermissionEvaluator(getPermissionEvaluator());
         root.setTrustResolver(this.trustResolver);
         root.setRoleHierarchy(getRoleHierarchy());
