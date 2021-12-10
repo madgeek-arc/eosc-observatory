@@ -1,7 +1,7 @@
 package eu.eosc.observatory.controller;
 
-import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.eosc.observatory.domain.Stakeholder;
+import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -39,21 +39,25 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}")
+    @PreAuthorize("isStakeholderMember(#id)")
     public ResponseEntity<Stakeholder> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(stakeholderService.get(id), HttpStatus.OK);
     }
 
     @PostMapping()
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Stakeholder> create(@RequestBody Stakeholder stakeholder) {
         return new ResponseEntity<>(stakeholderService.add(stakeholder), HttpStatus.CREATED);
     }
 
     @PutMapping("{id}")
+    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<Stakeholder> update(@PathVariable("id") String id, @RequestBody Stakeholder stakeholder) throws ResourceNotFoundException {
         return new ResponseEntity<>(stakeholderService.update(id, stakeholder), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Stakeholder> delete(@PathVariable("id") String id) throws ResourceNotFoundException {
         return new ResponseEntity<>(stakeholderService.delete(id), HttpStatus.OK);
     }
@@ -78,6 +82,7 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}/members")
+    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<StakeholderMembers> getMembers(@PathVariable("id") String stakeholderId) {
         return new ResponseEntity<>(stakeholderService.getMembers(stakeholderId), HttpStatus.OK);
     }
