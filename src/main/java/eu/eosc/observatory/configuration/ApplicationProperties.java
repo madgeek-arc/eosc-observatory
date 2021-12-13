@@ -13,6 +13,8 @@ public class ApplicationProperties {
 
     private String loginRedirect;
 
+    private String logoutRedirect;
+
     public Set<Object> getAdmins() {
         return admins;
     }
@@ -27,5 +29,13 @@ public class ApplicationProperties {
 
     public void setLoginRedirect(String loginRedirect) {
         this.loginRedirect = loginRedirect;
+    }
+
+    public String getLogoutRedirect() {
+        return logoutRedirect;
+    }
+
+    public void setLogoutRedirect(String logoutRedirect) {
+        this.logoutRedirect = logoutRedirect;
     }
 }
