@@ -9,11 +9,14 @@ public interface PermissionsService {
 
     Set<String> getPermissions(String userId, String resourceId);
 
-    Set<AuthTriple> addManagers(List<String> users, List<String> resourceIds);
+    Set<AuthTriple> addPermissions(List<String> users, List<String> actions, List<String> resourceIds);
 
+    Set<AuthTriple> addManagers(List<String> users, List<String> resourceIds);
     Set<AuthTriple> addContributors(List<String> users, List<String> resourceIds);
 
-    Set<AuthTriple> addPermissions(List<String> users, List<String> actions, List<String> resourceIds);
+    void removeAll(String user);
+    void removeAll(List<String> users);
+    void remove(String user, String action, String resourceId);
 
     boolean hasPermission(String user, String action, String resourceId);
 

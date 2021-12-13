@@ -17,6 +17,8 @@ public interface SurveyService {
 
     SurveyAnswer getLatest(String surveyId, String stakeholderId);
 
+    List<SurveyAnswer> getActive(String stakeholderId);
+
     SurveyAnswer updateAnswer(String id, JSONObject answer, User user) throws ResourceNotFoundException;
 
     List<SurveyAnswer> createNewCycle(Authentication authentication);

@@ -64,6 +64,23 @@ public class AuthorizationServiceBridge implements PermissionsService {
     }
 
     @Override
+    public void removeAll(String user) {
+        authRepository.deleteAllBySubject(user);
+    }
+
+    @Override
+    public void removeAll(List<String> users) {
+        for (String user : users) {
+            this.removeAll(user);
+        }
+    }
+
+    @Override
+    public void remove(String user, String action, String resourceId) {
+        authRepository.deleteBySubjectAndActionAndObject(user, action, resourceId);
+    }
+
+    @Override
     public boolean hasPermission(String user, String action, String resourceId) {
         return authorizationService.canDo(user, action, resourceId);
     }

@@ -70,6 +70,21 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
+    public List<SurveyAnswer> getActive(String stakeholderId) {
+        FacetFilter filter = new FacetFilter();
+        filter.addFilter("stakeholderId", stakeholderId);
+        filter.addFilter("validated", false);
+        Map<String, Object> sortBy = new HashMap<>();
+        Map<String, Object> orderType = new HashMap<>();
+        orderType.put("order", "desc");
+        sortBy.put("creationDate", orderType);
+        filter.setOrderBy(sortBy);
+
+        Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
+        return answersBrowsing.getResults();
+    }
+
+    @Override
     public SurveyAnswer updateAnswer(String id, JSONObject answer, User user) throws ResourceNotFoundException {
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());

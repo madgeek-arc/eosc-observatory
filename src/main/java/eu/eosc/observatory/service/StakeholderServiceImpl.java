@@ -1,6 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Stakeholder;
+import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.openminted.registry.core.service.ParserService;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -26,15 +28,21 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     private static final String RESOURCE_TYPE = "stakeholder";
 
     private final CrudItemService<User> userService;
+    private final SurveyService surveyService;
+    private final PermissionsService permissionsService;
 
     @Autowired
     public StakeholderServiceImpl(ResourceTypeService resourceTypeService,
                                   ResourceService resourceService,
                                   SearchService searchService,
                                   ParserService parserService,
-                                  CrudItemService<User> userService) {
+                                  CrudItemService<User> userService,
+                                  SurveyService surveyService,
+                                  PermissionsService permissionsService) {
         super(resourceTypeService, resourceService, searchService, parserService);
         this.userService = userService;
+        this.permissionsService = permissionsService;
+        this.surveyService = surveyService;
     }
 
     @Override
@@ -83,7 +91,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     @Override
     public Stakeholder updateContributors(String stakeholderId, List<String> emails) {
         Stakeholder stakeholder = get(stakeholderId);
+        List<String> previousContributors = stakeholder.getManagers();
+        for (String manager : emails) {
+            previousContributors.remove(manager);
+        }
         stakeholder.setContributors(emails);
+        permissionsService.removeAll(previousContributors);
         return update(stakeholderId, stakeholder);
     }
 
@@ -95,6 +108,8 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         }
         stakeholder.getContributors().add(email);
         stakeholder = update(stakeholderId, stakeholder);
+        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        permissionsService.addContributors(Collections.singletonList(email), resourceIds);
         return getMembers(stakeholder);
     }
 
@@ -103,13 +118,20 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         Stakeholder stakeholder = get(stakeholderId);
         stakeholder.getContributors().remove(email);
         stakeholder = update(stakeholderId, stakeholder);
+        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        permissionsService.removeAll(email);
         return getMembers(stakeholder);
     }
 
     @Override
     public Stakeholder updateManagers(String stakeholderId, List<String> emails) {
         Stakeholder stakeholder = get(stakeholderId);
+        List<String> previousManagers = stakeholder.getManagers();
+        for (String manager : emails) {
+            previousManagers.remove(manager);
+        }
         stakeholder.setManagers(emails);
+        permissionsService.removeAll(previousManagers);
         return update(stakeholderId, stakeholder);
     }
 
@@ -121,6 +143,8 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         }
         stakeholder.getManagers().add(email);
         stakeholder = update(stakeholderId, stakeholder);
+        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        permissionsService.addContributors(Collections.singletonList(email), resourceIds);
         return getMembers(stakeholder);
     }
 
@@ -129,6 +153,8 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         Stakeholder stakeholder = get(stakeholderId);
         stakeholder.getManagers().remove(email);
         stakeholder = update(stakeholderId, stakeholder);
+        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        permissionsService.removeAll(email);
         return getMembers(stakeholder);
     }
 
