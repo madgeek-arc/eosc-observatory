@@ -12,6 +12,7 @@ import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
                                   SearchService searchService,
                                   ParserService parserService,
                                   CrudItemService<User> userService,
-                                  SurveyService surveyService,
+                                  @Lazy SurveyService surveyService,
                                   PermissionsService permissionsService) {
         super(resourceTypeService, resourceService, searchService, parserService);
         this.userService = userService;
