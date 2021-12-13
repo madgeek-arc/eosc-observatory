@@ -1,6 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.Stakeholder;
+import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -14,13 +15,17 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("stakeholders")
@@ -83,7 +88,7 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}/members")
-    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderMember(#stakeholderId)")
+//    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<StakeholderMembers> getMembers(@PathVariable("id") String stakeholderId) {
         return new ResponseEntity<>(stakeholderService.getMembers(stakeholderId), HttpStatus.OK);
     }
@@ -95,14 +100,24 @@ public class StakeholderController {
     }
 
     @PostMapping("{id}/contributors")
-    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<Stakeholder> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String email) {
-        return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, email), HttpStatus.OK);
+//    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderManager(#stakeholderId)")
+    public ResponseEntity<StakeholderMembers> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String email, @ApiIgnore Authentication authentication) {
+        User user = User.of(authentication);
+        Stakeholder stakeholder = stakeholderService.get(stakeholderId);
+        Set<String> emails = new HashSet<>();
+        if (stakeholder.getManagers() != null) {
+            emails.addAll(stakeholder.getManagers());
+        }
+        if (emails.contains(user.getId())) {
+            return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, email), HttpStatus.OK);
+        } else {
+            throw new AccessDeniedException("You are not a manager of this Stakeholder");
+        }
     }
 
     @DeleteMapping("{id}/contributors")
     @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<Stakeholder> removeContributor(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+    public ResponseEntity<StakeholderMembers> removeContributor(@PathVariable("id") String stakeholderId, @RequestBody String email) {
         return new ResponseEntity<>(stakeholderService.removeContributor(stakeholderId, email), HttpStatus.OK);
     }
 
@@ -115,13 +130,13 @@ public class StakeholderController {
 
     @PostMapping("{id}/managers")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Stakeholder> addManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+    public ResponseEntity<StakeholderMembers> addManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
         return new ResponseEntity<>(stakeholderService.addManager(stakeholderId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/managers")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Stakeholder> removeManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+    public ResponseEntity<StakeholderMembers> removeManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
         return new ResponseEntity<>(stakeholderService.removeManager(stakeholderId, email), HttpStatus.OK);
     }
 }

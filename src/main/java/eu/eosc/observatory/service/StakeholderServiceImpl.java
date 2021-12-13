@@ -56,7 +56,10 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     @Override
     public StakeholderMembers getMembers(String id) {
         Stakeholder stakeholder = this.get(id);
+        return getMembers(stakeholder);
+    }
 
+    private StakeholderMembers getMembers(Stakeholder stakeholder) {
         List<User> managers = new ArrayList<>();
         List<User> contributors = new ArrayList<>();
         if (stakeholder.getManagers() != null) {
@@ -85,20 +88,22 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
-    public Stakeholder addContributor(String stakeholderId, String email) {
+    public StakeholderMembers addContributor(String stakeholderId, String email) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getContributors() == null) {
             stakeholder.setContributors(new ArrayList<>());
         }
         stakeholder.getContributors().add(email);
-        return update(stakeholderId, stakeholder);
+        stakeholder = update(stakeholderId, stakeholder);
+        return getMembers(stakeholder);
     }
 
     @Override
-    public Stakeholder removeContributor(String stakeholderId, String email) {
+    public StakeholderMembers removeContributor(String stakeholderId, String email) {
         Stakeholder stakeholder = get(stakeholderId);
         stakeholder.getContributors().remove(email);
-        return update(stakeholderId, stakeholder);
+        stakeholder = update(stakeholderId, stakeholder);
+        return getMembers(stakeholder);
     }
 
     @Override
@@ -109,20 +114,22 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
-    public Stakeholder addManager(String stakeholderId, String email) {
+    public StakeholderMembers addManager(String stakeholderId, String email) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getManagers() == null) {
             stakeholder.setManagers(new ArrayList<>());
         }
         stakeholder.getManagers().add(email);
-        return update(stakeholderId, stakeholder);
+        stakeholder = update(stakeholderId, stakeholder);
+        return getMembers(stakeholder);
     }
 
     @Override
-    public Stakeholder removeManager(String stakeholderId, String email) {
+    public StakeholderMembers removeManager(String stakeholderId, String email) {
         Stakeholder stakeholder = get(stakeholderId);
         stakeholder.getManagers().remove(email);
-        return update(stakeholderId, stakeholder);
+        stakeholder = update(stakeholderId, stakeholder);
+        return getMembers(stakeholder);
     }
 
     private User getUser(String email) {
