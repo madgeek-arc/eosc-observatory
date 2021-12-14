@@ -57,7 +57,9 @@ public class AuthorizationServiceBridge implements PermissionService {
         for (String id : users) {
             for (String action : actions) {
                 for (String resourceId : resourceIds) {
-                    triples.add(new AuthTriple(id, action, resourceId));
+                    if (authRepository.findAllBySubjectAndActionAndObject(id, action, resourceId).isEmpty()) {
+                        triples.add(new AuthTriple(id, action, resourceId));
+                    }
                 }
             }
         }
@@ -70,7 +72,10 @@ public class AuthorizationServiceBridge implements PermissionService {
         for (String id : users) {
             for (String action : actions) {
                 for (String resourceId : resourceIds) {
-                    authRepository.delete(new AuthTriple(id, action, resourceId));
+                    Set<AuthTriple> permissions = authRepository.findAllBySubjectAndActionAndObject(id, action, resourceId);
+                    for (AuthTriple triple : permissions) {
+                        authRepository.delete(triple);
+                    }
                 }
             }
         }
@@ -90,7 +95,7 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public void remove(String user, String action, String resourceId) {
-        authRepository.deleteBySubjectAndActionAndObject(user, action, resourceId);
+        authRepository.deleteAllBySubjectAndActionAndObject(user, action, resourceId);
     }
 
     @Override

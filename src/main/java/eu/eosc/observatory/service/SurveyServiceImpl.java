@@ -101,7 +101,11 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer setAnswerValidated(String answerId, boolean validated, User user) throws ResourceNotFoundException {
-        return validated ? validateAnswer(answerId, user) : invalidateAnswer(answerId, user);
+        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(answerId);
+        if (surveyAnswer.isValidated() != validated) {
+            return validated ? validateAnswer(surveyAnswer, user) : invalidateAnswer(surveyAnswer, user);
+        }
+        return surveyAnswer;
     }
 
     @Override
@@ -135,23 +139,21 @@ public class SurveyServiceImpl implements SurveyService {
 
 
 
-    private SurveyAnswer validateAnswer(String id, User user) throws ResourceNotFoundException {
-        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
+    private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
         List<String> members = stakeholder.getManagers();
         members.addAll(stakeholder.getContributors());
-        permissionService.removePermissions(members, Collections.singletonList("write"), Collections.singletonList(id));
+        permissionService.removePermissions(members, Collections.singletonList("write"), Collections.singletonList(surveyAnswer.getId()));
         surveyAnswer.setValidated(true);
-        return this.update(id, surveyAnswer, user);
+        return this.update(surveyAnswer.getId(), surveyAnswer, user);
     }
 
-    private SurveyAnswer invalidateAnswer(String id, User user) throws ResourceNotFoundException {
-        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
+    private SurveyAnswer invalidateAnswer(SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
         List<String> members = stakeholder.getManagers();
         members.addAll(stakeholder.getContributors());
-        permissionService.addPermissions(members, Collections.singletonList("write"), Collections.singletonList(id));
+        permissionService.addPermissions(members, Collections.singletonList("write"), Collections.singletonList(surveyAnswer.getId()));
         surveyAnswer.setValidated(false);
-        return this.update(id, surveyAnswer, user);
+        return this.update(surveyAnswer.getId(), surveyAnswer, user);
     }
 }

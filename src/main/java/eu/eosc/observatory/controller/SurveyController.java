@@ -74,7 +74,7 @@ public class SurveyController {
     }
 
     @PatchMapping("answers/{id}/validation")
-    @PreAuthorize("hasPermission(#id, 'validate')")
+    @PreAuthorize("hasPermission(#id, 'manage')")
     public ResponseEntity<SurveyAnswer> validateSurveyAnswer(@PathVariable("id") String id,
                                                              @RequestParam(value = "validated") boolean validated,
                                                         @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
