@@ -73,6 +73,14 @@ public class SurveyController {
         return new ResponseEntity<>(surveyService.updateAnswer(id, object, User.of(authentication)), HttpStatus.OK);
     }
 
+    @PatchMapping("answers/{id}/validation")
+    @PreAuthorize("hasPermission(#id, 'validate')")
+    public ResponseEntity<SurveyAnswer> validateSurveyAnswer(@PathVariable("id") String id,
+                                                             @RequestParam(value = "validated") boolean validated,
+                                                        @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
+        return new ResponseEntity<>(surveyService.setAnswerValidated(id, validated, User.of(authentication)), HttpStatus.OK);
+    }
+
     @ApiImplicitParams({
             @ApiImplicitParam(name = "query", value = "Keyword to refine the search", dataType = "string", paramType = "query"),
             @ApiImplicitParam(name = "from", value = "Starting index in the result set", dataType = "string", paramType = "query"),

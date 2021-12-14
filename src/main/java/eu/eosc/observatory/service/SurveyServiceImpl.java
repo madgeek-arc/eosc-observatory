@@ -85,13 +85,23 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public SurveyAnswer updateAnswer(String id, JSONObject answer, User user) throws ResourceNotFoundException {
-        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
+    public SurveyAnswer update(String id, SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException {
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(new Date());
+        return surveyAnswerCrudService.update(id, surveyAnswer);
+    }
+
+    @Override
+    public SurveyAnswer updateAnswer(String id, JSONObject answer, User user) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
         surveyAnswer.setAnswer(answer);
-        surveyAnswer = surveyAnswerCrudService.update(id, surveyAnswer);
+        surveyAnswer = this.update(id, surveyAnswer, user);
         return surveyAnswer;
+    }
+
+    @Override
+    public SurveyAnswer setAnswerValidated(String answerId, boolean validated, User user) throws ResourceNotFoundException {
+        return validated ? validateAnswer(answerId, user) : invalidateAnswer(answerId, user);
     }
 
     @Override
@@ -121,5 +131,27 @@ public class SurveyServiceImpl implements SurveyService {
             }
         }
         return surveyAnswers;
+    }
+
+
+
+    private SurveyAnswer validateAnswer(String id, User user) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
+        Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
+        List<String> members = stakeholder.getManagers();
+        members.addAll(stakeholder.getContributors());
+        permissionService.removePermissions(members, Collections.singletonList("write"), Collections.singletonList(id));
+        surveyAnswer.setValidated(true);
+        return this.update(id, surveyAnswer, user);
+    }
+
+    private SurveyAnswer invalidateAnswer(String id, User user) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(id);
+        Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
+        List<String> members = stakeholder.getManagers();
+        members.addAll(stakeholder.getContributors());
+        permissionService.addPermissions(members, Collections.singletonList("write"), Collections.singletonList(id));
+        surveyAnswer.setValidated(false);
+        return this.update(id, surveyAnswer, user);
     }
 }

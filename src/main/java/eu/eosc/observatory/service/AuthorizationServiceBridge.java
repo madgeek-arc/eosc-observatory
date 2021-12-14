@@ -66,6 +66,17 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
+    public void removePermissions(List<String> users, List<String> actions, List<String> resourceIds) {
+        for (String id : users) {
+            for (String action : actions) {
+                for (String resourceId : resourceIds) {
+                    authRepository.delete(new AuthTriple(id, action, resourceId));
+                }
+            }
+        }
+    }
+
+    @Override
     public void removeAll(String user) {
         authRepository.deleteAllBySubject(user);
     }
@@ -99,11 +110,11 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public boolean canValidate(String userId, String resourceId) {
-        return  authorizationService.canDo(userId, "validate", resourceId);
+        return authorizationService.canDo(userId, "validate", resourceId);
     }
 
     @Override
     public boolean canManage(String userId, String resourceId) {
-        return  authorizationService.canDo(userId, "manage", resourceId);
+        return authorizationService.canDo(userId, "manage", resourceId);
     }
 }

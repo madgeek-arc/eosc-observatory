@@ -11,6 +11,8 @@ public interface PermissionService {
 
     Set<AuthTriple> addPermissions(List<String> users, List<String> actions, List<String> resourceIds);
 
+    void removePermissions(List<String> users, List<String> actions, List<String> resourceIds);
+
     Set<AuthTriple> addManagers(List<String> users, List<String> resourceIds);
     Set<AuthTriple> addContributors(List<String> users, List<String> resourceIds);
 

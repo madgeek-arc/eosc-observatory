@@ -19,7 +19,19 @@ public interface SurveyService {
 
     List<SurveyAnswer> getActive(String stakeholderId);
 
+    /**
+     * Updates SurveyAnswer object keeping the User and the time of modification as metadata.
+     * @param id
+     * @param surveyAnswer
+     * @param user
+     * @return
+     * @throws ResourceNotFoundException
+     */
+    SurveyAnswer update(String id, SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException;
+
     SurveyAnswer updateAnswer(String id, JSONObject answer, User user) throws ResourceNotFoundException;
+
+    SurveyAnswer setAnswerValidated(String answerId, boolean validated, User user) throws ResourceNotFoundException;
 
     List<SurveyAnswer> createNewCycle(Authentication authentication);
 }
