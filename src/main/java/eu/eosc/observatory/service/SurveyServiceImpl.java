@@ -27,17 +27,17 @@ public class SurveyServiceImpl implements SurveyService {
     public final CrudItemService<Stakeholder> stakeholderCrudService;
     public final CrudItemService<SurveyAnswer> surveyAnswerCrudService;
     public final GenericItemService genericItemService;
-    public final PermissionsService permissionsService;
+    public final PermissionService permissionService;
 
     @Autowired
     public SurveyServiceImpl(CrudItemService<Stakeholder> stakeholderCrudService,
                              CrudItemService<SurveyAnswer> surveyAnswerCrudService,
                              @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,
-                             PermissionsService permissionsService) {
+                             PermissionService permissionService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericItemService = genericItemService;
-        this.permissionsService = permissionsService;
+        this.permissionService = permissionService;
     }
 
     @Override
@@ -116,8 +116,8 @@ public class SurveyServiceImpl implements SurveyService {
                 surveyAnswer.setSurveyId(survey.getId());
                 SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
                 surveyAnswers.add(answer);
-                permissionsService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
-                permissionsService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+                permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+                permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
             }
         }
         return surveyAnswers;

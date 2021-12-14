@@ -1,7 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.User;
-import eu.eosc.observatory.service.PermissionsService;
+import eu.eosc.observatory.service.PermissionService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,26 +19,26 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("permissions")
-public class PermissionsController {
+public class PermissionController {
 
-    private static final Logger logger = LogManager.getLogger(PermissionsController.class);
+    private static final Logger logger = LogManager.getLogger(PermissionController.class);
 
-    private final PermissionsService permissionsService;
+    private final PermissionService permissionService;
 
     @Autowired
-    public PermissionsController(PermissionsService permissionsService) {
-        this.permissionsService = permissionsService;
+    public PermissionController(PermissionService permissionService) {
+        this.permissionService = permissionService;
     }
 
     @GetMapping
     @PreAuthorize("hasPermission(#resourceId, 'read')")
     public ResponseEntity<Set<String>> getPermissions(@RequestParam("resourceId") String resourceId, @ApiIgnore Authentication authentication) {
-        return new ResponseEntity<>(permissionsService.getPermissions(User.getId(authentication), resourceId), HttpStatus.OK);
+        return new ResponseEntity<>(permissionService.getPermissions(User.getId(authentication), resourceId), HttpStatus.OK);
     }
 
     @GetMapping("admin")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Set<String>> getUserPermissions(@RequestParam("userId") String userId, @RequestParam("resourceId") String resourceId) {
-        return new ResponseEntity<>(permissionsService.getPermissions(userId, resourceId), HttpStatus.OK);
+        return new ResponseEntity<>(permissionService.getPermissions(userId, resourceId), HttpStatus.OK);
     }
 }

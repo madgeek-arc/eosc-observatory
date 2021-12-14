@@ -30,7 +30,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
     private final CrudItemService<User> userService;
     private final SurveyService surveyService;
-    private final PermissionsService permissionsService;
+    private final PermissionService permissionService;
 
     @Autowired
     public StakeholderServiceImpl(ResourceTypeService resourceTypeService,
@@ -39,10 +39,10 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
                                   ParserService parserService,
                                   CrudItemService<User> userService,
                                   @Lazy SurveyService surveyService,
-                                  PermissionsService permissionsService) {
+                                  PermissionService permissionService) {
         super(resourceTypeService, resourceService, searchService, parserService);
         this.userService = userService;
-        this.permissionsService = permissionsService;
+        this.permissionService = permissionService;
         this.surveyService = surveyService;
     }
 
@@ -97,7 +97,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
             previousContributors.remove(manager);
         }
         stakeholder.setContributors(emails);
-        permissionsService.removeAll(previousContributors);
+        permissionService.removeAll(previousContributors);
         return update(stakeholderId, stakeholder);
     }
 
@@ -110,7 +110,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder.getContributors().add(email);
         stakeholder = update(stakeholderId, stakeholder);
         List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionsService.addContributors(Collections.singletonList(email), resourceIds);
+        permissionService.addContributors(Collections.singletonList(email), resourceIds);
         return getMembers(stakeholder);
     }
 
@@ -120,7 +120,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder.getContributors().remove(email);
         stakeholder = update(stakeholderId, stakeholder);
         List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionsService.removeAll(email);
+        permissionService.removeAll(email);
         return getMembers(stakeholder);
     }
 
@@ -132,7 +132,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
             previousManagers.remove(manager);
         }
         stakeholder.setManagers(emails);
-        permissionsService.removeAll(previousManagers);
+        permissionService.removeAll(previousManagers);
         return update(stakeholderId, stakeholder);
     }
 
@@ -145,7 +145,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder.getManagers().add(email);
         stakeholder = update(stakeholderId, stakeholder);
         List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionsService.addContributors(Collections.singletonList(email), resourceIds);
+        permissionService.addContributors(Collections.singletonList(email), resourceIds);
         return getMembers(stakeholder);
     }
 
@@ -155,7 +155,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder.getManagers().remove(email);
         stakeholder = update(stakeholderId, stakeholder);
         List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionsService.removeAll(email);
+        permissionService.removeAll(email);
         return getMembers(stakeholder);
     }
 

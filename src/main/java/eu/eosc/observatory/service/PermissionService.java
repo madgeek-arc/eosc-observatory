@@ -5,7 +5,7 @@ import gr.athenarc.authorization.domain.AuthTriple;
 import java.util.List;
 import java.util.Set;
 
-public interface PermissionsService {
+public interface PermissionService {
 
     Set<String> getPermissions(String userId, String resourceId);
 

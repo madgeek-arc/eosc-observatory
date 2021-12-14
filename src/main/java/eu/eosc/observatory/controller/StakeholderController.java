@@ -88,7 +88,7 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}/members")
-//    @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderMember(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<StakeholderMembers> getMembers(@PathVariable("id") String stakeholderId) {
         return new ResponseEntity<>(stakeholderService.getMembers(stakeholderId), HttpStatus.OK);
     }
