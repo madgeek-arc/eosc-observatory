@@ -17,8 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -42,7 +42,7 @@ public class UserController {
         User user = userService.get(User.getId(authentication));
         UserInfo info = new UserInfo();
         info.setUser(user);
-        info.setMemberOf(new ArrayList<>());
+        info.setMemberOf(new HashSet<>());
 
         info.getMemberOf().addAll(getStakeholdersWithFilter("managers", user.getEmail()));
         info.getMemberOf().addAll(getStakeholdersWithFilter("contributors", user.getEmail()));
@@ -56,7 +56,7 @@ public class UserController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    private List<Stakeholder> getStakeholdersWithFilter(String key, String value) {
+    private Set<Stakeholder> getStakeholdersWithFilter(String key, String value) {
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(10000);
         filter.addFilter(key, value);
@@ -64,6 +64,6 @@ public class UserController {
         return results.getResults()
                 .stream()
 //                .map(stakeholder -> new IdNameTuple(stakeholder.getId(), stakeholder.getName()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 }

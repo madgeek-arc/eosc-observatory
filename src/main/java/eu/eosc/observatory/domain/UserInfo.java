@@ -1,14 +1,14 @@
 package eu.eosc.observatory.domain;
 
-import java.util.List;
+import java.util.Set;
 
 public class UserInfo {
     private User user;
-    private List<Stakeholder> memberOf;
+    private Set<Stakeholder> memberOf;
 
     public UserInfo() {}
 
-    public UserInfo(User user, List<Stakeholder> memberOf) {
+    public UserInfo(User user, Set<Stakeholder> memberOf) {
         this.user = user;
         this.memberOf = memberOf;
     }
@@ -21,11 +21,11 @@ public class UserInfo {
         this.user = user;
     }
 
-    public List<Stakeholder> getMemberOf() {
+    public Set<Stakeholder> getMemberOf() {
         return memberOf;
     }
 
-    public void setMemberOf(List<Stakeholder> memberOf) {
+    public void setMemberOf(Set<Stakeholder> memberOf) {
         this.memberOf = memberOf;
     }
 }
