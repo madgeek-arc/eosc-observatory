@@ -90,72 +90,71 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
-    public Stakeholder updateContributors(String stakeholderId, List<String> emails) {
+    public Stakeholder updateContributors(String stakeholderId, List<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
         List<String> previousContributors = stakeholder.getManagers();
-        for (String manager : emails) {
+        for (String manager : userIds) {
             previousContributors.remove(manager);
         }
-        stakeholder.setContributors(emails);
+        stakeholder.setContributors(userIds);
         permissionService.removeAll(previousContributors);
         return update(stakeholderId, stakeholder);
     }
 
     @Override
-    public StakeholderMembers addContributor(String stakeholderId, String email) {
+    public StakeholderMembers addContributor(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getContributors() == null) {
             stakeholder.setContributors(new ArrayList<>());
         }
-        stakeholder.getContributors().add(email);
+        stakeholder.getContributors().add(userId);
         stakeholder = update(stakeholderId, stakeholder);
         List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionService.addContributors(Collections.singletonList(email), resourceIds);
+        permissionService.addContributors(Collections.singletonList(userId), resourceIds);
         return getMembers(stakeholder);
     }
 
     @Override
-    public StakeholderMembers removeContributor(String stakeholderId, String email) {
+    public StakeholderMembers removeContributor(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
-        stakeholder.getContributors().remove(email);
+        stakeholder.getContributors().remove(userId);
         stakeholder = update(stakeholderId, stakeholder);
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionService.removeAll(email);
+        permissionService.removeAll(userId);
         return getMembers(stakeholder);
     }
 
     @Override
-    public Stakeholder updateManagers(String stakeholderId, List<String> emails) {
+    public Stakeholder updateManagers(String stakeholderId, List<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
         List<String> previousManagers = stakeholder.getManagers();
-        for (String manager : emails) {
+        for (String manager : userIds) {
             previousManagers.remove(manager);
         }
-        stakeholder.setManagers(emails);
         permissionService.removeAll(previousManagers);
+        stakeholder.setManagers(userIds);
+        stakeholder.getManagers().forEach(id -> addManager(stakeholderId, id));
         return update(stakeholderId, stakeholder);
     }
 
     @Override
-    public StakeholderMembers addManager(String stakeholderId, String email) {
+    public StakeholderMembers addManager(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getManagers() == null) {
             stakeholder.setManagers(new ArrayList<>());
         }
-        stakeholder.getManagers().add(email);
+        stakeholder.getManagers().add(userId);
         stakeholder = update(stakeholderId, stakeholder);
         List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionService.addContributors(Collections.singletonList(email), resourceIds);
+        permissionService.addContributors(Collections.singletonList(userId), resourceIds);
         return getMembers(stakeholder);
     }
 
     @Override
-    public StakeholderMembers removeManager(String stakeholderId, String email) {
+    public StakeholderMembers removeManager(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
-        stakeholder.getManagers().remove(email);
+        stakeholder.getManagers().remove(userId);
         stakeholder = update(stakeholderId, stakeholder);
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionService.removeAll(email);
+        permissionService.removeAll(userId);
         return getMembers(stakeholder);
     }
 
