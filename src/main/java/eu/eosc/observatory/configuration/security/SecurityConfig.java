@@ -1,7 +1,6 @@
 package eu.eosc.observatory.configuration.security;
 
 import eu.eosc.observatory.configuration.ApplicationProperties;
-import eu.eosc.observatory.service.UserService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +8,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
@@ -19,10 +17,6 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -32,11 +26,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private static final Logger logger = LogManager.getLogger(SecurityConfig.class);
 
-    @Autowired
-    private ApplicationProperties applicationProperties;
+    private final AuthenticationSuccessHandler authSuccessHandler;
+    private final ApplicationProperties applicationProperties;
 
     @Autowired
-    UserService userService;
+    public SecurityConfig(AuthenticationSuccessHandler authSuccessHandler,
+                          ApplicationProperties applicationProperties) {
+        this.authSuccessHandler = authSuccessHandler;
+        this.applicationProperties = applicationProperties;
+    }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -45,15 +43,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         .regexMatchers("/forms/.*", "/dump/.*", "/restore/", "/resources.*", "/resourceType.*", "/search.*").hasAnyAuthority("ADMIN")
                         .anyRequest().permitAll())
                 .oauth2Login()
-                .successHandler(new AuthenticationSuccessHandler() {
-
-                    @Override
-                    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-                                                        Authentication authentication) throws IOException, ServletException {
-                        postLogin(authentication);
-                        response.sendRedirect(applicationProperties.getLoginRedirect());
-                    }
-                })
+                .successHandler(authSuccessHandler)
                 .and()
                 .logout().logoutSuccessUrl(applicationProperties.getLogoutRedirect())
                 .and()
@@ -104,11 +94,5 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
             return mappedAuthorities;
         };
-    }
-
-    private void postLogin(Authentication authentication) {
-        logger.info(String.format("Successful Login [authentication: %s]", authentication.toString()));
-        userService.updateUserInfo(authentication);
-
     }
 }
