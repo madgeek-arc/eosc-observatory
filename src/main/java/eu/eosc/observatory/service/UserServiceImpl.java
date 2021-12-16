@@ -6,12 +6,16 @@ import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
 import eu.openminted.registry.core.service.SearchService;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 @Service
 public class UserServiceImpl extends AbstractCrudItemService<User> implements UserService {
+
+    private static final Logger logger = LogManager.getLogger(UserServiceImpl.class);
 
     @Autowired
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
@@ -33,6 +37,7 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
 
     @Override
     public void updateUserConsent(String id, boolean consent) {
+        logger.info(String.format("Updating user consent: [userId=%s] [consent=%s]", id, consent));
         User user = get(id);
         user.setConsent(consent);
         update(user.getId(), user);
@@ -44,13 +49,15 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
         try {
             this.get(user.getId());
         } catch (ResourceNotFoundException e) {
+            logger.debug(String.format("User not found! Adding User to database [user=%s]", user));
             this.add(user);
         }
     }
 
     @Override
     public void purge(String id) throws ResourceNotFoundException {
-        User user = delete(id);
+        throw new UnsupportedOperationException("Not implemented yet");
+//        User user = delete(id);
         // delete user from everywhere
         // stakeholders
         // surveyAnswers
