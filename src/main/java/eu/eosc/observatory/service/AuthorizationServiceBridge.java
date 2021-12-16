@@ -39,15 +39,17 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public Set<AuthTriple> addManagers(List<String> users, List<String> resourceIds) {
-        // TODO Refactor here .... probably create enum with permissions
-        List<String> permissions = Arrays.asList("read", "write", "manage", "publish");
+        List<String> permissions = Arrays.asList(
+                Permissions.READ.getKey(),
+                Permissions.WRITE.getKey(),
+                Permissions.MANAGE.getKey(),
+                Permissions.PUBLISH.getKey());
         return addPermissions(users, permissions, resourceIds);
     }
 
     @Override
     public Set<AuthTriple> addContributors(List<String> users, List<String> resourceIds) {
-        // TODO Refactor here .... probably create enum with permissions
-        List<String> permissions = Arrays.asList("read", "write");
+        List<String> permissions = Arrays.asList(Permissions.READ.getKey(), Permissions.WRITE.getKey());
         return addPermissions(users, permissions, resourceIds);
     }
 
@@ -105,21 +107,21 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public boolean canRead(String userId, String resourceId) {
-        return authorizationService.canDo(userId, "read", resourceId);
+        return authorizationService.canDo(userId, Permissions.READ.getKey(), resourceId);
     }
 
     @Override
     public boolean canWrite(String userId, String resourceId) {
-        return authorizationService.canDo(userId, "write", resourceId);
-    }
-
-    @Override
-    public boolean canValidate(String userId, String resourceId) {
-        return authorizationService.canDo(userId, "validate", resourceId);
+        return authorizationService.canDo(userId, Permissions.WRITE.getKey(), resourceId);
     }
 
     @Override
     public boolean canManage(String userId, String resourceId) {
-        return authorizationService.canDo(userId, "manage", resourceId);
+        return authorizationService.canDo(userId, Permissions.MANAGE.getKey(), resourceId);
+    }
+
+    @Override
+    public boolean canPublish(String userId, String resourceId) {
+        return authorizationService.canDo(userId, Permissions.PUBLISH.getKey(), resourceId);
     }
 }

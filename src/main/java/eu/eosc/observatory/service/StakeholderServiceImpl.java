@@ -15,10 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -109,8 +106,14 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         }
         stakeholder.getContributors().add(userId);
         stakeholder = update(stakeholderId, stakeholder);
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionService.addContributors(Collections.singletonList(userId), resourceIds);
+
+        // read access for all resources
+        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(PermissionService.Permissions.READ.getKey()), allResourceIds);
+
+        // all contributor permissions for active resource
+        List<String> activeResourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        permissionService.addContributors(Collections.singletonList(userId), activeResourceIds);
         return getMembers(stakeholder);
     }
 
@@ -144,8 +147,18 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         }
         stakeholder.getManagers().add(userId);
         stakeholder = update(stakeholderId, stakeholder);
+
+        // read/manage/publish access for all resources
+        List<String> permissions = Arrays.asList(
+                PermissionService.Permissions.READ.getKey(),
+                PermissionService.Permissions.MANAGE.getKey(),
+                PermissionService.Permissions.PUBLISH.getKey());
+        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        permissionService.addPermissions(Collections.singletonList(userId), permissions, allResourceIds);
+
+        // all manager permissions for active resource
         List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionService.addContributors(Collections.singletonList(userId), resourceIds);
+        permissionService.addManagers(Collections.singletonList(userId), resourceIds);
         return getMembers(stakeholder);
     }
 

@@ -72,6 +72,7 @@ public class SurveyServiceImpl implements SurveyService {
     @Override
     public List<SurveyAnswer> getActive(String stakeholderId) {
         FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
         filter.addFilter("stakeholderId", stakeholderId);
         filter.addFilter("validated", false);
         Map<String, Object> sortBy = new HashMap<>();
@@ -82,6 +83,13 @@ public class SurveyServiceImpl implements SurveyService {
 
         Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
         return answersBrowsing.getResults();
+    }
+
+    @Override
+    public List<SurveyAnswer> getAllByStakeholder(String id) {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        return surveyAnswerCrudService.getAll(filter).getResults();
     }
 
     @Override
