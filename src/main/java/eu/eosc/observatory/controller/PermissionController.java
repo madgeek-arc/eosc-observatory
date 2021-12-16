@@ -1,7 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.User;
-import eu.eosc.observatory.service.PermissionService;
+import eu.eosc.observatory.permissions.PermissionService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;

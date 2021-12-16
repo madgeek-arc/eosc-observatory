@@ -36,6 +36,19 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
     }
 
     @Override
+    public User getUser(String id) {
+        User user = null;
+        try {
+            user = get(id);
+        } catch (ResourceNotFoundException e) {
+            logger.debug("User not found in DB");
+            user = new User();
+            user.setEmail(id);
+        }
+        return user;
+    }
+
+    @Override
     public void updateUserConsent(String id, boolean consent) {
         logger.info(String.format("Updating user consent: [userId=%s] [consent=%s]", id, consent));
         User user = get(id);

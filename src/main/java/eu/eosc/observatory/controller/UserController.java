@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
@@ -35,6 +37,12 @@ public class UserController {
                           CrudItemService<Stakeholder> stakeholderService) {
         this.userService = userService;
         this.stakeholderService = stakeholderService;
+    }
+
+    @ApiIgnore
+    @GetMapping("/oidc-principal")
+    public OidcUser getOidcUserPrincipal(@AuthenticationPrincipal OidcUser principal) {
+        return principal;
     }
 
     @GetMapping("info")

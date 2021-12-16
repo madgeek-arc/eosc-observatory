@@ -4,6 +4,8 @@ import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
+import eu.eosc.observatory.permissions.PermissionService;
+import eu.eosc.observatory.permissions.Permissions;
 import eu.openminted.registry.core.service.ParserService;
 import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
@@ -25,7 +27,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
     private static final String RESOURCE_TYPE = "stakeholder";
 
-    private final CrudItemService<User> userService;
+    private final UserService userService;
     private final SurveyService surveyService;
     private final PermissionService permissionService;
 
@@ -34,7 +36,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
                                   ResourceService resourceService,
                                   SearchService searchService,
                                   ParserService parserService,
-                                  CrudItemService<User> userService,
+                                  UserService userService,
                                   @Lazy SurveyService surveyService,
                                   PermissionService permissionService) {
         super(resourceTypeService, resourceService, searchService, parserService);
@@ -66,21 +68,21 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     private StakeholderMembers getMembers(Stakeholder stakeholder) {
-        List<User> managers = new ArrayList<>();
-        List<User> contributors = new ArrayList<>();
+        Set<User> managers = new HashSet<>();
+        Set<User> contributors = new HashSet<>();
         if (stakeholder.getManagers() != null) {
             managers = stakeholder.getManagers()
                     .stream()
                     .filter(Objects::nonNull)
-                    .map(this::getUser)
-                    .collect(Collectors.toList());
+                    .map(userService::getUser)
+                    .collect(Collectors.toSet());
         }
         if (stakeholder.getContributors() != null) {
             contributors = stakeholder.getContributors()
                     .stream()
                     .filter(Objects::nonNull)
-                    .map(this::getUser)
-                    .collect(Collectors.toList());
+                    .map(userService::getUser)
+                    .collect(Collectors.toSet());
         }
 
         return new StakeholderMembers(contributors, managers);
@@ -109,7 +111,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
         // read access for all resources
         List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(PermissionService.Permissions.READ.getKey()), allResourceIds);
+        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), allResourceIds);
 
         // all contributor permissions for active resource
         List<String> activeResourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
@@ -150,9 +152,9 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
         // read/manage/publish access for all resources
         List<String> permissions = Arrays.asList(
-                PermissionService.Permissions.READ.getKey(),
-                PermissionService.Permissions.MANAGE.getKey(),
-                PermissionService.Permissions.PUBLISH.getKey());
+                Permissions.READ.getKey(),
+                Permissions.MANAGE.getKey(),
+                Permissions.PUBLISH.getKey());
         List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
         permissionService.addPermissions(Collections.singletonList(userId), permissions, allResourceIds);
 
@@ -169,17 +171,5 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder = update(stakeholderId, stakeholder);
         permissionService.removeAll(userId);
         return getMembers(stakeholder);
-    }
-
-    private User getUser(String email) {
-        User user = null;
-        try {
-            user = userService.get(email);
-        } catch (ResourceNotFoundException e) {
-            logger.debug("User not found in DB");
-            user = new User();
-            user.setEmail(email);
-        }
-        return user;
     }
 }

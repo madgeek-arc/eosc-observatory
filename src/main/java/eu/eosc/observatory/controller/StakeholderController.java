@@ -102,17 +102,7 @@ public class StakeholderController {
     @PostMapping("{id}/contributors")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<StakeholderMembers> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String email, @ApiIgnore Authentication authentication) {
-        User user = User.of(authentication);
-        Stakeholder stakeholder = stakeholderService.get(stakeholderId);
-        Set<String> emails = new HashSet<>();
-        if (stakeholder.getManagers() != null) {
-            emails.addAll(stakeholder.getManagers());
-        }
-        if (emails.contains(user.getId())) {
-            return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, email), HttpStatus.OK);
-        } else {
-            throw new AccessDeniedException("You are not a manager of this Stakeholder");
-        }
+        return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/contributors/{contributorId}")

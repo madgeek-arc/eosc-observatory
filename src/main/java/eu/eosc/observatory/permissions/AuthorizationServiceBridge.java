@@ -1,4 +1,4 @@
-package eu.eosc.observatory.service;
+package eu.eosc.observatory.permissions;
 
 import gr.athenarc.authorization.domain.AuthTriple;
 import gr.athenarc.authorization.repository.AuthRepository;

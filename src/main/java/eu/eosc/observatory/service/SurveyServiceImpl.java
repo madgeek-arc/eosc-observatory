@@ -4,6 +4,7 @@ import eu.eosc.observatory.domain.Metadata;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.permissions.PermissionService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;

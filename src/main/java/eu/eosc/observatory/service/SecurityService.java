@@ -1,6 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.permissions.PermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;

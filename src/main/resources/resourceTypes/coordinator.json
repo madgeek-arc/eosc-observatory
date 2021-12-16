@@ -1,0 +1,40 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "coordinator_id",
+      "path": "$.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "name",
+      "label": "Name",
+      "path": "$.name",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "type",
+      "label": "Type",
+      "path": "$.type",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "members",
+      "label": "Members",
+      "path": "$.members[*]",
+      "type": "java.lang.String"
+    }
+  ],
+  "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
+  "name": "coordinator",
+  "aliasGroup": "resourceTypes",
+  "payloadType": "json",
+  "properties": {
+    "class": "eu.eosc.observatory.domain.Coordinator"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+}

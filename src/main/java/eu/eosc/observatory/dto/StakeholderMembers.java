@@ -2,34 +2,34 @@ package eu.eosc.observatory.dto;
 
 import eu.eosc.observatory.domain.User;
 
-import java.util.List;
+import java.util.Set;
 
 public class StakeholderMembers {
 
-    List<User> contributors;
-    List<User> managers;
+    Set<User> contributors;
+    Set<User> managers;
 
     public StakeholderMembers() {
     }
 
-    public StakeholderMembers(List<User> contributors, List<User> managers) {
+    public StakeholderMembers(Set<User> contributors, Set<User> managers) {
         this.contributors = contributors;
         this.managers = managers;
     }
 
-    public List<User> getContributors() {
+    public Set<User> getContributors() {
         return contributors;
     }
 
-    public void setContributors(List<User> contributors) {
+    public void setContributors(Set<User> contributors) {
         this.contributors = contributors;
     }
 
-    public List<User> getManagers() {
+    public Set<User> getManagers() {
         return managers;
     }
 
-    public void setManagers(List<User> managers) {
+    public void setManagers(Set<User> managers) {
         this.managers = managers;
     }
 }
