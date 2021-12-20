@@ -45,7 +45,7 @@ public class AuthSuccessHandler implements AuthenticationSuccessHandler {
         Cookie cookie = new Cookie("AccessToken", ((OidcUser) authentication.getPrincipal()).getIdToken().getTokenValue());
         cookie.setMaxAge(createCookieMaxAge(authentication));
         cookie.setPath("/");
-        cookie.setSecure(true);
+//        cookie.setSecure(true);
 
         response.addCookie(cookie);
         response.sendRedirect(applicationProperties.getLoginRedirect());
