@@ -4,7 +4,9 @@ import eu.eosc.observatory.domain.Metadata;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
+import eu.eosc.observatory.permissions.Permissions;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
@@ -152,7 +154,7 @@ public class SurveyServiceImpl implements SurveyService {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
         List<String> members = stakeholder.getManagers();
         members.addAll(stakeholder.getContributors());
-        permissionService.removePermissions(members, Collections.singletonList("write"), Collections.singletonList(surveyAnswer.getId()));
+        permissionService.removePermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()));
         surveyAnswer.setValidated(true);
         return this.update(surveyAnswer.getId(), surveyAnswer, user);
     }
@@ -160,8 +162,9 @@ public class SurveyServiceImpl implements SurveyService {
     private SurveyAnswer invalidateAnswer(SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
         List<String> members = stakeholder.getManagers();
-        members.addAll(stakeholder.getContributors());
-        permissionService.addPermissions(members, Collections.singletonList("write"), Collections.singletonList(surveyAnswer.getId()));
+        permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
+        members = stakeholder.getContributors();
+        permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
         surveyAnswer.setValidated(false);
         return this.update(surveyAnswer.getId(), surveyAnswer, user);
     }

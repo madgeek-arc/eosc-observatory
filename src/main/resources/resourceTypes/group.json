@@ -1,0 +1,26 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "group_id",
+      "path": "$.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "name",
+      "label": "Name",
+      "path": "$.name",
+      "type": "java.lang.String"
+    }
+  ],
+  "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
+  "name": "group",
+  "aliasGroup": "resourceTypes",
+  "payloadType": "json",
+  "properties": {
+    "class": "gr.athenarc.catalogue.ui.domain.Group"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+}

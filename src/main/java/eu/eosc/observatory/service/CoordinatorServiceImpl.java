@@ -3,6 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.Coordinator;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -74,9 +75,14 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         for (String member : userIds) {
             previousMembers.remove(member);
         }
-        permissionService.removeAll(previousMembers);
+
+        // remove Coordinator permissions from removed members
+        permissionService.removeAll(previousMembers, Groups.COORDINATOR.getKey());
+
+        // read access for all resources
+        permissionService.addPermissions(userIds, Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(), Groups.COORDINATOR.getKey());
+
         coordinator.setMembers(userIds);
-        coordinator.getMembers().forEach(id -> addMember(coordinatorId, id));
         coordinator = update(coordinatorId, coordinator);
         return getMembers(coordinator);
     }
@@ -91,11 +97,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         coordinator = update(coordinatorId, coordinator);
 
         // read access for all resources
-        FacetFilter filter = new FacetFilter();
-        filter.setQuantity(10000);
-        filter.addFilter("type", "country");
-        List<String> allResourceIds = surveyAnswerCrudService.getAll(filter).getResults().stream().map(SurveyAnswer::getId).collect(Collectors.toList());
-        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), allResourceIds);
+        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(), Groups.COORDINATOR.getKey());
 
         return getMembers(coordinator);
     }
@@ -105,7 +107,9 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         Coordinator coordinator = get(coordinatorId);
         coordinator.getMembers().remove(userId);
         coordinator = update(coordinatorId, coordinator);
-        permissionService.removeAll(userId);
+
+        // remove Coordinator permissions from user
+        permissionService.removeAll(userId, Groups.COORDINATOR.getKey());
         return getMembers(coordinator);
     }
 
@@ -120,5 +124,13 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
                     .collect(Collectors.toSet());
         }
         return members;
+    }
+
+    private List<String> getAccessibleResourceIds() {
+        // read access for all resources
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        filter.addFilter("type", "country");
+        return surveyAnswerCrudService.getAll(filter).getResults().stream().map(SurveyAnswer::getId).collect(Collectors.toList());
     }
 }

@@ -1,7 +1,7 @@
 package eu.eosc.observatory.permissions;
 
-import gr.athenarc.authorization.domain.AuthTriple;
-import gr.athenarc.authorization.repository.AuthRepository;
+import gr.athenarc.authorization.domain.Permission;
+import gr.athenarc.authorization.repository.PermissionRepository;
 import gr.athenarc.authorization.service.AuthorizationService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -21,52 +21,52 @@ public class AuthorizationServiceBridge implements PermissionService {
     private static final Logger logger = LogManager.getLogger(AuthorizationServiceBridge.class);
 
     private final AuthorizationService authorizationService;
-    private final AuthRepository authRepository;
+    private final PermissionRepository permissionRepository;
 
     public AuthorizationServiceBridge(AuthorizationService authorizationService,
-                                      AuthRepository authRepository) {
+                                      PermissionRepository permissionRepository) {
         this.authorizationService = authorizationService;
-        this.authRepository = authRepository;
+        this.permissionRepository = permissionRepository;
     }
 
     @Override
     public Set<String> getPermissions(String userId, String resourceId) {
         Set<String> permissions = this.authorizationService.whatCan(userId, resourceId)
-                .stream().map(AuthTriple::getAction).collect(Collectors.toSet());
+                .stream().map(Permission::getAction).collect(Collectors.toSet());
         logger.debug(String.format("[user: %s] permissions for resource [resourceId: %s]: [permissions: %s]", userId, resourceId, String.join(", ", permissions)));
         return permissions;
     }
 
     @Override
-    public Set<AuthTriple> addManagers(List<String> users, List<String> resourceIds) {
+    public Set<Permission> addManagers(List<String> users, List<String> resourceIds) {
         List<String> permissions = Arrays.asList(
                 Permissions.READ.getKey(),
                 Permissions.WRITE.getKey(),
                 Permissions.MANAGE.getKey(),
                 Permissions.PUBLISH.getKey());
-        return addPermissions(users, permissions, resourceIds);
+        return addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
     }
 
     @Override
-    public Set<AuthTriple> addContributors(List<String> users, List<String> resourceIds) {
+    public Set<Permission> addContributors(List<String> users, List<String> resourceIds) {
         List<String> permissions = Arrays.asList(Permissions.READ.getKey(), Permissions.WRITE.getKey());
-        return addPermissions(users, permissions, resourceIds);
+        return addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
     }
 
     @Override
-    public Set<AuthTriple> addPermissions(List<String> users, List<String> actions, List<String> resourceIds) {
-        Set<AuthTriple> triples = new HashSet<>();
+    public Set<Permission> addPermissions(List<String> users, List<String> actions, List<String> resourceIds, String group) {
+        Set<Permission> permissions = new HashSet<>();
         for (String id : users) {
             for (String action : actions) {
                 for (String resourceId : resourceIds) {
-                    if (authRepository.findAllBySubjectAndActionAndObject(id, action, resourceId).isEmpty()) {
-                        triples.add(new AuthTriple(id, action, resourceId));
+                    if (permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId).isEmpty()) {
+                        permissions.add(new Permission(id, action, resourceId, group));
                     }
                 }
             }
         }
-        authRepository.saveAll(triples);
-        return triples;
+        permissionRepository.saveAll(permissions);
+        return permissions;
     }
 
     @Override
@@ -74,9 +74,23 @@ public class AuthorizationServiceBridge implements PermissionService {
         for (String id : users) {
             for (String action : actions) {
                 for (String resourceId : resourceIds) {
-                    Set<AuthTriple> permissions = authRepository.findAllBySubjectAndActionAndObject(id, action, resourceId);
-                    for (AuthTriple triple : permissions) {
-                        authRepository.delete(triple);
+                    Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId);
+                    for (Permission triple : permissions) {
+                        permissionRepository.delete(triple);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void removePermissions(List<String> users, List<String> actions, List<String> resourceIds, String group) {
+        for (String id : users) {
+            for (String action : actions) {
+                for (String resourceId : resourceIds) {
+                    Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObjectAndSubjectGroup(id, action, resourceId, group);
+                    for (Permission permission : permissions) {
+                        permissionRepository.delete(permission);
                     }
                 }
             }
@@ -85,7 +99,12 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public void removeAll(String user) {
-        authRepository.deleteAllBySubject(user);
+        permissionRepository.deleteAllBySubject(user);
+    }
+
+    @Override
+    public void removeAll(String user, String group) {
+        permissionRepository.deleteAllBySubjectAndSubjectGroup(user, group);
     }
 
     @Override
@@ -96,8 +115,15 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
+    public void removeAll(List<String> users, String group) {
+        for (String user : users) {
+            this.removeAll(user, group);
+        }
+    }
+
+    @Override
     public void remove(String user, String action, String resourceId) {
-        authRepository.deleteAllBySubjectAndActionAndObject(user, action, resourceId);
+        permissionRepository.deleteAllBySubjectAndActionAndObject(user, action, resourceId);
     }
 
     @Override

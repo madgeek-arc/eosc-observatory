@@ -21,15 +21,33 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.security.oauth</groupId>
+			<artifactId>spring-security-oauth2</artifactId>
+			<version>2.5.1.RELEASE</version>
+		</dependency>
+
 <!--		<dependency>-->
-<!--			<groupId>org.springframework.boot</groupId>-->
-<!--			<artifactId>spring-boot-starter-security</artifactId>-->
+<!--			<groupId>org.springframework.security.oauth</groupId>-->
+<!--			<artifactId>spring-security-jwt</artifactId>-->
+<!--			<version>2.2.1.RELEASE</version>-->
 <!--		</dependency>-->
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-oauth2-client</artifactId>
-			<version>2.2.6.RELEASE</version>
+			<version>2.6.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+			<version>2.6.1</version>
 		</dependency>
 
 		<!-- Redis Session -->
@@ -67,7 +85,7 @@
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>authorization</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>0.0.2-SNAPSHOT</version>
 			<scope>compile</scope>
 		</dependency>
 
@@ -77,7 +95,7 @@
 			<version>1.1.1</version>
 		</dependency>
 
-    </dependencies>
+	</dependencies>
 
 	<build>
 		<plugins>
@@ -86,6 +104,15 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+				<excludes>
+					<exclude>**/registry.properties</exclude>
+				</excludes>
+			</resource>
+		</resources>
 	</build>
 
 </project>
