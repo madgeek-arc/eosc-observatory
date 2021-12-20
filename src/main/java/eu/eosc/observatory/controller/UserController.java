@@ -1,5 +1,6 @@
 package eu.eosc.observatory.controller;
 
+import eu.eosc.observatory.domain.Coordinator;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserInfo;
@@ -31,12 +32,15 @@ public class UserController {
 
     private final UserService userService;
     private final CrudItemService<Stakeholder> stakeholderService;
+    private final CrudItemService<Coordinator> coordinatorService;
 
     @Autowired
     public UserController(UserService userService,
-                          CrudItemService<Stakeholder> stakeholderService) {
+                          CrudItemService<Stakeholder> stakeholderService,
+                          CrudItemService<Coordinator> coordinatorService) {
         this.userService = userService;
         this.stakeholderService = stakeholderService;
+        this.coordinatorService = coordinatorService;
     }
 
     @ApiIgnore
@@ -50,10 +54,12 @@ public class UserController {
         User user = userService.get(User.getId(authentication));
         UserInfo info = new UserInfo();
         info.setUser(user);
-        info.setMemberOf(new HashSet<>());
+        info.setStakeholders(new HashSet<>());
+        info.setCoordinators(new HashSet<>());
 
-        info.getMemberOf().addAll(getStakeholdersWithFilter("managers", user.getEmail()));
-        info.getMemberOf().addAll(getStakeholdersWithFilter("contributors", user.getEmail()));
+        info.getStakeholders().addAll(getStakeholdersWithFilter("managers", user.getId()));
+        info.getStakeholders().addAll(getStakeholdersWithFilter("contributors", user.getId()));
+        info.getCoordinators().addAll(getCoordinatorsWithFilter("members", user.getId()));
 
         return new ResponseEntity<>(info, HttpStatus.OK);
     }
@@ -62,6 +68,17 @@ public class UserController {
     public ResponseEntity<Void> setConsent(@RequestParam(value = "consent", defaultValue = "false") boolean consent, @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
         userService.updateUserConsent(User.getId(authentication), consent);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    private Set<Coordinator> getCoordinatorsWithFilter(String key, String value) {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        filter.addFilter(key, value);
+        Browsing<Coordinator> results = coordinatorService.getAll(filter);
+        return results.getResults()
+                .stream()
+//                .map(stakeholder -> new IdNameTuple(stakeholder.getId(), stakeholder.getName()))
+                .collect(Collectors.toSet());
     }
 
     private Set<Stakeholder> getStakeholdersWithFilter(String key, String value) {

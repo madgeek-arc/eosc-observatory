@@ -4,13 +4,15 @@ import java.util.Set;
 
 public class UserInfo {
     private User user;
-    private Set<Stakeholder> memberOf;
+    private Set<Stakeholder> stakeholders;
+    private Set<Coordinator> coordinators;
 
     public UserInfo() {}
 
-    public UserInfo(User user, Set<Stakeholder> memberOf) {
+    public UserInfo(User user, Set<Stakeholder> stakeholders, Set<Coordinator> coordinators) {
         this.user = user;
-        this.memberOf = memberOf;
+        this.stakeholders = stakeholders;
+        this.coordinators = coordinators;
     }
 
     public User getUser() {
@@ -21,11 +23,19 @@ public class UserInfo {
         this.user = user;
     }
 
-    public Set<Stakeholder> getMemberOf() {
-        return memberOf;
+    public Set<Stakeholder> getStakeholders() {
+        return stakeholders;
     }
 
-    public void setMemberOf(Set<Stakeholder> memberOf) {
-        this.memberOf = memberOf;
+    public void setStakeholders(Set<Stakeholder> stakeholders) {
+        this.stakeholders = stakeholders;
+    }
+
+    public Set<Coordinator> getCoordinators() {
+        return coordinators;
+    }
+
+    public void setCoordinators(Set<Coordinator> coordinators) {
+        this.coordinators = coordinators;
     }
 }
