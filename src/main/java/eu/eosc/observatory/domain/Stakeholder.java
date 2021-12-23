@@ -88,7 +88,7 @@ public class Stakeholder implements Identifiable<String> {
 
     public enum StakeholderType {
         COUNTRY("country"),
-        ASSOCIATION_MEMBER("assosiation_member");
+        ASSOCIATION("association");
 
         private final String type;
 

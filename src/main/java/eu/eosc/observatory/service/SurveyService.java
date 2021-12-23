@@ -35,5 +35,8 @@ public interface SurveyService {
 
     SurveyAnswer setAnswerValidated(String answerId, boolean validated, User user) throws ResourceNotFoundException;
 
+    @Deprecated
     List<SurveyAnswer> createNewCycle(Authentication authentication);
+
+    List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication);
 }

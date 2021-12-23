@@ -120,4 +120,10 @@ public class SurveyController {
     public ResponseEntity<List<SurveyAnswer>> generateCycle(@ApiIgnore Authentication authentication) {
         return new ResponseEntity<>(surveyService.createNewCycle(authentication), HttpStatus.CREATED);
     }
+
+    @PostMapping("answers/generate/{surveyId}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<List<SurveyAnswer>> generateAnswers(@PathVariable("surveyId") String surveyId, @ApiIgnore Authentication authentication) {
+        return new ResponseEntity<>(surveyService.generateAnswers(surveyId, authentication), HttpStatus.CREATED);
+    }
 }

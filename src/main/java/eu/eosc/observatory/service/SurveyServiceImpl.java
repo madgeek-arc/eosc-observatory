@@ -148,6 +148,34 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswers;
     }
 
+    @Override
+    public List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication) {
+        Survey survey = genericItemService.get("survey", surveyId);
+        logger.debug(String.format("Generating new cycle of Survey Answers for Survey: [id=%s] [name=%s]", survey.getId(), survey.getName()));
+        List<SurveyAnswer> surveyAnswers = new ArrayList<>();
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        filter.addFilter("type", survey.getType());
+        List<Stakeholder> stakeholders = this.stakeholderCrudService.getAll(filter).getResults();
+
+        SurveyAnswer surveyAnswer = new SurveyAnswer();
+        JSONObject object = new JSONObject();
+        surveyAnswer.setAnswer(object);
+
+        Metadata metadata = new Metadata(authentication);
+        surveyAnswer.setMetadata(metadata);
+
+        for (Stakeholder stakeholder : stakeholders) {
+
+            surveyAnswer.setStakeholderId(stakeholder.getId());
+            surveyAnswer.setSurveyId(survey.getId());
+            SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
+            surveyAnswers.add(answer);
+            permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+            permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+        }
+        return surveyAnswers;
+    }
 
 
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException {
