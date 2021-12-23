@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>eu.eosc</groupId>
 	<artifactId>observatory</artifactId>
-	<version>0.0.4-SNAPSHOT</version>
+	<version>0.0.3-SNAPSHOT</version>
 	<name>observatory</name>
 	<description>EOSC Portal Observatory</description>
 	<properties>
