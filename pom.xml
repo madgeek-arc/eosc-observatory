@@ -96,6 +96,27 @@
 
 	</dependencies>
 
+	<scm>
+		<connection>scm:git:ssh://git@github.com/madgeek-arc/eosc-observatory.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com/madgeek-arc/eosc-observatory.git</developerConnection>
+		<url>https://github.com/madgeek-arc/eosc-observatory.git</url>
+		<tag>HEAD</tag>
+	</scm>
+
+	<distributionManagement>
+		<repository>
+			<uniqueVersion>true</uniqueVersion>
+			<id>omtd-releases</id>
+			<layout>default</layout>
+			<url>https://repo.openminted.eu/content/repositories/releases</url>
+		</repository>
+		<snapshotRepository>
+			<uniqueVersion>true</uniqueVersion>
+			<id>omtd-snapshots</id>
+			<layout>default</layout>
+			<url>https://repo.openminted.eu/content/repositories/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
 
 	<repositories>
 		<repository>
