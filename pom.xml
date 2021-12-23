@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>eu.eosc</groupId>
 	<artifactId>observatory</artifactId>
-	<version>0.0.3</version>
+	<version>0.0.4-SNAPSHOT</version>
 	<name>observatory</name>
 	<description>EOSC Portal Observatory</description>
 	<properties>
@@ -99,7 +99,7 @@
 		<connection>scm:git:ssh://git@github.com/madgeek-arc/eosc-observatory.git</connection>
 		<developerConnection>scm:git:ssh://git@github.com/madgeek-arc/eosc-observatory.git</developerConnection>
 		<url>https://github.com/madgeek-arc/eosc-observatory.git</url>
-		<tag>observatory-0.0.3</tag>
+		<tag>HEAD</tag>
 	</scm>
 
 	<distributionManagement>
