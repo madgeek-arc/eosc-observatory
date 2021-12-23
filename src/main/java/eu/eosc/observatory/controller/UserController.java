@@ -51,6 +51,7 @@ public class UserController {
 
     @GetMapping("info")
     public ResponseEntity<UserInfo> userInfo(@ApiIgnore Authentication authentication) {
+        // TODO: move body to a method
         User user = userService.get(User.getId(authentication));
         UserInfo info = new UserInfo();
         info.setUser(user);
@@ -86,9 +87,10 @@ public class UserController {
         filter.setQuantity(10000);
         filter.addFilter(key, value);
         Browsing<Stakeholder> results = stakeholderService.getAll(filter);
-        return results.getResults()
+        return results.getTotal() > 0 ? results.getResults()
                 .stream()
 //                .map(stakeholder -> new IdNameTuple(stakeholder.getId(), stakeholder.getName()))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toSet())
+                : new HashSet<>();
     }
 }
