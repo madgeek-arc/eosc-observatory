@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>eu.eosc</groupId>
 	<artifactId>observatory</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<name>observatory</name>
 	<description>EOSC Portal Observatory</description>
 	<properties>
@@ -25,18 +25,17 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.security.oauth</groupId>
 			<artifactId>spring-security-oauth2</artifactId>
 			<version>2.5.1.RELEASE</version>
 		</dependency>
-
-<!--		<dependency>-->
-<!--			<groupId>org.springframework.security.oauth</groupId>-->
-<!--			<artifactId>spring-security-jwt</artifactId>-->
-<!--			<version>2.2.1.RELEASE</version>-->
-<!--		</dependency>-->
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -80,12 +79,12 @@
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>catalogue</artifactId>
-			<version>0.0.6-SNAPSHOT</version>
+			<version>0.0.5</version>
 		</dependency>
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>authorization</artifactId>
-			<version>0.0.2-SNAPSHOT</version>
+			<version>0.0.2</version>
 			<scope>compile</scope>
 		</dependency>
 
