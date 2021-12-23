@@ -14,7 +14,7 @@
 	<name>observatory</name>
 	<description>EOSC Portal Observatory</description>
 	<properties>
-<!--		<java.version>11</java.version>-->
+		<java.version>11</java.version>
 	</properties>
 	<dependencies>
 		<dependency>
