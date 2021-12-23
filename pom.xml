@@ -136,7 +136,7 @@
 				<directory>src/main/resources</directory>
 				<filtering>true</filtering>
 				<excludes>
-					<exclude>**/registry.properties</exclude>
+					<exclude>**/application.yml</exclude>
 				</excludes>
 			</resource>
 		</resources>
