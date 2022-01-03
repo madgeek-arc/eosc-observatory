@@ -8,6 +8,8 @@ import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.controller.GenericItemController;
+import gr.athenarc.catalogue.service.GenericItemService;
+import gr.athenarc.catalogue.ui.controller.FormsController;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -15,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
@@ -23,6 +26,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -32,12 +36,15 @@ public class SurveyController {
 
     private static final Logger logger = LogManager.getLogger(SurveyController.class);
 
+    private final FormsController formsController;
     private final CrudItemService<SurveyAnswer> surveyAnswerService;
     private final SurveyService surveyService;
 
     @Autowired
-    public SurveyController(CrudItemService<SurveyAnswer> surveyAnswerService,
+    public SurveyController(FormsController formsController,
+                            CrudItemService<SurveyAnswer> surveyAnswerService,
                             SurveyService surveyService) {
+        this.formsController = formsController;
         this.surveyAnswerService = surveyAnswerService;
         this.surveyService = surveyService;
     }
@@ -58,6 +65,23 @@ public class SurveyController {
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
         Browsing<Survey> surveyBrowsing = surveyService.getByType(filter, type);
         return new ResponseEntity<>(surveyBrowsing, HttpStatus.OK);
+    }
+
+    @PostMapping("surveys")
+    public ResponseEntity<Survey> addSurvey(Survey survey, @ApiIgnore Authentication authentication) {
+        survey.setCreatedBy(User.of(authentication).getFullname());
+        survey.setModifiedBy(survey.getCreatedBy());
+        Date date = new Date();
+        survey.setCreationDate(date);
+        survey.setModificationDate(date);
+        return formsController.addSurvey(survey);
+    }
+
+    @PutMapping("surveys/{id}")
+    public ResponseEntity<Survey> updateSurvey(@PathVariable("id") String id, Survey survey, @ApiIgnore Authentication authentication) {
+        survey.setModifiedBy(User.of(authentication).getFullname());
+        survey.setModificationDate(new Date());
+        return formsController.updateSurvey(id, survey);
     }
 
 
