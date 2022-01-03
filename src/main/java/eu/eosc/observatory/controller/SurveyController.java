@@ -69,7 +69,7 @@ public class SurveyController {
 
     @PostMapping("surveys")
     public ResponseEntity<Survey> addSurvey(Survey survey, @ApiIgnore Authentication authentication) {
-        survey.setCreatedBy(User.of(authentication).getFullname());
+        survey.setCreatedBy(User.of(authentication).getId());
         survey.setModifiedBy(survey.getCreatedBy());
         Date date = new Date();
         survey.setCreationDate(date);
@@ -79,7 +79,7 @@ public class SurveyController {
 
     @PutMapping("surveys/{id}")
     public ResponseEntity<Survey> updateSurvey(@PathVariable("id") String id, Survey survey, @ApiIgnore Authentication authentication) {
-        survey.setModifiedBy(User.of(authentication).getFullname());
+        survey.setModifiedBy(User.of(authentication).getId());
         survey.setModificationDate(new Date());
         return formsController.updateSurvey(id, survey);
     }
