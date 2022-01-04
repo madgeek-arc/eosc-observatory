@@ -15,6 +15,8 @@ public interface SurveyService {
 
     Browsing<Survey> getByType(FacetFilter filter, String type);
 
+    Browsing<Survey> getByStakeholder(FacetFilter filter, String stakeholderId);
+
     SurveyAnswer getLatest(String surveyId, String stakeholderId);
 
     List<SurveyAnswer> getActive(String stakeholderId);

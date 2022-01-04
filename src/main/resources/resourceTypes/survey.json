@@ -27,6 +27,12 @@
     },
     {
       "multivalued": false,
+      "name": "subType",
+      "path": "$.subType",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
       "name": "creationDate",
       "path": "$.creationDate",
       "type": "java.util.Date"

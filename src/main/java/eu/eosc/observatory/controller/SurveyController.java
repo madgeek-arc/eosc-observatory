@@ -8,7 +8,6 @@ import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.controller.GenericItemController;
-import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.ui.controller.FormsController;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import io.swagger.annotations.ApiImplicitParam;
@@ -17,7 +16,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
@@ -53,6 +51,12 @@ public class SurveyController {
     /*               Surveys               */
     /*-------------------------------------*/
 
+    @GetMapping("surveys/{id}")
+//    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Survey> getSurvey(@PathVariable("id") String id) {
+        return formsController.getSurvey(id);
+    }
+
     @ApiImplicitParams({
             @ApiImplicitParam(name = "query", value = "Keyword to refine the search", dataTypeClass = String.class, paramType = "query"),
             @ApiImplicitParam(name = "from", value = "Starting index in the result set", dataTypeClass = String.class, paramType = "query"),
@@ -61,14 +65,21 @@ public class SurveyController {
             @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
     })
     @GetMapping("surveys")
-    public ResponseEntity<Browsing<Survey>> getSurveysByType(@ApiIgnore @RequestParam Map<String, Object> allRequestParams, @RequestParam(value = "type", defaultValue = "") String type) {
+    public ResponseEntity<Browsing<Survey>> getSurveysByStakeholderOrType(@ApiIgnore @RequestParam Map<String, Object> allRequestParams, @RequestParam(value = "stakeholderId", defaultValue = "") String stakeholderId, @RequestParam(value = "type", defaultValue = "") String type) {
+        allRequestParams.remove("stakeholderId");
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
-        Browsing<Survey> surveyBrowsing = surveyService.getByType(filter, type);
+        Browsing<Survey> surveyBrowsing;
+        if (stakeholderId != null && !"".equals(stakeholderId)) {
+            surveyBrowsing = surveyService.getByStakeholder(filter, stakeholderId);
+        } else {
+            surveyBrowsing = surveyService.getByType(filter, type);
+        }
         return new ResponseEntity<>(surveyBrowsing, HttpStatus.OK);
     }
 
     @PostMapping("surveys")
-    public ResponseEntity<Survey> addSurvey(Survey survey, @ApiIgnore Authentication authentication) {
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Survey> addSurvey(@RequestBody Survey survey, @ApiIgnore Authentication authentication) {
         survey.setCreatedBy(User.of(authentication).getId());
         survey.setModifiedBy(survey.getCreatedBy());
         Date date = new Date();
@@ -78,7 +89,8 @@ public class SurveyController {
     }
 
     @PutMapping("surveys/{id}")
-    public ResponseEntity<Survey> updateSurvey(@PathVariable("id") String id, Survey survey, @ApiIgnore Authentication authentication) {
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Survey> updateSurvey(@PathVariable("id") String id, @RequestBody Survey survey, @ApiIgnore Authentication authentication) {
         survey.setModifiedBy(User.of(authentication).getId());
         survey.setModificationDate(new Date());
         return formsController.updateSurvey(id, survey);
@@ -92,8 +104,8 @@ public class SurveyController {
     @PutMapping("answers/{id}")
     @PreAuthorize("hasPermission(#id, 'write')")
     public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("id") String id,
-                                                        @RequestBody JSONObject object,
-                                                        @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
+                                                           @RequestBody JSONObject object,
+                                                           @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
         return new ResponseEntity<>(surveyService.updateAnswer(id, object, User.of(authentication)), HttpStatus.OK);
     }
 
@@ -101,7 +113,7 @@ public class SurveyController {
     @PreAuthorize("hasPermission(#id, 'manage')")
     public ResponseEntity<SurveyAnswer> validateSurveyAnswer(@PathVariable("id") String id,
                                                              @RequestParam(value = "validated") boolean validated,
-                                                        @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
+                                                             @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
         return new ResponseEntity<>(surveyService.setAnswerValidated(id, validated, User.of(authentication)), HttpStatus.OK);
     }
 

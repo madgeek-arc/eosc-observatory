@@ -95,20 +95,20 @@ public class StakeholderController {
 
     @PatchMapping("{id}/contributors")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<Stakeholder> updateContributors(@PathVariable("id") String stakeholderId, @RequestBody List<String> emails) {
-        return new ResponseEntity<>(stakeholderService.updateContributors(stakeholderId, emails), HttpStatus.OK);
+    public ResponseEntity<Stakeholder> updateContributors(@PathVariable("id") String stakeholderId, @RequestBody List<String> userIds) {
+        return new ResponseEntity<>(stakeholderService.updateContributors(stakeholderId, userIds), HttpStatus.OK);
     }
 
     @PostMapping("{id}/contributors")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<StakeholderMembers> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String email, @ApiIgnore Authentication authentication) {
-        return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, email), HttpStatus.OK);
+    public ResponseEntity<StakeholderMembers> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String userId, @ApiIgnore Authentication authentication) {
+        return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, userId), HttpStatus.OK);
     }
 
-    @DeleteMapping("{id}/contributors/{contributorId}")
+    @DeleteMapping("{id}/contributors/{userId}")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<StakeholderMembers> removeContributor(@PathVariable("id") String stakeholderId, @PathVariable("contributorId") String contributorId) {
-        return new ResponseEntity<>(stakeholderService.removeContributor(stakeholderId, contributorId), HttpStatus.OK);
+    public ResponseEntity<StakeholderMembers> removeContributor(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
+        return new ResponseEntity<>(stakeholderService.removeContributor(stakeholderId, userId), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/managers")
@@ -124,9 +124,9 @@ public class StakeholderController {
         return new ResponseEntity<>(stakeholderService.addManager(stakeholderId, email), HttpStatus.OK);
     }
 
-    @DeleteMapping("{id}/managers/{contributorId}")
+    @DeleteMapping("{id}/managers/{userId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<StakeholderMembers> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("contributorId") String contributorId) {
-        return new ResponseEntity<>(stakeholderService.removeManager(stakeholderId, contributorId), HttpStatus.OK);
+    public ResponseEntity<StakeholderMembers> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
+        return new ResponseEntity<>(stakeholderService.removeManager(stakeholderId, userId), HttpStatus.OK);
     }
 }
