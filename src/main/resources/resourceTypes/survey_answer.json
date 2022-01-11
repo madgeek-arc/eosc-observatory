@@ -16,6 +16,13 @@
     },
     {
       "multivalued": false,
+      "name": "chapterId",
+      "label": "Chapter ID",
+      "path": "$.chapterId",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
       "name": "stakeholderId",
       "label": "Stakeholder ID",
       "path": "$.stakeholderId",

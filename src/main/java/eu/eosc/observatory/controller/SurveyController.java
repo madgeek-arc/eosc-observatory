@@ -134,9 +134,9 @@ public class SurveyController {
 
     @GetMapping("answers/latest")
     @PostAuthorize("hasPermission(returnObject, 'read')")
-    public ResponseEntity<SurveyAnswer> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
-        SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
-        return new ResponseEntity<>(surveyAnswer, HttpStatus.OK);
+    public ResponseEntity<List<SurveyAnswer>> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
+        List<SurveyAnswer> surveyAnswers = surveyService.getLatest(surveyId, stakeholderId);
+        return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
     }
 
     @GetMapping("answers/{id}")

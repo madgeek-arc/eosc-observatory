@@ -11,6 +11,7 @@ import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.GenericItemService;
+import gr.athenarc.catalogue.ui.domain.Chapter;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -68,7 +69,8 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public SurveyAnswer getLatest(String surveyId, String stakeholderId) {
+    public List<SurveyAnswer> getLatest(String surveyId, String stakeholderId) {
+        Survey survey = genericItemService.get("survey", surveyId);
         FacetFilter filter = new FacetFilter();
         filter.addFilter("surveyId", surveyId);
         filter.addFilter("stakeholderId", stakeholderId);
@@ -79,11 +81,13 @@ public class SurveyServiceImpl implements SurveyService {
         filter.setOrderBy(sortBy);
 
         Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
-        SurveyAnswer answer = null;
-        if (answersBrowsing.getTotal() > 0) {
-            answer = answersBrowsing.getResults().get(0);
+        List<SurveyAnswer> answers = new ArrayList<>();
+        if (answersBrowsing.getTotal() >= survey.getChapters().size()) {
+            for (int i = 0; i < survey.getChapters().size(); i++) {
+                answers.add(answersBrowsing.getResults().get(i));
+            }
         }
-        return answer;
+        return answers;
     }
 
     @Override
@@ -153,10 +157,13 @@ public class SurveyServiceImpl implements SurveyService {
             surveyAnswer.setStakeholderId(stakeholder.getId());
             for (Survey survey : surveys) {
                 surveyAnswer.setSurveyId(survey.getId());
-                SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
-                surveyAnswers.add(answer);
-                permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
-                permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+                for (Chapter chapter : survey.getChapters()) {
+                    surveyAnswer.setChapterId(chapter.getId()); // create answer for every chapter
+                    SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
+                    surveyAnswers.add(answer);
+                    permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+                    permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+                }
             }
         }
         return surveyAnswers;
@@ -179,14 +186,19 @@ public class SurveyServiceImpl implements SurveyService {
         Metadata metadata = new Metadata(authentication);
         surveyAnswer.setMetadata(metadata);
 
-        for (Stakeholder stakeholder : stakeholders) {
+        for (Chapter chapter : survey.getChapters()) {
+            // create answer for every chapter
+            surveyAnswer.setChapterId(chapter.getId());
 
-            surveyAnswer.setStakeholderId(stakeholder.getId());
-            surveyAnswer.setSurveyId(survey.getId());
-            SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
-            surveyAnswers.add(answer);
-            permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
-            permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+            for (Stakeholder stakeholder : stakeholders) {
+                // create answer for every stakeholder
+                surveyAnswer.setStakeholderId(stakeholder.getId());
+                surveyAnswer.setSurveyId(survey.getId());
+                SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
+                surveyAnswers.add(answer);
+                permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+                permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+            }
         }
         return surveyAnswers;
     }

@@ -6,6 +6,7 @@ import org.json.simple.JSONObject;
 public class SurveyAnswer implements Identifiable<String> {
 
     private String surveyId;
+    private String chapterId;
     private String stakeholderId;
     private JSONObject answer;
     private Metadata metadata;
@@ -30,6 +31,14 @@ public class SurveyAnswer implements Identifiable<String> {
 
     public void setSurveyId(String surveyId) {
         this.surveyId = surveyId;
+    }
+
+    public String getChapterId() {
+        return chapterId;
+    }
+
+    public void setChapterId(String chapterId) {
+        this.chapterId = chapterId;
     }
 
     public String getStakeholderId() {
