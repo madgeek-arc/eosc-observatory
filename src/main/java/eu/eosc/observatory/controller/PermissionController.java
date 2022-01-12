@@ -30,7 +30,7 @@ public class PermissionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ResourcePermissions>> getResourcePermissions(@RequestParam("ids") List<String> resourceIds, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<List<ResourcePermissions>> getResourcePermissions(@RequestParam("resourceIds") List<String> resourceIds, @ApiIgnore Authentication authentication) {
         return new ResponseEntity<>(permissionService.getResourcePermissions(User.getId(authentication), resourceIds), HttpStatus.OK);
     }
 
