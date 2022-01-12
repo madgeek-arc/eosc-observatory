@@ -1,5 +1,6 @@
 package eu.eosc.observatory.permissions;
 
+import eu.eosc.observatory.dto.ResourcePermissions;
 import gr.athenarc.authorization.domain.Permission;
 import gr.athenarc.authorization.repository.PermissionRepository;
 import gr.athenarc.authorization.service.AuthorizationService;
@@ -8,10 +9,7 @@ import org.apache.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +33,16 @@ public class AuthorizationServiceBridge implements PermissionService {
                 .stream().map(Permission::getAction).collect(Collectors.toSet());
         logger.debug(String.format("[user: %s] permissions for resource [resourceId: %s]: [permissions: %s]", userId, resourceId, String.join(", ", permissions)));
         return permissions;
+    }
+
+    @Override
+    public List<ResourcePermissions> getResourcePermissions(String userId, List<String> resourceIds) {
+        List<ResourcePermissions> resourcePermissionsList = new ArrayList<>();
+        for (String id : resourceIds) {
+            ResourcePermissions resourcePermissions = new ResourcePermissions(id, getPermissions(userId, id));
+            resourcePermissionsList.add(resourcePermissions);
+        }
+        return resourcePermissionsList;
     }
 
     @Override

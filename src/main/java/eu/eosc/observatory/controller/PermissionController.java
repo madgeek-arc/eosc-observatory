@@ -1,6 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.ResourcePermissions;
 import eu.eosc.observatory.permissions.PermissionService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -9,12 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -31,9 +30,8 @@ public class PermissionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasPermission(#resourceId, 'read')")
-    public ResponseEntity<Set<String>> getPermissions(@RequestParam("resourceId") String resourceId, @ApiIgnore Authentication authentication) {
-        return new ResponseEntity<>(permissionService.getPermissions(User.getId(authentication), resourceId), HttpStatus.OK);
+    public ResponseEntity<List<ResourcePermissions>> getResourcePermissions(@RequestParam("ids") List<String> resourceIds, @ApiIgnore Authentication authentication) {
+        return new ResponseEntity<>(permissionService.getResourcePermissions(User.getId(authentication), resourceIds), HttpStatus.OK);
     }
 
     @GetMapping("admin")

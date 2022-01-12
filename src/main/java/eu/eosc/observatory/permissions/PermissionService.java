@@ -1,5 +1,6 @@
 package eu.eosc.observatory.permissions;
 
+import eu.eosc.observatory.dto.ResourcePermissions;
 import gr.athenarc.authorization.domain.Permission;
 
 import java.util.List;
@@ -8,6 +9,8 @@ import java.util.Set;
 public interface PermissionService {
 
     Set<String> getPermissions(String userId, String resourceId);
+
+    List<ResourcePermissions> getResourcePermissions(String userId, List<String> resourceIds);
 
     Set<Permission> addPermissions(List<String> users, List<String> actions, List<String> resourceIds, String group);
 
