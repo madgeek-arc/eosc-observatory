@@ -27,12 +27,6 @@
     },
     {
       "multivalued": false,
-      "name": "subType",
-      "path": "$.subType",
-      "type": "java.lang.String"
-    },
-    {
-      "multivalued": false,
       "name": "creationDate",
       "path": "$.creationDate",
       "type": "java.util.Date"
@@ -57,8 +51,14 @@
     },
     {
       "multivalued": true,
+      "name": "chapterSubTypes",
+      "path": "$.chapters[*].subType",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
       "name": "chapterSections",
-      "path": "$.chapters[*].sections",
+      "path": "$.chapters[*].sections[*]",
       "type": "java.lang.String"
     }
   ],

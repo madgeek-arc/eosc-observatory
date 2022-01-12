@@ -61,7 +61,7 @@ public class SurveyServiceImpl implements SurveyService {
             Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
             filter.addFilter("type", stakeholder.getType());
             if (stakeholder.getSubType() != null && !"".equals(stakeholder.getSubType())) {
-                filter.addFilter("subType", stakeholder.getSubType());
+                filter.addFilter("chapterSubTypes", stakeholder.getSubType());
             }
         }
         Browsing<Survey> surveyBrowsing = this.genericItemService.getResults(filter);
