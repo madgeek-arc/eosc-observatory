@@ -9,6 +9,7 @@ import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
 import eu.openminted.registry.core.service.SearchService;
 import gr.athenarc.catalogue.LoggingUtils;
+import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
 import gr.athenarc.catalogue.exception.ResourceException;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.AbstractGenericItemService;
@@ -60,6 +61,10 @@ public abstract class AbstractCrudItemService<T extends Identifiable> extends Ab
         res.setResourceType(resourceType);
 
         String id = createId(resource);
+        Resource existing = searchResource(resourceType.getName(), id, false);
+        if (existing != null) {
+            throw new ResourceAlreadyExistsException(id, resourceType.getName());
+        }
         resource.setId(id);
         String payload = parserPool.serialize(resource, ParserService.ParserServiceTypes.fromString(resourceType.getPayloadType()));
         res.setPayload(payload);

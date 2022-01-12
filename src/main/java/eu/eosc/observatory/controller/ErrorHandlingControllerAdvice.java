@@ -1,6 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.openminted.registry.core.exception.ServerError;
+import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,14 +20,7 @@ public class ErrorHandlingControllerAdvice {
 
     private static final Logger logger = LogManager.getLogger(ErrorHandlingControllerAdvice.class);
 
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    @ExceptionHandler(ResourceNotFoundException.class)
-    @ResponseBody
-    ServerError handleNotFound(HttpServletRequest req, Exception ex) {
-        logger.info(ex);
-        return new ServerError(req.getRequestURL().toString(),ex);
-    }
-
+    // 401
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(InsufficientAuthenticationException.class)
     @ResponseBody
@@ -35,6 +29,7 @@ public class ErrorHandlingControllerAdvice {
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 
+    // 403
     @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseBody
@@ -43,4 +38,21 @@ public class ErrorHandlingControllerAdvice {
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 
+    // 404
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseBody
+    ServerError handleNotFound(HttpServletRequest req, Exception ex) {
+        logger.info(ex);
+        return new ServerError(req.getRequestURL().toString(),ex);
+    }
+
+    // 409
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    @ResponseBody
+    ServerError handleAlreadyExists(HttpServletRequest req, Exception ex) {
+        logger.info(ex);
+        return new ServerError(req.getRequestURL().toString(),ex);
+    }
 }
