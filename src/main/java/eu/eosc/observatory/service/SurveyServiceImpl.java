@@ -4,6 +4,8 @@ import eu.eosc.observatory.domain.Metadata;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.StakeholderInfo;
+import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
@@ -201,6 +203,24 @@ public class SurveyServiceImpl implements SurveyService {
             }
         }
         return surveyAnswers;
+    }
+
+    @Override // TODO: this is just a draft
+    public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter) {
+        filter.setResourceType("survey_answer");
+        Browsing<SurveyAnswer> surveyAnswerBrowsing = genericItemService.getResults(filter);
+        Browsing<SurveyAnswerInfo> surveyAnswerInfoBrowsing = new Browsing<>();
+        surveyAnswerInfoBrowsing.setFrom(surveyAnswerBrowsing.getFrom());
+        surveyAnswerInfoBrowsing.setTotal(surveyAnswerBrowsing.getTotal());
+        surveyAnswerInfoBrowsing.setFacets(surveyAnswerBrowsing.getFacets());
+        List<SurveyAnswerInfo> results = new ArrayList<>();
+        for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
+            Survey survey = genericItemService.get("survey", answer.getSurveyId());
+            Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
+            results.add(SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder)));
+        }
+        surveyAnswerInfoBrowsing.setResults(results);
+        return surveyAnswerInfoBrowsing;
     }
 
 

@@ -2,7 +2,9 @@ package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.Coordinator;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.eosc.observatory.service.CoordinatorService;
+import eu.eosc.observatory.service.SurveyService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
@@ -29,10 +31,12 @@ public class CoordinatorController {
     private static final Logger logger = LogManager.getLogger(CoordinatorController.class);
 
     private final CoordinatorService coordinatorService;
+    private final SurveyService surveyService;
 
     @Autowired
-    public CoordinatorController(CoordinatorService coordinatorService) {
+    public CoordinatorController(CoordinatorService coordinatorService, SurveyService surveyService) {
         this.coordinatorService = coordinatorService;
+        this.surveyService = surveyService;
     }
 
     /*---------------------------*/
@@ -79,7 +83,7 @@ public class CoordinatorController {
     }
 
     /*---------------------------*/
-    /*       Other methods       */
+    /*       Member methods      */
     /*---------------------------*/
 
     @GetMapping("{id}/members")
@@ -106,5 +110,24 @@ public class CoordinatorController {
     public ResponseEntity<Set<User>> removeMember(@PathVariable("id") String coordinatorId, @PathVariable("contributorId") String contributorId) {
         return new ResponseEntity<>(coordinatorService.removeMember(coordinatorId, contributorId), HttpStatus.OK);
     }
+
+    /*---------------------------*/
+    /*       Other methods       */
+    /*---------------------------*/
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "query", value = "Keyword to refine the search", dataTypeClass = String.class, paramType = "query"),
+            @ApiImplicitParam(name = "from", value = "Starting index in the result set", dataTypeClass = String.class, paramType = "query"),
+            @ApiImplicitParam(name = "quantity", value = "Quantity to be fetched", dataTypeClass = String.class, paramType = "query"),
+            @ApiImplicitParam(name = "order", value = "asc / desc", dataTypeClass = String.class, paramType = "query"),
+            @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
+    })
+    @GetMapping("surveys")
+    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
+        FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
+        return new ResponseEntity<>(surveyService.browseSurveyAnswersInfo(filter), HttpStatus.OK);
+    }
+
+
 }
 

@@ -2,6 +2,7 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
@@ -41,4 +42,6 @@ public interface SurveyService {
     List<SurveyAnswer> createNewCycle(Authentication authentication);
 
     List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication);
+
+    Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter);
 }
