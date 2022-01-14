@@ -18,6 +18,7 @@ import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -118,9 +119,11 @@ public class SurveyController {
     }
 
     @PatchMapping ("answers/{id}/publish")
-    @PreAuthorize("isStakeholderMember(#stakeholderId)")
-    public ResponseEntity<List<SurveyAnswer>> publishAnswers(@PathVariable("id") String surveyAnswerId, @RequestParam("stakeholderId") String stakeholderId) {
-        List<SurveyAnswer> surveyAnswers = surveyService.publish(surveyAnswerId, stakeholderId);
+    @PreAuthorize("hasPermission(#surveyAnswerId, 'publish')")
+    public ResponseEntity<SurveyAnswer> publishAnswer(@PathVariable("id") String surveyAnswerId,
+                                                      @RequestParam(value = "published") boolean published,
+                                                      @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswers = surveyService.setAnswerPublished(surveyAnswerId, published, User.of(authentication));
         return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
     }
 
@@ -140,20 +143,10 @@ public class SurveyController {
     }
 
     @GetMapping("answers/latest")
-    @PreAuthorize("isStakeholderMember(#stakeholderId)")
-    public ResponseEntity<List<SurveyAnswer>> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
-        List<SurveyAnswer> surveyAnswers = surveyService.getLatest(surveyId, stakeholderId);
-        return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
-    }
-
-    @PatchMapping("answers/validate")
-    @PreAuthorize("isStakeholderMember(#stakeholderId)")
-    public ResponseEntity<List<SurveyAnswer>> validateAnswers(@RequestParam("surveyId") String surveyId,
-                                                               @RequestParam("stakeholderId") String stakeholderId,
-                                                               @RequestParam(value = "validated") boolean validated,
-                                                               @ApiIgnore Authentication authentication) {
-        List<SurveyAnswer> surveyAnswers = surveyService.getLatest(surveyId, stakeholderId);
-        return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
+    @PostAuthorize("hasPermission(returnObject, 'read')")
+    public ResponseEntity<SurveyAnswer> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
+        SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
+        return new ResponseEntity<>(surveyAnswer, HttpStatus.OK);
     }
 
     @GetMapping("answers/{id}")
@@ -165,7 +158,7 @@ public class SurveyController {
     @GetMapping("answers/{id}/answer")
     @PreAuthorize("hasPermission(#id, 'read')")
     public ResponseEntity<Object> getAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
-        return new ResponseEntity<>(surveyAnswerService.get(id).getAnswer(), HttpStatus.OK);
+        return new ResponseEntity<>(surveyAnswerService.get(id).getChapterAnswers(), HttpStatus.OK);
     }
 
     @PostMapping("cycle/generate")

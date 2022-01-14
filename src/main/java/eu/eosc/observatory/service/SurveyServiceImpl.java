@@ -71,7 +71,7 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public List<SurveyAnswer> getLatest(String surveyId, String stakeholderId) {
+    public SurveyAnswer getLatest(String surveyId, String stakeholderId) {
         Survey survey = genericItemService.get("survey", surveyId);
         FacetFilter filter = new FacetFilter();
         filter.addFilter("surveyId", surveyId);
@@ -83,13 +83,11 @@ public class SurveyServiceImpl implements SurveyService {
         filter.setOrderBy(sortBy);
 
         Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
-        List<SurveyAnswer> answers = new ArrayList<>();
+        SurveyAnswer answer = null;
         if (answersBrowsing.getTotal() >= survey.getChapters().size()) {
-            for (int i = 0; i < survey.getChapters().size(); i++) {
-                answers.add(answersBrowsing.getResults().get(i));
-            }
+            answer = answersBrowsing.getResults().get(0);
         }
-        return answers;
+        return answer;
     }
 
     @Override
