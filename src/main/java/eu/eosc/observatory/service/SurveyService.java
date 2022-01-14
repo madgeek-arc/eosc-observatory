@@ -34,9 +34,11 @@ public interface SurveyService {
      */
     SurveyAnswer update(String id, SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException;
 
-    SurveyAnswer updateAnswer(String id, JSONObject answer, User user) throws ResourceNotFoundException;
+    SurveyAnswer updateAnswer(String surveyAnswerId, String chapterAnswerId, JSONObject answer, User user) throws ResourceNotFoundException;
 
-    SurveyAnswer setAnswerValidated(String answerId, boolean validated, User user) throws ResourceNotFoundException;
+    SurveyAnswer setAnswerValidated(String surveyAnswerId, boolean validated, User user) throws ResourceNotFoundException;
+
+    SurveyAnswer setAnswerPublished(String surveyAnswerId, boolean published, User user) throws ResourceNotFoundException;
 
     @Deprecated
     List<SurveyAnswer> createNewCycle(Authentication authentication);
@@ -44,4 +46,6 @@ public interface SurveyService {
     List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication);
 
     Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter);
+
+    String generateChapterAnswerId();
 }

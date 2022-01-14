@@ -1,7 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Coordinator;
-import eu.eosc.observatory.domain.SurveyAnswer;
+import eu.eosc.observatory.domain.ChapterAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
@@ -11,7 +11,7 @@ import eu.openminted.registry.core.service.ParserService;
 import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
 import eu.openminted.registry.core.service.SearchService;
-import gr.athenarc.catalogue.service.id.IdCreator;
+import gr.athenarc.catalogue.service.id.IdGenerator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +29,9 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     private static final String RESOURCE_TYPE = "coordinator";
 
     private final UserService userService;
-    private final CrudItemService<SurveyAnswer> surveyAnswerCrudService;
+    private final CrudItemService<ChapterAnswer> surveyAnswerCrudService;
     private final PermissionService permissionService;
-    private final IdCreator<String> idCreator;
+    private final IdGenerator<String> idGenerator;
 
     @Autowired
     public CoordinatorServiceImpl(ResourceTypeService resourceTypeService,
@@ -39,14 +39,14 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
                                   SearchService searchService,
                                   ParserService parserService,
                                   UserService userService,
-                                  @Lazy CrudItemService<SurveyAnswer> surveyAnswerCrudService,
+                                  @Lazy CrudItemService<ChapterAnswer> surveyAnswerCrudService,
                                   PermissionService permissionService,
-                                  IdCreator<String> idCreator) {
+                                  IdGenerator<String> idGenerator) {
         super(resourceTypeService, resourceService, searchService, parserService);
         this.userService = userService;
         this.permissionService = permissionService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
-        this.idCreator = idCreator;
+        this.idGenerator = idGenerator;
     }
 
     @Override
@@ -57,7 +57,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     @Override
     public String createId(Coordinator coordinator) {
         String prefix = String.format("co-%s-", coordinator.getType());
-        String id = idCreator.createId(prefix);
+        String id = idGenerator.createId(prefix);
         logger.debug(String.format("Created new ID for Coordinator: %s", id));
         return id;
     }
@@ -131,6 +131,6 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(10000);
         filter.addFilter("type", "country");
-        return surveyAnswerCrudService.getAll(filter).getResults().stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        return surveyAnswerCrudService.getAll(filter).getResults().stream().map(ChapterAnswer::getId).collect(Collectors.toList());
     }
 }

@@ -1,28 +1,31 @@
 package eu.eosc.observatory.domain;
 
 import eu.eosc.observatory.service.Identifiable;
-import org.json.simple.JSONObject;
+
+import java.util.Map;
 
 public class SurveyAnswer implements Identifiable<String> {
 
+    private String id;
     private String surveyId;
-    private String chapterId;
     private String stakeholderId;
-    private JSONObject answer;
+    private Map<String, ChapterAnswer> chapterAnswers;
     private Metadata metadata;
+    private History history;
     private boolean validated;
     private boolean published;
 
-    public SurveyAnswer() {}
+    public SurveyAnswer() {
+    }
 
     @Override
     public String getId() {
-        return answer.get("id").toString();
+        return id;
     }
 
     @Override
     public void setId(String id) {
-        this.answer.put("id", id);
+        this.id = id;
     }
 
     public String getSurveyId() {
@@ -33,14 +36,6 @@ public class SurveyAnswer implements Identifiable<String> {
         this.surveyId = surveyId;
     }
 
-    public String getChapterId() {
-        return chapterId;
-    }
-
-    public void setChapterId(String chapterId) {
-        this.chapterId = chapterId;
-    }
-
     public String getStakeholderId() {
         return stakeholderId;
     }
@@ -49,12 +44,12 @@ public class SurveyAnswer implements Identifiable<String> {
         this.stakeholderId = stakeholderId;
     }
 
-    public JSONObject getAnswer() {
-        return answer;
+    public Map<String, ChapterAnswer> getChapterAnswers() {
+        return chapterAnswers;
     }
 
-    public void setAnswer(JSONObject answer) {
-        this.answer = answer;
+    public void setChapterAnswers(Map<String, ChapterAnswer> chapterAnswers) {
+        this.chapterAnswers = chapterAnswers;
     }
 
     public Metadata getMetadata() {
@@ -63,6 +58,14 @@ public class SurveyAnswer implements Identifiable<String> {
 
     public void setMetadata(Metadata metadata) {
         this.metadata = metadata;
+    }
+
+    public History getHistory() {
+        return history;
+    }
+
+    public void setHistory(History history) {
+        this.history = history;
     }
 
     public boolean isValidated() {

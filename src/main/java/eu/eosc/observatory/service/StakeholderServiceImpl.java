@@ -1,7 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.domain.SurveyAnswer;
+import eu.eosc.observatory.domain.ChapterAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.eosc.observatory.permissions.Groups;
@@ -99,11 +99,11 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         permissionService.removeAll(previousContributors, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
 
         // read access for all resources
-        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(ChapterAnswer::getId).collect(Collectors.toList());
         addContributorPermissions(userIds, allResourceIds);
 
         // all contributor permissions for active resource
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(ChapterAnswer::getId).collect(Collectors.toList());
         addContributorFullPermissions(userIds, resourceIds);
 
         stakeholder.setContributors(userIds);
@@ -120,11 +120,11 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder = update(stakeholderId, stakeholder);
 
         // read access for all resources
-        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(ChapterAnswer::getId).collect(Collectors.toList());
         addContributorPermissions(Collections.singletonList(userId), allResourceIds);
 
         // all contributor permissions for active resource
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(ChapterAnswer::getId).collect(Collectors.toList());
         addContributorFullPermissions(Collections.singletonList(userId), resourceIds);
 
         return getMembers(stakeholder);
@@ -152,11 +152,11 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
 
         // read/manage/publish access for all resources
-        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(ChapterAnswer::getId).collect(Collectors.toList());
         addManagerPermissions(userIds, allResourceIds);
 
         // all manager permissions for active resource
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(ChapterAnswer::getId).collect(Collectors.toList());
         addManagerFullPermissions(userIds, resourceIds);
 
         return update(stakeholderId, stakeholder);
@@ -172,11 +172,11 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder = update(stakeholderId, stakeholder);
 
         // read/manage/publish access for all resources
-        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(ChapterAnswer::getId).collect(Collectors.toList());
         addManagerPermissions(Collections.singletonList(userId), allResourceIds);
 
         // all manager permissions for active resource
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(ChapterAnswer::getId).collect(Collectors.toList());
         addManagerFullPermissions(Collections.singletonList(userId), resourceIds);
 
         return getMembers(stakeholder);
