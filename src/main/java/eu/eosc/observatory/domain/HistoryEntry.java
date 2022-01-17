@@ -11,12 +11,6 @@ public class HistoryEntry {
 
     public HistoryEntry() {}
 
-    public HistoryEntry(String userId, Date date, History.HistoryAction action) {
-        this.userId = userId;
-        this.date = date;
-        this.action = action;
-    }
-
     public HistoryEntry(String userId, Date date, String chapterModified, History.HistoryAction action) {
         this.userId = userId;
         this.date = date;

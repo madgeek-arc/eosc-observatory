@@ -6,20 +6,20 @@ import java.util.List;
 
 public class History {
 
-    List<HistoryEntry> history = new ArrayList<>();
+    List<HistoryEntry> entries = new ArrayList<>();
 
     public History() {}
 
-    public List<HistoryEntry> getHistory() {
-        return history;
+    public List<HistoryEntry> getEntries() {
+        return entries;
     }
 
-    public void setHistory(List<HistoryEntry> history) {
-        this.history = history;
+    public void setEntries(List<HistoryEntry> entries) {
+        this.entries = entries;
     }
 
-    public void addEntry(String userId, Date date, String chapterAnswerId, HistoryAction action) {
-        history.add(new HistoryEntry(userId, date, chapterAnswerId, action));
+    public void addEntry(String userId, Date date, String chapterId, HistoryAction action) {
+        entries.add(new HistoryEntry(userId, date, chapterId, action));
     }
 
     public enum HistoryAction {

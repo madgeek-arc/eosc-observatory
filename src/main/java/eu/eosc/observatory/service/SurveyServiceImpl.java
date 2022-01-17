@@ -129,7 +129,7 @@ public class SurveyServiceImpl implements SurveyService {
         Date date = new Date();
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
         surveyAnswer.getChapterAnswers().get(chapterAnswerId).setAnswer(answer);
-        surveyAnswer.getHistory().addEntry(user.getId(), date, chapterAnswerId, History.HistoryAction.UPDATED);
+        surveyAnswer.getHistory().addEntry(user.getId(), date, surveyAnswer.getChapterAnswers().get(chapterAnswerId).getChapterId(), History.HistoryAction.UPDATED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
         return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
@@ -152,6 +152,7 @@ public class SurveyServiceImpl implements SurveyService {
     @Override
     public SurveyAnswer setAnswerPublished(String answerId, boolean published, User user) throws ResourceNotFoundException {
         throw new UnsupportedOperationException("Not implemented yet...");
+        // TODO: implement this method
     }
 
     @Override
@@ -179,7 +180,7 @@ public class SurveyServiceImpl implements SurveyService {
                 for (Chapter chapter : survey.getChapters()) {
                     // create answer for every chapter
                     String chapterAnswerId = generateChapterAnswerId();
-                    surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapterAnswerId, History.HistoryAction.CREATED);
+                    surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
                     ChapterAnswer chapterAnswer = new ChapterAnswer();
                     chapterAnswer.setId(chapterAnswerId);
                     chapterAnswer.setChapterId(chapter.getId());
@@ -223,7 +224,7 @@ public class SurveyServiceImpl implements SurveyService {
             for (Chapter chapter : survey.getChapters()) {
                 // create answer for every chapter
                 String chapterAnswerId = generateChapterAnswerId();
-                surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapterAnswerId, History.HistoryAction.CREATED);
+                surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
                 ChapterAnswer chapterAnswer = new ChapterAnswer();
                 chapterAnswer.setId(chapterAnswerId);
                 chapterAnswer.setChapterId(chapter.getId());

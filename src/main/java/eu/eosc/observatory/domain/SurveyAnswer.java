@@ -3,6 +3,7 @@ package eu.eosc.observatory.domain;
 import eu.eosc.observatory.service.Identifiable;
 
 import java.util.Map;
+import java.util.TreeMap;
 
 public class SurveyAnswer implements Identifiable<String> {
 
@@ -16,6 +17,9 @@ public class SurveyAnswer implements Identifiable<String> {
     private boolean published;
 
     public SurveyAnswer() {
+        this.chapterAnswers = new TreeMap<>();
+        this.metadata = new Metadata();
+        this.history = new History();
     }
 
     @Override
