@@ -104,7 +104,7 @@ public class SurveyController {
     @PutMapping("answers/{surveyAnswerId}")
     @PreAuthorize("hasPermission(#chapterAnswerId, 'write')")
     public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("surveyAnswerId") String surveyAnswerId,
-                                                           @RequestParam("answerId") String chapterAnswerId,
+                                                           @RequestParam("chapterAnswerId") String chapterAnswerId,
                                                            @RequestBody JSONObject object,
                                                            @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
         return new ResponseEntity<>(surveyService.updateAnswer(surveyAnswerId, chapterAnswerId, object, User.of(authentication)), HttpStatus.OK);

@@ -161,14 +161,14 @@ public class SurveyServiceImpl implements SurveyService {
         filter.setQuantity(10000);
         List<Stakeholder> stakeholders = this.stakeholderCrudService.getAll(filter).getResults();
 
-        SurveyAnswer surveyAnswer = new SurveyAnswer();
         Metadata metadata = new Metadata(authentication);
         Date creationDate = metadata.getCreationDate();
-        surveyAnswer.setMetadata(metadata);
-        surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
-
 
         for (Stakeholder stakeholder : stakeholders) {
+            SurveyAnswer surveyAnswer = new SurveyAnswer();
+            surveyAnswer.setMetadata(metadata);
+            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
+
             List<Survey> surveys = getByType(filter, stakeholder.getType()).getResults();
             surveyAnswer.setStakeholderId(stakeholder.getId());
             for (Survey survey : surveys) {
@@ -207,14 +207,15 @@ public class SurveyServiceImpl implements SurveyService {
         filter.addFilter("type", survey.getType());
         List<Stakeholder> stakeholders = this.stakeholderCrudService.getAll(filter).getResults();
 
-        SurveyAnswer surveyAnswer = new SurveyAnswer();
         Metadata metadata = new Metadata(authentication);
         Date creationDate = metadata.getCreationDate();
-        surveyAnswer.setMetadata(metadata);
-        surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
 
         for (Stakeholder stakeholder : stakeholders) {
             // create answer for every stakeholder
+            SurveyAnswer surveyAnswer = new SurveyAnswer();
+            surveyAnswer.setMetadata(metadata);
+            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
+
             surveyAnswer.setStakeholderId(stakeholder.getId());
             surveyAnswer.setSurveyId(survey.getId());
 
