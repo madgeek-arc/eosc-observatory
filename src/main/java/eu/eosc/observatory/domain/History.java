@@ -19,7 +19,7 @@ public class History {
     }
 
     public void addEntry(String userId, Date date, String chapterId, HistoryAction action) {
-        entries.add(new HistoryEntry(userId, date, chapterId, action));
+        entries.add(new HistoryEntry(userId, date.getTime(), chapterId, action));
     }
 
     public enum HistoryAction {

@@ -1,19 +1,17 @@
 package eu.eosc.observatory.domain;
 
-import java.util.Date;
-
 public class HistoryEntry {
 
     String userId;
-    Date date;
+    long time;
     String chapterModified;
     History.HistoryAction action;
 
     public HistoryEntry() {}
 
-    public HistoryEntry(String userId, Date date, String chapterModified, History.HistoryAction action) {
+    public HistoryEntry(String userId, long time, String chapterModified, History.HistoryAction action) {
         this.userId = userId;
-        this.date = date;
+        this.time = time;
         this.chapterModified = chapterModified;
         this.action = action;
     }
@@ -26,12 +24,12 @@ public class HistoryEntry {
         this.userId = userId;
     }
 
-    public Date getDate() {
-        return date;
+    public long getDate() {
+        return time;
     }
 
-    public void setDate(Date date) {
-        this.date = date;
+    public void setDate(long time) {
+        this.time = time;
     }
 
     public History.HistoryAction getAction() {

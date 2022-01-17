@@ -79,10 +79,10 @@
     },
     {
       "multivalued": true,
-      "name": "actionsDates",
-      "label": "Actions Dates",
-      "path": "$.history.entries[*].date",
-      "type": "java.util.Date"
+      "name": "actionsTimes",
+      "label": "Actions Times",
+      "path": "$.history.entries[*].time",
+      "type": "java.lang.Long"
     },
     {
       "multivalued": true,
