@@ -24,12 +24,20 @@ public class HistoryEntry {
         this.userId = userId;
     }
 
-    public long getDate() {
+    public long getTime() {
         return time;
     }
 
-    public void setDate(long time) {
+    public void setTime(long time) {
         this.time = time;
+    }
+
+    public String getChapterModified() {
+        return chapterModified;
+    }
+
+    public void setChapterModified(String chapterModified) {
+        this.chapterModified = chapterModified;
     }
 
     public History.HistoryAction getAction() {
