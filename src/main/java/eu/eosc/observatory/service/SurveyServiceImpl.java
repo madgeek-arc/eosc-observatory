@@ -84,9 +84,7 @@ public class SurveyServiceImpl implements SurveyService {
 
         Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
         SurveyAnswer answer = null;
-        if (answersBrowsing.getTotal() >= survey.getChapters().size()) {
-            answer = answersBrowsing.getResults().get(0);
-        }
+        answer = answersBrowsing.getResults().get(0);
         return answer;
     }
 
