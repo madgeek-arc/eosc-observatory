@@ -64,11 +64,13 @@ public class AuthorizationServiceBridge implements PermissionService {
     @Override
     public Set<Permission> addPermissions(List<String> users, List<String> actions, List<String> resourceIds, String group) {
         Set<Permission> permissions = new HashSet<>();
-        for (String id : users) {
-            for (String action : actions) {
-                for (String resourceId : resourceIds) {
-                    if (permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId).isEmpty()) {
-                        permissions.add(new Permission(id, action, resourceId, group));
+        if (users != null && actions != null && resourceIds != null) {
+            for (String id : users) {
+                for (String action : actions) {
+                    for (String resourceId : resourceIds) {
+                        if (permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId).isEmpty()) {
+                            permissions.add(new Permission(id, action, resourceId, group));
+                        }
                     }
                 }
             }
@@ -79,12 +81,14 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public void removePermissions(List<String> users, List<String> actions, List<String> resourceIds) {
-        for (String id : users) {
-            for (String action : actions) {
-                for (String resourceId : resourceIds) {
-                    Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId);
-                    for (Permission triple : permissions) {
-                        permissionRepository.delete(triple);
+        if (users != null && actions != null && resourceIds != null) {
+            for (String id : users) {
+                for (String action : actions) {
+                    for (String resourceId : resourceIds) {
+                        Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId);
+                        for (Permission triple : permissions) {
+                            permissionRepository.delete(triple);
+                        }
                     }
                 }
             }

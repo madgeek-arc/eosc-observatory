@@ -177,6 +177,10 @@ public class SurveyServiceImpl implements SurveyService {
                 // TODO: move this inside surveyAnswer constructor?
                 for (Chapter chapter : survey.getChapters()) {
                     // create answer for every chapter
+                    if (chapter.getSubType() != null && !Objects.equals(chapter.getSubType(), stakeholder.getSubType())) {
+                        // skip chapters not matching subtype
+                        continue;
+                    }
                     String chapterAnswerId = generateChapterAnswerId();
                     surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
                     ChapterAnswer chapterAnswer = new ChapterAnswer();
@@ -185,13 +189,13 @@ public class SurveyServiceImpl implements SurveyService {
 
                     surveyAnswer.getChapterAnswers().put(chapterAnswer.getId(), chapterAnswer);
                     permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(chapterAnswer.getId()));
-                    permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(chapterAnswer.getId()));
+                    permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(chapterAnswer.getId()));
                 }
 
                 SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
                 surveyAnswers.add(answer);
                 permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
-                permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+                permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(answer.getId()));
             }
         }
         return surveyAnswers;
@@ -222,6 +226,10 @@ public class SurveyServiceImpl implements SurveyService {
             // TODO: move this inside surveyAnswer constructor?
             for (Chapter chapter : survey.getChapters()) {
                 // create answer for every chapter
+                if (chapter.getSubType() != null && !Objects.equals(chapter.getSubType(), stakeholder.getSubType())) {
+                    // skip chapters not matching subtype
+                    continue;
+                }
                 String chapterAnswerId = generateChapterAnswerId();
                 surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
                 ChapterAnswer chapterAnswer = new ChapterAnswer();
@@ -230,13 +238,13 @@ public class SurveyServiceImpl implements SurveyService {
 
                 surveyAnswer.getChapterAnswers().put(chapterAnswer.getId(), chapterAnswer);
                 permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(chapterAnswer.getId()));
-                permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(chapterAnswer.getId()));
+                permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(chapterAnswer.getId()));
             }
 
             SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
             surveyAnswers.add(answer);
             permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
-            permissionService.addContributors(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
+            permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(answer.getId()));
         }
         return surveyAnswers;
     }
