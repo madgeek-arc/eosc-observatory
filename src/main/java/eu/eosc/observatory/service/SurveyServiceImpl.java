@@ -154,54 +154,6 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public List<SurveyAnswer> createNewCycle(Authentication authentication) {
-        logger.debug("Generating new cycle of Survey Answers");
-        List<SurveyAnswer> surveyAnswers = new ArrayList<>();
-        FacetFilter filter = new FacetFilter();
-        filter.setQuantity(10000);
-        List<Stakeholder> stakeholders = this.stakeholderCrudService.getAll(filter).getResults();
-
-        Metadata metadata = new Metadata(authentication);
-        Date creationDate = metadata.getCreationDate();
-
-        for (Stakeholder stakeholder : stakeholders) {
-            SurveyAnswer surveyAnswer = new SurveyAnswer();
-            surveyAnswer.setMetadata(metadata);
-            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
-
-            List<Survey> surveys = getByType(filter, stakeholder.getType()).getResults();
-            surveyAnswer.setStakeholderId(stakeholder.getId());
-            for (Survey survey : surveys) {
-                surveyAnswer.setSurveyId(survey.getId());
-
-                // TODO: move this inside surveyAnswer constructor?
-                for (Chapter chapter : survey.getChapters()) {
-                    // create answer for every chapter
-                    if (chapter.getSubType() != null && !Objects.equals(chapter.getSubType(), stakeholder.getSubType())) {
-                        // skip chapters not matching subtype
-                        continue;
-                    }
-                    String chapterAnswerId = generateChapterAnswerId();
-                    surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
-                    ChapterAnswer chapterAnswer = new ChapterAnswer();
-                    chapterAnswer.setId(chapterAnswerId);
-                    chapterAnswer.setChapterId(chapter.getId());
-
-                    surveyAnswer.getChapterAnswers().put(chapterAnswer.getId(), chapterAnswer);
-                    permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(chapterAnswer.getId()));
-                    permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(chapterAnswer.getId()));
-                }
-
-                SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
-                surveyAnswers.add(answer);
-                permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
-                permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(answer.getId()));
-            }
-        }
-        return surveyAnswers;
-    }
-
-    @Override
     public List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication) {
         Survey survey = genericItemService.get("survey", surveyId);
         logger.debug(String.format("Generating new cycle of Survey Answers for Survey: [id=%s] [name=%s]", survey.getId(), survey.getName()));
@@ -211,42 +163,55 @@ public class SurveyServiceImpl implements SurveyService {
         filter.addFilter("type", survey.getType());
         List<Stakeholder> stakeholders = this.stakeholderCrudService.getAll(filter).getResults();
 
-        Metadata metadata = new Metadata(authentication);
-        Date creationDate = metadata.getCreationDate();
-
         for (Stakeholder stakeholder : stakeholders) {
             // create answer for every stakeholder
-            SurveyAnswer surveyAnswer = new SurveyAnswer();
-            surveyAnswer.setMetadata(metadata);
-            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
-
-            surveyAnswer.setStakeholderId(stakeholder.getId());
-            surveyAnswer.setSurveyId(survey.getId());
-
-            // TODO: move this inside surveyAnswer constructor?
-            for (Chapter chapter : survey.getChapters()) {
-                // create answer for every chapter
-                if (chapter.getSubType() != null && !Objects.equals(chapter.getSubType(), stakeholder.getSubType())) {
-                    // skip chapters not matching subtype
-                    continue;
-                }
-                String chapterAnswerId = generateChapterAnswerId();
-                surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
-                ChapterAnswer chapterAnswer = new ChapterAnswer();
-                chapterAnswer.setId(chapterAnswerId);
-                chapterAnswer.setChapterId(chapter.getId());
-
-                surveyAnswer.getChapterAnswers().put(chapterAnswer.getId(), chapterAnswer);
-                permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(chapterAnswer.getId()));
-                permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(chapterAnswer.getId()));
-            }
-
-            SurveyAnswer answer = surveyAnswerCrudService.add(surveyAnswer);
+            SurveyAnswer answer = generateAnswer(stakeholder, survey, authentication);
             surveyAnswers.add(answer);
-            permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(answer.getId()));
-            permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(answer.getId()));
         }
         return surveyAnswers;
+    }
+
+    @Override
+    public SurveyAnswer generateStakeholderAnswer(String stakeholderId, String surveyId, Authentication authentication) {
+        Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
+        Survey survey = genericItemService.get("survey", surveyId);
+        return generateAnswer(stakeholder, survey, authentication);
+    }
+
+    private SurveyAnswer generateAnswer(Stakeholder stakeholder, Survey survey, Authentication authentication) {
+        logger.info("Generating SurveyAnswer: [surveyId=%s] [stakeholderId=%s]");
+        Metadata metadata = new Metadata(authentication);
+        Date creationDate = metadata.getCreationDate();
+        // create answer for every stakeholder
+        SurveyAnswer surveyAnswer = new SurveyAnswer();
+        surveyAnswer.setMetadata(metadata);
+        surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
+
+        surveyAnswer.setStakeholderId(stakeholder.getId());
+        surveyAnswer.setSurveyId(survey.getId());
+
+        // TODO: move this inside surveyAnswer constructor?
+        for (Chapter chapter : survey.getChapters()) {
+            // create answer for every chapter
+            if (chapter.getSubType() != null && !Objects.equals(chapter.getSubType(), stakeholder.getSubType())) {
+                // skip chapters not matching subtype
+                continue;
+            }
+            String chapterAnswerId = generateChapterAnswerId();
+            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
+            ChapterAnswer chapterAnswer = new ChapterAnswer();
+            chapterAnswer.setId(chapterAnswerId);
+            chapterAnswer.setChapterId(chapter.getId());
+
+            surveyAnswer.getChapterAnswers().put(chapterAnswer.getId(), chapterAnswer);
+            permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(chapterAnswer.getId()));
+            permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(chapterAnswer.getId()));
+        }
+
+        surveyAnswer = surveyAnswerCrudService.add(surveyAnswer);
+        permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(surveyAnswer.getId()));
+        permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(surveyAnswer.getId()));
+        return surveyAnswer;
     }
 
     @Override // TODO: this is just a draft

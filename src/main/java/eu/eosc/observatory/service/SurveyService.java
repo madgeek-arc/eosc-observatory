@@ -40,10 +40,9 @@ public interface SurveyService {
 
     SurveyAnswer setAnswerPublished(String surveyAnswerId, boolean published, User user) throws ResourceNotFoundException;
 
-    @Deprecated
-    List<SurveyAnswer> createNewCycle(Authentication authentication);
-
     List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication);
+
+    SurveyAnswer generateStakeholderAnswer(String stakeholderId, String surveyId, Authentication authentication);
 
     Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter);
 

@@ -24,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -161,15 +162,17 @@ public class SurveyController {
         return new ResponseEntity<>(surveyAnswerService.get(id).getChapterAnswers(), HttpStatus.OK);
     }
 
-    @PostMapping("cycle/generate")
-    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<List<SurveyAnswer>> generateCycle(@ApiIgnore Authentication authentication) {
-        return new ResponseEntity<>(surveyService.createNewCycle(authentication), HttpStatus.CREATED);
-    }
-
     @PostMapping("answers/generate/{surveyId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<List<SurveyAnswer>> generateAnswers(@PathVariable("surveyId") String surveyId, @ApiIgnore Authentication authentication) {
-        return new ResponseEntity<>(surveyService.generateAnswers(surveyId, authentication), HttpStatus.CREATED);
+    public ResponseEntity<List<SurveyAnswer>> generateAnswers(@PathVariable("surveyId") String surveyId,
+                                                              @RequestParam(value = "stakeholderId", required = false, defaultValue = "") String stakeholderId,
+                                                              @ApiIgnore Authentication authentication) {
+        List<SurveyAnswer> answers;
+        if (stakeholderId != null && !"".equals(stakeholderId)) {
+            answers = Collections.singletonList(surveyService.generateStakeholderAnswer(stakeholderId, surveyId, authentication));
+        } else {
+            answers = surveyService.generateAnswers(surveyId, authentication);
+        }
+        return new ResponseEntity<>(answers, HttpStatus.CREATED);
     }
 }
