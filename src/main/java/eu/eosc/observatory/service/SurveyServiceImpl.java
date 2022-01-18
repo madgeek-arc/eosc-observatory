@@ -179,7 +179,7 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     private SurveyAnswer generateAnswer(Stakeholder stakeholder, Survey survey, Authentication authentication) {
-        logger.info("Generating SurveyAnswer: [surveyId=%s] [stakeholderId=%s]");
+        logger.info(String.format("Generating SurveyAnswer: [surveyId=%s] [stakeholderId=%s]", survey.getId(), stakeholder.getId()));
         Metadata metadata = new Metadata(authentication);
         Date creationDate = metadata.getCreationDate();
         // create answer for every stakeholder
