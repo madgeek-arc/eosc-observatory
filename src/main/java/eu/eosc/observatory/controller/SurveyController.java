@@ -101,20 +101,30 @@ public class SurveyController {
     /*           Survey Answers            */
     /*-------------------------------------*/
 
-    @PutMapping("answers/{id}")
-    @PreAuthorize("hasPermission(#id, 'write')")
-    public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("id") String id,
+    @PutMapping("answers/{surveyAnswerId}")
+    @PreAuthorize("hasPermission(#chapterAnswerId, 'write')")
+    public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("surveyAnswerId") String surveyAnswerId,
+                                                           @RequestParam("chapterAnswerId") String chapterAnswerId,
                                                            @RequestBody JSONObject object,
                                                            @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
-        return new ResponseEntity<>(surveyService.updateAnswer(id, object, User.of(authentication)), HttpStatus.OK);
+        return new ResponseEntity<>(surveyService.updateAnswer(surveyAnswerId, chapterAnswerId, object, User.of(authentication)), HttpStatus.OK);
     }
 
     @PatchMapping("answers/{id}/validation")
-    @PreAuthorize("hasPermission(#id, 'manage')")
-    public ResponseEntity<SurveyAnswer> validateSurveyAnswer(@PathVariable("id") String id,
+    @PreAuthorize("hasPermission(#surveyAnswerId, 'manage')")
+    public ResponseEntity<SurveyAnswer> validateSurveyAnswer(@PathVariable("id") String surveyAnswerId,
                                                              @RequestParam(value = "validated") boolean validated,
                                                              @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
-        return new ResponseEntity<>(surveyService.setAnswerValidated(id, validated, User.of(authentication)), HttpStatus.OK);
+        return new ResponseEntity<>(surveyService.setAnswerValidated(surveyAnswerId, validated, User.of(authentication)), HttpStatus.OK);
+    }
+
+    @PatchMapping ("answers/{id}/publish")
+    @PreAuthorize("hasPermission(#surveyAnswerId, 'publish')")
+    public ResponseEntity<SurveyAnswer> publishAnswer(@PathVariable("id") String surveyAnswerId,
+                                                      @RequestParam(value = "published") boolean published,
+                                                      @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswers = surveyService.setAnswerPublished(surveyAnswerId, published, User.of(authentication));
+        return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
     }
 
     @ApiImplicitParams({
@@ -133,10 +143,10 @@ public class SurveyController {
     }
 
     @GetMapping("answers/latest")
-    @PreAuthorize("isStakeholderMember(#stakeholderId)")
-    public ResponseEntity<List<SurveyAnswer>> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
-        List<SurveyAnswer> surveyAnswers = surveyService.getLatest(surveyId, stakeholderId);
-        return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
+    @PostAuthorize("hasPermission(returnObject, 'read')")
+    public ResponseEntity<SurveyAnswer> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
+        SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
+        return new ResponseEntity<>(surveyAnswer, HttpStatus.OK);
     }
 
     @GetMapping("answers/{id}")
@@ -148,7 +158,7 @@ public class SurveyController {
     @GetMapping("answers/{id}/answer")
     @PreAuthorize("hasPermission(#id, 'read')")
     public ResponseEntity<Object> getAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
-        return new ResponseEntity<>(surveyAnswerService.get(id).getAnswer(), HttpStatus.OK);
+        return new ResponseEntity<>(surveyAnswerService.get(id).getChapterAnswers(), HttpStatus.OK);
     }
 
     @PostMapping("cycle/generate")

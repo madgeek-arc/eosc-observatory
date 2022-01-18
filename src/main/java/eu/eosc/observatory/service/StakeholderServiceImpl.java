@@ -1,6 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Stakeholder;
+import eu.eosc.observatory.domain.ChapterAnswer;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
@@ -53,11 +54,16 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
     @Override
     public String createId(Stakeholder stakeholder) {
+        if (stakeholder.getId() != null) {
+            return stakeholder.getId();
+        }
         String idSuffix;
         if (Stakeholder.StakeholderType.fromString(stakeholder.getType()) == Stakeholder.StakeholderType.COUNTRY) {
             idSuffix = stakeholder.getCountry();
+        } else if (stakeholder.getAssociationMember() != null) {
+            idSuffix = stakeholder.getAssociationMember().toLowerCase();
         } else {
-            idSuffix = stakeholder.getAssociationMember();
+            idSuffix = stakeholder.getName().toLowerCase();
         }
         return String.format("sh-%s-%s", stakeholder.getType(), idSuffix);
     }
@@ -99,11 +105,13 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         permissionService.removeAll(previousContributors, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
 
         // read access for all resources
-        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
+        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
         addContributorPermissions(userIds, allResourceIds);
 
         // all contributor permissions for active resource
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        answers = surveyService.getActive(stakeholderId);
+        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
         addContributorFullPermissions(userIds, resourceIds);
 
         stakeholder.setContributors(userIds);
@@ -120,11 +128,13 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder = update(stakeholderId, stakeholder);
 
         // read access for all resources
-        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
+        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
         addContributorPermissions(Collections.singletonList(userId), allResourceIds);
 
         // all contributor permissions for active resource
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        answers = surveyService.getActive(stakeholderId);
+        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
         addContributorFullPermissions(Collections.singletonList(userId), resourceIds);
 
         return getMembers(stakeholder);
@@ -152,11 +162,13 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
 
         // read/manage/publish access for all resources
-        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
+        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
         addManagerPermissions(userIds, allResourceIds);
 
         // all manager permissions for active resource
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        answers = surveyService.getActive(stakeholderId);
+        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
         addManagerFullPermissions(userIds, resourceIds);
 
         return update(stakeholderId, stakeholder);
@@ -172,11 +184,13 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         stakeholder = update(stakeholderId, stakeholder);
 
         // read/manage/publish access for all resources
-        List<String> allResourceIds = surveyService.getAllByStakeholder(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
+        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
         addManagerPermissions(Collections.singletonList(userId), allResourceIds);
 
         // all manager permissions for active resource
-        List<String> resourceIds = surveyService.getActive(stakeholderId).stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        answers = surveyService.getActive(stakeholderId);
+        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
         addManagerFullPermissions(Collections.singletonList(userId), resourceIds);
 
         return getMembers(stakeholder);
@@ -216,5 +230,13 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     private Set<Permission> addContributorPermissions(List<String> users, List<String> resourceIds) {
         List<String> permissions = Arrays.asList(Permissions.READ.getKey());
         return permissionService.addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+    }
+
+    private List<String> getSurveyAnswerAndChapterAnswerIds(List<SurveyAnswer> answers) {
+        List<String> resourceIds = answers.stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        for (SurveyAnswer answer : answers) {
+            resourceIds.addAll(answer.getChapterAnswers().values().stream().map(ChapterAnswer::getId).collect(Collectors.toList()));
+        }
+        return resourceIds;
     }
 }

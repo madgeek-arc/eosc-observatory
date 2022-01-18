@@ -3,7 +3,7 @@
     {
       "multivalued": false,
       "name": "survey_answer_id",
-      "path": "$.answer.id",
+      "path": "$.id",
       "type": "java.lang.String",
       "primaryKey": true
     },
@@ -15,10 +15,10 @@
       "type": "java.lang.String"
     },
     {
-      "multivalued": false,
+      "multivalued": true,
       "name": "chapterId",
       "label": "Chapter ID",
-      "path": "$.chapterId",
+      "path": "$.chapterAnswers[*].chapterId",
       "type": "java.lang.String"
     },
     {
@@ -69,6 +69,27 @@
       "label": "Modification Date",
       "path": "$.metadata.modificationDate",
       "type": "java.util.Date"
+    },
+    {
+      "multivalued": true,
+      "name": "actions",
+      "label": "Actions Performed",
+      "path": "$.history.entries[*].action",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "actionsTimes",
+      "label": "Actions Times",
+      "path": "$.history.entries[*].time",
+      "type": "java.lang.Long"
+    },
+    {
+      "multivalued": true,
+      "name": "actionsBy",
+      "label": "Actions Dates",
+      "path": "$.history.entries[*].userId",
+      "type": "java.lang.String"
     }
   ],
   "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
