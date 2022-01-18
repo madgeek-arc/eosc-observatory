@@ -14,6 +14,7 @@ public class Stakeholder implements Identifiable<String> {
     String subType;
     String country; // 2-letter code
     String associationMember; // will create list at some point
+    boolean mandated;
     List<String> managers;
     List<String> contributors;
 
@@ -68,6 +69,14 @@ public class Stakeholder implements Identifiable<String> {
 
     public void setAssociationMember(String associationMember) {
         this.associationMember = associationMember;
+    }
+
+    public boolean isMandated() {
+        return mandated;
+    }
+
+    public void setMandated(boolean mandated) {
+        this.mandated = mandated;
     }
 
     public List<String> getManagers() {

@@ -43,6 +43,13 @@
       "type": "java.lang.String"
     },
     {
+      "multivalued": false,
+      "name": "mandated",
+      "label": "Mandated",
+      "path": "$.mandated",
+      "type": "java.lang.Boolean"
+    },
+    {
       "multivalued": true,
       "name": "managers",
       "label": "Managers",
