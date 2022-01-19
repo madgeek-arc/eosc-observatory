@@ -25,7 +25,8 @@ public class ErrorHandlingControllerAdvice {
     @ExceptionHandler(InsufficientAuthenticationException.class)
     @ResponseBody
     ServerError handleUnauthorized(HttpServletRequest req, Exception ex) {
-        logger.info(ex);
+        logger.info(ex.getMessage());
+        logger.debug(ex);
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 
@@ -34,7 +35,8 @@ public class ErrorHandlingControllerAdvice {
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseBody
     ServerError handleAccessDenied(HttpServletRequest req, Exception ex) {
-        logger.info(ex);
+        logger.info(ex.getMessage());
+        logger.debug(ex);
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 
@@ -43,7 +45,8 @@ public class ErrorHandlingControllerAdvice {
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseBody
     ServerError handleNotFound(HttpServletRequest req, Exception ex) {
-        logger.info(ex);
+        logger.info(ex.getMessage());
+        logger.debug(ex);
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 
@@ -52,7 +55,8 @@ public class ErrorHandlingControllerAdvice {
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     @ResponseBody
     ServerError handleAlreadyExists(HttpServletRequest req, Exception ex) {
-        logger.info(ex);
+        logger.info(ex.getMessage());
+        logger.debug(ex);
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 }
