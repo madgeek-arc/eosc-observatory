@@ -62,9 +62,10 @@ public class SurveyServiceImpl implements SurveyService {
         if (stakeholderId != null && !"".equals(stakeholderId)) {
             Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
             filter.addFilter("type", stakeholder.getType());
-            if (stakeholder.getSubType() != null && !"".equals(stakeholder.getSubType())) {
-                filter.addFilter("chapterSubTypes", stakeholder.getSubType());
-            }
+            // TODO: need to implement OR filter
+//            if (stakeholder.getSubType() != null && !"".equals(stakeholder.getSubType())) {
+//                filter.setKeyword("chapterSubTypes=" + stakeholder.getSubType());
+//            }
         }
         Browsing<Survey> surveyBrowsing = this.genericItemService.getResults(filter);
         return surveyBrowsing;
