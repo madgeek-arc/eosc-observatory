@@ -1,7 +1,6 @@
 package eu.eosc.observatory.configuration.security;
 
 import eu.eosc.observatory.configuration.ApplicationProperties;
-import eu.eosc.observatory.service.UserService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,12 +23,10 @@ public class AuthSuccessHandler implements AuthenticationSuccessHandler {
 
     private static final Logger logger = LogManager.getLogger(AuthSuccessHandler.class);
 
-    private final UserService userService;
     private final ApplicationProperties applicationProperties;
 
     @Autowired
-    public AuthSuccessHandler(UserService userService, ApplicationProperties applicationProperties) {
-        this.userService = userService;
+    public AuthSuccessHandler(ApplicationProperties applicationProperties) {
         this.applicationProperties = applicationProperties;
     }
 
@@ -40,8 +37,6 @@ public class AuthSuccessHandler implements AuthenticationSuccessHandler {
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        postLogin(authentication);
-
         Cookie cookie = new Cookie("AccessToken", ((OidcUser) authentication.getPrincipal()).getIdToken().getTokenValue());
         cookie.setMaxAge(createCookieMaxAge(authentication));
         cookie.setPath("/");
@@ -64,10 +59,5 @@ public class AuthSuccessHandler implements AuthenticationSuccessHandler {
             return age;
         }
         return null;
-    }
-
-    private void postLogin(Authentication authentication) {
-        logger.info(String.format("Successful Login [authentication: %s]", authentication.toString()));
-        userService.updateUserInfo(authentication);
     }
 }
