@@ -59,7 +59,7 @@ public class StakeholderController {
     @PutMapping("{id}")
     @PreAuthorize("hasAuthority('ADMIN')")// or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<Stakeholder> update(@PathVariable("id") String id, @RequestBody Stakeholder stakeholder) throws ResourceNotFoundException {
-        return new ResponseEntity<>(stakeholderService.update(id, stakeholder), HttpStatus.OK);
+        return new ResponseEntity<>(stakeholderService.updateStakeholderAndUserPermissions(id, stakeholder), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}")

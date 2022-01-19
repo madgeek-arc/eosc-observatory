@@ -9,6 +9,8 @@ public interface StakeholderService extends CrudItemService<Stakeholder> {
 
     StakeholderMembers getMembers(String id);
 
+    Stakeholder updateStakeholderAndUserPermissions(String stakeholderId, Stakeholder stakeholder);
+
     Stakeholder updateContributors(String stakeholderId, List<String> emails);
     StakeholderMembers addContributor(String stakeholderId, String email);
     StakeholderMembers removeContributor(String stakeholderId, String email);

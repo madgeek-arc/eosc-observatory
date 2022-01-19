@@ -54,10 +54,10 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
-    public Stakeholder update(String id, Stakeholder resource) throws ResourceNotFoundException {
+    public Stakeholder updateStakeholderAndUserPermissions(String id, Stakeholder resource) throws ResourceNotFoundException {
         updateManagers(id, resource.getManagers());
         updateContributors(id, resource.getContributors());
-        return super.update(id, resource);
+        return update(id, resource);
     }
 
     @Override
