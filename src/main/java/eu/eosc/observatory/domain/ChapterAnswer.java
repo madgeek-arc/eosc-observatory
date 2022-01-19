@@ -13,6 +13,13 @@ public class ChapterAnswer implements Identifiable<String> {
         answer = new JSONObject();
     }
 
+    public ChapterAnswer(String chapterAnswerId, String chapterId, Metadata metadata) {
+        this.answer = new JSONObject();
+        this.setId(chapterAnswerId);
+        this.chapterId = chapterId;
+        this.metadata = metadata;
+    }
+
     @Override
     public String getId() {
         return answer.get("id").toString();

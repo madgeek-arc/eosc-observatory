@@ -130,6 +130,7 @@ public class SurveyServiceImpl implements SurveyService {
         surveyAnswer.getHistory().addEntry(user.getId(), date, surveyAnswer.getChapterAnswers().get(chapterAnswerId).getChapterId(), History.HistoryAction.UPDATED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
+        surveyAnswer.getChapterAnswers().get(chapterAnswerId).setMetadata(surveyAnswer.getMetadata());
         return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
     }
 
@@ -142,7 +143,7 @@ public class SurveyServiceImpl implements SurveyService {
             surveyAnswer.getHistory().addEntry(user.getId(), date, null, action);
             surveyAnswer.getMetadata().setModifiedBy(user.getId());
             surveyAnswer.getMetadata().setModificationDate(date);
-            return validated ? validateAnswer(surveyAnswer, user) : invalidateAnswer(surveyAnswer, user);
+            return validated ? validateAnswer(surveyAnswer) : invalidateAnswer(surveyAnswer);
         }
         return surveyAnswer;
     }
@@ -199,7 +200,7 @@ public class SurveyServiceImpl implements SurveyService {
             }
             String chapterAnswerId = generateChapterAnswerId();
             surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
-            ChapterAnswer chapterAnswer = new ChapterAnswer();
+            ChapterAnswer chapterAnswer = new ChapterAnswer(chapterAnswerId, chapter.getId(), metadata);
             chapterAnswer.setId(chapterAnswerId);
             chapterAnswer.setChapterId(chapter.getId());
 
@@ -238,22 +239,22 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
 
-    private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException {
+    private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
         List<String> members = stakeholder.getManagers();
         members.addAll(stakeholder.getContributors());
         permissionService.removePermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()));
         surveyAnswer.setValidated(true);
-        return this.update(surveyAnswer.getId(), surveyAnswer, user);
+        return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
     }
 
-    private SurveyAnswer invalidateAnswer(SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException {
+    private SurveyAnswer invalidateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
         List<String> members = stakeholder.getManagers();
         permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
         members = stakeholder.getContributors();
         permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
         surveyAnswer.setValidated(false);
-        return this.update(surveyAnswer.getId(), surveyAnswer, user);
+        return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
     }
 }
