@@ -73,10 +73,11 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         } else {
             idSuffix = stakeholder.getName().toLowerCase();
         }
-        return String.format("sh-%s-%s", stakeholder.getType(), idSuffix)
+        idSuffix = idSuffix
                 .replaceAll("[^a-zA-Z0-9]", " ")
                 .trim()
                 .replace(' ', '.');
+        return String.format("sh-%s-%s", stakeholder.getType(), idSuffix);
     }
 
     @Override
