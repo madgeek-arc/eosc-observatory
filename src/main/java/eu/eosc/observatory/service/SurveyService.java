@@ -7,6 +7,7 @@ import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.ui.domain.Survey;
+import gr.athenarc.catalogue.ui.domain.UiField;
 import org.json.simple.JSONObject;
 import org.springframework.security.core.Authentication;
 
@@ -47,4 +48,6 @@ public interface SurveyService {
     Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter);
 
     String generateChapterAnswerId();
+
+    Object getValueFromAnswer(UiField field, JSONObject answer);
 }

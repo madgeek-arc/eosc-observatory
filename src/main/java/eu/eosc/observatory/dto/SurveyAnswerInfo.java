@@ -1,11 +1,8 @@
 package eu.eosc.observatory.dto;
 
-import eu.eosc.observatory.domain.ChapterAnswer;
 import eu.eosc.observatory.domain.HistoryEntry;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import gr.athenarc.catalogue.ui.domain.Survey;
-import gr.athenarc.catalogue.ui.domain.UiField;
-import org.json.simple.JSONObject;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,7 +22,7 @@ public class SurveyAnswerInfo {
 
     public SurveyAnswerInfo() {}
 
-    public static SurveyAnswerInfo composeFrom(SurveyAnswer answer, Survey survey, StakeholderInfo stakeholderInfo, Map<String, List<UiField>> chapterFieldsMap) {
+    public static SurveyAnswerInfo composeFrom(SurveyAnswer answer, Survey survey, StakeholderInfo stakeholderInfo) {
         SurveyAnswerInfo info = new SurveyAnswerInfo();
         info.setSurveyAnswerId(answer.getId());
         info.setSurveyId(survey.getId());
@@ -36,34 +33,6 @@ public class SurveyAnswerInfo {
         info.setLastUpdate(answer.getMetadata().getModificationDate());
         Set<String> editedBy = answer.getHistory().getEntries().stream().map(HistoryEntry::getUserId).collect(Collectors.toSet());
         info.setEditedBy(new ArrayList<>(editedBy));
-
-        Progress required = new Progress();
-        Progress total = new Progress();
-        Map<String, JSONObject> chapterAnswers = new HashMap<>();
-        for (ChapterAnswer chapterAnswer : answer.getChapterAnswers().values()) {
-            chapterAnswers.put(chapterAnswer.getChapterId(), chapterAnswer.getAnswer());
-        }
-        for (Map.Entry<String, List<UiField>> chapter : chapterFieldsMap.entrySet()) {
-            JSONObject chapterAnswer = chapterAnswers.get(chapter.getKey());
-            for (UiField field : chapter.getValue()) {
-                if (Boolean.FALSE.equals(field.getForm().getDisplay().getVisible())) {
-                    continue;
-                }
-                total.addToTotal(1);
-                if (chapterAnswer.get(field.getName()) != null) {
-                    total.addToCurrent(1);
-                }
-                if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-                    required.addToTotal(1);
-                    if (chapterAnswer.get(field.getName()) != null) {
-                        required.addToCurrent(1);
-                    }
-                }
-            }
-        }
-        info.setProgressRequired(required);
-        info.setProgressTotal(total);
-
         return info;
     }
 

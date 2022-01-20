@@ -1,6 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.*;
+import eu.eosc.observatory.dto.Progress;
 import eu.eosc.observatory.dto.StakeholderInfo;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.eosc.observatory.permissions.Groups;
@@ -18,6 +19,8 @@ import gr.athenarc.catalogue.ui.service.FormsService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import org.json.simple.parser.JSONParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
@@ -240,10 +243,73 @@ public class SurveyServiceImpl implements SurveyService {
                 surveyChapterFields.put(survey.getId(), formsService.getChapterFieldsMap(survey.getId()));
             }
             Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
-            results.add(SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder), surveyChapterFields.get(survey.getId())));
+            SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
+            setProgress(info, answer, surveyChapterFields.get(survey.getId()));
+            results.add(info);
         }
         surveyAnswerInfoBrowsing.setResults(results);
         return surveyAnswerInfoBrowsing;
+    }
+
+    // TODO: optimize
+    private void setProgress(SurveyAnswerInfo info, SurveyAnswer answer, Map<String, List<UiField>> chapterFieldsMap) {
+        Progress required = new Progress();
+        Progress total = new Progress();
+        Map<String, JSONObject> chapterAnswers = new HashMap<>();
+        for (ChapterAnswer chapterAnswer : answer.getChapterAnswers().values()) {
+            chapterAnswers.put(chapterAnswer.getChapterId(), chapterAnswer.getAnswer());
+        }
+        for (Map.Entry<String, List<UiField>> chapter : chapterFieldsMap.entrySet()) {
+            JSONObject chapterAnswer = chapterAnswers.get(chapter.getKey());
+            for (UiField field : chapter.getValue()) {
+                if (field.getTypeInfo().getType().equals("composite") || Boolean.FALSE.equals(field.getForm().getDisplay().getVisible())) {
+                    continue;
+                }
+                total.addToTotal(1);
+                if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
+                    required.addToTotal(1);
+                }
+
+                if (getValueFromAnswer(field, chapterAnswer) != null) {
+                    total.addToCurrent(1);
+                    if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
+                        required.addToCurrent(1);
+                    }
+                }
+
+            }
+        }
+        info.setProgressRequired(required);
+        info.setProgressTotal(total);
+
+    }
+
+    @Override
+    public Object getValueFromAnswer(UiField field, JSONObject answer) {
+        if (answer == null) {
+            return null;
+        }
+        Deque<UiField> fields = new ArrayDeque<>();
+        while (field.getParentId() != null) {
+            fields.push(field);
+            field = formsService.getField(field.getParentId());
+        }
+
+        Object object = JSONValue.parse(answer.toJSONString());
+        while (!fields.isEmpty()) {
+            field = fields.pop();
+            if (object instanceof JSONObject) {
+                if (((JSONObject) object).get(field.getName()) != null) {
+                    object = ((JSONObject) object).get(field.getName());
+                } else {
+                    return null;
+                }
+            }
+        }
+        if ("".equals(object)) {
+            object = null;
+        }
+        return object;
     }
 
     @Override
