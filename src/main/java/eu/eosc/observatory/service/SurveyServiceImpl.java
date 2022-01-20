@@ -13,6 +13,8 @@ import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.service.id.IdGenerator;
 import gr.athenarc.catalogue.ui.domain.Chapter;
 import gr.athenarc.catalogue.ui.domain.Survey;
+import gr.athenarc.catalogue.ui.domain.UiField;
+import gr.athenarc.catalogue.ui.service.FormsService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
@@ -33,17 +35,21 @@ public class SurveyServiceImpl implements SurveyService {
     private final GenericItemService genericItemService;
     private final PermissionService permissionService;
     private final IdGenerator<String> idGenerator;
+    private final FormsService formsService;
 
     @Autowired
     public SurveyServiceImpl(CrudItemService<Stakeholder> stakeholderCrudService,
                              CrudItemService<SurveyAnswer> surveyAnswerCrudService,
                              @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,
-                             PermissionService permissionService, IdGenerator<String> idGenerator) {
+                             PermissionService permissionService,
+                             IdGenerator<String> idGenerator,
+                             FormsService formsService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericItemService = genericItemService;
         this.permissionService = permissionService;
         this.idGenerator = idGenerator;
+        this.formsService = formsService;
     }
 
     @Override
@@ -216,19 +222,25 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswer;
     }
 
-    @Override // TODO: this is just a draft
+    @Override // TODO: optimize
     public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter) {
         filter.setResourceType("survey_answer");
         Browsing<SurveyAnswer> surveyAnswerBrowsing = genericItemService.getResults(filter);
         Browsing<SurveyAnswerInfo> surveyAnswerInfoBrowsing = new Browsing<>();
         surveyAnswerInfoBrowsing.setFrom(surveyAnswerBrowsing.getFrom());
+        surveyAnswerInfoBrowsing.setTo(surveyAnswerBrowsing.getTo());
         surveyAnswerInfoBrowsing.setTotal(surveyAnswerBrowsing.getTotal());
         surveyAnswerInfoBrowsing.setFacets(surveyAnswerBrowsing.getFacets());
         List<SurveyAnswerInfo> results = new ArrayList<>();
+        Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
         for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
+            logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
             Survey survey = genericItemService.get("survey", answer.getSurveyId());
+            if (!surveyChapterFields.containsKey(survey.getId())) {
+                surveyChapterFields.put(survey.getId(), formsService.getChapterFieldsMap(survey.getId()));
+            }
             Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
-            results.add(SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder)));
+            results.add(SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder), surveyChapterFields.get(survey.getId())));
         }
         surveyAnswerInfoBrowsing.setResults(results);
         return surveyAnswerInfoBrowsing;
