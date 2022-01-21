@@ -111,6 +111,12 @@ public class SurveyController {
         return new ResponseEntity<>(surveyService.updateAnswer(surveyAnswerId, chapterAnswerId, object, User.of(authentication)), HttpStatus.OK);
     }
 
+    @DeleteMapping("answers/{surveyAnswerId}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SurveyAnswer> deleteSurveyAnswer(@PathVariable("surveyAnswerId") String surveyAnswerId) throws ResourceNotFoundException {
+        return new ResponseEntity<>(surveyAnswerService.delete(surveyAnswerId), HttpStatus.OK);
+    }
+
     @PatchMapping("answers/{id}/validation")
     @PreAuthorize("hasPermission(#surveyAnswerId, 'manage')")
     public ResponseEntity<SurveyAnswer> validateSurveyAnswer(@PathVariable("id") String surveyAnswerId,
