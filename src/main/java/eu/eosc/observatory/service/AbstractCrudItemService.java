@@ -1,5 +1,6 @@
 package eu.eosc.observatory.service;
 
+import eu.eosc.observatory.domain.Stakeholder;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.domain.Resource;
@@ -18,6 +19,9 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Component
 public abstract class AbstractCrudItemService<T extends Identifiable> extends AbstractGenericItemService implements CrudItemService<T> {
@@ -94,5 +98,14 @@ public abstract class AbstractCrudItemService<T extends Identifiable> extends Ab
     @Override
     public T delete(String id) throws ResourceNotFoundException {
         return super.delete(getResourceType(), id);
+    }
+
+    @Override
+    public Set<T> getWithFilter(String key, String value) {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        filter.addFilter(key, value);
+        Browsing<T> results = this.getAll(filter);
+        return new HashSet<>(results.getResults());
     }
 }

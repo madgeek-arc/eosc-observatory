@@ -4,6 +4,8 @@ import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 
+import java.util.Set;
+
 public interface CrudItemService<T extends Identifiable> {
     /**
      * Returns the resource.
@@ -52,4 +54,12 @@ public interface CrudItemService<T extends Identifiable> {
      * @param id to be deleted.
      */
     T delete(String id) throws ResourceNotFoundException;
+
+    /**
+     * Retrieve a Set of resources matching the specified Key Value arguments.
+     * @param key
+     * @param value
+     * @return
+     */
+    Set<T> getWithFilter(String key, String value);
 }

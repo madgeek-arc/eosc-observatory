@@ -5,6 +5,7 @@ import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserInfo;
 import eu.eosc.observatory.service.CrudItemService;
+import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -58,8 +59,8 @@ public class UserController {
         info.setStakeholders(new HashSet<>());
         info.setCoordinators(new HashSet<>());
 
-        info.getStakeholders().addAll(getStakeholdersWithFilter("managers", user.getId()));
-        info.getStakeholders().addAll(getStakeholdersWithFilter("contributors", user.getId()));
+        info.getStakeholders().addAll(stakeholderService.getWithFilter("managers", user.getId()));
+        info.getStakeholders().addAll(stakeholderService.getWithFilter("contributors", user.getId()));
         info.getCoordinators().addAll(getCoordinatorsWithFilter("members", user.getId()));
 
         return new ResponseEntity<>(info, HttpStatus.OK);
@@ -78,19 +79,6 @@ public class UserController {
         Browsing<Coordinator> results = coordinatorService.getAll(filter);
         return results.getResults()
                 .stream()
-//                .map(stakeholder -> new IdNameTuple(stakeholder.getId(), stakeholder.getName()))
                 .collect(Collectors.toSet());
-    }
-
-    private Set<Stakeholder> getStakeholdersWithFilter(String key, String value) {
-        FacetFilter filter = new FacetFilter();
-        filter.setQuantity(10000);
-        filter.addFilter(key, value);
-        Browsing<Stakeholder> results = stakeholderService.getAll(filter);
-        return results.getTotal() > 0 ? results.getResults()
-                .stream()
-//                .map(stakeholder -> new IdNameTuple(stakeholder.getId(), stakeholder.getName()))
-                .collect(Collectors.toSet())
-                : new HashSet<>();
     }
 }
