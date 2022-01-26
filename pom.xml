@@ -14,6 +14,7 @@
 	<description>EOSC Portal Observatory</description>
 	<properties>
 		<java.version>11</java.version>
+		<registry-core.version>2.3.5-SNAPSHOT</registry-core.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -76,10 +77,28 @@
 		</dependency>
 
 		<dependency>
+			<groupId>eu.openminted</groupId>
+			<artifactId>registry-core-api</artifactId>
+			<version>${registry-core.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>eu.openminted</groupId>
+			<artifactId>registry-core-rest</artifactId>
+			<version>${registry-core.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>eu.openminted</groupId>
+			<artifactId>registry-core-helper</artifactId>
+			<version>${registry-core.version}</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>catalogue</artifactId>
 			<version>1.1.2-SNAPSHOT</version>
 		</dependency>
+
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>authorization</artifactId>

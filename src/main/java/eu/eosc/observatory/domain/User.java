@@ -9,6 +9,8 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
+import java.util.List;
+
 public class User implements Identifiable<String> {
     private static final Logger logger = LogManager.getLogger(User.class);
 
@@ -18,6 +20,7 @@ public class User implements Identifiable<String> {
     private String surname;
     private String fullname;
     private Boolean consent = null;
+    private List<PolicyAccepted> policiesAccepted;
 
     public User() {
     }
@@ -99,6 +102,14 @@ public class User implements Identifiable<String> {
 
     public void setConsent(Boolean consent) {
         this.consent = consent;
+    }
+
+    public List<PolicyAccepted> getPoliciesAccepted() {
+        return policiesAccepted;
+    }
+
+    public void setPoliciesAccepted(List<PolicyAccepted> policiesAccepted) {
+        this.policiesAccepted = policiesAccepted;
     }
 
     public static String getId(Authentication auth) {
