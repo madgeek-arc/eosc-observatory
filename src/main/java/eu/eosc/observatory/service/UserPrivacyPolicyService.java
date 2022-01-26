@@ -51,10 +51,10 @@ public class UserPrivacyPolicyService extends AbstractCrudItemService<PrivacyPol
     }
 
     @Override
-    public boolean hasAcceptedPolicy(String policyDoi, String userId) {
+    public boolean hasAcceptedPolicy(String policyId, String userId) {
         FacetFilter filter = new FacetFilter();
-        filter.addFilter("email", userId);
-        filter.addFilter("policiesAcceptedDois", policyDoi);
+        filter.addFilter("user_id", userId);
+        filter.addFilter("policyId", policyId);
         Browsing<User> users = userService.getAll(filter);
         return users.getTotal() >= 1;
     }

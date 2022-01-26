@@ -24,7 +24,7 @@ public class PrivacyPolicyController extends AbstractCrudController<PrivacyPolic
     }
 
     @GetMapping("status")
-    public ResponseEntity<UserPrivacyPolicyInfo> hasAcceptedPolicy(@RequestParam(value = "type", defaultValue = "") String type, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<UserPrivacyPolicyInfo> hasAcceptedPolicy(@RequestParam(value = "type") String type, @ApiIgnore Authentication authentication) {
         UserPrivacyPolicyInfo info = new UserPrivacyPolicyInfo();
         PrivacyPolicy policy = privacyPolicyService.getLatestByType(type);
         info.setPrivacyPolicy(policy);
