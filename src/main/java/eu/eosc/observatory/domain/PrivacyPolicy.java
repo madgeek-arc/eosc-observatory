@@ -6,7 +6,7 @@ import java.util.Date;
 
 public class PrivacyPolicy implements Identifiable<String> {
 
-    String doi;
+    String id;
     String type;
     Date activationDate;
 
@@ -14,12 +14,12 @@ public class PrivacyPolicy implements Identifiable<String> {
 
     @Override
     public String getId() {
-        return doi;
+        return id;
     }
 
     @Override
     public void setId(String id) {
-        this.doi = id;
+        this.id = id;
     }
 
     public String getType() {

@@ -41,6 +41,20 @@
       "label": "User Consent",
       "path": "$.consent",
       "type": "java.lang.Boolean"
+    },
+    {
+      "multivalued": true,
+      "name": "policyId",
+      "label": "Accepted Policy Id",
+      "path": "$.policiesAccepted[*].id",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "time",
+      "label": "Policy Accept Time",
+      "path": "$.policiesAccepted[*].time",
+      "type": "java.lang.Long"
     }
   ],
   "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",

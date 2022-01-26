@@ -7,5 +7,4 @@ public interface PrivacyPolicyService extends CrudItemService<PrivacyPolicy> {
     PrivacyPolicy getLatestByType(String type);
 
     boolean hasAcceptedPolicy(String policyDoi, String userId);
-
 }

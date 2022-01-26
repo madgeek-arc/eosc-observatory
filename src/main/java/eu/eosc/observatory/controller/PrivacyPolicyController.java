@@ -8,10 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
 @RestController
@@ -27,7 +24,7 @@ public class PrivacyPolicyController extends AbstractCrudController<PrivacyPolic
     }
 
     @GetMapping("status")
-    public ResponseEntity<UserPrivacyPolicyInfo> hasAcceptedPolicy(@RequestParam("type") String type, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<UserPrivacyPolicyInfo> hasAcceptedPolicy(@RequestParam(value = "type", defaultValue = "") String type, @ApiIgnore Authentication authentication) {
         UserPrivacyPolicyInfo info = new UserPrivacyPolicyInfo();
         PrivacyPolicy policy = privacyPolicyService.getLatestByType(type);
         info.setPrivacyPolicy(policy);

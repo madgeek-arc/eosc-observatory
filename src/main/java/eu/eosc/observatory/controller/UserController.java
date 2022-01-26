@@ -1,11 +1,9 @@
 package eu.eosc.observatory.controller;
 
-import eu.eosc.observatory.domain.Coordinator;
-import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.domain.User;
-import eu.eosc.observatory.domain.UserInfo;
+import eu.eosc.observatory.domain.*;
+import eu.eosc.observatory.dto.UserPrivacyPolicyInfo;
 import eu.eosc.observatory.service.CrudItemService;
-import eu.eosc.observatory.service.StakeholderService;
+import eu.eosc.observatory.service.PrivacyPolicyService;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -70,6 +68,12 @@ public class UserController {
     public ResponseEntity<Void> setConsent(@RequestParam(value = "consent", defaultValue = "false") boolean consent, @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
         userService.updateUserConsent(User.getId(authentication), consent);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PatchMapping("policies/{id}")
+    public ResponseEntity<User> acceptPolicy(@PathVariable(value = "id") String id, @ApiIgnore Authentication authentication) {
+        User user = userService.acceptPrivacyPolicy(id, authentication);
+        return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
     private Set<Coordinator> getCoordinatorsWithFilter(String key, String value) {

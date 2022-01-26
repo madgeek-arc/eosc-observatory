@@ -1,16 +1,15 @@
 package eu.eosc.observatory.domain;
 
-import java.util.Date;
 
 public class PolicyAccepted {
     String id;
-    Date acceptedDate;
+    long time;
 
     public PolicyAccepted() {}
 
-    public PolicyAccepted(String id, Date acceptedDate) {
+    public PolicyAccepted(String id, long time) {
         this.id = id;
-        this.acceptedDate = acceptedDate;
+        this.time = time;
     }
 
     public String getId() {
@@ -21,11 +20,11 @@ public class PolicyAccepted {
         this.id = id;
     }
 
-    public Date getAcceptedDate() {
-        return acceptedDate;
+    public long getTime() {
+        return time;
     }
 
-    public void setAcceptedDate(Date acceptedDate) {
-        this.acceptedDate = acceptedDate;
+    public void setAcceptedDate(long time) {
+        this.time = time;
     }
 }
