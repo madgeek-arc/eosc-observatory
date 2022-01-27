@@ -15,6 +15,8 @@ public class ApplicationProperties {
 
     private String logoutRedirect;
 
+    private String jwsSigningSecret;
+
     public Set<Object> getAdmins() {
         return admins;
     }
@@ -37,5 +39,13 @@ public class ApplicationProperties {
 
     public void setLogoutRedirect(String logoutRedirect) {
         this.logoutRedirect = logoutRedirect;
+    }
+
+    public String getJwsSigningSecret() {
+        return jwsSigningSecret;
+    }
+
+    public void setJwsSigningSecret(String jwsSigningSecret) {
+        this.jwsSigningSecret = jwsSigningSecret;
     }
 }
