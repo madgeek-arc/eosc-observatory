@@ -5,6 +5,8 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jose.util.Base64URL;
 import eu.eosc.observatory.configuration.ApplicationProperties;
+import eu.eosc.observatory.domain.Invitation;
+import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
 import eu.openminted.registry.core.service.ServiceException;
 import gr.athenarc.catalogue.exception.ResourceException;
@@ -73,15 +75,27 @@ public class JWSInvitationService implements InvitationService {
             throw new ResourceException("Invalid Token", HttpStatus.BAD_REQUEST);
         }
 
+        Invitation invitationObject;
         try {
             JWSObject jwsObject = new JWSObject(new Base64URL(parts[0]), new Base64URL(parts[1]), new Base64URL(parts[2]));
             if (!jwsObject.verify(verifier)) {
-                throw new RuntimeException("Token has been altered by a third party");
+                throw new ResourceException("Token has been altered.", HttpStatus.FORBIDDEN);
+            }
+            invitationObject = getInvitationObject(jwsObject.getPayload().toJSONObject());
+            if (new Date().getTime() > invitationObject.getExpiration()) {
+                throw new ResourceException("Invitation time has expired.", HttpStatus.FORBIDDEN);
+            }
+
+            Stakeholder stakeholder = stakeholderService.get(invitationObject.getStakeholderId());
+            if (invitationObject.getRole().equals("contributor")
+                    && stakeholder.getManagers().contains(invitationObject.getInviter())) {
+                stakeholderService.addContributor(stakeholder.getId(), invitationObject.getInvitee());
+                return true;
             }
         } catch (ParseException e) {
-            e.printStackTrace();
+            logger.error(e);
         } catch (JOSEException e) {
-            e.printStackTrace();
+            logger.error(e);
         }
         return false;
     }
@@ -92,7 +106,18 @@ public class JWSInvitationService implements InvitationService {
         invitation.put("invitee", invitee);
         invitation.put("role", role);
         invitation.put("stakeholder", stakeholderId);
-        invitation.put("expiration", expiration);
+        invitation.put("expiration", expiration.getTime());
+
+        return invitation;
+    }
+
+    private Invitation getInvitationObject(Map<String, Object> jsonObject) {
+        Invitation invitation = new Invitation();
+        invitation.setInviter(jsonObject.get("inviter").toString());
+        invitation.setInvitee(jsonObject.get("invitee").toString());
+        invitation.setRole(jsonObject.get("role").toString());
+        invitation.setStakeholderId(jsonObject.get("stakeholder").toString());
+        invitation.setExpiration((long) jsonObject.get("expiration"));
 
         return invitation;
     }

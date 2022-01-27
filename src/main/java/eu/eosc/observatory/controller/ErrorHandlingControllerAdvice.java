@@ -2,6 +2,7 @@ package eu.eosc.observatory.controller;
 
 import eu.openminted.registry.core.exception.ServerError;
 import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
+import gr.athenarc.catalogue.exception.ResourceException;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -58,5 +59,11 @@ public class ErrorHandlingControllerAdvice {
         logger.info(ex.getMessage());
         logger.debug(ex);
         return new ServerError(req.getRequestURL().toString(),ex);
+    }
+
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(ResourceException.class)
+    ServerError bypassResourceException(HttpServletRequest req, Exception ex) {
+        return new ServerError(req.getRequestURL().toString(), ex); // FIXME
     }
 }

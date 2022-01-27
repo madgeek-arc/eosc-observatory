@@ -2,6 +2,7 @@ package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.service.InvitationService;
+import gr.athenarc.catalogue.exception.ResourceException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +37,10 @@ public class InvitationController {
 
     @GetMapping("accept")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Boolean> acceptInvitation(@RequestParam("invitationToken") String token) {
-        return new ResponseEntity<>(invitationService.acceptInvitation(token), HttpStatus.OK);
+    public ResponseEntity<Void> acceptInvitation(@RequestParam("invitationToken") String token) {
+        if (!invitationService.acceptInvitation(token)) {
+            throw new ResourceException("Invalid invitation.", HttpStatus.FORBIDDEN);
+        }
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }
