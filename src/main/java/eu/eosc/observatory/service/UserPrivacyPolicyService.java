@@ -1,7 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.PrivacyPolicy;
-import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.domain.UserAcceptedPolicy;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.service.ParserService;
@@ -19,16 +19,16 @@ public class UserPrivacyPolicyService extends AbstractCrudItemService<PrivacyPol
 
     private static final Logger logger = LogManager.getLogger(UserPrivacyPolicyService.class);
 
-    private final UserService userService;
+    private final UserAcceptedPolicyCrudService userAcceptedPolicyService;
 
     @Autowired
     public UserPrivacyPolicyService(ResourceTypeService resourceTypeService,
                                     ResourceService resourceService,
                                     SearchService searchService,
                                     ParserService parserService,
-                                    UserService userService) {
+                                    UserAcceptedPolicyCrudService userAcceptedPolicyService) {
         super(resourceTypeService, resourceService, searchService, parserService);
-        this.userService = userService;
+        this.userAcceptedPolicyService = userAcceptedPolicyService;
     }
 
     @Override
@@ -53,9 +53,9 @@ public class UserPrivacyPolicyService extends AbstractCrudItemService<PrivacyPol
     @Override
     public boolean hasAcceptedPolicy(String policyId, String userId) {
         FacetFilter filter = new FacetFilter();
-        filter.addFilter("user_id", userId);
+        filter.addFilter("userId", userId);
         filter.addFilter("policyId", policyId);
-        Browsing<User> users = userService.getAll(filter);
+        Browsing<UserAcceptedPolicy> users = userAcceptedPolicyService.getAll(filter);
         return users.getTotal() >= 1;
     }
 }
