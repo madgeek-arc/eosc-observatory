@@ -9,6 +9,7 @@ import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.controller.GenericItemController;
 import gr.athenarc.catalogue.ui.controller.FormsController;
+import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -54,8 +55,8 @@ public class SurveyController {
 
     @GetMapping("surveys/{id}")
 //    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Survey> getSurvey(@PathVariable("id") String id) {
-        return formsController.getSurvey(id);
+    public ResponseEntity<Model> getSurvey(@PathVariable("id") String id) {
+        return formsController.getModel(id);
     }
 
     @ApiImplicitParams({
@@ -66,10 +67,10 @@ public class SurveyController {
             @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
     })
     @GetMapping("surveys")
-    public ResponseEntity<Browsing<Survey>> getSurveysByStakeholderOrType(@ApiIgnore @RequestParam Map<String, Object> allRequestParams, @RequestParam(value = "stakeholderId", defaultValue = "") String stakeholderId, @RequestParam(value = "type", defaultValue = "") String type) {
+    public ResponseEntity<Browsing<Model>> getSurveysByStakeholderOrType(@ApiIgnore @RequestParam Map<String, Object> allRequestParams, @RequestParam(value = "stakeholderId", defaultValue = "") String stakeholderId, @RequestParam(value = "type", defaultValue = "") String type) {
         allRequestParams.remove("stakeholderId");
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
-        Browsing<Survey> surveyBrowsing;
+        Browsing<Model> surveyBrowsing;
         if (stakeholderId != null && !"".equals(stakeholderId)) {
             surveyBrowsing = surveyService.getByStakeholder(filter, stakeholderId);
         } else {
@@ -80,21 +81,21 @@ public class SurveyController {
 
     @PostMapping("surveys")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Survey> addSurvey(@RequestBody Survey survey, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<Model> addSurvey(@RequestBody Model survey, @ApiIgnore Authentication authentication) {
         survey.setCreatedBy(User.of(authentication).getId());
         survey.setModifiedBy(survey.getCreatedBy());
         Date date = new Date();
         survey.setCreationDate(date);
         survey.setModificationDate(date);
-        return formsController.addSurvey(survey);
+        return formsController.addModel(survey);
     }
 
     @PutMapping("surveys/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Survey> updateSurvey(@PathVariable("id") String id, @RequestBody Survey survey, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<Model> updateSurvey(@PathVariable("id") String id, @RequestBody Model survey, @ApiIgnore Authentication authentication) {
         survey.setModifiedBy(User.of(authentication).getId());
         survey.setModificationDate(new Date());
-        return formsController.updateSurvey(id, survey);
+        return formsController.updateModel(id, survey);
     }
 
 

@@ -35,6 +35,7 @@ public class SecurityService {
 
     public boolean hasPermission(Authentication authentication, String action, String resourceId) {
         User user = userService.get(User.getId(authentication));
-        return user.getConsent() && permissionService.hasPermission(user.getId(), action, resourceId);
+        // TODO : check if user has accepted terms
+        return /*user.getConsent() &&*/ permissionService.hasPermission(user.getId(), action, resourceId);
     }
 }
