@@ -1,6 +1,8 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.ChapterAnswer;
+import eu.eosc.observatory.domain.HistoryEntry;
+import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import gr.athenarc.catalogue.ui.domain.Chapter;
 import gr.athenarc.catalogue.ui.domain.Group;
@@ -9,6 +11,7 @@ import gr.athenarc.catalogue.ui.domain.UiField;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,23 +19,34 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
-public class SimpleCSVConverter implements CSVConverter {
+public class SurveyCSVConverter implements CSVConverter {
 
-    private static final Logger logger = LogManager.getLogger(SimpleCSVConverter.class);
+    private static final Logger logger = LogManager.getLogger(SurveyCSVConverter.class);
+
+    private static final String DELIMITER_PRIMARY = "\t";
+    private static final String DELIMITER_SECONDARY = ";";
 
     private final ModelService modelService;
     private final SurveyAnswerCrudService surveyAnswerCrudService;
+    private final StakeholderService stakeholderService;
+    private final UserService userService;
 
     @Autowired
-    public SimpleCSVConverter(ModelService modelService, SurveyAnswerCrudService surveyAnswerCrudService) {
+    public SurveyCSVConverter(ModelService modelService,
+                              SurveyAnswerCrudService surveyAnswerCrudService,
+                              StakeholderService stakeholderService,
+                              UserService userService) {
         this.modelService = modelService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
+        this.stakeholderService = stakeholderService;
+        this.userService = userService;
     }
 
     @Override
-    public String convertToCSV(String modelId) {
+    public String convertToCSV(String modelId, boolean includeSensitiveData) {
         StringBuilder csv = new StringBuilder();
         Model model = modelService.get(modelId);
         Map<String, List<List<UiField>>> chapterFields = getChapterFields(model);
@@ -41,21 +55,41 @@ public class SimpleCSVConverter implements CSVConverter {
             allKeys.addAll(getKeys(entry.getValue()));
         }
 //        Collections.sort(allKeys);
-        csv.append(String.join(",", allKeys));
+        csv.append(String.join(DELIMITER_PRIMARY, "Stakeholder Id", "Stakeholder Name"));
+        csv.append(DELIMITER_PRIMARY);
+        if (includeSensitiveData) {
+            csv.append("Edited By");
+            csv.append(DELIMITER_PRIMARY);
+        }
+        csv.append(String.join(DELIMITER_PRIMARY, allKeys));
 
         Set<SurveyAnswer> answerSet = surveyAnswerCrudService.getWithFilter("surveyId", model.getId());
         for (SurveyAnswer answer : answerSet) {
             Map<String, List<String>> results = toCsv(chapterFields, answer);
             List<String> row = new LinkedList<>();
+            row.add(answer.getStakeholderId());
+            Stakeholder stakeholder = stakeholderService.get(answer.getStakeholderId());
+            row.add(stakeholder.getName());
+            if (includeSensitiveData) {
+                Set<String> contributorIds = answer.getHistory().getEntries().stream().map(HistoryEntry::getUserId).collect(Collectors.toSet());
+                String contributors = contributorIds.stream().map(userService::get).map(user -> String.format("%s (%s)", user.getFullname(), user.getId())).collect(Collectors.joining(DELIMITER_SECONDARY));
+                row.add(contributors);
+            }
             for (String key : allKeys) {
                 if (!results.containsKey(key) || results.get(key).isEmpty()) {
                     row.add("");
                 } else {
-                    row.add(String.join(";", results.get(key)));
+                    StringBuilder entry = new StringBuilder();
+                    for (Object val : results.get(key)) {
+                        entry.append(val);
+                        entry.append(DELIMITER_SECONDARY);
+                    }
+                    row.add(entry.substring(0, entry.toString().length() - 1)); // remove trailing ;
+//                    row.add(String.join(DELIMITER_SECONDARY, results.get(key)));
                 }
             }
             csv.append("\n");
-            csv.append(String.join(",", row));
+            csv.append(String.join(DELIMITER_PRIMARY, row));
         }
 
         return csv.toString();
@@ -123,7 +157,7 @@ public class SimpleCSVConverter implements CSVConverter {
         String key = "";
 
         for (UiField field : fieldsToLeaf) {
-            key = String.format("%s-%s", key, field.getName());
+            key = String.format("%s-%s", key, field.getLabel().getText());
         }
 
         if (key.startsWith("-")) {
@@ -136,12 +170,12 @@ public class SimpleCSVConverter implements CSVConverter {
         List values = new LinkedList<>();
         Pair<String, List<String>> pair;
         String key = "";
-        Object temp = JSONValue.parse(answer.toJSONString());
+        Object temp = null;
         if (answer != null) {
-            temp = new JSONObject(answer);
+            temp = JSONValue.parse(answer.toJSONString());
         }
         for (UiField field : fieldsToLeaf) {
-            key = String.format("%s-%s", key, field.getName());
+            key = String.format("%s-%s", key, field.getLabel().getText());
             if (temp instanceof JSONObject && ((JSONObject) temp).containsKey(field.getName())) {
                 temp = ((JSONObject) temp).get(field.getName());
             } else {
@@ -151,7 +185,7 @@ public class SimpleCSVConverter implements CSVConverter {
 
         if (temp != null) {
             if (fieldsToLeaf.get(fieldsToLeaf.size() - 1).getTypeInfo().isMultiplicity()) {
-                values.addAll(((JSONObject) temp).values());
+                values.addAll((JSONArray) temp);
             } else {
                 values.add(temp);
             }
