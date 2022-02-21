@@ -6,6 +6,7 @@ import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
+import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import gr.athenarc.catalogue.ui.domain.UiField;
 import org.json.simple.JSONObject;
@@ -15,9 +16,9 @@ import java.util.List;
 
 public interface SurveyService {
 
-    Browsing<Survey> getByType(FacetFilter filter, String type);
+    Browsing<Model> getByType(FacetFilter filter, String type);
 
-    Browsing<Survey> getByStakeholder(FacetFilter filter, String stakeholderId);
+    Browsing<Model> getByStakeholder(FacetFilter filter, String stakeholderId);
 
     SurveyAnswer getLatest(String surveyId, String stakeholderId);
 

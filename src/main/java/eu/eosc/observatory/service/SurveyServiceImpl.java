@@ -13,6 +13,7 @@ import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.service.id.IdGenerator;
 import gr.athenarc.catalogue.ui.domain.Chapter;
+import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.domain.Survey;
 import gr.athenarc.catalogue.ui.domain.UiField;
 import gr.athenarc.catalogue.ui.service.FormsService;
@@ -55,18 +56,18 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public Browsing<Survey> getByType(FacetFilter filter, String type) {
-        filter.setResourceType("survey");
+    public Browsing<Model> getByType(FacetFilter filter, String type) {
+        filter.setResourceType("model");
         if (type != null && !"".equals(type)) {
             filter.addFilter("type", type);
         }
-        Browsing<Survey> surveyBrowsing = this.genericItemService.getResults(filter);
+        Browsing<Model> surveyBrowsing = this.genericItemService.getResults(filter);
         return surveyBrowsing;
     }
 
     @Override
-    public Browsing<Survey> getByStakeholder(FacetFilter filter, String stakeholderId) {
-        filter.setResourceType("survey");
+    public Browsing<Model> getByStakeholder(FacetFilter filter, String stakeholderId) {
+        filter.setResourceType("model");
         if (stakeholderId != null && !"".equals(stakeholderId)) {
             Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
             filter.addFilter("type", stakeholder.getType());
@@ -75,13 +76,13 @@ public class SurveyServiceImpl implements SurveyService {
 //                filter.setKeyword("chapterSubTypes=" + stakeholder.getSubType());
 //            }
         }
-        Browsing<Survey> surveyBrowsing = this.genericItemService.getResults(filter);
+        Browsing<Model> surveyBrowsing = this.genericItemService.getResults(filter);
         return surveyBrowsing;
     }
 
     @Override
     public SurveyAnswer getLatest(String surveyId, String stakeholderId) {
-        Survey survey = genericItemService.get("survey", surveyId);
+//        Model survey = genericItemService.get("model", surveyId);
         FacetFilter filter = new FacetFilter();
         filter.addFilter("surveyId", surveyId);
         filter.addFilter("stakeholderId", stakeholderId);
@@ -165,7 +166,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication) {
-        Survey survey = genericItemService.get("survey", surveyId);
+        Model survey = genericItemService.get("model", surveyId);
         logger.debug(String.format("Generating new cycle of Survey Answers for Survey: [id=%s] [name=%s]", survey.getId(), survey.getName()));
         List<SurveyAnswer> surveyAnswers = new ArrayList<>();
         FacetFilter filter = new FacetFilter();
@@ -184,11 +185,11 @@ public class SurveyServiceImpl implements SurveyService {
     @Override
     public SurveyAnswer generateStakeholderAnswer(String stakeholderId, String surveyId, Authentication authentication) {
         Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
-        Survey survey = genericItemService.get("survey", surveyId);
+        Model survey = genericItemService.get("model", surveyId);
         return generateAnswer(stakeholder, survey, authentication);
     }
 
-    private SurveyAnswer generateAnswer(Stakeholder stakeholder, Survey survey, Authentication authentication) {
+    private SurveyAnswer generateAnswer(Stakeholder stakeholder, Model survey, Authentication authentication) {
         logger.info(String.format("Generating SurveyAnswer: [surveyId=%s] [stakeholderId=%s]", survey.getId(), stakeholder.getId()));
         Metadata metadata = new Metadata(authentication);
         Date creationDate = metadata.getCreationDate();
