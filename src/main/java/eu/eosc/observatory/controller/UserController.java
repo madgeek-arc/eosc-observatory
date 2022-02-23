@@ -7,7 +7,7 @@ import eu.eosc.observatory.service.PrivacyPolicyService;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.exception.ResourceNotFoundException;
+import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +51,12 @@ public class UserController {
     @GetMapping("info")
     public ResponseEntity<UserInfo> userInfo(@ApiIgnore Authentication authentication) {
         // TODO: move body to a method
-        User user = userService.get(User.getId(authentication));
+        User user;
+        try {
+            user = userService.get(User.getId(authentication));
+        } catch (ResourceNotFoundException e) {
+            user = User.of(authentication);
+        }
         UserInfo info = new UserInfo();
         info.setUser(user);
         info.setStakeholders(new HashSet<>());
@@ -65,7 +70,7 @@ public class UserController {
     }
 
     @PatchMapping("/consent")
-    public ResponseEntity<Void> setConsent(@RequestParam(value = "consent", defaultValue = "false") boolean consent, @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
+    public ResponseEntity<Void> setConsent(@RequestParam(value = "consent", defaultValue = "false") boolean consent, @ApiIgnore Authentication authentication) {
         userService.updateUserConsent(User.getId(authentication), consent);
         return new ResponseEntity<>(HttpStatus.OK);
     }

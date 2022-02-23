@@ -108,7 +108,11 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
     public void updateUserInfo(Authentication authentication) {
         User user = User.of(authentication);
         try {
-            this.get(user.getId());
+            User existing = this.get(user.getId());
+            if (!existing.getFullname().equals(user.getFullname())) {
+                existing.setName(user.getName());
+                existing.setSurname(user.getSurname());
+            }
         } catch (ResourceNotFoundException e) {
             logger.debug(String.format("User not found! Adding User to database [user=%s]", user));
             this.add(user);
