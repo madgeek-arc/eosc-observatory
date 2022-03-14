@@ -20,22 +20,26 @@ public class SecurityService {
 
     public boolean canRead(Authentication authentication, String resourceId) {
         User user = userService.get(User.getId(authentication));
-        return user.getConsent() && permissionService.canRead(user.getId(), resourceId);
+        // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
+        return !user.getPoliciesAccepted().isEmpty() && permissionService.canRead(user.getId(), resourceId);
     }
 
     public boolean canWrite(Authentication authentication, String resourceId) {
         User user = userService.get(User.getId(authentication));
-        return user.getConsent() && permissionService.canRead(user.getId(), resourceId);
+        // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
+        return !user.getPoliciesAccepted().isEmpty() && permissionService.canRead(user.getId(), resourceId);
     }
 
     public boolean canManage(Authentication authentication, String resourceId) {
         User user = userService.get(User.getId(authentication));
-        return user.getConsent() && permissionService.canManage(user.getId(), resourceId);
+        // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
+        return !user.getPoliciesAccepted().isEmpty() && permissionService.canManage(user.getId(), resourceId);
     }
 
     public boolean hasPermission(Authentication authentication, String action, String resourceId) {
         User user = userService.get(User.getId(authentication));
         // TODO : check if user has accepted terms
-        return /*user.getConsent() &&*/ permissionService.hasPermission(user.getId(), action, resourceId);
+        // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
+        return !user.getPoliciesAccepted().isEmpty() && permissionService.hasPermission(user.getId(), action, resourceId);
     }
 }
