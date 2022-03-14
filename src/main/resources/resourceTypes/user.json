@@ -9,6 +9,13 @@
     },
     {
       "multivalued": false,
+      "name": "email",
+      "label": "E-mail",
+      "path": "$.email",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
       "name": "sub",
       "label": "Subject Id",
       "path": "$.sub",
@@ -34,13 +41,6 @@
       "label": "Full Name",
       "path": "$.fullname",
       "type": "java.lang.String"
-    },
-    {
-      "multivalued": false,
-      "name": "consent",
-      "label": "User Consent",
-      "path": "$.consent",
-      "type": "java.lang.Boolean"
     },
     {
       "multivalued": true,
