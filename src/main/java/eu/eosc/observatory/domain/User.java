@@ -19,17 +19,12 @@ public class User implements Identifiable<String> {
     private String name;
     private String surname;
     private String fullname;
-    private Boolean consent = null;
     private List<PolicyAccepted> policiesAccepted;
 
     public User() {
     }
 
     public static User of(Authentication auth) {
-        return User.of(auth, null);
-    }
-
-    public static User of(Authentication auth, Boolean consent) {
         logger.trace(String.format("Creating UserService from Authentication: %n%s", auth));
         User user = new User();
         if (auth == null) {
@@ -51,7 +46,6 @@ public class User implements Identifiable<String> {
         } else {
             throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
         }
-        user.consent = consent;
         logger.debug(String.format("UserService from Authentication: %s", user));
         return user;
     }
@@ -94,14 +88,6 @@ public class User implements Identifiable<String> {
 
     public void setFullname(String fullname) {
         this.fullname = fullname;
-    }
-
-    public Boolean getConsent() {
-        return consent;
-    }
-
-    public void setConsent(Boolean consent) {
-        this.consent = consent;
     }
 
     public List<PolicyAccepted> getPoliciesAccepted() {
@@ -147,7 +133,7 @@ public class User implements Identifiable<String> {
                 ", name='" + name + '\'' +
                 ", surname='" + surname + '\'' +
                 ", fullname='" + fullname + '\'' +
-                ", consent=" + consent +
+                ", policiesAccepted=" + policiesAccepted +
                 '}';
     }
 }

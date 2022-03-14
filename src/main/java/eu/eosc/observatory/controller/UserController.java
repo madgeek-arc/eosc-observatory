@@ -1,9 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.*;
-import eu.eosc.observatory.dto.UserPrivacyPolicyInfo;
 import eu.eosc.observatory.service.CrudItemService;
-import eu.eosc.observatory.service.PrivacyPolicyService;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -67,12 +65,6 @@ public class UserController {
         info.getCoordinators().addAll(getCoordinatorsWithFilter("members", user.getId()));
 
         return new ResponseEntity<>(info, HttpStatus.OK);
-    }
-
-    @PatchMapping("/consent")
-    public ResponseEntity<Void> setConsent(@RequestParam(value = "consent", defaultValue = "false") boolean consent, @ApiIgnore Authentication authentication) {
-        userService.updateUserConsent(User.getId(authentication), consent);
-        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PatchMapping("policies/{id}")

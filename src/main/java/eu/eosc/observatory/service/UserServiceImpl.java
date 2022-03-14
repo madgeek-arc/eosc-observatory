@@ -61,14 +61,6 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
     }
 
     @Override
-    public void updateUserConsent(String id, boolean consent) {
-        logger.info(String.format("Updating user consent: [userId=%s] [consent=%s]", id, consent));
-        User user = get(id);
-        user.setConsent(consent);
-        update(user.getId(), user);
-    }
-
-    @Override
     public User acceptPrivacyPolicy(String policyId, Authentication authentication) {
         User user = User.of(authentication);
 
