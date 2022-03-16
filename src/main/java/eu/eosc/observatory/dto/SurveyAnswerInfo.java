@@ -2,7 +2,7 @@ package eu.eosc.observatory.dto;
 
 import eu.eosc.observatory.domain.HistoryEntry;
 import eu.eosc.observatory.domain.SurveyAnswer;
-import gr.athenarc.catalogue.ui.domain.Survey;
+import gr.athenarc.catalogue.ui.domain.Model;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,7 +22,7 @@ public class SurveyAnswerInfo {
 
     public SurveyAnswerInfo() {}
 
-    public static SurveyAnswerInfo composeFrom(SurveyAnswer answer, Survey survey, StakeholderInfo stakeholderInfo) {
+    public static SurveyAnswerInfo composeFrom(SurveyAnswer answer, Model survey, StakeholderInfo stakeholderInfo) {
         SurveyAnswerInfo info = new SurveyAnswerInfo();
         info.setSurveyAnswerId(answer.getId());
         info.setSurveyId(survey.getId());

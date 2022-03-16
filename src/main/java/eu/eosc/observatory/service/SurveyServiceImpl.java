@@ -226,6 +226,32 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override // TODO: optimize
+    public List<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter) {
+        FacetFilter modelFilter = new FacetFilter();
+        modelFilter.setQuantity(10000);
+        modelFilter.setResourceType("model");
+        modelFilter.addFilter("type", type);
+        Browsing<Model> surveys = genericItemService.getResults(modelFilter);
+
+        List<SurveyAnswerInfo> results = new ArrayList<>();
+
+        for (Model model : surveys.getResults()) {
+            Set<SurveyAnswer> surveyAnswers = surveyAnswerCrudService.getWithFilter("surveyId", model.getId());
+            Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
+            surveyChapterFields.putIfAbsent(model.getId(), formsService.getChapterFieldsMap(model.getId()));
+            for (SurveyAnswer answer : surveyAnswers) {
+                logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
+
+                Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
+                SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, model, StakeholderInfo.of(stakeholder));
+                setProgress(info, answer, surveyChapterFields.get(model.getId()));
+                results.add(info);
+            }
+        }
+        return results;
+    }
+
+    @Override // TODO: optimize
     public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter) {
         filter.setResourceType("survey_answer");
         Browsing<SurveyAnswer> surveyAnswerBrowsing = genericItemService.getResults(filter);
@@ -238,7 +264,7 @@ public class SurveyServiceImpl implements SurveyService {
         Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
         for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
             logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
-            Survey survey = genericItemService.get("survey", answer.getSurveyId());
+            Model survey = genericItemService.get("model", answer.getSurveyId());
             if (!surveyChapterFields.containsKey(survey.getId())) {
                 surveyChapterFields.put(survey.getId(), formsService.getChapterFieldsMap(survey.getId()));
             }
