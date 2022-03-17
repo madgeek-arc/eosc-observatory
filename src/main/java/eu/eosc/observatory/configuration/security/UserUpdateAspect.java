@@ -1,6 +1,7 @@
 package eu.eosc.observatory.configuration.security;
 
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.UserService;
 import org.apache.log4j.LogManager;
@@ -21,11 +22,15 @@ public class UserUpdateAspect {
 
     private final UserService userService;
     private final StakeholderService stakeholderService;
+    private final CoordinatorService coordinatorService;
 
     @Autowired
-    public UserUpdateAspect(UserService userService, StakeholderService stakeholderService) {
+    public UserUpdateAspect(UserService userService,
+                            StakeholderService stakeholderService,
+                            CoordinatorService coordinatorService) {
         this.userService = userService;
         this.stakeholderService = stakeholderService;
+        this.coordinatorService = coordinatorService;
     }
 
     @Before("execution(* eu.eosc.observatory.configuration.security.AuthSuccessHandler.onAuthenticationSuccess(..))")
@@ -36,7 +41,8 @@ public class UserUpdateAspect {
         try {
             User user = User.of(authentication);
             if (!stakeholderService.getWithFilter("managers", user.getId()).isEmpty()
-                || !stakeholderService.getWithFilter("contributors", user.getId()).isEmpty()) {
+                || !stakeholderService.getWithFilter("contributors", user.getId()).isEmpty()
+                || !coordinatorService.getWithFilter("members", user.getId()).isEmpty()) {
                 userService.updateUserInfo(authentication);
             }
         } catch (RuntimeException e) {
