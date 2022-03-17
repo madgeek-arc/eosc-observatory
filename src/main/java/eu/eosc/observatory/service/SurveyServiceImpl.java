@@ -200,6 +200,7 @@ public class SurveyServiceImpl implements SurveyService {
 
         surveyAnswer.setStakeholderId(stakeholder.getId());
         surveyAnswer.setSurveyId(survey.getId());
+        surveyAnswer.setType(survey.getType());
 
         // TODO: move this inside surveyAnswer constructor?
         for (Chapter chapter : survey.getChapters()) {
@@ -226,29 +227,54 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override // TODO: optimize
-    public List<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter) {
-        FacetFilter modelFilter = new FacetFilter();
-        modelFilter.setQuantity(10000);
-        modelFilter.setResourceType("model");
-        modelFilter.addFilter("type", type);
-        Browsing<Model> surveys = genericItemService.getResults(modelFilter);
+    public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter) {
+//        FacetFilter modelFilter = new FacetFilter();
+//        modelFilter.setQuantity(10000);
+//        modelFilter.setResourceType("model");
+//        modelFilter.addFilter("type", type);
+//        Browsing<Model> surveys = genericItemService.getResults(modelFilter);
+//
+//        List<SurveyAnswerInfo> results = new ArrayList<>();
+//
+//        for (Model model : surveys.getResults()) {
+//            Set<SurveyAnswer> surveyAnswers = surveyAnswerCrudService.getWithFilter("surveyId", model.getId());
+//            Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
+//            surveyChapterFields.putIfAbsent(model.getId(), formsService.getChapterFieldsMap(model.getId()));
+//            for (SurveyAnswer answer : surveyAnswers) {
+//                logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
+//
+//                Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
+//                SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, model, StakeholderInfo.of(stakeholder));
+//                setProgress(info, answer, surveyChapterFields.get(model.getId()));
+//                results.add(info);
+//            }
+//        } // TODO: remove
 
+        filter.setResourceType("survey_answer");
+        filter.addFilter("type", type);
+        Browsing<SurveyAnswer> surveyAnswerBrowsing = genericItemService.getResults(filter);
+        Browsing<SurveyAnswerInfo> surveyAnswerInfoBrowsing = new Browsing<>();
+        surveyAnswerInfoBrowsing.setFrom(surveyAnswerBrowsing.getFrom());
+        surveyAnswerInfoBrowsing.setTo(surveyAnswerBrowsing.getTo());
+        surveyAnswerInfoBrowsing.setTotal(surveyAnswerBrowsing.getTotal());
+        surveyAnswerInfoBrowsing.setFacets(surveyAnswerBrowsing.getFacets());
         List<SurveyAnswerInfo> results = new ArrayList<>();
-
-        for (Model model : surveys.getResults()) {
-            Set<SurveyAnswer> surveyAnswers = surveyAnswerCrudService.getWithFilter("surveyId", model.getId());
-            Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
-            surveyChapterFields.putIfAbsent(model.getId(), formsService.getChapterFieldsMap(model.getId()));
-            for (SurveyAnswer answer : surveyAnswers) {
-                logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
-
-                Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
-                SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, model, StakeholderInfo.of(stakeholder));
-                setProgress(info, answer, surveyChapterFields.get(model.getId()));
-                results.add(info);
+        Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
+        for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
+            logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
+            Model survey = genericItemService.get("model", answer.getSurveyId());
+            if (!surveyChapterFields.containsKey(survey.getId())) {
+                surveyChapterFields.put(survey.getId(), formsService.getChapterFieldsMap(survey.getId()));
             }
+            Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
+            SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
+            setProgress(info, answer, surveyChapterFields.get(survey.getId()));
+            results.add(info);
         }
-        return results;
+        surveyAnswerInfoBrowsing.setResults(results);
+        return surveyAnswerInfoBrowsing;
+
+//        return results;
     }
 
     @Override // TODO: optimize
@@ -296,12 +322,12 @@ public class SurveyServiceImpl implements SurveyService {
                     required.addToTotal(1);
                 }
 
-                if (getValueFromAnswer(field, chapterAnswer) != null) {
-                    total.addToCurrent(1);
-                    if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-                        required.addToCurrent(1);
-                    }
-                }
+//                if (getValueFromAnswer(field, chapterAnswer) != null) { // FIXME: not working...
+//                    total.addToCurrent(1);
+//                    if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
+//                        required.addToCurrent(1);
+//                    }
+//                }
 
             }
         }

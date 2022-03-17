@@ -48,7 +48,7 @@ public interface SurveyService {
 
     Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter);
 
-    List<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter);
+    Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter);
 
     String generateChapterAnswerId();
 

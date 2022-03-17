@@ -8,6 +8,7 @@ public class PrivacyPolicy implements Identifiable<String> {
 
     String id;
     String type;
+    String filename;
     Date activationDate;
 
     public PrivacyPolicy() {}
@@ -28,6 +29,14 @@ public class PrivacyPolicy implements Identifiable<String> {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public String getFilename() {
+        return filename;
+    }
+
+    public void setFilename(String filename) {
+        this.filename = filename;
     }
 
     public Date getActivationDate() {

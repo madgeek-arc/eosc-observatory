@@ -10,6 +10,7 @@ public class SurveyAnswer implements Identifiable<String> {
     private String id;
     private String surveyId;
     private String stakeholderId;
+    private String type;
     private Map<String, ChapterAnswer> chapterAnswers;
     private Metadata metadata;
     private History history;
@@ -46,6 +47,14 @@ public class SurveyAnswer implements Identifiable<String> {
 
     public void setStakeholderId(String stakeholderId) {
         this.stakeholderId = stakeholderId;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public Map<String, ChapterAnswer> getChapterAnswers() {

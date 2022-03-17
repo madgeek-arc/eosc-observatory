@@ -123,7 +123,7 @@ public class CoordinatorController {
             @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
     })
     @GetMapping("{id}/surveys")
-    public ResponseEntity<List<SurveyAnswerInfo>> getSurveyInfo(@PathVariable("id") String coordinatorId,
+    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@PathVariable("id") String coordinatorId,
                                                                     @ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
         Coordinator coordinator = coordinatorService.get(coordinatorId);
