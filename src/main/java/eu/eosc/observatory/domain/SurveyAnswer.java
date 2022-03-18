@@ -96,4 +96,19 @@ public class SurveyAnswer implements Identifiable<String> {
     public void setPublished(boolean published) {
         this.published = published;
     }
+
+    @Override
+    public String toString() {
+        return "SurveyAnswer{" +
+                "id='" + id + '\'' +
+                ", surveyId='" + surveyId + '\'' +
+                ", stakeholderId='" + stakeholderId + '\'' +
+                ", type='" + type + '\'' +
+                ", chapterAnswers=" + chapterAnswers +
+                ", metadata=" + metadata +
+                ", history=" + history +
+                ", validated=" + validated +
+                ", published=" + published +
+                '}';
+    }
 }

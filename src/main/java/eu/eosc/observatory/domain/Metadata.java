@@ -52,4 +52,14 @@ public class Metadata {
     public void setModifiedBy(String modifiedBy) {
         this.modifiedBy = modifiedBy;
     }
+
+    @Override
+    public String toString() {
+        return "Metadata{" +
+                "creationDate=" + creationDate +
+                ", createdBy='" + createdBy + '\'' +
+                ", modificationDate=" + modificationDate +
+                ", modifiedBy='" + modifiedBy + '\'' +
+                '}';
+    }
 }

@@ -53,4 +53,13 @@ public class ChapterAnswer implements Identifiable<String> {
     public void setMetadata(Metadata metadata) {
         this.metadata = metadata;
     }
+
+    @Override
+    public String toString() {
+        return "ChapterAnswer{" +
+                "chapterId='" + chapterId + '\'' +
+                ", answer=" + answer +
+                ", metadata=" + metadata +
+                '}';
+    }
 }
