@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
+import java.util.List;
 
 @RestController
 @RequestMapping("csv")
@@ -33,5 +34,11 @@ public class CsvController {
         filename.append(".tsv");
         response.setHeader("Content-disposition", "attachment; filename=" + filename);
         return ResponseEntity.ok(csvConverter.convertToCSV(modelId, includeUsers).getBytes());
+    }
+
+    @PostMapping(value = "/import/answers/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<List<?>> importSurveysFromCsv(@PathVariable("id") String modelId, @RequestBody String data) {
+        return ResponseEntity.ok(csvConverter.ingestFromCSV(modelId, data));
     }
 }
