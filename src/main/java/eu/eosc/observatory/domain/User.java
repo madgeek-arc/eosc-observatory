@@ -46,6 +46,9 @@ public class User implements Identifiable<String> {
         } else {
             throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
         }
+        if (user.getEmail() != null) {
+            user.setEmail(user.getEmail().toLowerCase());
+        }
         logger.debug(String.format("UserService from Authentication: %s", user));
         return user;
     }
@@ -63,7 +66,7 @@ public class User implements Identifiable<String> {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = email.toLowerCase();
     }
 
     public String getName() {

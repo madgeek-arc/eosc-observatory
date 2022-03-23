@@ -5,6 +5,7 @@ import eu.eosc.observatory.service.Identifiable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class Stakeholder implements Identifiable<String> {
 
@@ -84,7 +85,10 @@ public class Stakeholder implements Identifiable<String> {
     }
 
     public void setManagers(List<String> managers) {
-        this.managers = managers;
+        this.managers = managers
+                .stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
     }
 
     public List<String> getContributors() {
@@ -92,7 +96,10 @@ public class Stakeholder implements Identifiable<String> {
     }
 
     public void setContributors(List<String> contributors) {
-        this.contributors = contributors;
+        this.contributors = contributors
+                .stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
     }
 
     public enum StakeholderType {

@@ -1,4 +1,4 @@
-package eu.eosc.observatory.configuration.security;
+package eu.eosc.observatory.aspects;
 
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.service.CoordinatorService;

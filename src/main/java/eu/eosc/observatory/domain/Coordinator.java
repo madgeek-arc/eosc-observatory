@@ -3,6 +3,7 @@ package eu.eosc.observatory.domain;
 import eu.eosc.observatory.service.Identifiable;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Coordinator implements Identifiable<String> {
 
@@ -11,9 +12,7 @@ public class Coordinator implements Identifiable<String> {
     String type;
     List<String> members;
 
-    public Coordinator() {
-
-    }
+    public Coordinator() {}
 
     @Override
     public String getId() {
@@ -46,6 +45,9 @@ public class Coordinator implements Identifiable<String> {
     }
 
     public void setMembers(List<String> members) {
-        this.members = members;
+        this.members = members
+                .stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
     }
 }
