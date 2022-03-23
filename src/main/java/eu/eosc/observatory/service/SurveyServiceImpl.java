@@ -216,40 +216,15 @@ public class SurveyServiceImpl implements SurveyService {
             chapterAnswer.setChapterId(chapter.getId());
 
             surveyAnswer.getChapterAnswers().put(chapterAnswer.getId(), chapterAnswer);
-            permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(chapterAnswer.getId()));
-            permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(chapterAnswer.getId()));
         }
 
         surveyAnswer = surveyAnswerCrudService.add(surveyAnswer);
-        permissionService.addManagers(stakeholder.getManagers(), Collections.singletonList(surveyAnswer.getId()));
-        permissionService.addContributors(stakeholder.getContributors(), Collections.singletonList(surveyAnswer.getId()));
+
         return surveyAnswer;
     }
 
     @Override // TODO: optimize
     public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter) {
-//        FacetFilter modelFilter = new FacetFilter();
-//        modelFilter.setQuantity(10000);
-//        modelFilter.setResourceType("model");
-//        modelFilter.addFilter("type", type);
-//        Browsing<Model> surveys = genericItemService.getResults(modelFilter);
-//
-//        List<SurveyAnswerInfo> results = new ArrayList<>();
-//
-//        for (Model model : surveys.getResults()) {
-//            Set<SurveyAnswer> surveyAnswers = surveyAnswerCrudService.getWithFilter("surveyId", model.getId());
-//            Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
-//            surveyChapterFields.putIfAbsent(model.getId(), formsService.getChapterFieldsMap(model.getId()));
-//            for (SurveyAnswer answer : surveyAnswers) {
-//                logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
-//
-//                Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
-//                SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, model, StakeholderInfo.of(stakeholder));
-//                setProgress(info, answer, surveyChapterFields.get(model.getId()));
-//                results.add(info);
-//            }
-//        } // TODO: remove
-
         filter.setResourceType("survey_answer");
         filter.addFilter("type", type);
         Browsing<SurveyAnswer> surveyAnswerBrowsing = genericItemService.getResults(filter);
@@ -273,8 +248,6 @@ public class SurveyServiceImpl implements SurveyService {
         }
         surveyAnswerInfoBrowsing.setResults(results);
         return surveyAnswerInfoBrowsing;
-
-//        return results;
     }
 
     @Override // TODO: optimize

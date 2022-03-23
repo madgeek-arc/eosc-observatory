@@ -1,4 +1,4 @@
-package eu.eosc.observatory.aspects;
+package eu.eosc.observatory.aspect;
 
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.service.CoordinatorService;

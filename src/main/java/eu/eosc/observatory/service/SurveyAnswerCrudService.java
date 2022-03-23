@@ -37,4 +37,14 @@ public class SurveyAnswerCrudService extends AbstractCrudItemService<SurveyAnswe
     public String getResourceType() {
         return "survey_answer";
     }
+
+    @Override // only exists to get caught from permissions aspect
+    public SurveyAnswer add(SurveyAnswer surveyAnswer) {
+        return super.add(surveyAnswer);
+    }
+
+    @Override // only exists to get caught from permissions aspect
+    public SurveyAnswer delete(String id) {
+        return super.delete(id);
+    }
 }
