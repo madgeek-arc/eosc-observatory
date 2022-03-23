@@ -13,6 +13,7 @@ import org.json.simple.JSONObject;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SurveyService {
 
@@ -52,5 +53,5 @@ public interface SurveyService {
 
     String generateChapterAnswerId();
 
-    Object getValueFromAnswer(UiField field, JSONObject answer);
+    Object getValueFromAnswer(UiField field, JSONObject answer, Map<String, UiField> allFields);
 }

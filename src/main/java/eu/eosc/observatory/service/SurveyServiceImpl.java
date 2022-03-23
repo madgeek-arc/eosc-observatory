@@ -12,10 +12,7 @@ import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.service.id.IdGenerator;
-import gr.athenarc.catalogue.ui.domain.Chapter;
-import gr.athenarc.catalogue.ui.domain.Model;
-import gr.athenarc.catalogue.ui.domain.Survey;
-import gr.athenarc.catalogue.ui.domain.UiField;
+import gr.athenarc.catalogue.ui.domain.*;
 import gr.athenarc.catalogue.ui.service.FormsService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -27,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class SurveyServiceImpl implements SurveyService {
@@ -276,8 +274,44 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswerInfoBrowsing;
     }
 
+    private List<UiField> getFieldsRecursive(List<UiField> fields) {
+        List<UiField> allFields = new ArrayList<>();
+        for (UiField field : fields) {
+            allFields.add(field);
+            if (field.getSubFields() != null) {
+                allFields.addAll(getFieldsRecursive(field.getSubFields()));
+            }
+        }
+        return allFields;
+    }
+
+    private Map<String, UiField> getAllFields(String surveyId) {
+        Map<String, UiField> allFieldsMap = new TreeMap<>();
+        Model survey = formsService.get(surveyId);
+        List<UiField> allFields = survey.getChapters()
+                .stream()
+                .map(chapter -> chapter.getSections()
+                        .stream()
+                        .map(Group::getFields)
+                        .collect(Collectors.toList())
+                        .stream()
+                        .flatMap(Collection::stream)
+                        .collect(Collectors.toList()))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+
+        allFields = getFieldsRecursive(allFields);
+
+        for (UiField field : allFields) {
+            allFieldsMap.put(field.getId(), field);
+        }
+        return allFieldsMap;
+    }
+
     // TODO: optimize
     private void setProgress(SurveyAnswerInfo info, SurveyAnswer answer, Map<String, List<UiField>> chapterFieldsMap) {
+        Map<String, UiField> allFieldsMap = getAllFields(answer.getSurveyId());
+
         Progress required = new Progress();
         Progress total = new Progress();
         Map<String, JSONObject> chapterAnswers = new HashMap<>();
@@ -286,7 +320,7 @@ public class SurveyServiceImpl implements SurveyService {
         }
         for (Map.Entry<String, List<UiField>> chapter : chapterFieldsMap.entrySet()) {
             JSONObject chapterAnswer = chapterAnswers.get(chapter.getKey());
-            for (UiField field : chapter.getValue()) {
+            for (UiField field : getFieldsRecursive(chapter.getValue())) {
                 if (field.getTypeInfo().getType().equals("composite") || Boolean.FALSE.equals(field.getForm().getDisplay().getVisible())) {
                     continue;
                 }
@@ -295,12 +329,12 @@ public class SurveyServiceImpl implements SurveyService {
                     required.addToTotal(1);
                 }
 
-//                if (getValueFromAnswer(field, chapterAnswer) != null) { // FIXME: not working...
-//                    total.addToCurrent(1);
-//                    if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-//                        required.addToCurrent(1);
-//                    }
-//                }
+                if (getValueFromAnswer(field, chapterAnswer, allFieldsMap) != null) { // FIXME: not working...
+                    total.addToCurrent(1);
+                    if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
+                        required.addToCurrent(1);
+                    }
+                }
 
             }
         }
@@ -310,14 +344,15 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public Object getValueFromAnswer(UiField field, JSONObject answer) {
+    public Object getValueFromAnswer(UiField field, JSONObject answer, Map<String, UiField> allFields) {
         if (answer == null) {
             return null;
         }
         Deque<UiField> fields = new ArrayDeque<>();
-        while (field.getParentId() != null) {
+        while (field != null && field.getParentId() != null) {
             fields.push(field);
-            field = formsService.getField(field.getParentId());
+//            field = formsService.getField(field.getParentId());
+            field = allFields.get(field.getParentId()); // FIXME: REPLACE
         }
 
         Object object = JSONValue.parse(answer.toJSONString());
