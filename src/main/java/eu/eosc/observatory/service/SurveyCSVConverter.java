@@ -1,9 +1,6 @@
 package eu.eosc.observatory.service;
 
-import eu.eosc.observatory.domain.ChapterAnswer;
-import eu.eosc.observatory.domain.HistoryEntry;
-import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.domain.SurveyAnswer;
+import eu.eosc.observatory.domain.*;
 import gr.athenarc.catalogue.service.id.IdGenerator;
 import gr.athenarc.catalogue.ui.domain.Chapter;
 import gr.athenarc.catalogue.ui.domain.Group;
@@ -17,6 +14,9 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -111,6 +111,13 @@ public class SurveyCSVConverter implements CSVConverter {
             SurveyAnswer surveyAnswer = new SurveyAnswer();
             surveyAnswer.setSurveyId(modelId);
             surveyAnswer.setType(survey.getType());
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            Metadata metadata = new Metadata(authentication);
+            Date creationDate = metadata.getCreationDate();
+            surveyAnswer.setMetadata(metadata);
+            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
+
+
             Map<String, ChapterAnswer> chapterAnswerMap = new HashMap<>();
             surveyAnswer.setChapterAnswers(chapterAnswerMap);
 
@@ -122,7 +129,8 @@ public class SurveyCSVConverter implements CSVConverter {
                     keyToFields.put(getKey(fieldsToLeaf), fieldsToLeaf);
                 }
 //                ChapterAnswer chapterAnswer = createChapterAnswer(entry.getKey(), headers, csvData[i]); // FIXME: complete method and replace body below, if able
-                ChapterAnswer chapterAnswer = new ChapterAnswer();
+                ChapterAnswer chapterAnswer = new ChapterAnswer(idGenerator.createId("ca-"), entry.getKey(), metadata);
+                surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, entry.getKey(), History.HistoryAction.CREATED);
                 chapterAnswer.setChapterId(entry.getKey());
 
                 for (int j = 0; j < csvData[i].length; j++) { // for each column (csv headers)
@@ -153,16 +161,15 @@ public class SurveyCSVConverter implements CSVConverter {
                         }
                     }
                 }
-                if (!chapterAnswer.getAnswer().containsKey("id")) {
-                    chapterAnswer.getAnswer().put("id", idGenerator.createId("ca-"));
-                }
                 chapterAnswerMap.put(chapterAnswer.getId(), chapterAnswer);
             }
 //            surveyAnswer = surveyAnswerCrudService.add(surveyAnswer);
             surveyAnswers.add(surveyAnswer);
             logger.info("Importing survey answer: " + surveyAnswer);
+
             // TODO: create metadata and history entries
-            // TODO: create manager/contributor and coordinator permissions
+            surveyAnswer.setMetadata(new Metadata());
+
         }
         return surveyAnswers;
     }
@@ -172,12 +179,12 @@ public class SurveyCSVConverter implements CSVConverter {
         StringBuilder csv = new StringBuilder();
         Model model = modelService.get(modelId);
         Map<String, List<List<UiField>>> chapterFields = getChapterFields(model);
-        Set<String> allKeys = new TreeSet<>();
-        Map<String, List<UiField>> keyToFields = new TreeMap<>();
+        List<String> allKeys = new LinkedList<>();
         for (Map.Entry<String, List<List<UiField>>> entry : chapterFields.entrySet()) {
-            allKeys.addAll(getKeys(entry.getValue()));
+            List<List<UiField>> fieldChainList = sortFieldChainList(entry.getValue());
+            allKeys.addAll(getKeys(fieldChainList));
         }
-//        Collections.sort(allKeys);
+
         csv.append(String.join(DELIMITER_PRIMARY, "Stakeholder Id", "Stakeholder Name"));
         csv.append(DELIMITER_PRIMARY);
         if (includeSensitiveData) {
@@ -218,12 +225,24 @@ public class SurveyCSVConverter implements CSVConverter {
         return csv.toString();
     }
 
+    private List<UiField> sortFieldList(List<UiField> fieldList) {
+        Comparator<UiField> orderComparator = Comparator.comparing(f -> f.getForm().getDisplay().getOrder());
+        return fieldList.stream().sorted(orderComparator).collect(Collectors.toList());
+    }
+
+    private List<List<UiField>> sortFieldChainList(List<List<UiField>> fieldChainList) {
+        Comparator<List<UiField>> orderComparator = Comparator.comparing(f -> f.get(f.size()-1).getForm().getDisplay().getOrder());
+        return fieldChainList.stream().filter(fields -> !fields.isEmpty()).sorted(orderComparator).collect(Collectors.toList());
+    }
+
     private Map<String, List<List<UiField>>> getChapterFields(Model model) {
-        Map<String, List<List<UiField>>> chapterFields = new LinkedHashMap<>();
+        Map<String, List<List<UiField>>> chapterFields = new TreeMap<>();
         for (Chapter chapter : model.getChapters()) {
+
             List<List<UiField>> fields = new LinkedList<>();
             for (Group section : chapter.getSections()) {
-                for (UiField field : section.getFields()) {
+                List<UiField> sortedFields = sortFieldList(section.getFields());
+                for (UiField field : sortedFields) {
                     fields.addAll(fieldsToLeaf(null, field));
                 }
             }
@@ -280,7 +299,11 @@ public class SurveyCSVConverter implements CSVConverter {
         String key = "";
 
         for (UiField field : fieldsToLeaf) {
-            key = String.format("%s%s%s", key, JOINING_SYMBOL, field.getLabel().getText());
+            String label = field.getLabel().getText();
+            if (label == null) {
+                label = field.getName();
+            }
+            key = String.format("%s%s%s", key, JOINING_SYMBOL, label);
         }
 
         if (key.startsWith(JOINING_SYMBOL)) {
