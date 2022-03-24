@@ -85,7 +85,7 @@ public class Stakeholder implements Identifiable<String> {
     }
 
     public void setManagers(List<String> managers) {
-        this.managers = managers
+        this.managers = managers == null ? null : managers
                 .stream()
                 .map(String::toLowerCase)
                 .collect(Collectors.toList());
@@ -96,7 +96,7 @@ public class Stakeholder implements Identifiable<String> {
     }
 
     public void setContributors(List<String> contributors) {
-        this.contributors = contributors
+        this.contributors = contributors == null ? null : contributors
                 .stream()
                 .map(String::toLowerCase)
                 .collect(Collectors.toList());
