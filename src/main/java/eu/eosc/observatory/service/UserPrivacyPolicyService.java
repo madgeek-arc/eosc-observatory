@@ -11,6 +11,7 @@ import eu.openminted.registry.core.service.SearchService;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 
@@ -26,7 +27,7 @@ public class UserPrivacyPolicyService extends AbstractCrudItemService<PrivacyPol
                                     ResourceService resourceService,
                                     SearchService searchService,
                                     ParserService parserService,
-                                    UserService userService) {
+                                    @Lazy UserService userService) {
         super(resourceTypeService, resourceService, searchService, parserService);
         this.userService = userService;
     }

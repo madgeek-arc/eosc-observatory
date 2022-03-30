@@ -27,7 +27,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("user")
+@RequestMapping("")
 public class UserController {
 
     private static final Logger logger = LogManager.getLogger(UserController.class);
@@ -46,31 +46,31 @@ public class UserController {
     }
 
     @ApiIgnore
-    @GetMapping("/oidc-principal")
+    @GetMapping("user/oidc-principal")
     public OidcUser getOidcUserPrincipal(@AuthenticationPrincipal OidcUser principal) {
         return principal;
     }
 
-    @GetMapping("info")
+    @GetMapping("user/info")
     public ResponseEntity<UserInfo> userInfo(@ApiIgnore Authentication authentication) {
         UserInfo userInfo = getUserInfo(User.of(authentication).getId());
         return new ResponseEntity<>(userInfo, HttpStatus.OK);
     }
 
-    @GetMapping("info/{id}")
+    @GetMapping("users/{id}/info")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<UserInfo> userInfo(@PathVariable("id") String userId) {
         return new ResponseEntity<>(getUserInfo(userId), HttpStatus.OK);
     }
 
-    @GetMapping("{id}")
+    @GetMapping("users/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<User> getUser(@PathVariable("id") String userId) {
         User user = userService.get(userId);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
-    @PutMapping("{id}")
+    @PutMapping("users/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<User> updateUser(@PathVariable("id") String userId, @RequestBody User user) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
         user = userService.update(userId, user);
@@ -84,7 +84,7 @@ public class UserController {
             @ApiImplicitParam(name = "order", value = "asc / desc", dataTypeClass = String.class, paramType = "query"),
             @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
     })
-    @GetMapping()
+    @GetMapping("users")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Browsing<User>> getUsers(@ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
@@ -92,13 +92,13 @@ public class UserController {
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
-    @PatchMapping("policies/{id}")
+    @PatchMapping("user/policies/{id}")
     public ResponseEntity<User> acceptPolicy(@PathVariable(value = "id") String id, @ApiIgnore Authentication authentication) {
         User user = userService.acceptPrivacyPolicy(id, authentication);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
-    @DeleteMapping("{id}")
+    @DeleteMapping("users/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<User> delete(@PathVariable("id") String userId) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
         User user = userService.delete(userId);

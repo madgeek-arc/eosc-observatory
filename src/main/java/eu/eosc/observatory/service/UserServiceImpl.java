@@ -3,8 +3,6 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.PolicyAccepted;
 import eu.eosc.observatory.domain.PrivacyPolicy;
 import eu.eosc.observatory.domain.User;
-import eu.eosc.observatory.domain.UserInfo;
-import eu.eosc.observatory.dto.UserPrivacyPolicyInfo;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.service.ParserService;
@@ -20,23 +18,22 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 
 @Service
 public class UserServiceImpl extends AbstractCrudItemService<User> implements UserService {
 
     private static final Logger logger = LogManager.getLogger(UserServiceImpl.class);
 
-//    private final PrivacyPolicyService privacyPolicyService;
+    private final PrivacyPolicyService privacyPolicyService;
 
     @Autowired
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
                               ResourceService resourceService,
                               SearchService searchService,
-                              ParserService parserService
-                              /*PrivacyPolicyService privacyPolicyService*/) {
+                              ParserService parserService,
+                              PrivacyPolicyService privacyPolicyService) {
         super(resourceTypeService, resourceService, searchService, parserService);
-//        this.privacyPolicyService = privacyPolicyService;
+        this.privacyPolicyService = privacyPolicyService;
     }
 
     @Override
@@ -65,9 +62,10 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
     @Override
     public User acceptPrivacyPolicy(String policyId, Authentication authentication) {
         User user = User.of(authentication);
+        PrivacyPolicy policy = privacyPolicyService.get(policyId);
 
         FacetFilter filter = new FacetFilter();
-        filter.addFilter("policyId", policyId);
+        filter.addFilter("policyId", policy.getId());
         filter.addFilter("user_id", User.of(authentication).getId());
         Browsing<User> userBrowsing = getAll(filter);
         if (userBrowsing.getTotal() == 1) {
@@ -83,7 +81,7 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
             if (user.getPoliciesAccepted() == null) {
                 user.setPoliciesAccepted(new ArrayList<>());
             }
-            user.getPoliciesAccepted().add(new PolicyAccepted(policyId, new Date().getTime()));
+            user.getPoliciesAccepted().add(new PolicyAccepted(policy.getId(), new Date().getTime()));
             user = update(user.getId(), user);
         }
 
