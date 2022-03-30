@@ -10,7 +10,7 @@ public interface UserService extends CrudItemService<User> {
 
     User acceptPrivacyPolicy(String policyId, Authentication authentication);
 
-    void updateUserInfo(Authentication authentication);
+    void updateUserDetails(Authentication authentication);
 
     void purge(String id) throws ResourceNotFoundException;
 }

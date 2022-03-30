@@ -3,6 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.PolicyAccepted;
 import eu.eosc.observatory.domain.PrivacyPolicy;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.domain.UserInfo;
 import eu.eosc.observatory.dto.UserPrivacyPolicyInfo;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 
 @Service
 public class UserServiceImpl extends AbstractCrudItemService<User> implements UserService {
@@ -71,14 +73,6 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
         if (userBrowsing.getTotal() == 1) {
             //
             user = userBrowsing.getResults().get(0);
-//            PrivacyPolicy policy = privacyPolicyService.get(policyId);
-//            for (PolicyAccepted policyAccepted : user.getPoliciesAccepted()) {
-//                if (policyAccepted.getId().equals(policyId)) {
-//                    UserPrivacyPolicyInfo policyInfo = new UserPrivacyPolicyInfo();
-//                    policyInfo.setPrivacyPolicy(policy);
-//                    policyInfo.setAccepted(true);
-//                }
-//            }
 
         } else if (userBrowsing.getTotal() > 1) {
             logger.error(String.format("More than one user with [id=%s] was found.", user.getId()));
@@ -97,7 +91,7 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
     }
 
     @Override
-    public void updateUserInfo(Authentication authentication) {
+    public void updateUserDetails(Authentication authentication) {
         User user = User.of(authentication);
         try {
             User existing = this.get(user.getId());

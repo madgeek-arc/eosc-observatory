@@ -10,7 +10,6 @@ import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.controller.GenericItemController;
 import gr.athenarc.catalogue.ui.controller.FormsController;
 import gr.athenarc.catalogue.ui.domain.Model;
-import gr.athenarc.catalogue.ui.domain.Survey;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.apache.logging.log4j.LogManager;
@@ -151,20 +150,20 @@ public class SurveyController {
     }
 
     @GetMapping("answers/latest")
-    @PostAuthorize("hasPermission(returnObject, 'read')")
+    @PostAuthorize("hasPermission(returnObject, 'read') or hasCoordinatorAccess(returnObject)")
     public ResponseEntity<SurveyAnswer> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
         SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
         return new ResponseEntity<>(surveyAnswer, HttpStatus.OK);
     }
 
     @GetMapping("answers/{id}")
-    @PreAuthorize("hasPermission(#id, 'read')")
+    @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id)")
     public ResponseEntity<SurveyAnswer> getSurveyAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
         return new ResponseEntity<>(surveyAnswerService.get(id), HttpStatus.OK);
     }
 
     @GetMapping("answers/{id}/answer")
-    @PreAuthorize("hasPermission(#id, 'read')")
+    @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id)")
     public ResponseEntity<Object> getAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
         return new ResponseEntity<>(surveyAnswerService.get(id).getChapterAnswers(), HttpStatus.OK);
     }

@@ -1,11 +1,12 @@
 package eu.eosc.observatory.configuration.security;
 
+import eu.eosc.observatory.domain.Coordinator;
 import eu.eosc.observatory.domain.Stakeholder;
+import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
-import eu.eosc.observatory.service.Identifiable;
-import eu.eosc.observatory.service.SecurityService;
-import eu.eosc.observatory.service.StakeholderService;
-import eu.eosc.observatory.service.UserService;
+import eu.eosc.observatory.service.*;
+import eu.openminted.registry.core.domain.Browsing;
+import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.ReflectUtils;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -19,6 +20,7 @@ import org.springframework.security.core.GrantedAuthority;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot implements MethodSecurityExpressionOperations, PermissionEvaluator {
 
@@ -26,18 +28,27 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
 
     private final UserService userService;
     private final SecurityService securityService;
+    private final CoordinatorService coordinatorService;
     private final StakeholderService stakeholderService;
+    private final SurveyAnswerCrudService surveyAnswerCrudService;
 
     private Object filterObject;
     private Object returnObject;
     private Object target;
 
-    public CustomMethodSecurityExpressionRoot(Authentication authentication, UserService userService, SecurityService securityService, StakeholderService stakeholderService) {
+    public CustomMethodSecurityExpressionRoot(Authentication authentication,
+                                              UserService userService,
+                                              SecurityService securityService,
+                                              CoordinatorService coordinatorService,
+                                              StakeholderService stakeholderService,
+                                              SurveyAnswerCrudService surveyAnswerCrudService) {
         super(authentication);
         this.setPermissionEvaluator(this);
         this.userService = userService;
         this.securityService = securityService;
+        this.coordinatorService = coordinatorService;
         this.stakeholderService = stakeholderService;
+        this.surveyAnswerCrudService = surveyAnswerCrudService;
     }
 
 
@@ -118,6 +129,26 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         User user = userService.get(User.getId(this.authentication));
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
         return stakeholder.getManagers() != null && stakeholder.getManagers().contains(user.getId());
+    }
+
+    public boolean hasCoordinatorAccess(Object surveyAnswer) {
+        SurveyAnswer answer;
+        if (surveyAnswer instanceof String) {
+            answer = surveyAnswerCrudService.get((String) surveyAnswer);
+        } else if (surveyAnswer instanceof SurveyAnswer) {
+            answer = (SurveyAnswer) surveyAnswer;
+        } else {
+            throw new RuntimeException("Unsupported object");
+        }
+        User user = userService.get(User.of(authentication).getId());
+        FacetFilter filter = new FacetFilter();
+        filter.addFilter("members", user.getId());
+        filter.addFilter("type", answer.getType());
+        Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
+        if (coordinators.getTotal() > 0) {
+            return true;
+        }
+        return false;
     }
 
     public boolean hasAccess(Object resource, Object permission) {

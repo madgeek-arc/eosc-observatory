@@ -1,8 +1,6 @@
 package eu.eosc.observatory.configuration.security;
 
-import eu.eosc.observatory.service.SecurityService;
-import eu.eosc.observatory.service.StakeholderService;
-import eu.eosc.observatory.service.UserService;
+import eu.eosc.observatory.service.*;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -26,7 +24,9 @@ public class CustomMethodSecurityExpressionHandler extends DefaultMethodSecurity
         CustomMethodSecurityExpressionRoot root = new CustomMethodSecurityExpressionRoot(authentication,
                 applicationContext.getBean(UserService.class),
                 applicationContext.getBean(SecurityService.class),
-                applicationContext.getBean(StakeholderService.class));
+                applicationContext.getBean(CoordinatorService.class),
+                applicationContext.getBean(StakeholderService.class),
+                applicationContext.getBean(SurveyAnswerCrudService.class));
         root.setTrustResolver(this.trustResolver);
         root.setRoleHierarchy(getRoleHierarchy());
         return root;

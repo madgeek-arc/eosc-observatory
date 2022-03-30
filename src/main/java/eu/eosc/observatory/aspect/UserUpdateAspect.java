@@ -43,7 +43,7 @@ public class UserUpdateAspect {
             if (!stakeholderService.getWithFilter("managers", user.getId()).isEmpty()
                 || !stakeholderService.getWithFilter("contributors", user.getId()).isEmpty()
                 || !coordinatorService.getWithFilter("members", user.getId()).isEmpty()) {
-                userService.updateUserInfo(authentication);
+                userService.updateUserDetails(authentication);
             }
         } catch (RuntimeException e) {
             logger.error("Could not update user info..", e);
