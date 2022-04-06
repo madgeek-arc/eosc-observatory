@@ -181,7 +181,7 @@ public class SurveyCSVConverter implements CSVConverter {
         Map<String, List<List<UiField>>> chapterFields = getChapterFields(model);
         List<String> allKeys = new LinkedList<>();
         for (Map.Entry<String, List<List<UiField>>> entry : chapterFields.entrySet()) {
-            List<List<UiField>> fieldChainList = sortFieldChainList(entry.getValue());
+            List<List<UiField>> fieldChainList = entry.getValue();
             allKeys.addAll(getKeys(fieldChainList));
         }
 
@@ -230,11 +230,6 @@ public class SurveyCSVConverter implements CSVConverter {
         return fieldList.stream().sorted(orderComparator).collect(Collectors.toList());
     }
 
-    private List<List<UiField>> sortFieldChainList(List<List<UiField>> fieldChainList) {
-        Comparator<List<UiField>> orderComparator = Comparator.comparing(f -> f.get(f.size()-1).getForm().getDisplay().getOrder());
-        return fieldChainList.stream().filter(fields -> !fields.isEmpty()).sorted(orderComparator).collect(Collectors.toList());
-    }
-
     private Map<String, List<List<UiField>>> getChapterFields(Model model) {
         Map<String, List<List<UiField>>> chapterFields = new TreeMap<>();
         for (Chapter chapter : model.getChapters()) {
@@ -258,7 +253,8 @@ public class SurveyCSVConverter implements CSVConverter {
         }
         leafFieldList.add(current);
         if (current.getSubFields() != null && !current.getSubFields().isEmpty()) {
-            for (UiField field : current.getSubFields()) {
+            List<UiField> currentSortedFields = sortFieldList(current.getSubFields());
+            for (UiField field : currentSortedFields) {
                 List<UiField> list = new LinkedList<>(leafFieldList);
 //                list.add(field);
                 allLeafFieldLists.addAll(fieldsToLeaf(list, field));
