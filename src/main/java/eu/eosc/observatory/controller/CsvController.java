@@ -1,6 +1,8 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.service.CSVConverter;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -8,12 +10,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 @RestController
 @RequestMapping("csv")
 public class CsvController {
 
+    private static final Logger logger = LogManager.getLogger(CsvController.class);
 
     private final CSVConverter csvConverter;
 
@@ -27,13 +36,22 @@ public class CsvController {
             produces = {MediaType.APPLICATION_OCTET_STREAM_VALUE}
     )
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<byte[]> exportSurveysToCsv(@PathVariable("id") String modelId, @RequestParam(value = "includeUsers", defaultValue = "false") boolean includeUsers, HttpServletResponse response) {
+    public ResponseEntity<byte[]> exportSurveysToCsv(@PathVariable("id") String modelId,
+                                                     @RequestParam(value = "includeUsers", defaultValue = "false") boolean includeUsers,
+                                                     @RequestParam(value = "dateFrom", required = false) String dateFrom,
+                                                     @RequestParam(value = "dateTo", required = false) String dateTo,
+                                                     HttpServletResponse response) throws ParseException {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        Date from = dateFrom != null ? formatter.parse(dateFrom) : null;
+        Date to = dateTo != null ? formatter.parse(dateTo) : null;
+
         StringBuilder filename = new StringBuilder();
         filename.append(modelId);
         filename.append(includeUsers ? "_users" : "");
         filename.append(".tsv");
         response.setHeader("Content-disposition", "attachment; filename=" + filename);
-        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, includeUsers).getBytes());
+
+        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, includeUsers, from, to).getBytes());
     }
 
     @PostMapping(value = "/import/answers/{id}")

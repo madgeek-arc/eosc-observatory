@@ -15,7 +15,6 @@ import org.json.simple.JSONValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +31,7 @@ public class SurveyCSVConverter implements CSVConverter {
     private static final String JOINING_SYMBOL = "->";
 
     private final ModelService modelService;
+    private final SurveyService surveyService;
     private final SurveyAnswerCrudService surveyAnswerCrudService;
     private final StakeholderService stakeholderService;
     private final UserService userService;
@@ -39,11 +39,13 @@ public class SurveyCSVConverter implements CSVConverter {
 
     @Autowired
     public SurveyCSVConverter(ModelService modelService,
+                              SurveyService surveyService,
                               SurveyAnswerCrudService surveyAnswerCrudService,
                               StakeholderService stakeholderService,
                               UserService userService,
                               IdGenerator<String> idGenerator) {
         this.modelService = modelService;
+        this.surveyService = surveyService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.stakeholderService = stakeholderService;
         this.userService = userService;
@@ -175,7 +177,7 @@ public class SurveyCSVConverter implements CSVConverter {
     }
 
     @Override
-    public String convertToCSV(String modelId, boolean includeSensitiveData) {
+    public String convertToCSV(String modelId, boolean includeSensitiveData, Date from, Date to) {
         StringBuilder csv = new StringBuilder();
         Model model = modelService.get(modelId);
         Map<String, List<List<UiField>>> chapterFields = getChapterFields(model);
@@ -185,7 +187,7 @@ public class SurveyCSVConverter implements CSVConverter {
             allKeys.addAll(getKeys(fieldChainList));
         }
 
-        csv.append(String.join(DELIMITER_PRIMARY, "Stakeholder Id", "Stakeholder Name"));
+        csv.append(String.join(DELIMITER_PRIMARY, "Creation Date", "Stakeholder Id", "Stakeholder Name"));
         csv.append(DELIMITER_PRIMARY);
         if (includeSensitiveData) {
             csv.append("Edited By");
@@ -193,29 +195,22 @@ public class SurveyCSVConverter implements CSVConverter {
         }
         csv.append(String.join(DELIMITER_PRIMARY, allKeys));
 
-        Set<SurveyAnswer> answerSet = surveyAnswerCrudService.getWithFilter("surveyId", model.getId());
+        List<SurveyAnswer> answerSet = getSurveyAnswers(model, from, to);
         for (SurveyAnswer answer : answerSet) {
             Map<String, List<String>> results = toCsv(chapterFields, answer);
             List<String> row = new LinkedList<>();
+            row.add(answer.getMetadata().getCreationDate().toString());
             row.add(answer.getStakeholderId());
             Stakeholder stakeholder = stakeholderService.get(answer.getStakeholderId());
             row.add(stakeholder.getName());
             if (includeSensitiveData) {
-                Set<String> contributorIds = answer.getHistory().getEntries().stream().map(HistoryEntry::getUserId).collect(Collectors.toSet());
-                String contributors = contributorIds.stream().map(userService::get).map(user -> String.format("%s (%s)", user.getFullname(), user.getId())).collect(Collectors.joining(DELIMITER_SECONDARY));
-                row.add(contributors);
+                row.add(getContributorsInfo(answer));
             }
             for (String key : allKeys) {
                 if (!results.containsKey(key) || results.get(key).isEmpty()) {
                     row.add("");
                 } else {
-                    StringBuilder entry = new StringBuilder();
-                    for (Object val : results.get(key)) {
-                        entry.append(val);
-                        entry.append(DELIMITER_SECONDARY);
-                    }
-                    row.add(entry.substring(0, entry.toString().length() - 1)); // remove trailing ;
-//                    row.add(String.join(DELIMITER_SECONDARY, results.get(key)));
+                    row.add(joinList(DELIMITER_SECONDARY, results.get(key)));
                 }
             }
             csv.append("\n");
@@ -223,6 +218,47 @@ public class SurveyCSVConverter implements CSVConverter {
         }
 
         return csv.toString();
+    }
+
+    private List<SurveyAnswer> getSurveyAnswers(Model model, Date from, Date to) {
+        Set<SurveyAnswer> answerSet = new HashSet<>();
+        if (from == null || to == null) {
+            Set<Stakeholder> stakeholders = stakeholderService.getWithFilter("type", model.getType());
+            for (Stakeholder sh : stakeholders) {
+                answerSet.add(surveyService.getLatest(model.getId(), sh.getId()));
+            }
+        } else {
+            for (SurveyAnswer answer : surveyAnswerCrudService.getWithFilter("surveyId", model.getId())) {
+                if (answer.getMetadata().getCreationDate().after(to)
+                        || answer.getMetadata().getCreationDate().before(from)) {
+                    continue;
+                }
+                answerSet.add(answer);
+            }
+        }
+        Comparator<SurveyAnswer> comparator = Comparator.comparing(a -> a.getMetadata().getCreationDate());
+        return answerSet.stream().sorted(comparator).collect(Collectors.toList());
+    }
+
+    private String joinList(String delimiter, List<?> list) {
+        StringBuilder entry = new StringBuilder();
+        for (Object val : list) {
+            entry.append(val.toString());
+            entry.append(delimiter);
+        }
+        return entry.substring(0, entry.toString().length() - 1); // remove trailing delimiter
+    }
+
+    private String getContributorsInfo(SurveyAnswer answer) {
+        Set<String> contributorIds = answer.getHistory().getEntries()
+                .stream()
+                .map(HistoryEntry::getUserId)
+                .collect(Collectors.toSet());
+        return contributorIds
+                .stream()
+                .map(userService::get)
+                .map(user -> String.format("%s (%s)", user.getFullname(), user.getId()))
+                .collect(Collectors.joining(DELIMITER_SECONDARY));
     }
 
     private List<UiField> sortFieldList(List<UiField> fieldList) {
