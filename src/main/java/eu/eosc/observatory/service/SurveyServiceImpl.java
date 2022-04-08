@@ -92,7 +92,9 @@ public class SurveyServiceImpl implements SurveyService {
 
         Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
         SurveyAnswer answer = null;
-        answer = answersBrowsing.getResults().get(0);
+        if (!answersBrowsing.getResults().isEmpty()) {
+            answer = answersBrowsing.getResults().get(0);
+        }
         return answer;
     }
 
