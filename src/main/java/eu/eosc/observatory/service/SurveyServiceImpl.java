@@ -323,9 +323,6 @@ public class SurveyServiceImpl implements SurveyService {
         for (Map.Entry<String, List<UiField>> chapter : chapterFieldsMap.entrySet()) {
             JSONObject chapterAnswer = chapterAnswers.get(chapter.getKey());
             for (UiField field : getFieldsRecursive(chapter.getValue())) {
-                if (!"question".equals(field.getKind()) && (field.getTypeInfo().getType().equals("composite") || Boolean.FALSE.equals(field.getForm().getDisplay().getVisible()))) {
-                    continue;
-                }
                 if ("question".equals(field.getKind())) {
                     total.addToTotal(1);
                     if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
