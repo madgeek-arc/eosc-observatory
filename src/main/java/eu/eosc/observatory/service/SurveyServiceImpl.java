@@ -323,26 +323,38 @@ public class SurveyServiceImpl implements SurveyService {
         for (Map.Entry<String, List<UiField>> chapter : chapterFieldsMap.entrySet()) {
             JSONObject chapterAnswer = chapterAnswers.get(chapter.getKey());
             for (UiField field : getFieldsRecursive(chapter.getValue())) {
-                if (field.getTypeInfo().getType().equals("composite") || Boolean.FALSE.equals(field.getForm().getDisplay().getVisible())) {
+                if (!"question".equals(field.getKind()) && (field.getTypeInfo().getType().equals("composite") || Boolean.FALSE.equals(field.getForm().getDisplay().getVisible()))) {
                     continue;
                 }
-                total.addToTotal(1);
-                if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-                    required.addToTotal(1);
-                }
-
-                if (getValueFromAnswer(field, chapterAnswer, allFieldsMap) != null) { // FIXME: not working...
-                    total.addToCurrent(1);
+                if ("question".equals(field.getKind())) {
+                    total.addToTotal(1);
                     if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-                        required.addToCurrent(1);
+                        required.addToTotal(1);
+                    }
+
+                    if (fieldIsAnswered(field, chapterAnswer, allFieldsMap)) {
+                        total.addToCurrent(1);
+                        if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
+                            required.addToCurrent(1);
+                        }
                     }
                 }
-
             }
         }
         info.setProgressRequired(required);
         info.setProgressTotal(total);
 
+    }
+
+    private boolean fieldIsAnswered(UiField field, JSONObject chapterAnswer, Map<String, UiField> allFields) {
+        if (!"composite".equals(field.getTypeInfo().getType())) {
+            return getValueFromAnswer(field, chapterAnswer, allFields) != null;
+        }
+        for (UiField f : field.getSubFields()) {
+            if (getValueFromAnswer(f, chapterAnswer, allFields) != null)
+                return true;
+        }
+        return false;
     }
 
     @Override
