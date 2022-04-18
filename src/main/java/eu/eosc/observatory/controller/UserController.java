@@ -53,7 +53,7 @@ public class UserController {
 
     @GetMapping("user/info")
     public ResponseEntity<UserInfo> userInfo(@ApiIgnore Authentication authentication) {
-        UserInfo userInfo = getUserInfo(User.of(authentication).getId());
+        UserInfo userInfo = getUserInfo(authentication);
         return new ResponseEntity<>(userInfo, HttpStatus.OK);
     }
 
@@ -115,6 +115,11 @@ public class UserController {
                 .collect(Collectors.toSet());
     }
 
+    private UserInfo getUserInfo(Authentication authentication) {
+        User user = User.of(authentication);
+        return createUserInfo(user);
+    }
+
     private UserInfo getUserInfo(String userId) {
         User user;
         try {
@@ -123,6 +128,11 @@ public class UserController {
             user = new User();
             user.setEmail(userId);
         }
+
+        return createUserInfo(user);
+    }
+
+    private UserInfo createUserInfo(User user) {
         UserInfo info = new UserInfo();
         info.setUser(user);
         info.setStakeholders(new HashSet<>());
