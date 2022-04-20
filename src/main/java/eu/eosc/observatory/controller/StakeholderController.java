@@ -22,10 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("stakeholders")
@@ -128,5 +126,22 @@ public class StakeholderController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<StakeholderMembers> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeManager(stakeholderId, userId), HttpStatus.OK);
+    }
+
+    @GetMapping("/countries")
+    public ResponseEntity<List<String>> getCountryCodesByStakeholderType(@RequestParam("type") String stakeholderType) {
+        return new ResponseEntity<>(getStakeholderCountryCodesByType(stakeholderType), HttpStatus.OK);
+    }
+
+    private List<String> getStakeholderCountryCodesByType(String stakeholderType) {
+        Set<Stakeholder> countryStakeholders = stakeholderService.getWithFilter("type", stakeholderType);
+        return countryStakeholders == null ? new ArrayList<>() : countryStakeholders
+                .stream()
+                .map(Stakeholder::getCountry)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet())
+                .stream()
+                .sorted()
+                .collect(Collectors.toList());
     }
 }
