@@ -245,10 +245,10 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     private List<String> getSurveyAnswerAndChapterAnswerIds(List<SurveyAnswer> answers) {
-        List<String> resourceIds = answers.stream().map(SurveyAnswer::getId).collect(Collectors.toList());
+        Set<String> resourceIds = answers.stream().map(SurveyAnswer::getId).collect(Collectors.toSet());
         for (SurveyAnswer answer : answers) {
-            resourceIds.addAll(answer.getChapterAnswers().values().stream().map(ChapterAnswer::getId).collect(Collectors.toList()));
+            resourceIds.addAll(answer.getChapterAnswers().values().stream().map(ChapterAnswer::getId).collect(Collectors.toSet()));
         }
-        return resourceIds;
+        return new ArrayList<>(resourceIds);
     }
 }
