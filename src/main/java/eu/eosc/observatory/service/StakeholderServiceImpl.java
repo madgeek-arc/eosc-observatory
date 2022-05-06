@@ -1,7 +1,6 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.domain.ChapterAnswer;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
@@ -22,6 +21,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerAndChapterAnswerIds;
 
 @Service
 public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder> implements StakeholderService {
@@ -218,7 +219,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     private Set<Permission> addManagerFullPermissions(List<String> users, List<String> resourceIds) {
-        List<String> permissions = Arrays.asList(
+        List<String> permissions = List.of(
                 Permissions.READ.getKey(),
                 Permissions.WRITE.getKey(),
                 Permissions.MANAGE.getKey(),
@@ -227,7 +228,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     private Set<Permission> addManagerPermissions(List<String> users, List<String> resourceIds) {
-        List<String> permissions = Arrays.asList(
+        List<String> permissions = List.of(
                 Permissions.READ.getKey(),
                 Permissions.MANAGE.getKey(),
                 Permissions.PUBLISH.getKey());
@@ -235,20 +236,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     private Set<Permission> addContributorFullPermissions(List<String> users, List<String> resourceIds) {
-        List<String> permissions = Arrays.asList(Permissions.READ.getKey(), Permissions.WRITE.getKey());
+        List<String> permissions = List.of(Permissions.READ.getKey(), Permissions.WRITE.getKey());
         return permissionService.addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
     }
 
     private Set<Permission> addContributorPermissions(List<String> users, List<String> resourceIds) {
-        List<String> permissions = Arrays.asList(Permissions.READ.getKey());
+        List<String> permissions = List.of(Permissions.READ.getKey());
         return permissionService.addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
-    }
-
-    private List<String> getSurveyAnswerAndChapterAnswerIds(List<SurveyAnswer> answers) {
-        Set<String> resourceIds = answers.stream().map(SurveyAnswer::getId).collect(Collectors.toSet());
-        for (SurveyAnswer answer : answers) {
-            resourceIds.addAll(answer.getChapterAnswers().values().stream().map(ChapterAnswer::getId).collect(Collectors.toSet()));
-        }
-        return new ArrayList<>(resourceIds);
     }
 }

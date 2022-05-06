@@ -1,7 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Coordinator;
-import eu.eosc.observatory.domain.ChapterAnswer;
+import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerAndChapterAnswerIds;
+
 @Service
 public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator> implements CoordinatorService {
 
@@ -29,7 +31,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     private static final String RESOURCE_TYPE = "coordinator";
 
     private final UserService userService;
-    private final CrudItemService<ChapterAnswer> surveyAnswerCrudService;
+    private final CrudItemService<SurveyAnswer> surveyAnswerCrudService;
     private final PermissionService permissionService;
     private final IdGenerator<String> idGenerator;
 
@@ -39,7 +41,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
                                   SearchService searchService,
                                   ParserService parserService,
                                   UserService userService,
-                                  @Lazy CrudItemService<ChapterAnswer> surveyAnswerCrudService,
+                                  @Lazy CrudItemService<SurveyAnswer> surveyAnswerCrudService,
                                   PermissionService permissionService,
                                   IdGenerator<String> idGenerator) {
         super(resourceTypeService, resourceService, searchService, parserService);
@@ -63,6 +65,19 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     }
 
     @Override
+    public Coordinator add(Coordinator coordinator) {
+        Coordinator newCoordinator = super.add(coordinator);
+        updateRoles(newCoordinator.getId(), coordinator.getMembers());
+        return newCoordinator;
+    }
+
+    @Override
+    public Coordinator update(String id, Coordinator coordinator) {
+        updateRoles(id, coordinator.getMembers());
+        return super.update(id, coordinator);
+    }
+
+    @Override
     public Set<User> getMembers(String id) {
         Coordinator coordinator = get(id);
         return getMembers(coordinator);
@@ -70,19 +85,8 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
 
     @Override
     public Set<User> updateMembers(String coordinatorId, List<String> userIds) {
-        Coordinator coordinator = get(coordinatorId);
-        List<String> previousMembers = coordinator.getMembers();
-        for (String member : userIds) {
-            previousMembers.remove(member);
-        }
+        Coordinator coordinator = updateRoles(coordinatorId, userIds);
 
-        // remove Coordinator permissions from removed members
-        permissionService.removeAll(previousMembers, Groups.COORDINATOR.getKey());
-
-        // read access for all resources
-        permissionService.addPermissions(userIds, Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(), Groups.COORDINATOR.getKey());
-
-        coordinator.setMembers(userIds);
         coordinator = update(coordinatorId, coordinator);
         return getMembers(coordinator);
     }
@@ -97,7 +101,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         coordinator = update(coordinatorId, coordinator);
 
         // read access for all resources
-        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(), Groups.COORDINATOR.getKey());
+        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinator), Groups.COORDINATOR.getKey());
 
         return getMembers(coordinator);
     }
@@ -126,11 +130,29 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         return members;
     }
 
-    private List<String> getAccessibleResourceIds() {
+    private Coordinator updateRoles(String coordinatorId, List<String> userIds) {
+        Coordinator coordinator = get(coordinatorId);
+        List<String> previousMembers = coordinator.getMembers();
+        for (String member : userIds) {
+            previousMembers.remove(member);
+        }
+
+        // remove Coordinator permissions from removed members
+        permissionService.removeAll(previousMembers, Groups.COORDINATOR.getKey());
+
+        // read access for all resources
+        permissionService.addPermissions(userIds, Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinator), Groups.COORDINATOR.getKey());
+
+        coordinator.setMembers(userIds);
+        return coordinator;
+    }
+
+    private List<String> getAccessibleResourceIds(Coordinator coordinator) {
         // read access for all resources
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(10000);
-        filter.addFilter("type", "country");
-        return surveyAnswerCrudService.getAll(filter).getResults().stream().map(ChapterAnswer::getId).collect(Collectors.toList());
+        filter.addFilter("type", coordinator.getType());
+        List<SurveyAnswer> resourceIds = surveyAnswerCrudService.getAll(filter).getResults();
+        return getSurveyAnswerAndChapterAnswerIds(resourceIds);
     }
 }
