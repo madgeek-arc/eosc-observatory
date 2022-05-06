@@ -87,7 +87,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     public Set<User> updateMembers(String coordinatorId, List<String> userIds) {
         Coordinator coordinator = updateRoles(coordinatorId, userIds);
 
-        coordinator = update(coordinatorId, coordinator);
+        coordinator = super.update(coordinatorId, coordinator);
         return getMembers(coordinator);
     }
 
@@ -98,7 +98,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
             coordinator.setMembers(new ArrayList<>());
         }
         coordinator.getMembers().add(userId);
-        coordinator = update(coordinatorId, coordinator);
+        coordinator = super.update(coordinatorId, coordinator);
 
         // read access for all resources
         permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinator), Groups.COORDINATOR.getKey());
@@ -110,7 +110,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     public Set<User> removeMember(String coordinatorId, String userId) {
         Coordinator coordinator = get(coordinatorId);
         coordinator.getMembers().remove(userId);
-        coordinator = update(coordinatorId, coordinator);
+        coordinator = super.update(coordinatorId, coordinator);
 
         // remove Coordinator permissions from user
         permissionService.removeAll(userId, Groups.COORDINATOR.getKey());
