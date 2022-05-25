@@ -115,12 +115,12 @@ public class User implements Identifiable<String> {
         } else {
             throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
         }
-        return id;
+        return id != null ? id.toLowerCase() : null;
     }
 
     @Override
     public String getId() {
-        return this.email;
+        return this.email.toLowerCase();
     }
 
     @Override

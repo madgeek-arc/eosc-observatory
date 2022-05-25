@@ -21,6 +21,13 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +50,14 @@ public class UserController {
         this.userService = userService;
         this.stakeholderService = stakeholderService;
         this.coordinatorService = coordinatorService;
+    }
+
+    @RequestMapping("refreshLogin")
+    public void refreshLogin(HttpServletRequest request, HttpServletResponse response, @ApiIgnore Authentication authentication) throws IOException, ServletException {
+        Cookie cookie = new Cookie("AccessToken", ((OidcUser) authentication.getPrincipal()).getIdToken().getTokenValue());
+        cookie.setMaxAge(3600);
+        cookie.setPath("/");
+        response.addCookie(cookie);
     }
 
     @ApiIgnore
