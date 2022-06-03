@@ -8,8 +8,8 @@ import eu.openminted.registry.core.service.ParserService;
 import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
 import eu.openminted.registry.core.service.SearchService;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserPrivacyPolicyService extends AbstractCrudItemService<PrivacyPolicy> implements PrivacyPolicyService {
 
-    private static final Logger logger = LogManager.getLogger(UserPrivacyPolicyService.class);
+    private static final Logger logger = LoggerFactory.getLogger(UserPrivacyPolicyService.class);
 
     private final UserService userService;
 

@@ -2,8 +2,8 @@ package eu.eosc.observatory.controller;
 
 import eu.openminted.registry.core.exception.ServerError;
 import gr.athenarc.catalogue.exception.ResourceException;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.springframework.core.io.ByteArrayResource;
@@ -27,7 +27,7 @@ import java.util.stream.Stream;
 @RequestMapping("logs")
 public class LogsController {
 
-    private static final Logger logger = LogManager.getLogger(LogsController.class);
+    private static final Logger logger = LoggerFactory.getLogger(LogsController.class);
 
     @PostMapping("level/root")
     @PreAuthorize("hasAuthority('ADMIN')")
@@ -66,7 +66,7 @@ public class LogsController {
             Path path = Paths.get(filepath);
             resource = new ByteArrayResource(Files.readAllBytes(path));
         } catch (Exception e) {
-            logger.error(e);
+            logger.error(e.getMessage(), e);
             throw new ResourceException("File '" + filepath + "' does not exist..", HttpStatus.NOT_FOUND);
         }
 
@@ -82,7 +82,7 @@ public class LogsController {
                     .map(Path::toString)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            logger.error(e);
+            logger.error(e.getMessage(), e);
         }
 
         return folderContents;

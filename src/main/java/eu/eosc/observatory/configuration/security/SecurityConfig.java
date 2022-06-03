@@ -1,8 +1,8 @@
 package eu.eosc.observatory.configuration.security;
 
 import eu.eosc.observatory.configuration.ApplicationProperties;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +24,7 @@ import java.util.Set;
 @Configuration
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-    private static final Logger logger = LogManager.getLogger(SecurityConfig.class);
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     private final AuthenticationSuccessHandler authSuccessHandler;
     private final ApplicationProperties applicationProperties;

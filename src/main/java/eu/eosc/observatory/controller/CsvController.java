@@ -1,8 +1,8 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.service.CSVConverter;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +22,7 @@ import java.util.List;
 @RequestMapping("csv")
 public class CsvController {
 
-    private static final Logger logger = LogManager.getLogger(CsvController.class);
+    private static final Logger logger = LoggerFactory.getLogger(CsvController.class);
 
     private final CSVConverter csvConverter;
 

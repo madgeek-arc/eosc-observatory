@@ -4,8 +4,8 @@ import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.UserService;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserUpdateAspect {
 
-    private static final Logger logger = LogManager.getLogger(UserUpdateAspect.class);
+    private static final Logger logger = LoggerFactory.getLogger(UserUpdateAspect.class);
 
     private final UserService userService;
     private final StakeholderService stakeholderService;

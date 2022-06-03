@@ -6,15 +6,15 @@ import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
 import eu.openminted.registry.core.service.SearchService;
 import gr.athenarc.catalogue.service.id.IdGenerator;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SurveyAnswerCrudService extends AbstractCrudItemService<SurveyAnswer> implements CrudItemService<SurveyAnswer> {
 
-    private static final Logger logger = LogManager.getLogger(SurveyAnswerCrudService.class);
+    private static final Logger logger = LoggerFactory.getLogger(SurveyAnswerCrudService.class);
 
     private final IdGenerator<String> idGenerator;
 

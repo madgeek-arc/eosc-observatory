@@ -4,8 +4,8 @@ import eu.openminted.registry.core.exception.ServerError;
 import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
 import gr.athenarc.catalogue.exception.ResourceException;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
@@ -19,7 +19,7 @@ import javax.servlet.http.HttpServletRequest;
 @ControllerAdvice
 public class ErrorHandlingControllerAdvice {
 
-    private static final Logger logger = LogManager.getLogger(ErrorHandlingControllerAdvice.class);
+    private static final Logger logger = LoggerFactory.getLogger(ErrorHandlingControllerAdvice.class);
 
     // 401
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
@@ -27,7 +27,7 @@ public class ErrorHandlingControllerAdvice {
     @ResponseBody
     ServerError handleUnauthorized(HttpServletRequest req, Exception ex) {
         logger.info(ex.getMessage());
-        logger.debug(ex);
+        logger.debug(ex.getMessage(), ex);
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 
@@ -37,7 +37,7 @@ public class ErrorHandlingControllerAdvice {
     @ResponseBody
     ServerError handleAccessDenied(HttpServletRequest req, Exception ex) {
         logger.info(ex.getMessage());
-        logger.debug(ex);
+        logger.debug(ex.getMessage(), ex);
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 
@@ -47,7 +47,7 @@ public class ErrorHandlingControllerAdvice {
     @ResponseBody
     ServerError handleNotFound(HttpServletRequest req, Exception ex) {
         logger.info(ex.getMessage());
-        logger.debug(ex);
+        logger.debug(ex.getMessage(), ex);
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 
@@ -57,7 +57,7 @@ public class ErrorHandlingControllerAdvice {
     @ResponseBody
     ServerError handleAlreadyExists(HttpServletRequest req, Exception ex) {
         logger.info(ex.getMessage());
-        logger.debug(ex);
+        logger.debug(ex.getMessage(), ex);
         return new ServerError(req.getRequestURL().toString(),ex);
     }
 

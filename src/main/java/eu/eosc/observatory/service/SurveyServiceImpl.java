@@ -14,8 +14,8 @@ import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.service.id.IdGenerator;
 import gr.athenarc.catalogue.ui.domain.*;
 import gr.athenarc.catalogue.ui.service.FormsService;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @Service
 public class SurveyServiceImpl implements SurveyService {
 
-    private static final Logger logger = LogManager.getLogger(SurveyServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(SurveyServiceImpl.class);
 
     private final CrudItemService<Stakeholder> stakeholderCrudService;
     private final CrudItemService<SurveyAnswer> surveyAnswerCrudService;

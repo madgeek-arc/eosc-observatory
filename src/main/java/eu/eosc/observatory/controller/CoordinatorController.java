@@ -11,8 +11,8 @@ import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.controller.GenericItemController;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +28,7 @@ import java.util.Set;
 @RequestMapping("coordinators")
 public class CoordinatorController {
 
-    private static final Logger logger = LogManager.getLogger(CoordinatorController.class);
+    private static final Logger logger = LoggerFactory.getLogger(CoordinatorController.class);
 
     private final CoordinatorService coordinatorService;
     private final SurveyService surveyService;

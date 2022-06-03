@@ -4,8 +4,8 @@ import eu.eosc.observatory.dto.ResourcePermissions;
 import gr.athenarc.authorization.domain.Permission;
 import gr.athenarc.authorization.repository.PermissionRepository;
 import gr.athenarc.authorization.service.AuthorizationService;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class AuthorizationServiceBridge implements PermissionService {
 
-    private static final Logger logger = LogManager.getLogger(AuthorizationServiceBridge.class);
+    private static final Logger logger = LoggerFactory.getLogger(AuthorizationServiceBridge.class);
 
     private final AuthorizationService authorizationService;
     private final PermissionRepository permissionRepository;

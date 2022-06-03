@@ -8,8 +8,8 @@ import eu.eosc.observatory.service.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.ReflectUtils;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.access.expression.SecurityExpressionRoot;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot implements MethodSecurityExpressionOperations, PermissionEvaluator {
 
-    private static final Logger logger = LogManager.getLogger(CustomMethodSecurityExpressionRoot.class);
+    private static final Logger logger = LoggerFactory.getLogger(CustomMethodSecurityExpressionRoot.class);
 
     private final UserService userService;
     private final SecurityService securityService;
@@ -174,7 +174,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
             try {
                 resourceId = ReflectUtils.getId(resource.getClass(), resource);
             } catch (NoSuchFieldException e) {
-                logger.error(e);
+                logger.error(e.getMessage(), e);
             }
         }
         return isAdmin(authentication) ||
@@ -206,7 +206,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
             try {
                 resourceId = ReflectUtils.getId(resource.getClass(), resource);
             } catch (NoSuchFieldException e) {
-                logger.error(e);
+                logger.error(e.getMessage(), e);
             }
         }
         return resourceId;

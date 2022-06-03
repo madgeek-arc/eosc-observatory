@@ -14,8 +14,8 @@ import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
 import gr.athenarc.catalogue.exception.ResourceException;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.AbstractGenericItemService;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -26,7 +26,7 @@ import java.util.Set;
 @Component
 public abstract class AbstractCrudItemService<T extends Identifiable> extends AbstractGenericItemService implements CrudItemService<T> {
 
-    private static final Logger logger = LogManager.getLogger(AbstractCrudItemService.class);
+    private static final Logger logger = LoggerFactory.getLogger(AbstractCrudItemService.class);
 
     @Autowired
     protected AbstractCrudItemService(ResourceTypeService resourceTypeService,

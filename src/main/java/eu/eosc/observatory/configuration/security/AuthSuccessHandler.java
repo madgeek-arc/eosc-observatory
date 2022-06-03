@@ -1,8 +1,8 @@
 package eu.eosc.observatory.configuration.security;
 
 import eu.eosc.observatory.configuration.ApplicationProperties;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -21,7 +21,7 @@ import java.util.Date;
 @Component
 public class AuthSuccessHandler implements AuthenticationSuccessHandler {
 
-    private static final Logger logger = LogManager.getLogger(AuthSuccessHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(AuthSuccessHandler.class);
 
     private final ApplicationProperties applicationProperties;
 

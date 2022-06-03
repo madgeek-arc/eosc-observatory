@@ -10,8 +10,8 @@ import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
 import eu.openminted.registry.core.service.ServiceException;
 import gr.athenarc.catalogue.exception.ResourceException;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -25,7 +25,7 @@ import java.util.Map;
 @Service
 public class JWSInvitationService implements InvitationService {
 
-    private static final Logger logger = LogManager.getLogger(JWSInvitationService.class);
+    private static final Logger logger = LoggerFactory.getLogger(JWSInvitationService.class);
 
     private final StakeholderService stakeholderService;
     private final JWSSigner signer;
@@ -62,7 +62,7 @@ public class JWSInvitationService implements InvitationService {
             // Apply the HMAC to the JWS object
             jwsObject.sign(signer);
         } catch (JOSEException e) {
-            logger.error(e);
+            logger.error(e.getMessage(), e);
         }
 
         return jwsObject.serialize();
@@ -93,9 +93,9 @@ public class JWSInvitationService implements InvitationService {
                 return true;
             }
         } catch (ParseException e) {
-            logger.error(e);
+            logger.error(e.getMessage(), e);
         } catch (JOSEException e) {
-            logger.error(e);
+            logger.error(e.getMessage(), e);
         }
         return false;
     }

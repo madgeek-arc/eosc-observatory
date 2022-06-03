@@ -3,8 +3,8 @@ package eu.eosc.observatory.configuration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openminted.registry.core.domain.ResourceType;
 import eu.openminted.registry.core.service.ResourceTypeService;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
@@ -18,7 +18,7 @@ import java.util.Date;
 @Configuration
 public class ResourceTypeInit {
 
-    private static final Logger logger = LogManager.getLogger(ResourceTypeInit.class);
+    private static final Logger logger = LoggerFactory.getLogger(ResourceTypeInit.class);
 
     private final ResourceLoader resourceLoader;
     private final ResourceTypeService resourceTypeService;

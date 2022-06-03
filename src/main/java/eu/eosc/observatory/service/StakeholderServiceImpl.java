@@ -13,8 +13,8 @@ import eu.openminted.registry.core.service.ResourceTypeService;
 import eu.openminted.registry.core.service.SearchService;
 import gr.athenarc.authorization.domain.Permission;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,7 @@ import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerAndChap
 @Service
 public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder> implements StakeholderService {
 
-    private static final Logger logger = LogManager.getLogger(StakeholderServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(StakeholderServiceImpl.class);
 
     private static final String RESOURCE_TYPE = "stakeholder";
 

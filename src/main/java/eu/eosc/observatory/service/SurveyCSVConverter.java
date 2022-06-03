@@ -7,8 +7,8 @@ import gr.athenarc.catalogue.ui.domain.Group;
 import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.domain.UiField;
 import gr.athenarc.catalogue.ui.service.ModelService;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @Service
 public class SurveyCSVConverter implements CSVConverter {
 
-    private static final Logger logger = LogManager.getLogger(SurveyCSVConverter.class);
+    private static final Logger logger = LoggerFactory.getLogger(SurveyCSVConverter.class);
 
     private static final String DELIMITER_PRIMARY = "\t";
     private static final String DELIMITER_SECONDARY = ";";

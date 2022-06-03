@@ -12,8 +12,8 @@ import gr.athenarc.catalogue.ui.controller.FormsController;
 import gr.athenarc.catalogue.ui.domain.Model;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,7 +33,7 @@ import java.util.Map;
 @RequestMapping
 public class SurveyController {
 
-    private static final Logger logger = LogManager.getLogger(SurveyController.class);
+    private static final Logger logger = LoggerFactory.getLogger(SurveyController.class);
 
     private final FormsController formsController;
     private final CrudItemService<SurveyAnswer> surveyAnswerService;
