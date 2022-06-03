@@ -210,7 +210,10 @@ public class SurveyCSVConverter implements CSVConverter {
                 if (!results.containsKey(key) || results.get(key).isEmpty()) {
                     row.add("");
                 } else {
-                    row.add(joinList(DELIMITER_SECONDARY, results.get(key)));
+                    String value = joinList(DELIMITER_SECONDARY, results.get(key));
+                    // if break line exists, put value inside quotes ""
+                    value = value.contains("\n") ? String.format("\"%s\"", value) : value;
+                    row.add(value);
                 }
             }
             csv.append("\n");
@@ -236,8 +239,20 @@ public class SurveyCSVConverter implements CSVConverter {
                 answerSet.add(answer);
             }
         }
-        Comparator<SurveyAnswer> comparator = Comparator.comparing(a -> a.getMetadata().getCreationDate());
-        return answerSet.stream().sorted(comparator).collect(Collectors.toList());
+        Comparator<SurveyAnswer> comparator = Comparator.comparing(a ->
+        {
+            Date date;
+            if (a.getMetadata() != null && a.getMetadata().getCreationDate() != null) {
+                date = a.getMetadata().getCreationDate();
+            } else if (a.getMetadata() != null && a.getMetadata().getModificationDate() != null) {
+                date = a.getMetadata().getModificationDate();
+            } else {
+                date = new Date();
+            }
+            return date;
+        });
+
+        return answerSet.stream().filter(Objects::nonNull).sorted(comparator).collect(Collectors.toList());
     }
 
     private String joinList(String delimiter, List<?> list) {
