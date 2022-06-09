@@ -18,6 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,6 +30,7 @@ public class SurveyCSVConverter implements CSVConverter {
     private static final String DELIMITER_PRIMARY = "\t";
     private static final String DELIMITER_SECONDARY = ";";
     private static final String JOINING_SYMBOL = "->";
+    private static final String DOUBLE_QUOTE_ENCODED = "%22";
 
     private final ModelService modelService;
     private final SurveyService surveyService;
@@ -211,9 +213,7 @@ public class SurveyCSVConverter implements CSVConverter {
                     row.add("");
                 } else {
                     String value = joinList(DELIMITER_SECONDARY, results.get(key));
-                    // if break line exists, put value inside quotes ""
-                    value = value.contains("\n") ? String.format("\"%s\"", value) : value;
-                    row.add(value);
+                    row.add(formatText(value));
                 }
             }
             csv.append("\n");
@@ -257,11 +257,13 @@ public class SurveyCSVConverter implements CSVConverter {
 
     private String joinList(String delimiter, List<?> list) {
         StringBuilder entry = new StringBuilder();
-        for (Object val : list) {
-            entry.append(val.toString());
-            entry.append(delimiter);
+        if (list != null) {
+            for (Object val : list.stream().filter(Objects::nonNull).collect(Collectors.toSet())) {
+                entry.append(val.toString());
+                entry.append(delimiter);
+            }
         }
-        return entry.substring(0, entry.toString().length() - 1); // remove trailing delimiter
+        return entry.length() != 0 ? entry.substring(0, entry.length() - 1) : ""; // remove trailing delimiter
     }
 
     private String getContributorsInfo(SurveyAnswer answer) {
@@ -368,7 +370,13 @@ public class SurveyCSVConverter implements CSVConverter {
             temp = JSONValue.parse(answer.toJSONString());
         }
         for (UiField field : fieldsToLeaf) {
-            key = String.format("%s%s%s", key, JOINING_SYMBOL, field.getLabel().getText());
+            String label;
+            if (field.getLabel() != null && field.getLabel().getText() != null) {
+                label = field.getLabel().getText();
+            } else {
+                label = field.getName();
+            }
+            key = String.format("%s%s%s", key, JOINING_SYMBOL, label);
             if (temp instanceof JSONObject && ((JSONObject) temp).containsKey(field.getName())) {
                 temp = ((JSONObject) temp).get(field.getName());
             } else {
@@ -388,5 +396,15 @@ public class SurveyCSVConverter implements CSVConverter {
         }
         pair = Pair.of(key, values);
         return pair;
+    }
+
+    String formatText(String text) {
+        // enclose text inside double quotes if it contains break lines
+        if (text.contains("\n")) {
+            // replace existing double quotes to avoid display problems with Excel, Numbers (mac), etc.
+            text = text.replace("\"", DOUBLE_QUOTE_ENCODED);
+            text = String.format("\"%s\"", text);
+        }
+        return text;
     }
 }
