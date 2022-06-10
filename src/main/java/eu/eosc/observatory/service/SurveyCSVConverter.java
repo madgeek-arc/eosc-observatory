@@ -399,6 +399,7 @@ public class SurveyCSVConverter implements CSVConverter {
     }
 
     String formatText(String text) {
+        text = text.replace("\t", "    ");
         // enclose text inside double quotes if it contains break lines
         if (text.contains("\n")) {
             // replace existing double quotes to avoid display problems with Excel, Numbers (mac), etc.
