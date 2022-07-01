@@ -123,6 +123,8 @@ public class CoordinatorController {
             @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
     })
     @GetMapping("{id}/surveys")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMember(#coordinatorId)")
+    @Deprecated
     public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@PathVariable("id") String coordinatorId,
                                                                     @ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);

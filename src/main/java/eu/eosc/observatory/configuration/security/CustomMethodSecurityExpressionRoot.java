@@ -8,6 +8,9 @@ import eu.eosc.observatory.service.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.ReflectUtils;
+import gr.athenarc.catalogue.service.GenericItemService;
+import gr.athenarc.catalogue.ui.domain.Model;
+import gr.athenarc.catalogue.ui.service.FormsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +33,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     private final SecurityService securityService;
     private final CoordinatorService coordinatorService;
     private final StakeholderService stakeholderService;
+    private final FormsService formsService;
     private final SurveyAnswerCrudService surveyAnswerCrudService;
 
     private Object filterObject;
@@ -41,6 +45,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
                                               SecurityService securityService,
                                               CoordinatorService coordinatorService,
                                               StakeholderService stakeholderService,
+                                              FormsService formsService,
                                               SurveyAnswerCrudService surveyAnswerCrudService) {
         super(authentication);
         this.setPermissionEvaluator(this);
@@ -48,6 +53,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         this.securityService = securityService;
         this.coordinatorService = coordinatorService;
         this.stakeholderService = stakeholderService;
+        this.formsService = formsService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
     }
 
@@ -113,6 +119,9 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     /* ********************************************** */
 
     public boolean isStakeholderMember(String stakeholderId) {
+        if (stakeholderId == null) {
+            return false;
+        }
         User user = userService.get(User.getId(this.authentication));
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
         Set<String> emails = new HashSet<>();
@@ -126,9 +135,73 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     }
 
     public boolean isStakeholderManager(String stakeholderId) {
+        if (stakeholderId == null) {
+            return false;
+        }
         User user = userService.get(User.getId(this.authentication));
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
         return stakeholder.getManagers() != null && stakeholder.getManagers().contains(user.getId());
+    }
+
+    public boolean isCoordinatorMember(String coordinatorId) {
+        if (coordinatorId == null) {
+            return false;
+        }
+        User user = userService.get(User.getId(this.authentication));
+        Coordinator coordinator = coordinatorService.get(coordinatorId);
+        return coordinator.getMembers() != null && coordinator.getMembers().contains(user.getId());
+    }
+
+    public boolean hasStakeholderManagerAccess(Object surveyAnswer) {
+        SurveyAnswer answer;
+        if (surveyAnswer instanceof String) {
+            answer = surveyAnswerCrudService.get((String) surveyAnswer);
+        } else if (surveyAnswer instanceof SurveyAnswer) {
+            answer = (SurveyAnswer) surveyAnswer;
+        } else {
+            throw new RuntimeException("Unsupported object");
+        }
+        User user = userService.get(User.of(authentication).getId());
+        FacetFilter filter = new FacetFilter();
+        filter.addFilter("managers", user.getId());
+        filter.addFilter("type", answer.getType());
+        Browsing<Stakeholder> stakeholder = stakeholderService.getAll(filter);
+        if (stakeholder.getTotal() > 0) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean hasStakeholderManagerAccess(String surveyId) {
+        if (surveyId == null) {
+            return false;
+        }
+        Model survey = formsService.get(surveyId);
+        User user = userService.get(User.of(authentication).getId());
+        FacetFilter filter = new FacetFilter();
+        filter.addFilter("managers", user.getId());
+        filter.addFilter("type", survey.getType());
+        Browsing<Stakeholder> stakeholder = stakeholderService.getAll(filter);
+        if (stakeholder.getTotal() > 0) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean hasCoordinatorAccess(String surveyId) {
+        if (surveyId == null) {
+            return false;
+        }
+        Model survey = formsService.get(surveyId);
+        User user = userService.get(User.of(authentication).getId());
+        FacetFilter filter = new FacetFilter();
+        filter.addFilter("members", user.getId());
+        filter.addFilter("type", survey.getType());
+        Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
+        if (coordinators.getTotal() > 0) {
+            return true;
+        }
+        return false;
     }
 
     public boolean hasCoordinatorAccess(Object surveyAnswer) {

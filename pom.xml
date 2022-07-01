@@ -14,7 +14,7 @@
 	<description>EOSC Portal Observatory</description>
 	<properties>
 		<java.version>11</java.version>
-		<registry-core.version>2.3.5</registry-core.version>
+		<registry-core.version>2.3.7</registry-core.version>
 	</properties>
 	<dependencies>
 		<dependency>

@@ -12,9 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletResponse;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -35,7 +32,7 @@ public class CsvController {
             value = "/export/answers/{id}",
             produces = {MediaType.APPLICATION_OCTET_STREAM_VALUE}
     )
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or hasCoordinatorAccess(#modelId) or hasStakeholdeManagerAccess(#modelId)")
     public ResponseEntity<byte[]> exportSurveysToCsv(@PathVariable("id") String modelId,
                                                      @RequestParam(value = "includeUsers", defaultValue = "false") boolean includeUsers,
                                                      @RequestParam(value = "dateFrom", required = false) String dateFrom,

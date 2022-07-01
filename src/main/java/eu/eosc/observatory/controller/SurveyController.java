@@ -2,7 +2,10 @@ package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.SurveyAnswerInfo;
+import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.CrudItemService;
+import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.SurveyService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -38,14 +41,20 @@ public class SurveyController {
     private final FormsController formsController;
     private final CrudItemService<SurveyAnswer> surveyAnswerService;
     private final SurveyService surveyService;
+    private final StakeholderService stakeholderService;
+    private final CoordinatorService coordinatorService;
 
     @Autowired
     public SurveyController(FormsController formsController,
                             CrudItemService<SurveyAnswer> surveyAnswerService,
-                            SurveyService surveyService) {
+                            SurveyService surveyService,
+                            StakeholderService stakeholderService,
+                            CoordinatorService coordinatorService) {
         this.formsController = formsController;
         this.surveyAnswerService = surveyAnswerService;
         this.surveyService = surveyService;
+        this.stakeholderService = stakeholderService;
+        this.coordinatorService = coordinatorService;
     }
 
     /*-------------------------------------*/
@@ -150,20 +159,20 @@ public class SurveyController {
     }
 
     @GetMapping("answers/latest")
-    @PostAuthorize("hasPermission(returnObject, 'read') or hasCoordinatorAccess(returnObject)")
+    @PostAuthorize("hasPermission(returnObject, 'read') or hasCoordinatorAccess(returnObject) or hasStakeholderManagerAccess(returnObject)")
     public ResponseEntity<SurveyAnswer> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
         SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
         return new ResponseEntity<>(surveyAnswer, HttpStatus.OK);
     }
 
     @GetMapping("answers/{id}")
-    @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id)")
+    @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
     public ResponseEntity<SurveyAnswer> getSurveyAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
         return new ResponseEntity<>(surveyAnswerService.get(id), HttpStatus.OK);
     }
 
     @GetMapping("answers/{id}/answer")
-    @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id)")
+    @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
     public ResponseEntity<Object> getAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
         return new ResponseEntity<>(surveyAnswerService.get(id).getChapterAnswers(), HttpStatus.OK);
     }
@@ -180,5 +189,37 @@ public class SurveyController {
             answers = surveyService.generateAnswers(surveyId, authentication);
         }
         return new ResponseEntity<>(answers, HttpStatus.CREATED);
+    }
+
+    /*---------------------------*/
+    /*       Other methods       */
+    /*---------------------------*/
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "query", value = "Keyword to refine the search", dataTypeClass = String.class, paramType = "query"),
+            @ApiImplicitParam(name = "from", value = "Starting index in the result set", dataTypeClass = String.class, paramType = "query"),
+            @ApiImplicitParam(name = "quantity", value = "Quantity to be fetched", dataTypeClass = String.class, paramType = "query"),
+            @ApiImplicitParam(name = "order", value = "asc / desc", dataTypeClass = String.class, paramType = "query"),
+            @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
+    })
+    @GetMapping("answers/info")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMember(#coordinatorId) or isStakeholderManager(#stakeholderId)")
+    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(value = "coordinator", required = false) String coordinatorId,
+                                                                    @RequestParam(value = "stakeholder", required = false) String stakeholderId,
+                                                                    @ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
+        allRequestParams.remove("coordinator");
+        allRequestParams.remove("stakeholder");
+        FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
+        String type = null;
+        if (coordinatorId != null && stakeholderId != null) {
+            throw new UnsupportedOperationException("Only one of 'coordinator', 'stakeholder' is expected..");
+        }
+        if (coordinatorId != null) {
+            type = coordinatorService.get(coordinatorId).getType();
+        } else {
+            type = stakeholderService.get(stakeholderId).getType();
+        }
+
+        return new ResponseEntity<>(surveyService.browseSurveyAnswersInfo(type, filter), HttpStatus.OK);
     }
 }
