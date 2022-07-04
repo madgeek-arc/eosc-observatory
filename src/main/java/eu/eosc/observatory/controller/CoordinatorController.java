@@ -105,10 +105,10 @@ public class CoordinatorController {
         return new ResponseEntity<>(coordinatorService.addMember(coordinatorId, email), HttpStatus.OK);
     }
 
-    @DeleteMapping("{id}/members/{contributorId}")
+    @DeleteMapping("{id}/members/{memberId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<User>> removeMember(@PathVariable("id") String coordinatorId, @PathVariable("contributorId") String contributorId) {
-        return new ResponseEntity<>(coordinatorService.removeMember(coordinatorId, contributorId), HttpStatus.OK);
+    public ResponseEntity<Set<User>> removeMember(@PathVariable("id") String coordinatorId, @PathVariable("memberId") String memberId) {
+        return new ResponseEntity<>(coordinatorService.removeMember(coordinatorId, memberId), HttpStatus.OK);
     }
 
     /*---------------------------*/
