@@ -36,6 +36,11 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
+    public Set<Permission> getUserPermissionsByAction(String userId, String action) {
+        return this.authorizationService.whereCan(userId, action);
+    }
+
+    @Override
     public List<ResourcePermissions> getResourcePermissions(String userId, List<String> resourceIds) {
         List<ResourcePermissions> resourcePermissionsList = new ArrayList<>();
         for (String id : resourceIds) {

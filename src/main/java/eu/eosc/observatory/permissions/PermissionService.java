@@ -10,6 +10,8 @@ public interface PermissionService {
 
     Set<String> getPermissions(String userId, String resourceId);
 
+    Set<Permission> getUserPermissionsByAction(String userId, String action);
+
     List<ResourcePermissions> getResourcePermissions(String userId, List<String> resourceIds);
 
     Set<Permission> addPermissions(List<String> users, List<String> actions, List<String> resourceIds, String group);

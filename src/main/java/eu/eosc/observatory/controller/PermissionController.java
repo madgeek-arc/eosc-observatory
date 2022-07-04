@@ -3,6 +3,7 @@ package eu.eosc.observatory.controller;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.ResourcePermissions;
 import eu.eosc.observatory.permissions.PermissionService;
+import gr.athenarc.authorization.domain.Permission;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,5 +39,11 @@ public class PermissionController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Set<String>> getUserPermissions(@RequestParam("userId") String userId, @RequestParam("resourceId") String resourceId) {
         return new ResponseEntity<>(permissionService.getPermissions(userId, resourceId), HttpStatus.OK);
+    }
+
+    @GetMapping("users/{id}/actions/{action}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Set<Permission>> getAllUserPermissions(@RequestParam("userId") String userId, @RequestParam("action") String action) {
+        return new ResponseEntity<>(permissionService.getUserPermissionsByAction(userId, action), HttpStatus.OK);
     }
 }
