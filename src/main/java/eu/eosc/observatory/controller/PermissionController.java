@@ -37,13 +37,13 @@ public class PermissionController {
 
     @GetMapping("admin")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<String>> getUserPermissions(@RequestParam("userId") String userId, @RequestParam("resourceId") String resourceId) {
+    public ResponseEntity<Set<String>> getUserPermittedActions(@RequestParam("userId") String userId, @RequestParam("resourceId") String resourceId) {
         return new ResponseEntity<>(permissionService.getPermissions(userId, resourceId), HttpStatus.OK);
     }
 
-    @GetMapping("users/{id}/actions/{action}")
+    @GetMapping("users/{userId}/actions/{action}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<Permission>> getAllUserPermissions(@RequestParam("userId") String userId, @RequestParam("action") String action) {
+    public ResponseEntity<Set<Permission>> getUserPermissionsByAction(@PathVariable("userId") String userId, @PathVariable("action") String action) {
         return new ResponseEntity<>(permissionService.getUserPermissionsByAction(userId, action), HttpStatus.OK);
     }
 }
