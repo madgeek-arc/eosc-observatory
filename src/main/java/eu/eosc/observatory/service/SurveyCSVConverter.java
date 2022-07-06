@@ -2,9 +2,8 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.*;
 import gr.athenarc.catalogue.service.id.IdGenerator;
-import gr.athenarc.catalogue.ui.domain.Chapter;
-import gr.athenarc.catalogue.ui.domain.Group;
 import gr.athenarc.catalogue.ui.domain.Model;
+import gr.athenarc.catalogue.ui.domain.Section;
 import gr.athenarc.catalogue.ui.domain.UiField;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import org.slf4j.Logger;
@@ -285,10 +284,10 @@ public class SurveyCSVConverter implements CSVConverter {
 
     private Map<String, List<List<UiField>>> getChapterFields(Model model) {
         Map<String, List<List<UiField>>> chapterFields = new TreeMap<>();
-        for (Chapter chapter : model.getChapters()) {
+        for (Section chapter : model.getSections()) {
 
             List<List<UiField>> fields = new LinkedList<>();
-            for (Group section : chapter.getSections()) {
+            for (Section section : chapter.getSubSections()) {
                 List<UiField> sortedFields = sortFieldList(section.getFields());
                 for (UiField field : sortedFields) {
                     fields.addAll(fieldsToLeaf(null, field));

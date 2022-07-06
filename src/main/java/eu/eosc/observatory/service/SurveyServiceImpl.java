@@ -13,7 +13,7 @@ import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.service.id.IdGenerator;
 import gr.athenarc.catalogue.ui.domain.*;
-import gr.athenarc.catalogue.ui.service.FormsService;
+import gr.athenarc.catalogue.ui.service.ModelService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.json.simple.JSONObject;
@@ -24,7 +24,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class SurveyServiceImpl implements SurveyService {
@@ -36,7 +35,7 @@ public class SurveyServiceImpl implements SurveyService {
     private final GenericItemService genericItemService;
     private final PermissionService permissionService;
     private final IdGenerator<String> idGenerator;
-    private final FormsService formsService;
+    private final ModelService modelService;
 
     @Autowired
     public SurveyServiceImpl(CrudItemService<Stakeholder> stakeholderCrudService,
@@ -44,13 +43,13 @@ public class SurveyServiceImpl implements SurveyService {
                              @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,
                              PermissionService permissionService,
                              IdGenerator<String> idGenerator,
-                             FormsService formsService) {
+                             ModelService modelService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericItemService = genericItemService;
         this.permissionService = permissionService;
         this.idGenerator = idGenerator;
-        this.formsService = formsService;
+        this.modelService = modelService;
     }
 
     @Override
@@ -203,7 +202,7 @@ public class SurveyServiceImpl implements SurveyService {
         surveyAnswer.setType(survey.getType());
 
         // TODO: move this inside surveyAnswer constructor?
-        for (Chapter chapter : survey.getChapters()) {
+        for (Section chapter : survey.getSections()) {
             // create answer for every chapter
             if (chapter.getSubType() != null && !Objects.equals(chapter.getSubType(), stakeholder.getSubType())) {
                 // skip chapters not matching subtype
@@ -239,7 +238,7 @@ public class SurveyServiceImpl implements SurveyService {
             logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
             Model survey = genericItemService.get("model", answer.getSurveyId());
             if (!surveyChapterFields.containsKey(survey.getId())) {
-                surveyChapterFields.put(survey.getId(), formsService.getChapterFieldsMap(survey.getId()));
+                surveyChapterFields.put(survey.getId(), getSectionFieldsMap(survey.getId()));
             }
             Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
             SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
@@ -265,7 +264,7 @@ public class SurveyServiceImpl implements SurveyService {
             logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
             Model survey = genericItemService.get("model", answer.getSurveyId());
             if (!surveyChapterFields.containsKey(survey.getId())) {
-                surveyChapterFields.put(survey.getId(), formsService.getChapterFieldsMap(survey.getId()));
+                surveyChapterFields.put(survey.getId(), getSectionFieldsMap(survey.getId()));
             }
             Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
             SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
@@ -274,6 +273,19 @@ public class SurveyServiceImpl implements SurveyService {
         }
         surveyAnswerInfoBrowsing.setResults(results);
         return surveyAnswerInfoBrowsing;
+    }
+
+    private List<UiField> getSectionFields(Section section) {
+        List<UiField> fields = new ArrayList<>();
+        if (section.getSubSections() != null) {
+            for (Section s : section.getSubSections()) {
+                fields.addAll(getSectionFields(s));
+            }
+        }
+        if (section.getFields() != null) {
+            fields.addAll(getFieldsRecursive(section.getFields()));
+        }
+        return fields;
     }
 
     private List<UiField> getFieldsRecursive(List<UiField> fields) {
@@ -289,21 +301,9 @@ public class SurveyServiceImpl implements SurveyService {
 
     private Map<String, UiField> getAllFields(String surveyId) {
         Map<String, UiField> allFieldsMap = new TreeMap<>();
-        Model survey = formsService.get(surveyId);
-        List<UiField> allFields = survey.getChapters()
-                .stream()
-                .map(chapter -> chapter.getSections()
-                        .stream()
-                        .map(Group::getFields)
-                        .collect(Collectors.toList())
-                        .stream()
-                        .flatMap(Collection::stream)
-                        .collect(Collectors.toList()))
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
-
-        allFields = getFieldsRecursive(allFields);
-
+        Model survey = modelService.get(surveyId);
+        List<UiField> allFields = new ArrayList<>();
+        survey.getSections().forEach(section -> allFields.addAll(getSectionFields(section)));
         for (UiField field : allFields) {
             allFieldsMap.put(field.getId(), field);
         }
@@ -406,5 +406,15 @@ public class SurveyServiceImpl implements SurveyService {
         permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
         surveyAnswer.setValidated(false);
         return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
+    }
+
+
+    Map<String, List<UiField>> getSectionFieldsMap(String modelId) {
+        Map<String, List<UiField>> sectionFields = new LinkedHashMap<>();
+        Model model = modelService.get(modelId);
+        for (Section section : model.getSections()) {
+            sectionFields.put(section.getId(), section.getFields());
+        }
+        return sectionFields;
     }
 }
