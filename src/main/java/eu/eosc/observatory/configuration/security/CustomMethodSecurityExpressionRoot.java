@@ -8,9 +8,8 @@ import eu.eosc.observatory.service.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.ReflectUtils;
-import gr.athenarc.catalogue.service.GenericItemService;
 import gr.athenarc.catalogue.ui.domain.Model;
-import gr.athenarc.catalogue.ui.service.FormsService;
+import gr.athenarc.catalogue.ui.service.ModelService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +22,6 @@ import org.springframework.security.core.GrantedAuthority;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot implements MethodSecurityExpressionOperations, PermissionEvaluator {
 
@@ -33,7 +31,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     private final SecurityService securityService;
     private final CoordinatorService coordinatorService;
     private final StakeholderService stakeholderService;
-    private final FormsService formsService;
+    private final ModelService modelService;
     private final SurveyAnswerCrudService surveyAnswerCrudService;
 
     private Object filterObject;
@@ -45,7 +43,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
                                               SecurityService securityService,
                                               CoordinatorService coordinatorService,
                                               StakeholderService stakeholderService,
-                                              FormsService formsService,
+                                              ModelService modelService,
                                               SurveyAnswerCrudService surveyAnswerCrudService) {
         super(authentication);
         this.setPermissionEvaluator(this);
@@ -53,7 +51,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         this.securityService = securityService;
         this.coordinatorService = coordinatorService;
         this.stakeholderService = stakeholderService;
-        this.formsService = formsService;
+        this.modelService = modelService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
     }
 
@@ -176,7 +174,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         if (surveyId == null) {
             return false;
         }
-        Model survey = formsService.get(surveyId);
+        Model survey = modelService.get(surveyId);
         User user = userService.get(User.of(authentication).getId());
         FacetFilter filter = new FacetFilter();
         filter.addFilter("managers", user.getId());
@@ -192,7 +190,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         if (surveyId == null) {
             return false;
         }
-        Model survey = formsService.get(surveyId);
+        Model survey = modelService.get(surveyId);
         User user = userService.get(User.of(authentication).getId());
         FacetFilter filter = new FacetFilter();
         filter.addFilter("members", user.getId());
