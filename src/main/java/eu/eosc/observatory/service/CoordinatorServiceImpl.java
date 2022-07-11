@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerAndChapterAnswerIds;
+import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
 @Service
 public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator> implements CoordinatorService {
@@ -155,6 +155,6 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         filter.setQuantity(10000);
         filter.addFilter("type", coordinator.getType());
         List<SurveyAnswer> resourceIds = surveyAnswerCrudService.getAll(filter).getResults();
-        return getSurveyAnswerAndChapterAnswerIds(resourceIds);
+        return getSurveyAnswerIds(resourceIds);
     }
 }

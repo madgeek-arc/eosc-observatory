@@ -34,7 +34,6 @@ public class SurveyServiceImpl implements SurveyService {
     private final CrudItemService<SurveyAnswer> surveyAnswerCrudService;
     private final GenericItemService genericItemService;
     private final PermissionService permissionService;
-    private final IdGenerator<String> idGenerator;
     private final ModelService modelService;
 
     @Autowired
@@ -42,13 +41,11 @@ public class SurveyServiceImpl implements SurveyService {
                              CrudItemService<SurveyAnswer> surveyAnswerCrudService,
                              @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,
                              PermissionService permissionService,
-                             IdGenerator<String> idGenerator,
                              ModelService modelService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericItemService = genericItemService;
         this.permissionService = permissionService;
-        this.idGenerator = idGenerator;
         this.modelService = modelService;
     }
 
@@ -125,21 +122,20 @@ public class SurveyServiceImpl implements SurveyService {
         Date date = new Date();
         SurveyAnswer existing = surveyAnswerCrudService.get(id);
         surveyAnswer.setHistory(existing.getHistory());
-        surveyAnswer.getHistory().addEntry(user.getId(), date, null, History.HistoryAction.UPDATED);
+        surveyAnswer.getHistory().addEntry(user.getId(), date, History.HistoryAction.UPDATED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
         return surveyAnswerCrudService.update(id, surveyAnswer);
     }
 
     @Override
-    public SurveyAnswer updateAnswer(String surveyAnswerId, String chapterAnswerId, JSONObject answer, User user) throws ResourceNotFoundException {
+    public SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, User user) throws ResourceNotFoundException {
         Date date = new Date();
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
-        surveyAnswer.getChapterAnswers().get(chapterAnswerId).setAnswer(answer);
-        surveyAnswer.getHistory().addEntry(user.getId(), date, surveyAnswer.getChapterAnswers().get(chapterAnswerId).getChapterId(), History.HistoryAction.UPDATED);
+        surveyAnswer.setAnswer(answer);
+        surveyAnswer.getHistory().addEntry(user.getId(), date, History.HistoryAction.UPDATED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
-        surveyAnswer.getChapterAnswers().get(chapterAnswerId).setMetadata(surveyAnswer.getMetadata());
         return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
     }
 
@@ -149,7 +145,7 @@ public class SurveyServiceImpl implements SurveyService {
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(answerId);
         if (surveyAnswer.isValidated() != validated) {
             History.HistoryAction action = validated ? History.HistoryAction.VALIDATED : History.HistoryAction.INVALIDATED;
-            surveyAnswer.getHistory().addEntry(user.getId(), date, null, action);
+            surveyAnswer.getHistory().addEntry(user.getId(), date, action);
             surveyAnswer.getMetadata().setModifiedBy(user.getId());
             surveyAnswer.getMetadata().setModificationDate(date);
             return validated ? validateAnswer(surveyAnswer) : invalidateAnswer(surveyAnswer);
@@ -166,7 +162,7 @@ public class SurveyServiceImpl implements SurveyService {
     @Override
     public List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication) {
         Model survey = genericItemService.get("model", surveyId);
-        logger.debug(String.format("Generating new cycle of Survey Answers for Survey: [id=%s] [name=%s]", survey.getId(), survey.getName()));
+        logger.debug("Generating new cycle of Survey Answers for Survey: [id={}] [name={}]", survey.getId(), survey.getName());
         List<SurveyAnswer> surveyAnswers = new ArrayList<>();
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(10000);
@@ -189,33 +185,17 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     private SurveyAnswer generateAnswer(Stakeholder stakeholder, Model survey, Authentication authentication) {
-        logger.info(String.format("Generating SurveyAnswer: [surveyId=%s] [stakeholderId=%s]", survey.getId(), stakeholder.getId()));
+        logger.info("Generating SurveyAnswer: [surveyId={}] [stakeholderId={}]", survey.getId(), stakeholder.getId());
         Metadata metadata = new Metadata(authentication);
         Date creationDate = metadata.getCreationDate();
         // create answer for every stakeholder
         SurveyAnswer surveyAnswer = new SurveyAnswer();
         surveyAnswer.setMetadata(metadata);
-        surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, null, History.HistoryAction.CREATED);
+        surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, History.HistoryAction.CREATED);
 
         surveyAnswer.setStakeholderId(stakeholder.getId());
         surveyAnswer.setSurveyId(survey.getId());
         surveyAnswer.setType(survey.getType());
-
-        // TODO: move this inside surveyAnswer constructor?
-        for (Section chapter : survey.getSections()) {
-            // create answer for every chapter
-            if (chapter.getSubType() != null && !Objects.equals(chapter.getSubType(), stakeholder.getSubType())) {
-                // skip chapters not matching subtype
-                continue;
-            }
-            String chapterAnswerId = generateChapterAnswerId();
-            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, chapter.getId(), History.HistoryAction.CREATED);
-            ChapterAnswer chapterAnswer = new ChapterAnswer(chapterAnswerId, chapter.getId(), metadata);
-            chapterAnswer.setId(chapterAnswerId);
-            chapterAnswer.setChapterId(chapter.getId());
-
-            surveyAnswer.getChapterAnswers().put(chapterAnswer.getId(), chapterAnswer);
-        }
 
         surveyAnswer = surveyAnswerCrudService.add(surveyAnswer);
 
@@ -233,16 +213,12 @@ public class SurveyServiceImpl implements SurveyService {
         surveyAnswerInfoBrowsing.setTotal(surveyAnswerBrowsing.getTotal());
         surveyAnswerInfoBrowsing.setFacets(surveyAnswerBrowsing.getFacets());
         List<SurveyAnswerInfo> results = new ArrayList<>();
-        Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
         for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
-            logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
+            logger.debug("SurveyAnswer [id={}]", answer.getId());
             Model survey = genericItemService.get("model", answer.getSurveyId());
-            if (!surveyChapterFields.containsKey(survey.getId())) {
-                surveyChapterFields.put(survey.getId(), getSectionFieldsMap(survey.getId()));
-            }
             Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
             SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
-            setProgress(info, answer, surveyChapterFields.get(survey.getId()));
+            setProgress(info, answer);
             results.add(info);
         }
         surveyAnswerInfoBrowsing.setResults(results);
@@ -259,16 +235,12 @@ public class SurveyServiceImpl implements SurveyService {
         surveyAnswerInfoBrowsing.setTotal(surveyAnswerBrowsing.getTotal());
         surveyAnswerInfoBrowsing.setFacets(surveyAnswerBrowsing.getFacets());
         List<SurveyAnswerInfo> results = new ArrayList<>();
-        Map<String, Map<String, List<UiField>>> surveyChapterFields = new HashMap<>();
         for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
-            logger.debug(String.format("SurveyAnswer [id=%s]", answer.getId()));
+            logger.debug("SurveyAnswer [id={}]", answer.getId());
             Model survey = genericItemService.get("model", answer.getSurveyId());
-            if (!surveyChapterFields.containsKey(survey.getId())) {
-                surveyChapterFields.put(survey.getId(), getSectionFieldsMap(survey.getId()));
-            }
             Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
             SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
-            setProgress(info, answer, surveyChapterFields.get(survey.getId()));
+            setProgress(info, answer);
             results.add(info);
         }
         surveyAnswerInfoBrowsing.setResults(results);
@@ -311,33 +283,29 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     // TODO: optimize
-    private void setProgress(SurveyAnswerInfo info, SurveyAnswer answer, Map<String, List<UiField>> chapterFieldsMap) {
-        Map<String, UiField> allFieldsMap = getAllFields(answer.getSurveyId());
+    private void setProgress(SurveyAnswerInfo info, SurveyAnswer surveyAnswer) {
+        Map<String, UiField> allFieldsMap = getAllFields(surveyAnswer.getSurveyId());
 
         Progress required = new Progress();
         Progress total = new Progress();
-        Map<String, JSONObject> chapterAnswers = new HashMap<>();
-        for (ChapterAnswer chapterAnswer : answer.getChapterAnswers().values()) {
-            chapterAnswers.put(chapterAnswer.getChapterId(), chapterAnswer.getAnswer());
-        }
-        for (Map.Entry<String, List<UiField>> chapter : chapterFieldsMap.entrySet()) {
-            JSONObject chapterAnswer = chapterAnswers.get(chapter.getKey());
-            for (UiField field : getFieldsRecursive(chapter.getValue())) {
-                if ("question".equals(field.getKind())) {
-                    total.addToTotal(1);
-                    if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-                        required.addToTotal(1);
-                    }
 
-                    if (fieldIsAnswered(field, chapterAnswer, allFieldsMap)) {
-                        total.addToCurrent(1);
-                        if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-                            required.addToCurrent(1);
-                        }
+        JSONObject answer = surveyAnswer.getAnswer();
+        for (UiField field : allFieldsMap.values()) {
+            if ("question".equals(field.getKind())) {
+                total.addToTotal(1);
+                if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
+                    required.addToTotal(1);
+                }
+
+                if (fieldIsAnswered(field, answer, allFieldsMap)) {
+                    total.addToCurrent(1);
+                    if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
+                        required.addToCurrent(1);
                     }
                 }
             }
         }
+
         info.setProgressRequired(required);
         info.setProgressTotal(total);
 
@@ -383,12 +351,6 @@ public class SurveyServiceImpl implements SurveyService {
         return object;
     }
 
-    @Override
-    public String generateChapterAnswerId() {
-        return idGenerator.createId("ca-", 8);
-    }
-
-
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
         List<String> members = stakeholder.getManagers();
@@ -408,13 +370,4 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
     }
 
-
-    Map<String, List<UiField>> getSectionFieldsMap(String modelId) {
-        Map<String, List<UiField>> sectionFields = new LinkedHashMap<>();
-        Model model = modelService.get(modelId);
-        for (Section section : model.getSections()) {
-            sectionFields.put(section.getId(), section.getFields());
-        }
-        return sectionFields;
-    }
 }

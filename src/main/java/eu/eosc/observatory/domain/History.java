@@ -18,8 +18,8 @@ public class History {
         this.entries = entries;
     }
 
-    public void addEntry(String userId, Date date, String chapterId, HistoryAction action) {
-        entries.add(new HistoryEntry(userId, date.getTime(), chapterId, action));
+    public void addEntry(String userId, Date date, HistoryAction action) {
+        entries.add(new HistoryEntry(userId, date.getTime(), action));
     }
 
     public enum HistoryAction {

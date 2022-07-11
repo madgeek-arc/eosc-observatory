@@ -1,6 +1,5 @@
 package eu.eosc.observatory.aspect;
 
-import eu.eosc.observatory.domain.ChapterAnswer;
 import eu.eosc.observatory.domain.Coordinator;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
@@ -59,9 +58,6 @@ public class PermissionsUpdateAspect {
                 Permissions.WRITE.getKey());
 
         List<String> resourceIds = new ArrayList<>();
-        for (ChapterAnswer chapterAnswer : surveyAnswer.getChapterAnswers().values()) {
-            resourceIds.add(chapterAnswer.getId());
-        }
         resourceIds.add(surveyAnswer.getId());
         permissionService.addPermissions(stakeholder.getManagers(), managerPermissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
         permissionService.addPermissions(stakeholder.getContributors(), contributorPermissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
@@ -83,9 +79,6 @@ public class PermissionsUpdateAspect {
                 Permissions.PUBLISH.getKey());
 
         List<String> resourceIds = new ArrayList<>();
-        for (ChapterAnswer chapterAnswer : surveyAnswer.getChapterAnswers().values()) {
-            resourceIds.add(chapterAnswer.getId());
-        }
         resourceIds.add(surveyAnswer.getId());
 
         permissionService.removePermissions(stakeholder.getManagers(), permissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());

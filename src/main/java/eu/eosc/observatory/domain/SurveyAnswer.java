@@ -1,9 +1,9 @@
 package eu.eosc.observatory.domain;
 
 import eu.eosc.observatory.service.Identifiable;
+import org.json.simple.JSONObject;
 
 import java.util.Map;
-import java.util.TreeMap;
 
 public class SurveyAnswer implements Identifiable<String> {
 
@@ -11,14 +11,14 @@ public class SurveyAnswer implements Identifiable<String> {
     private String surveyId;
     private String stakeholderId;
     private String type;
-    private Map<String, ChapterAnswer> chapterAnswers;
+    private JSONObject answer;
     private Metadata metadata;
     private History history;
     private boolean validated;
     private boolean published;
 
     public SurveyAnswer() {
-        this.chapterAnswers = new TreeMap<>();
+        this.answer = new JSONObject();
         this.metadata = new Metadata();
         this.history = new History();
     }
@@ -57,12 +57,12 @@ public class SurveyAnswer implements Identifiable<String> {
         this.type = type;
     }
 
-    public Map<String, ChapterAnswer> getChapterAnswers() {
-        return chapterAnswers;
+    public JSONObject getAnswer() {
+        return answer;
     }
 
-    public void setChapterAnswers(Map<String, ChapterAnswer> chapterAnswers) {
-        this.chapterAnswers = chapterAnswers;
+    public void setAnswer(JSONObject answer) {
+        this.answer = answer;
     }
 
     public Metadata getMetadata() {
@@ -104,7 +104,7 @@ public class SurveyAnswer implements Identifiable<String> {
                 ", surveyId='" + surveyId + '\'' +
                 ", stakeholderId='" + stakeholderId + '\'' +
                 ", type='" + type + '\'' +
-                ", chapterAnswers=" + chapterAnswers +
+                ", answer=" + answer +
                 ", metadata=" + metadata +
                 ", history=" + history +
                 ", validated=" + validated +

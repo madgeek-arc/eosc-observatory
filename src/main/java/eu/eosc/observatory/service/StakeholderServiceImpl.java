@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerAndChapterAnswerIds;
+import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
 @Service
 public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder> implements StakeholderService {
@@ -119,12 +119,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
         // read access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
         addContributorPermissions(userIds, allResourceIds);
 
         // all contributor permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> resourceIds = getSurveyAnswerIds(answers);
         addContributorFullPermissions(userIds, resourceIds);
 
         stakeholder.setContributors(userIds);
@@ -142,12 +142,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
         // read access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
         addContributorPermissions(Collections.singletonList(userId), allResourceIds);
 
         // all contributor permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> resourceIds = getSurveyAnswerIds(answers);
         addContributorFullPermissions(Collections.singletonList(userId), resourceIds);
 
         return getMembers(stakeholder);
@@ -176,12 +176,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
         // read/manage/publish access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
         addManagerPermissions(userIds, allResourceIds);
 
         // all manager permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> resourceIds = getSurveyAnswerIds(answers);
         addManagerFullPermissions(userIds, resourceIds);
 
         return update(stakeholderId, stakeholder);
@@ -198,12 +198,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
         // read/manage/publish access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
         addManagerPermissions(Collections.singletonList(userId), allResourceIds);
 
         // all manager permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> resourceIds = getSurveyAnswerIds(answers);
         addManagerFullPermissions(Collections.singletonList(userId), resourceIds);
 
         return getMembers(stakeholder);

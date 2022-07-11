@@ -112,12 +112,11 @@ public class SurveyController {
     /*-------------------------------------*/
 
     @PutMapping("answers/{surveyAnswerId}")
-    @PreAuthorize("hasPermission(#chapterAnswerId, 'write')")
+    @PreAuthorize("hasPermission(#surveyAnswerId, 'write')")
     public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("surveyAnswerId") String surveyAnswerId,
-                                                           @RequestParam("chapterAnswerId") String chapterAnswerId,
                                                            @RequestBody JSONObject object,
                                                            @ApiIgnore Authentication authentication) throws ResourceNotFoundException {
-        return new ResponseEntity<>(surveyService.updateAnswer(surveyAnswerId, chapterAnswerId, object, User.of(authentication)), HttpStatus.OK);
+        return new ResponseEntity<>(surveyService.updateAnswer(surveyAnswerId, object, User.of(authentication)), HttpStatus.OK);
     }
 
     @DeleteMapping("answers/{surveyAnswerId}")
@@ -174,7 +173,7 @@ public class SurveyController {
     @GetMapping("answers/{id}/answer")
     @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
     public ResponseEntity<Object> getAnswer(@PathVariable("id") String id, @ApiIgnore Authentication authentication) {
-        return new ResponseEntity<>(surveyAnswerService.get(id).getChapterAnswers(), HttpStatus.OK);
+        return new ResponseEntity<>(surveyAnswerService.get(id).getAnswer(), HttpStatus.OK);
     }
 
     @PostMapping("answers/generate/{surveyId}")
