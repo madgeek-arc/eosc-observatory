@@ -22,13 +22,6 @@
       "type": "java.lang.String"
     },
     {
-      "multivalued": true,
-      "name": "chapterId",
-      "label": "Chapter ID",
-      "path": "$.chapterAnswers[*].chapterId",
-      "type": "java.lang.String"
-    },
-    {
       "multivalued": false,
       "name": "stakeholderId",
       "label": "Stakeholder ID",

@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import javax.validation.constraints.NotNull;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -236,7 +237,7 @@ public class SurveyCSVConverter implements CSVConverter {
                 .collect(Collectors.joining(DELIMITER_SECONDARY));
     }
 
-    private List<UiField> sortFieldList(List<UiField> fieldList) {
+    private List<UiField> sortFieldList(@NotNull List<UiField> fieldList) {
         Comparator<UiField> orderComparator = Comparator.comparing(f -> f.getForm().getDisplay().getOrder());
         return fieldList.stream().sorted(orderComparator).collect(Collectors.toList());
     }
@@ -247,9 +248,11 @@ public class SurveyCSVConverter implements CSVConverter {
 
             List<List<UiField>> fields = new LinkedList<>();
             for (Section section : chapter.getSubSections()) {
-                List<UiField> sortedFields = sortFieldList(section.getFields());
-                for (UiField field : sortedFields) {
-                    fields.addAll(fieldsToLeaf(null, field));
+                if (section.getFields() != null) {
+                    List<UiField> sortedFields = sortFieldList(section.getFields());
+                    for (UiField field : sortedFields) {
+                        fields.addAll(fieldsToLeaf(null, field));
+                    }
                 }
             }
             chapterFields.put(chapter.getId(), fields);
@@ -267,9 +270,11 @@ public class SurveyCSVConverter implements CSVConverter {
             if (section.getSubSections() != null) {
                 fields.addAll(getSectionFieldsList(section.getSubSections()));
             }
-            List<UiField> sortedFields = sortFieldList(section.getFields());
-            for (UiField field : sortedFields) {
-                fields.addAll(fieldsToLeaf(null, field));
+            if (section.getFields() != null) {
+                List<UiField> sortedFields = sortFieldList(section.getFields());
+                for (UiField field : sortedFields) {
+                    fields.addAll(fieldsToLeaf(null, field));
+                }
             }
         }
         return fields;
@@ -282,11 +287,13 @@ public class SurveyCSVConverter implements CSVConverter {
         }
         leafFieldList.add(current);
         if (current.getSubFields() != null && !current.getSubFields().isEmpty()) {
-            List<UiField> currentSortedFields = sortFieldList(current.getSubFields());
-            for (UiField field : currentSortedFields) {
-                List<UiField> list = new LinkedList<>(leafFieldList);
+            if (current.getSubFields() != null) {
+                List<UiField> currentSortedFields = sortFieldList(current.getSubFields());
+                for (UiField field : currentSortedFields) {
+                    List<UiField> list = new LinkedList<>(leafFieldList);
 //                list.add(field);
-                allLeafFieldLists.addAll(fieldsToLeaf(list, field));
+                    allLeafFieldLists.addAll(fieldsToLeaf(list, field));
+                }
             }
         } else {
             if (!leafFieldList.isEmpty()) {
