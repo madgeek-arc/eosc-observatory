@@ -39,9 +39,9 @@ public class PermissionsUpdateAspect {
         this.coordinatorService = coordinatorService;
     }
 
-    @Before("execution(* eu.eosc.observatory.service.SurveyAnswerCrudService.add(..))")
-    public void onAddSurveyAnswer(JoinPoint joinPoint) {
-        SurveyAnswer surveyAnswer = (SurveyAnswer) joinPoint.getArgs()[0];
+    @AfterReturning(value = "execution(* eu.eosc.observatory.service.SurveyAnswerCrudService.add(..))", returning = "surveyAnswer")
+    public void onAddSurveyAnswer(JoinPoint joinPoint, SurveyAnswer surveyAnswer) {
+
         Stakeholder stakeholder = stakeholderService.get(surveyAnswer.getStakeholderId());
         Set<Coordinator> coordinators = coordinatorService.getWithFilter("type", surveyAnswer.getType());
 
