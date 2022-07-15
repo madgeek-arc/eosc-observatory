@@ -8,6 +8,7 @@ import eu.eosc.observatory.service.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.ReflectUtils;
+import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import org.slf4j.Logger;
@@ -204,7 +205,9 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
 
     public boolean hasCoordinatorAccess(Object surveyAnswer) {
         SurveyAnswer answer;
-        if (surveyAnswer instanceof String) {
+        if (surveyAnswer == null) {
+            return false;
+        } else if (surveyAnswer instanceof String) {
             answer = surveyAnswerCrudService.get((String) surveyAnswer);
         } else if (surveyAnswer instanceof SurveyAnswer) {
             answer = (SurveyAnswer) surveyAnswer;
