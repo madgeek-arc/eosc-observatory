@@ -84,7 +84,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     }
 
     @Override
-    public Set<User> updateMembers(String coordinatorId, List<String> userIds) {
+    public Set<User> updateMembers(String coordinatorId, Set<String> userIds) {
         Coordinator coordinator = updateRoles(coordinatorId, userIds);
 
         coordinator = super.update(coordinatorId, coordinator);
@@ -95,7 +95,7 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     public Set<User> addMember(String coordinatorId, String userId) {
         Coordinator coordinator = get(coordinatorId);
         if (coordinator.getMembers() == null) {
-            coordinator.setMembers(new ArrayList<>());
+            coordinator.setMembers(new HashSet<>());
         }
         coordinator.getMembers().add(userId);
         coordinator = super.update(coordinatorId, coordinator);
@@ -131,9 +131,9 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         return members;
     }
 
-    private Coordinator updateRoles(String coordinatorId, List<String> userIds) {
+    private Coordinator updateRoles(String coordinatorId, Set<String> userIds) {
         Coordinator coordinator = get(coordinatorId);
-        List<String> previousMembers = coordinator.getMembers();
+        Set<String> previousMembers = coordinator.getMembers();
         for (String member : userIds) {
             previousMembers.remove(member);
         }

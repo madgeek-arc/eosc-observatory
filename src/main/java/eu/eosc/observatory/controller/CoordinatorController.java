@@ -94,7 +94,7 @@ public class CoordinatorController {
 
     @PatchMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<User>> updateMembers(@PathVariable("id") String coordinatorId, @RequestBody List<String> emails) {
+    public ResponseEntity<Set<User>> updateMembers(@PathVariable("id") String coordinatorId, @RequestBody Set<String> emails) {
         return new ResponseEntity<>(coordinatorService.updateMembers(coordinatorId, emails), HttpStatus.OK);
     }
 
