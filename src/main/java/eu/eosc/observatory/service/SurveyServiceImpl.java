@@ -11,13 +11,14 @@ import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.GenericItemService;
-import gr.athenarc.catalogue.service.id.IdGenerator;
-import gr.athenarc.catalogue.ui.domain.*;
+import gr.athenarc.catalogue.ui.domain.Model;
+import gr.athenarc.catalogue.ui.domain.Section;
+import gr.athenarc.catalogue.ui.domain.UiField;
 import gr.athenarc.catalogue.ui.service.ModelService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
@@ -353,7 +354,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
-        List<String> members = stakeholder.getManagers();
+        Set<String> members = stakeholder.getManagers();
         members.addAll(stakeholder.getContributors());
         permissionService.removePermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()));
         surveyAnswer.setValidated(true);
@@ -362,7 +363,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     private SurveyAnswer invalidateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
-        List<String> members = stakeholder.getManagers();
+        Set<String> members = stakeholder.getManagers();
         permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
         members = stakeholder.getContributors();
         permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());

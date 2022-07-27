@@ -3,8 +3,8 @@ package eu.eosc.observatory.domain;
 import eu.eosc.observatory.service.Identifiable;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Stakeholder implements Identifiable<String> {
@@ -16,8 +16,8 @@ public class Stakeholder implements Identifiable<String> {
     String country; // 2-letter code
     String associationMember; // will create list at some point
     boolean mandated;
-    List<String> managers;
-    List<String> contributors;
+    Set<String> managers;
+    Set<String> contributors;
 
     public Stakeholder() {
     }
@@ -80,26 +80,26 @@ public class Stakeholder implements Identifiable<String> {
         this.mandated = mandated;
     }
 
-    public List<String> getManagers() {
+    public Set<String> getManagers() {
         return managers;
     }
 
-    public void setManagers(List<String> managers) {
+    public void setManagers(Set<String> managers) {
         this.managers = managers == null ? null : managers
                 .stream()
                 .map(String::toLowerCase)
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
-    public List<String> getContributors() {
+    public Set<String> getContributors() {
         return contributors;
     }
 
-    public void setContributors(List<String> contributors) {
+    public void setContributors(Set<String> contributors) {
         this.contributors = contributors == null ? null : contributors
                 .stream()
                 .map(String::toLowerCase)
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
     }
 
     public enum StakeholderType {

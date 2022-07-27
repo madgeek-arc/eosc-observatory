@@ -3,7 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.dto.StakeholderMembers;
 
-import java.util.List;
+import java.util.Set;
 
 public interface StakeholderService extends CrudItemService<Stakeholder> {
 
@@ -11,11 +11,15 @@ public interface StakeholderService extends CrudItemService<Stakeholder> {
 
     Stakeholder updateStakeholderAndUserPermissions(String stakeholderId, Stakeholder stakeholder);
 
-    Stakeholder updateContributors(String stakeholderId, List<String> emails);
+    Stakeholder updateContributors(String stakeholderId, Set<String> emails);
+
     StakeholderMembers addContributor(String stakeholderId, String email);
+
     StakeholderMembers removeContributor(String stakeholderId, String email);
 
-    Stakeholder updateManagers(String stakeholderId, List<String> emails);
+    Stakeholder updateManagers(String stakeholderId, Set<String> emails);
+
     StakeholderMembers addManager(String stakeholderId, String email);
+
     StakeholderMembers removeManager(String stakeholderId, String email);
 }
