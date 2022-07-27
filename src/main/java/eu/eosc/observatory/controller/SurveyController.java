@@ -106,6 +106,17 @@ public class SurveyController {
         return formsController.updateModel(id, survey);
     }
 
+    @PostMapping("surveys/{id}/lock")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Void> lockSurvey(@PathVariable("id") String surveyId,
+                                           @RequestParam("lock") Boolean lock,
+                                           @ApiIgnore Authentication authentication) {
+        if (lock != null) {
+            surveyService.lockSurveyAndAnswers(surveyId, lock);
+        }
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
 
     /*-------------------------------------*/
     /*           Survey Answers            */

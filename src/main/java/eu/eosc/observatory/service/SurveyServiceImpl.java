@@ -352,6 +352,27 @@ public class SurveyServiceImpl implements SurveyService {
         return object;
     }
 
+    @Override
+    public void lockSurveyAndAnswers(String surveyId, boolean lock) {
+        Model survey = modelService.get(surveyId);
+        Set<Stakeholder> stakeholders = stakeholderCrudService.getWithFilter("type", survey.getType());
+        Set<String> permissions = Collections.singleton(Permissions.WRITE.getKey());
+        for (Stakeholder stakeholder : stakeholders) {
+            SurveyAnswer answer = getLatest(surveyId, stakeholder.getId());
+            if (answer == null)
+                continue;
+            if (lock) {
+                permissionService.removePermissions(stakeholder.getManagers(), permissions, Collections.singleton(answer.getId()));
+                permissionService.removePermissions(stakeholder.getContributors(), permissions, Collections.singleton(answer.getId()));
+            } else {
+                permissionService.addPermissions(stakeholder.getManagers(), permissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
+                permissionService.addPermissions(stakeholder.getContributors(), permissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+            }
+        }
+        survey.setLocked(lock);
+        modelService.update(surveyId, survey);
+    }
+
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
         Set<String> members = stakeholder.getManagers();
