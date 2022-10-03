@@ -2,8 +2,9 @@
 <Configuration status="INFO">
     <Properties>
         <Property name="baseDir">logs</Property>
+        <Property name="app">observatory</Property>
         <Property name="LOG_PATTERN">
-            %d{yyyy-MM-dd HH:mm:ss.SSS} %5p ${hostName} --- [%15.15t] %-40.40c{1.} : %m%n%ex
+            %d{yyyy-MM-dd HH:mm:ss.SSS} %highlight{%-5level} --- [%15.15t] %-40.40c{1.} : %m%n%style{%notEmpty{[transaction_id=%X{transaction_id}]\n}}{magenta}%ex
         </Property>
     </Properties>
     <Appenders>
@@ -13,10 +14,10 @@
         </Console>
 
 
-        <RollingFile name="RollingFile" fileName="${baseDir}/observatory.log"
-                     filePattern="${baseDir}/$${date:yyyy-MM}/observatory-%d{yyyy-MM-dd_HH:mm:ss}.log.gz">
+        <RollingFile name="RollingFile" fileName="${baseDir}/${app}.log"
+                     filePattern="${baseDir}/$${date:yyyy-MM}/${app}-%d{yyyy-MM-dd_HH:mm:ss}.log.gz">
             <PatternLayout
-                    pattern="%d{yyyy-MMM-dd HH:mm:ss.SSS} %highlight{%-5level} [%t] %style{%C}{bright,blue}: %msg%n%throwable"/>
+                    pattern="${LOG_PATTERN}"/>
             <Policies>
                 <OnStartupTriggeringPolicy/>
                 <CronTriggeringPolicy schedule="0 0 0 1 * ?"/>
@@ -24,7 +25,7 @@
             </Policies>
             <DefaultRolloverStrategy>
                 <Delete basePath="${baseDir}" maxDepth="2">
-                    <IfFileName glob="*/observatory-*.log.gz"/>
+                    <IfFileName glob="*/${app}-*.log.gz"/>
                     <IfLastModified age="180d"/>
                 </Delete>
             </DefaultRolloverStrategy>

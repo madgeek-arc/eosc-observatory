@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -31,7 +32,7 @@ public class PermissionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ResourcePermissions>> getResourcePermissions(@RequestParam("resourceIds") List<String> resourceIds, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<Collection<ResourcePermissions>> getResourcePermissions(@RequestParam("resourceIds") List<String> resourceIds, @ApiIgnore Authentication authentication) {
         return new ResponseEntity<>(permissionService.getResourcePermissions(User.getId(authentication), resourceIds), HttpStatus.OK);
     }
 

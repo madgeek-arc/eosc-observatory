@@ -3,7 +3,7 @@ package eu.eosc.observatory.permissions;
 import eu.eosc.observatory.dto.ResourcePermissions;
 import gr.athenarc.authorization.domain.Permission;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Set;
 
 public interface PermissionService {
@@ -12,24 +12,27 @@ public interface PermissionService {
 
     Set<Permission> getUserPermissionsByAction(String userId, String action);
 
-    List<ResourcePermissions> getResourcePermissions(String userId, List<String> resourceIds);
+    Collection<ResourcePermissions> getResourcePermissions(String userId, Collection<String> resourceIds);
 
-    Set<Permission> addPermissions(List<String> users, List<String> actions, List<String> resourceIds, String group);
+    Set<Permission> addPermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds, String group);
 
-    void removePermissions(List<String> users, List<String> actions, List<String> resourceIds);
-    void removePermissions(List<String> users, List<String> actions, List<String> resourceIds, String group);
+    void removePermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds);
 
-    @Deprecated
-    Set<Permission> addManagers(List<String> users, List<String> resourceIds);
+    void removePermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds, String group);
 
     @Deprecated
-    Set<Permission> addContributors(List<String> users, List<String> resourceIds);
+    Set<Permission> addManagers(Collection<String> users, Collection<String> resourceIds);
+
+    @Deprecated
+    Set<Permission> addContributors(Collection<String> users, Collection<String> resourceIds);
 
     void removeAll(String user);
+
     void removeAll(String user, String group);
 
-    void removeAll(List<String> users);
-    void removeAll(List<String> users, String group);
+    void removeAll(Collection<String> users);
+
+    void removeAll(Collection<String> users, String group);
 
     void remove(String user, String action, String resourceId);
 

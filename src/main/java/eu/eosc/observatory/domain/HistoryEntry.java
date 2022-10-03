@@ -4,15 +4,13 @@ public class HistoryEntry {
 
     String userId;
     long time;
-    String chapterModified;
     History.HistoryAction action;
 
     public HistoryEntry() {}
 
-    public HistoryEntry(String userId, long time, String chapterModified, History.HistoryAction action) {
+    public HistoryEntry(String userId, long time, History.HistoryAction action) {
         this.userId = userId;
         this.time = time;
-        this.chapterModified = chapterModified;
         this.action = action;
     }
 
@@ -30,14 +28,6 @@ public class HistoryEntry {
 
     public void setTime(long time) {
         this.time = time;
-    }
-
-    public String getChapterModified() {
-        return chapterModified;
-    }
-
-    public void setChapterModified(String chapterModified) {
-        this.chapterModified = chapterModified;
     }
 
     public History.HistoryAction getAction() {

@@ -2,6 +2,7 @@ package eu.eosc.observatory.configuration.security;
 
 import eu.eosc.observatory.service.*;
 import gr.athenarc.catalogue.ui.service.FormsService;
+import gr.athenarc.catalogue.ui.service.ModelService;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -27,7 +28,7 @@ public class CustomMethodSecurityExpressionHandler extends DefaultMethodSecurity
                 applicationContext.getBean(SecurityService.class),
                 applicationContext.getBean(CoordinatorService.class),
                 applicationContext.getBean(StakeholderService.class),
-                applicationContext.getBean(FormsService.class),
+                applicationContext.getBean(ModelService.class),
                 applicationContext.getBean(SurveyAnswerCrudService.class));
         root.setTrustResolver(this.trustResolver);
         root.setRoleHierarchy(getRoleHierarchy());

@@ -54,10 +54,12 @@ public class UserController {
 
     @RequestMapping("refreshLogin")
     public void refreshLogin(HttpServletRequest request, HttpServletResponse response, @ApiIgnore Authentication authentication) throws IOException, ServletException {
-        Cookie cookie = new Cookie("AccessToken", ((OidcUser) authentication.getPrincipal()).getIdToken().getTokenValue());
-        cookie.setMaxAge(3600);
-        cookie.setPath("/");
-        response.addCookie(cookie);
+        if (authentication != null && authentication.getPrincipal() != null) {
+            Cookie cookie = new Cookie("AccessToken", ((OidcUser) authentication.getPrincipal()).getIdToken().getTokenValue());
+            cookie.setMaxAge(3600);
+            cookie.setPath("/");
+            response.addCookie(cookie);
+        }//
     }
 
     @ApiIgnore

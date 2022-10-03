@@ -1,7 +1,6 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -15,10 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
@@ -93,7 +90,7 @@ public class StakeholderController {
 
     @PatchMapping("{id}/contributors")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<Stakeholder> updateContributors(@PathVariable("id") String stakeholderId, @RequestBody List<String> userIds) {
+    public ResponseEntity<Stakeholder> updateContributors(@PathVariable("id") String stakeholderId, @RequestBody Set<String> userIds) {
         return new ResponseEntity<>(stakeholderService.updateContributors(stakeholderId, userIds), HttpStatus.OK);
     }
 
@@ -111,7 +108,7 @@ public class StakeholderController {
 
     @PatchMapping("{id}/managers")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Stakeholder> updateManagers(@PathVariable("id") String stakeholderId, @RequestBody List<String> emails) {
+    public ResponseEntity<Stakeholder> updateManagers(@PathVariable("id") String stakeholderId, @RequestBody Set<String> emails) {
         return new ResponseEntity<>(stakeholderService.updateManagers(stakeholderId, emails), HttpStatus.OK);
     }
 

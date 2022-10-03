@@ -41,7 +41,7 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
-    public List<ResourcePermissions> getResourcePermissions(String userId, List<String> resourceIds) {
+    public List<ResourcePermissions> getResourcePermissions(String userId, Collection<String> resourceIds) {
         List<ResourcePermissions> resourcePermissionsList = new ArrayList<>();
         for (String id : resourceIds) {
             ResourcePermissions resourcePermissions = new ResourcePermissions(id, getPermissions(userId, id));
@@ -51,7 +51,7 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
-    public Set<Permission> addManagers(List<String> users, List<String> resourceIds) {
+    public Set<Permission> addManagers(Collection<String> users, Collection<String> resourceIds) {
         List<String> permissions = Arrays.asList(
                 Permissions.READ.getKey(),
                 Permissions.WRITE.getKey(),
@@ -61,13 +61,13 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
-    public Set<Permission> addContributors(List<String> users, List<String> resourceIds) {
+    public Set<Permission> addContributors(Collection<String> users, Collection<String> resourceIds) {
         List<String> permissions = Arrays.asList(Permissions.READ.getKey(), Permissions.WRITE.getKey());
         return addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
     }
 
     @Override
-    public Set<Permission> addPermissions(List<String> users, List<String> actions, List<String> resourceIds, String group) {
+    public Set<Permission> addPermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds, String group) {
         Set<Permission> permissions = new HashSet<>();
         if (users != null && actions != null && resourceIds != null) {
             for (String id : users) {
@@ -85,7 +85,7 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
-    public void removePermissions(List<String> users, List<String> actions, List<String> resourceIds) {
+    public void removePermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds) {
         if (users != null && actions != null && resourceIds != null) {
             for (String id : users) {
                 for (String action : actions) {
@@ -102,7 +102,7 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
-    public void removePermissions(List<String> users, List<String> actions, List<String> resourceIds, String group) {
+    public void removePermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds, String group) {
         for (String id : users) {
             for (String action : actions) {
                 for (String resourceId : resourceIds) {
@@ -127,14 +127,14 @@ public class AuthorizationServiceBridge implements PermissionService {
     }
 
     @Override
-    public void removeAll(List<String> users) {
+    public void removeAll(Collection<String> users) {
         for (String user : users) {
             this.removeAll(user);
         }
     }
 
     @Override
-    public void removeAll(List<String> users, String group) {
+    public void removeAll(Collection<String> users, String group) {
         for (String user : users) {
             this.removeAll(user, group);
         }

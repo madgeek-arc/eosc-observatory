@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerAndChapterAnswerIds;
+import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
 @Service
 public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder> implements StakeholderService {
@@ -109,9 +109,9 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
-    public Stakeholder updateContributors(String stakeholderId, List<String> userIds) {
+    public Stakeholder updateContributors(String stakeholderId, Set<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
-        List<String> previousContributors = stakeholder.getContributors();
+        Set<String> previousContributors = stakeholder.getContributors();
         for (String contributor : userIds) {
             previousContributors.remove(contributor);
         }
@@ -119,12 +119,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
         // read access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
         addContributorPermissions(userIds, allResourceIds);
 
         // all contributor permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> resourceIds = getSurveyAnswerIds(answers);
         addContributorFullPermissions(userIds, resourceIds);
 
         stakeholder.setContributors(userIds);
@@ -135,20 +135,20 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     public StakeholderMembers addContributor(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getContributors() == null) {
-            stakeholder.setContributors(new ArrayList<>());
+            stakeholder.setContributors(new HashSet<>());
         }
         stakeholder.getContributors().add(userId);
         stakeholder = update(stakeholderId, stakeholder);
 
         // read access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
-        addContributorPermissions(Collections.singletonList(userId), allResourceIds);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
+        addContributorPermissions(Collections.singleton(userId), allResourceIds);
 
         // all contributor permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
-        addContributorFullPermissions(Collections.singletonList(userId), resourceIds);
+        List<String> resourceIds = getSurveyAnswerIds(answers);
+        addContributorFullPermissions(Collections.singleton(userId), resourceIds);
 
         return getMembers(stakeholder);
     }
@@ -163,9 +163,9 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
-    public Stakeholder updateManagers(String stakeholderId, List<String> userIds) {
+    public Stakeholder updateManagers(String stakeholderId, Set<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
-        List<String> previousManagers = stakeholder.getManagers();
+        Set<String> previousManagers = stakeholder.getManagers();
         for (String manager : userIds) {
             previousManagers.remove(manager);
         }
@@ -176,12 +176,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
         // read/manage/publish access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
         addManagerPermissions(userIds, allResourceIds);
 
         // all manager permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
+        List<String> resourceIds = getSurveyAnswerIds(answers);
         addManagerFullPermissions(userIds, resourceIds);
 
         return update(stakeholderId, stakeholder);
@@ -191,20 +191,20 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     public StakeholderMembers addManager(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getManagers() == null) {
-            stakeholder.setManagers(new ArrayList<>());
+            stakeholder.setManagers(new HashSet<>());
         }
         stakeholder.getManagers().add(userId);
         stakeholder = update(stakeholderId, stakeholder);
 
         // read/manage/publish access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
-        addManagerPermissions(Collections.singletonList(userId), allResourceIds);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
+        addManagerPermissions(Collections.singleton(userId), allResourceIds);
 
         // all manager permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerAndChapterAnswerIds(answers);
-        addManagerFullPermissions(Collections.singletonList(userId), resourceIds);
+        List<String> resourceIds = getSurveyAnswerIds(answers);
+        addManagerFullPermissions(Collections.singleton(userId), resourceIds);
 
         return getMembers(stakeholder);
     }
@@ -218,7 +218,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         return getMembers(stakeholder);
     }
 
-    private Set<Permission> addManagerFullPermissions(List<String> users, List<String> resourceIds) {
+    private Set<Permission> addManagerFullPermissions(Set<String> users, List<String> resourceIds) {
         List<String> permissions = List.of(
                 Permissions.READ.getKey(),
                 Permissions.WRITE.getKey(),
@@ -227,7 +227,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         return permissionService.addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
     }
 
-    private Set<Permission> addManagerPermissions(List<String> users, List<String> resourceIds) {
+    private Set<Permission> addManagerPermissions(Set<String> users, List<String> resourceIds) {
         List<String> permissions = List.of(
                 Permissions.READ.getKey(),
                 Permissions.MANAGE.getKey(),
@@ -235,12 +235,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         return permissionService.addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
     }
 
-    private Set<Permission> addContributorFullPermissions(List<String> users, List<String> resourceIds) {
+    private Set<Permission> addContributorFullPermissions(Set<String> users, List<String> resourceIds) {
         List<String> permissions = List.of(Permissions.READ.getKey(), Permissions.WRITE.getKey());
         return permissionService.addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
     }
 
-    private Set<Permission> addContributorPermissions(List<String> users, List<String> resourceIds) {
+    private Set<Permission> addContributorPermissions(Set<String> users, List<String> resourceIds) {
         List<String> permissions = List.of(Permissions.READ.getKey());
         return permissionService.addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
     }

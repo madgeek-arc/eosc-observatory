@@ -1,6 +1,7 @@
 package eu.eosc.observatory.configuration;
 
 import gr.athenarc.catalogue.CatalogueApplication;
+import gr.athenarc.catalogue.config.LibConfiguration;
 import gr.athenarc.catalogue.config.RegistryCoreConfiguration;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 },
         excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = CatalogueApplication.class),
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = LibConfiguration.class),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = RegistryCoreConfiguration.class)
         })
 public class ObservatoryConfig {
