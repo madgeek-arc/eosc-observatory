@@ -8,7 +8,6 @@ import eu.eosc.observatory.service.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.ReflectUtils;
-import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import org.slf4j.Logger;
@@ -21,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -247,7 +247,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         } else {
             try {
                 resourceId = ReflectUtils.getId(resource.getClass(), resource);
-            } catch (NoSuchFieldException e) {
+            } catch (NoSuchFieldException | NoSuchMethodException | InvocationTargetException e) {
                 logger.error(e.getMessage(), e);
             }
         }
@@ -279,7 +279,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         } else {
             try {
                 resourceId = ReflectUtils.getId(resource.getClass(), resource);
-            } catch (NoSuchFieldException e) {
+            } catch (NoSuchFieldException | NoSuchMethodException | InvocationTargetException e) {
                 logger.error(e.getMessage(), e);
             }
         }
