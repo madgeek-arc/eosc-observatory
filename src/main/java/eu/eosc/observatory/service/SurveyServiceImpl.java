@@ -357,15 +357,16 @@ public class SurveyServiceImpl implements SurveyService {
         Model survey = modelService.get(surveyId);
         Set<Stakeholder> stakeholders = stakeholderCrudService.getWithFilter("type", survey.getType());
         Set<String> permissions = Collections.singleton(Permissions.WRITE.getKey());
+        Set<String> managerPermissions = Set.of(Permissions.WRITE.getKey(), Permissions.MANAGE.getKey());
         for (Stakeholder stakeholder : stakeholders) {
             SurveyAnswer answer = getLatest(surveyId, stakeholder.getId());
             if (answer == null)
                 continue;
             if (lock) {
-                permissionService.removePermissions(stakeholder.getManagers(), permissions, Collections.singleton(answer.getId()));
+                permissionService.removePermissions(stakeholder.getManagers(), managerPermissions, Collections.singleton(answer.getId()));
                 permissionService.removePermissions(stakeholder.getContributors(), permissions, Collections.singleton(answer.getId()));
             } else {
-                permissionService.addPermissions(stakeholder.getManagers(), permissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
+                permissionService.addPermissions(stakeholder.getManagers(), managerPermissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
                 permissionService.addPermissions(stakeholder.getContributors(), permissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
             }
         }
