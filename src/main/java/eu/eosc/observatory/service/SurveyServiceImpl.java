@@ -290,22 +290,25 @@ public class SurveyServiceImpl implements SurveyService {
         Progress required = new Progress();
         Progress total = new Progress();
 
-        JSONObject answer = surveyAnswer.getAnswer();
-        for (UiField field : allFieldsMap.values()) {
-            if ("question".equals(field.getKind())) {
-                total.addToTotal(1);
-                if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-                    required.addToTotal(1);
-                }
-
-                if (fieldIsAnswered(field, answer, allFieldsMap)) {
-                    total.addToCurrent(1);
+        for (String chapter : (Set<String>) surveyAnswer.getAnswer().keySet()) {
+            JSONObject answer = new JSONObject((LinkedHashMap) surveyAnswer.getAnswer().get(chapter));
+            for (UiField field : allFieldsMap.values()) {
+                if ("question".equals(field.getKind())) {
+                    total.addToTotal(1);
                     if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
-                        required.addToCurrent(1);
+                        required.addToTotal(1);
+                    }
+
+                    if (fieldIsAnswered(field, answer, allFieldsMap)) {
+                        total.addToCurrent(1);
+                        if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
+                            required.addToCurrent(1);
+                        }
                     }
                 }
             }
         }
+
 
         info.setProgressRequired(required);
         info.setProgressTotal(total);
