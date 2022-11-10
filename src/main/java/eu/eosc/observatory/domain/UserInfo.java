@@ -7,7 +7,9 @@ public class UserInfo {
     private Set<Stakeholder> stakeholders;
     private Set<Coordinator> coordinators;
 
-    public UserInfo() {}
+    public UserInfo() {
+        // no-arg constructor
+    }
 
     public UserInfo(User user, Set<Stakeholder> stakeholders, Set<Coordinator> coordinators) {
         this.user = user;

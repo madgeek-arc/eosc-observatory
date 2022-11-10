@@ -8,7 +8,9 @@ public class Invitation {
     private String stakeholderId;
     private long expiration;
 
-    public Invitation() {}
+    public Invitation() {
+        // no-arg constructor
+    }
 
     public String getInviter() {
         return inviter;

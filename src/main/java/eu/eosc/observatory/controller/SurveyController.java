@@ -15,9 +15,9 @@ import gr.athenarc.catalogue.ui.controller.FormsController;
 import gr.athenarc.catalogue.ui.domain.Model;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
+import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -144,7 +144,7 @@ public class SurveyController {
         return new ResponseEntity<>(surveyService.setAnswerValidated(surveyAnswerId, validated, User.of(authentication)), HttpStatus.OK);
     }
 
-    @PatchMapping ("answers/{id}/publish")
+    @PatchMapping("answers/{id}/publish")
     @PreAuthorize("hasPermission(#surveyAnswerId, 'publish')")
     public ResponseEntity<SurveyAnswer> publishAnswer(@PathVariable("id") String surveyAnswerId,
                                                       @RequestParam(value = "published") boolean published,

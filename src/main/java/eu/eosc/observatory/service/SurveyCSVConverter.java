@@ -5,11 +5,11 @@ import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.domain.Section;
 import gr.athenarc.catalogue.ui.domain.UiField;
 import gr.athenarc.catalogue.ui.service.ModelService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
 import org.springframework.security.core.Authentication;
@@ -17,7 +17,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.validation.constraints.NotNull;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -52,7 +51,7 @@ public class SurveyCSVConverter implements CSVConverter {
 
     private String[][] csvToTable(String data) {
         String[] rows = data.split("\n");
-        String [][] table = new String[rows.length][];
+        String[][] table = new String[rows.length][];
 
         for (int i = 0; i < rows.length; i++) {
             table[i] = rows[i].split(DELIMITER_PRIMARY);
@@ -65,7 +64,7 @@ public class SurveyCSVConverter implements CSVConverter {
         Model model = modelService.get(modelId);
 //        Map<String, List<List<UiField>>> chapterFields = getChapterFields(model);
 
-        String [][] csvData = csvToTable(data);
+        String[][] csvData = csvToTable(data);
         List<SurveyAnswer> surveyAnswers = new ArrayList<>();
 
         String[] headers = csvData[0];
@@ -87,43 +86,43 @@ public class SurveyCSVConverter implements CSVConverter {
             // for each chapter
 //            for (Map.Entry<String, List<List<UiField>>> entry : chapterFields.entrySet()) {
 
-                Map<String, List<UiField>> keyToFields = new TreeMap<>();
-                for (List<UiField> fieldsToLeaf : getSectionFieldsList(model.getSections())) {
-                    keyToFields.put(getKey(fieldsToLeaf), fieldsToLeaf);
-                }
+            Map<String, List<UiField>> keyToFields = new TreeMap<>();
+            for (List<UiField> fieldsToLeaf : getSectionFieldsList(model.getSections())) {
+                keyToFields.put(getKey(fieldsToLeaf), fieldsToLeaf);
+            }
 //                ChapterAnswer chapterAnswer = createChapterAnswer(entry.getKey(), headers, csvData[i]); // FIXME: complete method and replace body below, if able
 //                ChapterAnswer chapterAnswer = new ChapterAnswer(idGenerator.createId("ca-"), entry.getKey(), metadata);
-                surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, History.HistoryAction.CREATED);
+            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, History.HistoryAction.CREATED);
 //                chapterAnswer.setChapterId(entry.getKey());
 
-                for (int j = 0; j < csvData[i].length; j++) { // for each column (csv headers)
-                    if (csvData[i][j] != null && !csvData[i][j].equals("") && keyToFields.containsKey(headers[j])) {
-                        List<UiField> fieldList = keyToFields.get(headers[j]);
-                        JSONObject subAnswer = surveyAnswer.getAnswer();
-                        if (fieldList != null) {
-                            for (int f = 0; f < fieldList.size() - 1; f++) {
-                                if (subAnswer.containsKey(fieldList.get(f).getName())) {
-                                    subAnswer = (JSONObject) subAnswer.get(fieldList.get(f).getName());
-                                } else {
-                                    JSONObject node = new JSONObject();
-                                    subAnswer.put(fieldList.get(f).getName(), node);
-                                    subAnswer = (JSONObject) subAnswer.get(fieldList.get(f).getName());
-                                }
+            for (int j = 0; j < csvData[i].length; j++) { // for each column (csv headers)
+                if (csvData[i][j] != null && !csvData[i][j].equals("") && keyToFields.containsKey(headers[j])) {
+                    List<UiField> fieldList = keyToFields.get(headers[j]);
+                    JSONObject subAnswer = surveyAnswer.getAnswer();
+                    if (fieldList != null) {
+                        for (int f = 0; f < fieldList.size() - 1; f++) {
+                            if (subAnswer.containsKey(fieldList.get(f).getName())) {
+                                subAnswer = (JSONObject) subAnswer.get(fieldList.get(f).getName());
+                            } else {
+                                JSONObject node = new JSONObject();
+                                subAnswer.put(fieldList.get(f).getName(), node);
+                                subAnswer = (JSONObject) subAnswer.get(fieldList.get(f).getName());
                             }
-                            subAnswer.put(fieldList.get(fieldList.size() - 1).getName(), csvData[i][j]);
-                        } else {
-                            subAnswer.put(csvData[i][j], csvData[i][j]);
                         }
+                        subAnswer.put(fieldList.get(fieldList.size() - 1).getName(), csvData[i][j]);
                     } else {
-                        switch (headers[j]) {
-                            case "Stakeholder Id":
-                                surveyAnswer.setStakeholderId(csvData[i][j]);
-                                break;
-                            default:
-                                break;
-                        }
+                        subAnswer.put(csvData[i][j], csvData[i][j]);
+                    }
+                } else {
+                    switch (headers[j]) {
+                        case "Stakeholder Id":
+                            surveyAnswer.setStakeholderId(csvData[i][j]);
+                            break;
+                        default:
+                            break;
                     }
                 }
+            }
 //                chapterAnswerMap.put(chapterAnswer.getId(), chapterAnswer);
 //            }
 //            surveyAnswer = surveyAnswerCrudService.add(surveyAnswer);
@@ -144,8 +143,8 @@ public class SurveyCSVConverter implements CSVConverter {
 //        Map<String, List<List<UiField>>> chapterFields = getChapterFields(model);
         List<String> allKeys = new LinkedList<>();
 //        for (Map.Entry<String, List<List<UiField>>> entry : chapterFields.entrySet()) {
-            List<List<UiField>> fieldChainList = getFieldLists(model);
-            allKeys.addAll(getKeys(fieldChainList));
+        List<List<UiField>> fieldChainList = getFieldLists(model);
+        allKeys.addAll(getKeys(fieldChainList));
 //        }
 
         csv.append(String.join(DELIMITER_PRIMARY, "Creation Date", "Stakeholder Id", "Stakeholder Name"));
@@ -308,13 +307,13 @@ public class SurveyCSVConverter implements CSVConverter {
 //        if (surveyAnswer.getChapterAnswers() != null && !surveyAnswer.getChapterAnswers().isEmpty()) {
 //            for (ChapterAnswer chapterAnswer : surveyAnswer.getChapterAnswers().values()) {
 //                List<List<UiField>> fields = chapterFields.get(chapterAnswer.getChapterId());
-                List<List<UiField>> fields = getFieldLists(modelService.get(surveyAnswer.getSurveyId()));
-                JSONObject answer = surveyAnswer.getAnswer();
-                for (List<UiField> fieldsToLeaf : fields) {
-                    Pair<String, List<String>> keyValue = getValue(fieldsToLeaf, answer);
-                    resultsMap.putIfAbsent(keyValue.getFirst(), new LinkedList<>());
-                    resultsMap.get(keyValue.getFirst()).addAll(keyValue.getSecond());
-                }
+        List<List<UiField>> fields = getFieldLists(modelService.get(surveyAnswer.getSurveyId()));
+        JSONObject answer = surveyAnswer.getAnswer();
+        for (List<UiField> fieldsToLeaf : fields) {
+            Pair<String, List<String>> keyValue = getValue(fieldsToLeaf, answer);
+            resultsMap.putIfAbsent(keyValue.getFirst(), new LinkedList<>());
+            resultsMap.get(keyValue.getFirst()).addAll(keyValue.getSecond());
+        }
 //            }
 //        }
         return resultsMap;

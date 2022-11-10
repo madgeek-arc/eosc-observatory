@@ -6,7 +6,9 @@ public class HistoryEntry {
     long time;
     History.HistoryAction action;
 
-    public HistoryEntry() {}
+    public HistoryEntry() {
+        // no-arg constructor
+    }
 
     public HistoryEntry(String userId, long time, History.HistoryAction action) {
         this.userId = userId;

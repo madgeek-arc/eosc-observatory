@@ -15,5 +15,7 @@ public class SurveyAnswerUtils {
         return new ArrayList<>(resourceIds);
     }
 
-    private SurveyAnswerUtils() {}
+    private SurveyAnswerUtils() {
+        // private constructor
+    }
 }

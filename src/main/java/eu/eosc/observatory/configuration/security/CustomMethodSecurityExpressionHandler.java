@@ -1,7 +1,6 @@
 package eu.eosc.observatory.configuration.security;
 
 import eu.eosc.observatory.service.*;
-import gr.athenarc.catalogue.ui.service.FormsService;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.annotation.Autowired;

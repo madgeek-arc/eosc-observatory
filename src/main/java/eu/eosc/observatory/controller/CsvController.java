@@ -55,10 +55,10 @@ public class CsvController {
     )
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<byte[]> exportExtendedSurveysToCsv(@PathVariable("id") String modelId,
-                                                     @RequestParam(value = "includeUsers", defaultValue = "false") boolean includeUsers,
-                                                     @RequestParam(value = "dateFrom", required = false) String dateFrom,
-                                                     @RequestParam(value = "dateTo", required = false) String dateTo,
-                                                     HttpServletResponse response) throws ParseException {
+                                                             @RequestParam(value = "includeUsers", defaultValue = "false") boolean includeUsers,
+                                                             @RequestParam(value = "dateFrom", required = false) String dateFrom,
+                                                             @RequestParam(value = "dateTo", required = false) String dateTo,
+                                                             HttpServletResponse response) throws ParseException {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         Date from = dateFrom != null ? formatter.parse(dateFrom) : null;
         Date to = dateTo != null ? formatter.parse(dateTo) : null;

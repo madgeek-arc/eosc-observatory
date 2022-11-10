@@ -11,7 +11,9 @@ public class PrivacyPolicy implements Identifiable<String> {
     String filename;
     Date activationDate;
 
-    public PrivacyPolicy() {}
+    public PrivacyPolicy() {
+        // no-arg constructor
+    }
 
     @Override
     public String getId() {

@@ -1,6 +1,9 @@
 package eu.eosc.observatory.controller;
 
-import eu.eosc.observatory.domain.*;
+import eu.eosc.observatory.domain.Coordinator;
+import eu.eosc.observatory.domain.Stakeholder;
+import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.domain.UserInfo;
 import eu.eosc.observatory.service.CrudItemService;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -26,8 +29,6 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.Instant;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;

@@ -7,7 +7,9 @@ public class ResourcePermissions {
     String resourceId;
     Set<String> permissions;
 
-    public ResourcePermissions() {}
+    public ResourcePermissions() {
+        // no-arg constructor
+    }
 
     public ResourcePermissions(String resourceId, Set<String> permissions) {
         this.resourceId = resourceId;

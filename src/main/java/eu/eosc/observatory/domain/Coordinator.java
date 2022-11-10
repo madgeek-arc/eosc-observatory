@@ -2,7 +2,6 @@ package eu.eosc.observatory.domain;
 
 import eu.eosc.observatory.service.Identifiable;
 
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 

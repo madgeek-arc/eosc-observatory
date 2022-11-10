@@ -7,7 +7,9 @@ public class UserPrivacyPolicyInfo {
     private PrivacyPolicy privacyPolicy;
     private boolean accepted;
 
-    public UserPrivacyPolicyInfo() {}
+    public UserPrivacyPolicyInfo() {
+        // no-arg constructor
+    }
 
     public PrivacyPolicy getPrivacyPolicy() {
         return privacyPolicy;

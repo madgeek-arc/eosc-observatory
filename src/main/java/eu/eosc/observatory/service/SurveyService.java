@@ -28,6 +28,7 @@ public interface SurveyService {
 
     /**
      * Updates SurveyAnswer object keeping the User and the time of modification as metadata.
+     *
      * @param id
      * @param surveyAnswer
      * @param user

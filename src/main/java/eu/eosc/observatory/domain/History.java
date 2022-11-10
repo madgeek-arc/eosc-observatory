@@ -8,7 +8,9 @@ public class History {
 
     List<HistoryEntry> entries = new ArrayList<>();
 
-    public History() {}
+    public History() {
+        // no-arg constructor
+    }
 
     public List<HistoryEntry> getEntries() {
         return entries;

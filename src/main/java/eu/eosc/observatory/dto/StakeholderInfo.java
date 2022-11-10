@@ -11,7 +11,9 @@ public class StakeholderInfo {
     String country;
     String associationMember;
 
-    public StakeholderInfo() {}
+    public StakeholderInfo() {
+        // no-arg constructor
+    }
 
     public static StakeholderInfo of(Stakeholder stakeholder) {
         StakeholderInfo info = new StakeholderInfo();

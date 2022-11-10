@@ -3,8 +3,6 @@ package eu.eosc.observatory.domain;
 import eu.eosc.observatory.service.Identifiable;
 import org.json.simple.JSONObject;
 
-import java.util.Map;
-
 public class SurveyAnswer implements Identifiable<String> {
 
     private String id;

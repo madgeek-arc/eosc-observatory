@@ -16,7 +16,7 @@ import springfox.documentation.annotations.ApiIgnore;
 
 import java.util.Map;
 
-public abstract class AbstractCrudController <T extends Identifiable<?>> {
+public abstract class AbstractCrudController<T extends Identifiable<?>> {
 
     private final CrudItemService<T> crudItemService;
 

@@ -5,7 +5,9 @@ public class IdNameTuple {
     String id;
     String name;
 
-    public IdNameTuple() {}
+    public IdNameTuple() {
+        // no-arg constructor
+    }
 
     public IdNameTuple(String id, String name) {
         this.id = id;

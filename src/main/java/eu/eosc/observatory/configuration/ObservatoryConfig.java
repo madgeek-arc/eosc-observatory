@@ -24,8 +24,8 @@ import java.util.HashMap;
         })
 public class ObservatoryConfig {
 
-        @Bean
-        public EntityManagerFactoryBuilder entityManagerFactoryBuilder() {
-                return new EntityManagerFactoryBuilder(new HibernateJpaVendorAdapter(), new HashMap<>(), null);
-        }
+    @Bean
+    public EntityManagerFactoryBuilder entityManagerFactoryBuilder() {
+        return new EntityManagerFactoryBuilder(new HibernateJpaVendorAdapter(), new HashMap<>(), null);
+    }
 }

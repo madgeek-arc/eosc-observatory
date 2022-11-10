@@ -28,7 +28,7 @@ public class ErrorHandlingControllerAdvice {
     ServerError handleUnauthorized(HttpServletRequest req, Exception ex) {
         logger.info(ex.getMessage());
         logger.debug(ex.getMessage(), ex);
-        return new ServerError(req.getRequestURL().toString(),ex);
+        return new ServerError(req.getRequestURL().toString(), ex);
     }
 
     // 403
@@ -38,7 +38,7 @@ public class ErrorHandlingControllerAdvice {
     ServerError handleAccessDenied(HttpServletRequest req, Exception ex) {
         logger.info(ex.getMessage());
         logger.debug(ex.getMessage(), ex);
-        return new ServerError(req.getRequestURL().toString(),ex);
+        return new ServerError(req.getRequestURL().toString(), ex);
     }
 
     // 404
@@ -48,7 +48,7 @@ public class ErrorHandlingControllerAdvice {
     ServerError handleNotFound(HttpServletRequest req, Exception ex) {
         logger.info(ex.getMessage());
         logger.debug(ex.getMessage(), ex);
-        return new ServerError(req.getRequestURL().toString(),ex);
+        return new ServerError(req.getRequestURL().toString(), ex);
     }
 
     // 409
@@ -58,7 +58,7 @@ public class ErrorHandlingControllerAdvice {
     ServerError handleAlreadyExists(HttpServletRequest req, Exception ex) {
         logger.info(ex.getMessage());
         logger.debug(ex.getMessage(), ex);
-        return new ServerError(req.getRequestURL().toString(),ex);
+        return new ServerError(req.getRequestURL().toString(), ex);
     }
 
     @ResponseStatus(HttpStatus.FORBIDDEN)

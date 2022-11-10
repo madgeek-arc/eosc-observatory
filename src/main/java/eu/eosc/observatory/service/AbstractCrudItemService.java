@@ -1,6 +1,5 @@
 package eu.eosc.observatory.service;
 
-import eu.eosc.observatory.domain.Stakeholder;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.domain.Resource;

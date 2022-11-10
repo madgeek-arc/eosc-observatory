@@ -5,7 +5,9 @@ public class PolicyAccepted {
     String id;
     long time;
 
-    public PolicyAccepted() {}
+    public PolicyAccepted() {
+        // no-arg constructor
+    }
 
     public PolicyAccepted(String id, long time) {
         this.id = id;

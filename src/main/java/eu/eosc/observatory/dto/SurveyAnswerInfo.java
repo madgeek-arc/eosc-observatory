@@ -4,7 +4,10 @@ import eu.eosc.observatory.domain.HistoryEntry;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import gr.athenarc.catalogue.ui.domain.Model;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SurveyAnswerInfo {
@@ -20,7 +23,9 @@ public class SurveyAnswerInfo {
     Progress progressTotal;
     StakeholderInfo stakeholder;
 
-    public SurveyAnswerInfo() {}
+    public SurveyAnswerInfo() {
+        // no-arg constructor
+    }
 
     public static SurveyAnswerInfo composeFrom(SurveyAnswer answer, Model survey, StakeholderInfo stakeholderInfo) {
         SurveyAnswerInfo info = new SurveyAnswerInfo();

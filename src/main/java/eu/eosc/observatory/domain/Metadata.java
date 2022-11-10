@@ -11,7 +11,9 @@ public class Metadata {
     private Date modificationDate;
     private String modifiedBy;
 
-    public Metadata() {}
+    public Metadata() {
+        // no-arg constructor
+    }
 
     public Metadata(Authentication authentication) {
         Date date = new Date();
