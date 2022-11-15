@@ -3,6 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.*;
 import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.domain.Section;
+import gr.athenarc.catalogue.ui.domain.StyledString;
 import gr.athenarc.catalogue.ui.domain.UiField;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import org.json.simple.JSONArray;
@@ -87,7 +88,7 @@ public class SurveyCSVConverter implements CSVConverter {
 //            for (Map.Entry<String, List<List<UiField>>> entry : chapterFields.entrySet()) {
 
             Map<String, List<UiField>> keyToFields = new TreeMap<>();
-            for (List<UiField> fieldsToLeaf : getSectionFieldsList(model.getSections())) {
+            for (List<UiField> fieldsToLeaf : getSectionFieldsList(model.getSections(), null)) {
                 keyToFields.put(getKey(fieldsToLeaf), fieldsToLeaf);
             }
 //                ChapterAnswer chapterAnswer = createChapterAnswer(entry.getKey(), headers, csvData[i]); // FIXME: complete method and replace body below, if able
@@ -260,19 +261,27 @@ public class SurveyCSVConverter implements CSVConverter {
     }
 
     private List<List<UiField>> getFieldLists(Model model) {
-        return new LinkedList<>(getSectionFieldsList(model.getSections()));
+        return new LinkedList<>(getSectionFieldsList(model.getSections(), null));
     }
 
-    private List<List<UiField>> getSectionFieldsList(List<Section> sections) {
+    private List<List<UiField>> getSectionFieldsList(List<Section> sections, List<UiField> existingFields) {
         List<List<UiField>> fields = new LinkedList<>();
+        if (existingFields == null) {
+            existingFields = new LinkedList<>();
+        }
         for (Section section : sections) {
             if (section.getSubSections() != null) {
-                fields.addAll(getSectionFieldsList(section.getSubSections()));
+                UiField falseField = new UiField();
+                falseField.setName(section.getName());
+                falseField.setId(section.getId());
+                falseField.setLabel(StyledString.of(""));
+                existingFields.add(falseField);
+                fields.addAll(getSectionFieldsList(section.getSubSections(), existingFields));
             }
             if (section.getFields() != null) {
                 List<UiField> sortedFields = sortFieldList(section.getFields());
                 for (UiField field : sortedFields) {
-                    fields.addAll(fieldsToLeaf(null, field));
+                    fields.addAll(fieldsToLeaf(new LinkedList<>(existingFields), field));
                 }
             }
         }
