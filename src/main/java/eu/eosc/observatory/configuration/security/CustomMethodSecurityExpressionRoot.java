@@ -99,12 +99,13 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
 
     @Override
     public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
+        logger.debug("hasPermission(auth, targetDomainObject, permission)\nAuthentication: {}\nObject: {}\nPermission: {}", authentication, targetDomainObject, permission);
         if ((this.authentication == null) || (targetDomainObject == null) || !(permission instanceof String)) {
             return false;
         }
         String resourceId = getResourceId(targetDomainObject);
         return isAdmin(authentication) ||
-                securityService.hasPermission(authentication, permission.toString().toLowerCase(), resourceId);
+                securityService.hasPermission(authentication, ((String) permission).toLowerCase(), resourceId);
     }
 
     @Override
