@@ -115,8 +115,8 @@ public class User implements Identifiable<String> {
         } else {
             throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
         }
-        if (id == null) {
-            logger.error("User id is null. Authentication: {}", auth);
+        if (id == null || "".equals(id)) {
+            logger.error("Problem getting user id. Authentication: {}", auth);
             throw new InsufficientAuthenticationException("Could not obtain user id through authentication.");
         }
         return id.toLowerCase();

@@ -4,7 +4,7 @@
         <Property name="baseDir">logs</Property>
         <Property name="app">observatory</Property>
         <Property name="LOG_PATTERN">
-            %d{yyyy-MM-dd HH:mm:ss.SSS} %highlight{%-5level} --- [%15.15t] %-40.40c{1.} : %m%n%style{%notEmpty{[transaction_id=%X{transaction_id}]\n}}{magenta}%ex
+            %d{yyyy-MM-dd HH:mm:ss.SSS} %highlight{%-5level} --- [%15.15t] %-40.40c{1.} : %m%n%style{%notEmpty{[transaction_id=%X{transaction_id}]\n}}{magenta}%style{%notEmpty{user_info=%X{user_info}\n}}{yellow}%ex
         </Property>
     </Properties>
     <Appenders>
