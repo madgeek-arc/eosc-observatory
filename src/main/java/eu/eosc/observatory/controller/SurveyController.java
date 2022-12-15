@@ -122,7 +122,7 @@ public class SurveyController {
     /*           Survey Answers            */
     /*-------------------------------------*/
 
-    @PutMapping("answers/{surveyAnswerId}")
+    @PutMapping("answers/{surveyAnswerId}/answer")
     @PreAuthorize("hasPermission(#surveyAnswerId, 'write')")
     public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("surveyAnswerId") String surveyAnswerId,
                                                            @RequestBody JSONObject object,
