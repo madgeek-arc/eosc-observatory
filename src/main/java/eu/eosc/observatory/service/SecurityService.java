@@ -24,26 +24,31 @@ public class SecurityService {
     public boolean canRead(Authentication authentication, String resourceId) {
         User user = userService.get(User.getId(authentication));
         // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
-        return !user.getPoliciesAccepted().isEmpty() && permissionService.canRead(user.getId(), resourceId);
+        return hasAcceptedPolicy(user) && permissionService.canRead(user.getId(), resourceId);
     }
 
     public boolean canWrite(Authentication authentication, String resourceId) {
         User user = userService.get(User.getId(authentication));
         // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
-        return !user.getPoliciesAccepted().isEmpty() && permissionService.canRead(user.getId(), resourceId);
+        return hasAcceptedPolicy(user) && permissionService.canRead(user.getId(), resourceId);
     }
 
     public boolean canManage(Authentication authentication, String resourceId) {
         User user = userService.get(User.getId(authentication));
         // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
-        return !user.getPoliciesAccepted().isEmpty() && permissionService.canManage(user.getId(), resourceId);
+        return hasAcceptedPolicy(user) && permissionService.canManage(user.getId(), resourceId);
     }
 
     public boolean hasPermission(Authentication authentication, String action, String resourceId) {
-        logger.debug("hasPermission(auth, action, resourceId)\nAuthentication: {}\nAction: {}\nResourceId: {}", authentication, action, resourceId);
         User user = userService.get(User.getId(authentication));
+        return hasAcceptedPolicy(user) && permissionService.hasPermission(user.getId(), action, resourceId);
+    }
+
+    public boolean hasAcceptedPolicy(User user) {
+        logger.warn("TODO: Create policy conditions");
         // TODO : check if user has accepted terms
         // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
-        return !user.getPoliciesAccepted().isEmpty() && permissionService.hasPermission(user.getId(), action, resourceId);
+//        return user.getPoliciesAccepted() != null && !user.getPoliciesAccepted().isEmpty();
+        return true;
     }
 }
