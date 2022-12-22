@@ -2,7 +2,7 @@
   "indexFields": [
     {
       "multivalued": false,
-      "name": "survey_answer_id",
+      "name": "resource_internal_id",
       "path": "$.id",
       "type": "java.lang.String",
       "primaryKey": true

@@ -2,7 +2,7 @@
   "indexFields": [
     {
       "multivalued": false,
-      "name": "coordinator_id",
+      "name": "resource_internal_id",
       "path": "$.id",
       "type": "java.lang.String",
       "primaryKey": true
