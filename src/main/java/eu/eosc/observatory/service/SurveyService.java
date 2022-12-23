@@ -51,7 +51,7 @@ public interface SurveyService {
 
     Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter);
 
-    Object getValueFromAnswer(UiField field, JSONObject answer, Map<String, UiField> allFields);
+    Object getValueFromAnswer(UiField field, Map<String, ?> answer, Map<String, UiField> allFields);
 
     void lockSurveyAndAnswers(String surveyId, boolean lock);
 }

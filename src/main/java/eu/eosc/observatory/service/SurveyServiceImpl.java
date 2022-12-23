@@ -256,9 +256,9 @@ public class SurveyServiceImpl implements SurveyService {
         Progress total = new Progress();
 
         for (Section section : survey.getSections()) {
-            JSONObject answer = surveyAnswer.getAnswer();
+            Map<String, ?> answer = (Map) surveyAnswer.getAnswer();
             if (answer != null && !answer.isEmpty() && answer.get(section.getName()) != null) {
-                answer = new JSONObject((Map) surveyAnswer.getAnswer().get(section.getName()));
+                answer = (Map) surveyAnswer.getAnswer().get(section.getName());
             }
             sectionFieldsMap = getFieldsMap(modelService.getSectionFields(section));
             for (UiField field : sectionFieldsMap.values()) {
@@ -292,7 +292,7 @@ public class SurveyServiceImpl implements SurveyService {
         return allFieldsMap;
     }
 
-    private boolean fieldIsAnswered(UiField field, JSONObject chapterAnswer, Map<String, UiField> allFields) {
+    private boolean fieldIsAnswered(UiField field, Map<String, ?> chapterAnswer, Map<String, UiField> allFields) {
         if (chapterAnswer != null && !chapterAnswer.isEmpty()) {
             if (!"composite".equals(field.getTypeInfo().getType())) {
                 return getValueFromAnswer(field, chapterAnswer, allFields) != null;
@@ -306,7 +306,7 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public Object getValueFromAnswer(UiField field, JSONObject answer, Map<String, UiField> allFields) {
+    public Object getValueFromAnswer(UiField field, Map<String, ?> answer, Map<String, UiField> allFields) {
         if (answer == null) {
             return null;
         }
@@ -316,12 +316,12 @@ public class SurveyServiceImpl implements SurveyService {
             field = field.getParentId() != null ? allFields.get(field.getParentId()) : null;
         }
 
-        Object object = JSONValue.parse(answer.toJSONString());
+        Object object = answer;
         while (!fields.isEmpty()) {
             field = fields.pop();
-            if (object instanceof JSONObject) {
-                if (((JSONObject) object).get(field.getName()) != null) {
-                    object = ((JSONObject) object).get(field.getName());
+            if (object instanceof Map) {
+                if (((Map) object).get(field.getName()) != null) {
+                    object = ((Map) object).get(field.getName());
                 } else {
                     return null;
                 }
@@ -329,19 +329,19 @@ public class SurveyServiceImpl implements SurveyService {
         }
         if ("".equals(object)) {
             object = null;
-        } else if (object instanceof JSONObject) {
-            return checkIfContainsNonNull((JSONObject) object) ? true : null;
+        } else if (object instanceof Map) {
+            return checkIfContainsNonNull((Map) object) ? true : null;
         }
         return object;
     }
 
-    boolean checkIfContainsNonNull(JSONObject object) {
+    boolean checkIfContainsNonNull(Map<String, ?> object) {
         boolean contains = false;
         for (Object obj : object.values()) {
             if (obj == null) {
                 continue;
-            } else if (obj instanceof JSONObject) {
-                contains = checkIfContainsNonNull(new JSONObject((Map) obj));
+            } else if (obj instanceof Map) {
+                contains = checkIfContainsNonNull((Map) obj);
                 if (contains) {
                     break;
                 }
