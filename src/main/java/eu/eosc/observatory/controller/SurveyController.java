@@ -230,6 +230,7 @@ public class SurveyController {
             type = stakeholderService.get(stakeholderId).getType();
         }
 
-        return new ResponseEntity<>(surveyService.browseSurveyAnswersInfo(type, filter), HttpStatus.OK);
+        filter.addFilter("type", type);
+        return new ResponseEntity<>(surveyService.browseSurveyAnswersInfo(filter), HttpStatus.OK);
     }
 }

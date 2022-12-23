@@ -204,29 +204,6 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override // TODO: optimize
-    public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter) {
-        filter.setResourceType("survey_answer");
-        filter.addFilter("type", type);
-        Browsing<SurveyAnswer> surveyAnswerBrowsing = genericItemService.getResults(filter);
-        Browsing<SurveyAnswerInfo> surveyAnswerInfoBrowsing = new Browsing<>();
-        surveyAnswerInfoBrowsing.setFrom(surveyAnswerBrowsing.getFrom());
-        surveyAnswerInfoBrowsing.setTo(surveyAnswerBrowsing.getTo());
-        surveyAnswerInfoBrowsing.setTotal(surveyAnswerBrowsing.getTotal());
-        surveyAnswerInfoBrowsing.setFacets(surveyAnswerBrowsing.getFacets());
-        List<SurveyAnswerInfo> results = new ArrayList<>();
-        for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
-            logger.debug("SurveyAnswer [id={}]", answer.getId());
-            Model survey = genericItemService.get("model", answer.getSurveyId());
-            Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
-            SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
-            setProgress(info, answer, survey);
-            results.add(info);
-        }
-        surveyAnswerInfoBrowsing.setResults(results);
-        return surveyAnswerInfoBrowsing;
-    }
-
-    @Override // TODO: optimize
     public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter) {
         filter.setResourceType("survey_answer");
         Browsing<SurveyAnswer> surveyAnswerBrowsing = genericItemService.getResults(filter);
@@ -248,7 +225,6 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswerInfoBrowsing;
     }
 
-    // TODO: optimize
     private void setProgress(SurveyAnswerInfo info, SurveyAnswer surveyAnswer, Model survey) {
         Map<String, UiField> sectionFieldsMap;
 

@@ -49,8 +49,6 @@ public interface SurveyService {
 
     Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter);
 
-    Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(String type, FacetFilter filter);
-
     Object getValueFromAnswer(UiField field, Map<String, ?> answer, Map<String, UiField> allFields);
 
     void lockSurveyAndAnswers(String surveyId, boolean lock);
