@@ -219,7 +219,7 @@ public class SurveyServiceImpl implements SurveyService {
             Model survey = genericItemService.get("model", answer.getSurveyId());
             Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
             SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
-            setProgress(info, answer);
+            setProgress(info, answer, survey);
             results.add(info);
         }
         surveyAnswerInfoBrowsing.setResults(results);
@@ -241,65 +241,34 @@ public class SurveyServiceImpl implements SurveyService {
             Model survey = genericItemService.get("model", answer.getSurveyId());
             Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
             SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
-            setProgress(info, answer);
+            setProgress(info, answer, survey);
             results.add(info);
         }
         surveyAnswerInfoBrowsing.setResults(results);
         return surveyAnswerInfoBrowsing;
     }
 
-    private List<UiField> getSectionFields(Section section) {
-        List<UiField> fields = new ArrayList<>();
-        if (section.getSubSections() != null) {
-            for (Section s : section.getSubSections()) {
-                fields.addAll(getSectionFields(s));
-            }
-        }
-        if (section.getFields() != null) {
-            fields.addAll(getFieldsRecursive(section.getFields()));
-        }
-        return fields;
-    }
-
-    private List<UiField> getFieldsRecursive(List<UiField> fields) {
-        List<UiField> allFields = new ArrayList<>();
-        for (UiField field : fields) {
-            allFields.add(field);
-            if (field.getSubFields() != null) {
-                allFields.addAll(getFieldsRecursive(field.getSubFields()));
-            }
-        }
-        return allFields;
-    }
-
-    private Map<String, UiField> getAllFields(String surveyId) {
-        Map<String, UiField> allFieldsMap = new TreeMap<>();
-        Model survey = modelService.get(surveyId);
-        List<UiField> allFields = new ArrayList<>();
-        survey.getSections().forEach(section -> allFields.addAll(getSectionFields(section)));
-        for (UiField field : allFields) {
-            allFieldsMap.put(field.getId(), field);
-        }
-        return allFieldsMap;
-    }
-
     // TODO: optimize
-    private void setProgress(SurveyAnswerInfo info, SurveyAnswer surveyAnswer) {
-        Map<String, UiField> allFieldsMap = getAllFields(surveyAnswer.getSurveyId());
+    private void setProgress(SurveyAnswerInfo info, SurveyAnswer surveyAnswer, Model survey) {
+        Map<String, UiField> sectionFieldsMap;
 
         Progress required = new Progress();
         Progress total = new Progress();
 
-        for (String chapter : (Set<String>) surveyAnswer.getAnswer().keySet()) {
-            JSONObject answer = new JSONObject((LinkedHashMap) surveyAnswer.getAnswer().get(chapter));
-            for (UiField field : allFieldsMap.values()) {
+        for (Section section : survey.getSections()) {
+            JSONObject answer = surveyAnswer.getAnswer();
+            if (answer != null && !answer.isEmpty() && answer.get(section.getName()) != null) {
+                answer = new JSONObject((Map) surveyAnswer.getAnswer().get(section.getName()));
+            }
+            sectionFieldsMap = getFieldsMap(modelService.getSectionFields(section));
+            for (UiField field : sectionFieldsMap.values()) {
                 if ("question".equals(field.getKind())) {
                     total.addToTotal(1);
                     if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
                         required.addToTotal(1);
                     }
 
-                    if (fieldIsAnswered(field, answer, allFieldsMap)) {
+                    if (fieldIsAnswered(field, answer, sectionFieldsMap)) {
                         total.addToCurrent(1);
                         if (Boolean.TRUE.equals(field.getForm().getMandatory())) {
                             required.addToCurrent(1);
@@ -309,19 +278,29 @@ public class SurveyServiceImpl implements SurveyService {
             }
         }
 
-
         info.setProgressRequired(required);
         info.setProgressTotal(total);
 
     }
 
-    private boolean fieldIsAnswered(UiField field, JSONObject chapterAnswer, Map<String, UiField> allFields) {
-        if (!"composite".equals(field.getTypeInfo().getType())) {
-            return getValueFromAnswer(field, chapterAnswer, allFields) != null;
+    public Map<String, UiField> getFieldsMap(List<UiField> fields) {
+        Map<String, UiField> allFieldsMap = new TreeMap<>();
+
+        for (UiField field : fields) {
+            allFieldsMap.put(field.getId(), field);
         }
-        for (UiField f : field.getSubFields()) {
-            if (getValueFromAnswer(f, chapterAnswer, allFields) != null)
-                return true;
+        return allFieldsMap;
+    }
+
+    private boolean fieldIsAnswered(UiField field, JSONObject chapterAnswer, Map<String, UiField> allFields) {
+        if (chapterAnswer != null && !chapterAnswer.isEmpty()) {
+            if (!"composite".equals(field.getTypeInfo().getType())) {
+                return getValueFromAnswer(field, chapterAnswer, allFields) != null;
+            }
+            for (UiField f : field.getSubFields()) {
+                if (getValueFromAnswer(f, chapterAnswer, allFields) != null)
+                    return true;
+            }
         }
         return false;
     }
@@ -332,10 +311,9 @@ public class SurveyServiceImpl implements SurveyService {
             return null;
         }
         Deque<UiField> fields = new ArrayDeque<>();
-        while (field != null && field.getParentId() != null) {
+        while (field != null) {
             fields.push(field);
-//            field = formsService.getField(field.getParentId());
-            field = allFields.get(field.getParentId()); // FIXME: REPLACE
+            field = field.getParentId() != null ? allFields.get(field.getParentId()) : null;
         }
 
         Object object = JSONValue.parse(answer.toJSONString());
@@ -351,8 +329,27 @@ public class SurveyServiceImpl implements SurveyService {
         }
         if ("".equals(object)) {
             object = null;
+        } else if (object instanceof JSONObject) {
+            return checkIfContainsNonNull((JSONObject) object) ? true : null;
         }
         return object;
+    }
+
+    boolean checkIfContainsNonNull(JSONObject object) {
+        boolean contains = false;
+        for (Object obj : object.values()) {
+            if (obj == null) {
+                continue;
+            } else if (obj instanceof JSONObject) {
+                contains = checkIfContainsNonNull(new JSONObject((Map) obj));
+                if (contains) {
+                    break;
+                }
+            } else {
+                return true;
+            }
+        }
+        return contains;
     }
 
     @Override
