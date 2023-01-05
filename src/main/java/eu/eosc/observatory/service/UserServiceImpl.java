@@ -66,7 +66,7 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
 
         FacetFilter filter = new FacetFilter();
         filter.addFilter("policyId", policy.getId());
-        filter.addFilter("user_id", User.of(authentication).getId());
+        filter.addFilter("resource_internal_id", User.of(authentication).getId());
         Browsing<User> userBrowsing = getAll(filter);
         if (userBrowsing.getTotal() == 1) {
             //
