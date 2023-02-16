@@ -222,12 +222,14 @@ public class SurveyController {
         FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
         String type = null;
         if (coordinatorId != null && stakeholderId != null) {
-            throw new UnsupportedOperationException("Only one of 'coordinator', 'stakeholder' is expected..");
+            throw new UnsupportedOperationException("Only one of ['coordinator', 'stakeholder'] is expected..");
         }
         if (coordinatorId != null) {
             type = coordinatorService.get(coordinatorId).getType();
-        } else {
+        } else if (stakeholderId != null) {
             type = stakeholderService.get(stakeholderId).getType();
+        } else {
+            throw new UnsupportedOperationException("One of ['coordinator', 'stakeholder'] is expected..");
         }
 
         filter.addFilter("type", type);
