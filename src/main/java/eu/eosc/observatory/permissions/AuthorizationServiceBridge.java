@@ -31,7 +31,10 @@ public class AuthorizationServiceBridge implements PermissionService {
     public Set<String> getPermissions(String userId, String resourceId) {
         Set<String> permissions = this.authorizationService.whatCan(userId, resourceId)
                 .stream().map(Permission::getAction).collect(Collectors.toSet());
-        logger.debug(String.format("[user: %s] permissions for resource [resourceId: %s]: [permissions: %s]", userId, resourceId, String.join(", ", permissions)));
+        if (logger.isDebugEnabled()) {
+            logger.debug("[user: {}] permissions for resource [resourceId: {}]: [permissions: {}]",
+                    userId, resourceId, String.join(", ", permissions));
+        }
         return permissions;
     }
 
@@ -92,7 +95,7 @@ public class AuthorizationServiceBridge implements PermissionService {
                     for (String resourceId : resourceIds) {
                         Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId);
                         for (Permission permission : permissions) {
-                            logger.debug("Deleting permission: " + permission);
+                            logger.debug("Deleting permission: {}", permission);
                             permissionRepository.delete(permission);
                         }
                     }
@@ -108,7 +111,7 @@ public class AuthorizationServiceBridge implements PermissionService {
                 for (String resourceId : resourceIds) {
                     Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObjectAndSubjectGroup(id, action, resourceId, group);
                     for (Permission permission : permissions) {
-                        logger.debug("Deleting permission: " + permission);
+                        logger.debug("Deleting permission: {}", permission);
                         permissionRepository.delete(permission);
                     }
                 }

@@ -1,5 +1,6 @@
 package eu.eosc.observatory.controller;
 
+import eu.eosc.observatory.configuration.ApplicationProperties;
 import eu.eosc.observatory.domain.Coordinator;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
@@ -44,16 +45,21 @@ public class UserController {
     private final CrudItemService<Stakeholder> stakeholderService;
     private final CrudItemService<Coordinator> coordinatorService;
 
+    private final ApplicationProperties applicationProperties;
+
     @Autowired
     public UserController(UserService userService,
                           CrudItemService<Stakeholder> stakeholderService,
-                          CrudItemService<Coordinator> coordinatorService) {
+                          CrudItemService<Coordinator> coordinatorService,
+                          ApplicationProperties applicationProperties) {
         this.userService = userService;
         this.stakeholderService = stakeholderService;
         this.coordinatorService = coordinatorService;
+        this.applicationProperties = applicationProperties;
     }
 
     @RequestMapping("refreshLogin")
+    @PreAuthorize("not isAnonymous()")
     public void refreshLogin(HttpServletRequest request, HttpServletResponse response, @ApiIgnore Authentication authentication) throws IOException, ServletException {
         if (authentication != null && authentication.getPrincipal() != null) {
             Cookie cookie = new Cookie("AccessToken", ((OidcUser) authentication.getPrincipal()).getIdToken().getTokenValue());
@@ -70,6 +76,7 @@ public class UserController {
     }
 
     @GetMapping("user/info")
+    @PreAuthorize("not isAnonymous()")
     public ResponseEntity<UserInfo> userInfo(@ApiIgnore Authentication authentication) {
         UserInfo userInfo = getUserInfo(authentication);
         return new ResponseEntity<>(userInfo, HttpStatus.OK);
@@ -153,6 +160,7 @@ public class UserController {
     private UserInfo createUserInfo(User user) {
         UserInfo info = new UserInfo();
         info.setUser(user);
+        info.setAdmin(applicationProperties.getAdmins().contains(user.getEmail()));
         info.setStakeholders(new HashSet<>());
         info.setCoordinators(new HashSet<>());
 

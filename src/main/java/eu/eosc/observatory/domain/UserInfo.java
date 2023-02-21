@@ -4,6 +4,7 @@ import java.util.Set;
 
 public class UserInfo {
     private User user;
+    private boolean isAdmin;
     private Set<Stakeholder> stakeholders;
     private Set<Coordinator> coordinators;
 
@@ -11,8 +12,9 @@ public class UserInfo {
         // no-arg constructor
     }
 
-    public UserInfo(User user, Set<Stakeholder> stakeholders, Set<Coordinator> coordinators) {
+    public UserInfo(User user, boolean isAdmin, Set<Stakeholder> stakeholders, Set<Coordinator> coordinators) {
         this.user = user;
+        this.isAdmin = isAdmin;
         this.stakeholders = stakeholders;
         this.coordinators = coordinators;
     }
@@ -23,6 +25,14 @@ public class UserInfo {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public boolean isAdmin() {
+        return isAdmin;
+    }
+
+    public void setAdmin(boolean admin) {
+        isAdmin = admin;
     }
 
     public Set<Stakeholder> getStakeholders() {
