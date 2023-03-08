@@ -2,6 +2,7 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -52,4 +53,6 @@ public interface SurveyService {
     Object getValueFromAnswer(UiField field, Map<String, ?> answer, Map<String, UiField> allFields);
 
     void lockSurveyAndAnswers(String surveyId, boolean lock);
+
+    HistoryDTO getHistory(String surveyAnswerId);
 }

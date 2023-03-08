@@ -1,7 +1,10 @@
 package eu.eosc.observatory.controller;
 
+import eu.eosc.observatory.domain.HistoryEntry;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.HistoryDTO;
+import eu.eosc.observatory.dto.HistoryEntryDTO;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.CrudItemService;
@@ -27,10 +30,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping
@@ -234,5 +234,11 @@ public class SurveyController {
 
         filter.addFilter("type", type);
         return new ResponseEntity<>(surveyService.browseSurveyAnswersInfo(filter), HttpStatus.OK);
+    }
+
+    @GetMapping("answers/{id}/history")
+    @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
+    public ResponseEntity<HistoryDTO> history(@PathVariable("id") String id) {
+        return new ResponseEntity<>(surveyService.getHistory(id), HttpStatus.CREATED);
     }
 }

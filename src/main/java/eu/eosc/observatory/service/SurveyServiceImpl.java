@@ -1,9 +1,7 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.*;
-import eu.eosc.observatory.dto.Progress;
-import eu.eosc.observatory.dto.StakeholderInfo;
-import eu.eosc.observatory.dto.SurveyAnswerInfo;
+import eu.eosc.observatory.dto.*;
 import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
@@ -16,7 +14,6 @@ import gr.athenarc.catalogue.ui.domain.Section;
 import gr.athenarc.catalogue.ui.domain.UiField;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,18 +33,21 @@ public class SurveyServiceImpl implements SurveyService {
     private final GenericItemService genericItemService;
     private final PermissionService permissionService;
     private final ModelService modelService;
+    private final UserService userService;
 
     @Autowired
     public SurveyServiceImpl(CrudItemService<Stakeholder> stakeholderCrudService,
                              CrudItemService<SurveyAnswer> surveyAnswerCrudService,
                              @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,
                              PermissionService permissionService,
-                             ModelService modelService) {
+                             ModelService modelService,
+                             UserService userService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericItemService = genericItemService;
         this.permissionService = permissionService;
         this.modelService = modelService;
+        this.userService = userService;
     }
 
     @Override
@@ -348,6 +348,25 @@ public class SurveyServiceImpl implements SurveyService {
         }
         survey.setLocked(lock);
         modelService.update(surveyId, survey);
+    }
+
+    @Override
+    public HistoryDTO getHistory(String surveyAnswerId) {
+        SurveyAnswer answer = surveyAnswerCrudService.get(surveyAnswerId);
+        List<HistoryEntryDTO> historyEntryList = new LinkedList<>();
+        if (answer.getHistory() != null) {
+            for (HistoryEntry entry : answer.getHistory().getEntries()) {
+                User user;
+                try {
+                    user = userService.get(entry.getUserId());
+                } catch (gr.athenarc.catalogue.exception.ResourceNotFoundException e) {
+                    user = new User();
+                    user.setId(entry.getUserId());
+                }
+                historyEntryList.add(HistoryEntryDTO.of(entry, user));
+            }
+        }
+        return new HistoryDTO(historyEntryList);
     }
 
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
