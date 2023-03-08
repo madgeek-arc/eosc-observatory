@@ -1,10 +1,14 @@
 package eu.eosc.observatory.service;
 
+import eu.eosc.observatory.dto.HistoryDTO;
+import eu.eosc.observatory.dto.HistoryEntryDTO;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
+import eu.openminted.registry.core.domain.Resource;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 
 import java.util.Set;
+import java.util.function.Function;
 
 public interface CrudItemService<T extends Identifiable> {
     /**
@@ -14,6 +18,14 @@ public interface CrudItemService<T extends Identifiable> {
      * @return the resource.
      */
     T get(String id);
+
+    /**
+     * Returns the resource.
+     *
+     * @param id of the resource in the index.
+     * @return the resource.
+     */
+    Resource getResource(String id);
 
     /**
      * Returns all resource.
@@ -63,4 +75,6 @@ public interface CrudItemService<T extends Identifiable> {
      * @return
      */
     Set<T> getWithFilter(String key, String value);
+
+    <T> HistoryDTO getHistory(String resourceId, Function<T, HistoryEntryDTO> transform);
 }

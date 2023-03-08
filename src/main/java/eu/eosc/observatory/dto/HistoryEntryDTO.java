@@ -10,6 +10,8 @@ public class HistoryEntryDTO {
     String fullname;
     long time;
     History.HistoryAction action;
+    String resourceId;
+    String version;
 
     public HistoryEntryDTO() {
         // no-arg constructor
@@ -57,5 +59,21 @@ public class HistoryEntryDTO {
 
     public void setAction(History.HistoryAction action) {
         this.action = action;
+    }
+
+    public String getResourceId() {
+        return resourceId;
+    }
+
+    public void setResourceId(String resourceId) {
+        this.resourceId = resourceId;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
     }
 }

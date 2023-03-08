@@ -352,21 +352,24 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public HistoryDTO getHistory(String surveyAnswerId) {
-        SurveyAnswer answer = surveyAnswerCrudService.get(surveyAnswerId);
-        List<HistoryEntryDTO> historyEntryList = new LinkedList<>();
-        if (answer.getHistory() != null) {
-            for (HistoryEntry entry : answer.getHistory().getEntries()) {
-                User user;
-                try {
-                    user = userService.get(entry.getUserId());
-                } catch (gr.athenarc.catalogue.exception.ResourceNotFoundException e) {
-                    user = new User();
-                    user.setId(entry.getUserId());
-                }
-                historyEntryList.add(HistoryEntryDTO.of(entry, user));
+        return surveyAnswerCrudService.getHistory(surveyAnswerId, this::createHistoryEntry);
+    }
+
+    private HistoryEntryDTO createHistoryEntry(Object object) {
+        HistoryEntryDTO entry = new HistoryEntryDTO();
+        if (object instanceof SurveyAnswer) {
+            User user;
+            String userId = ((SurveyAnswer) object).getMetadata().getModifiedBy();
+            try {
+                user = userService.get(userId);
+            } catch (gr.athenarc.catalogue.exception.ResourceNotFoundException e) {
+                user = new User();
+                user.setId(userId);
             }
+            List<HistoryEntry> historyEntryList = ((SurveyAnswer) object).getHistory().getEntries();
+            entry = HistoryEntryDTO.of(historyEntryList.get(historyEntryList.size() - 1), user);
         }
-        return new HistoryDTO(historyEntryList);
+        return entry;
     }
 
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {

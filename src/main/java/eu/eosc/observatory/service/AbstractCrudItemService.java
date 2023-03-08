@@ -1,9 +1,8 @@
 package eu.eosc.observatory.service;
 
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.domain.Resource;
-import eu.openminted.registry.core.domain.ResourceType;
+import eu.eosc.observatory.dto.HistoryDTO;
+import eu.eosc.observatory.dto.HistoryEntryDTO;
+import eu.openminted.registry.core.domain.*;
 import eu.openminted.registry.core.service.ParserService;
 import eu.openminted.registry.core.service.ResourceService;
 import eu.openminted.registry.core.service.ResourceTypeService;
@@ -19,8 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 
 @Component
 public abstract class AbstractCrudItemService<T extends Identifiable> extends AbstractGenericItemService implements CrudItemService<T> {
@@ -42,6 +41,41 @@ public abstract class AbstractCrudItemService<T extends Identifiable> extends Ab
     @Override
     public T get(String id) {
         return super.get(getResourceType(), id);
+    }
+
+    @Override
+    public Resource getResource(String id) {
+        return super.resourceService.getResource(super.searchResource(getResourceType(), id, true).getId());
+    }
+
+    @Override
+    public <T> HistoryDTO getHistory(String resourceId, Function<T, HistoryEntryDTO> transform) {
+        Resource resource = this.getResource(resourceId);
+        List<Version> versions = resource.getVersions();
+        List<HistoryEntryDTO> historyEntryList = new LinkedList<>();
+
+        if (versions == null) {
+            T res = (T) parserPool.deserialize(resource, getClassFromResourceType(resource.getResourceTypeName()));
+            HistoryEntryDTO latest = transform.apply(res);
+            latest.setResourceId(resource.getId());
+            latest.setVersion(resource.getVersion());
+            historyEntryList.add(latest);
+        } else {
+            versions.sort(Comparator.comparing(Version::getCreationDate).reversed());
+
+            for (Version version : versions) {
+                resource.setPayload(version.getPayload());
+                resource.setResourceTypeName(version.getResourceTypeName());
+                resource.setResourceType(version.getResourceType());
+                T object = (T) parserPool.deserialize(resource, getClassFromResourceType(resource.getResourceTypeName()));
+                HistoryEntryDTO entry = transform.apply(object);
+                entry.setResourceId(version.getResource().getId());
+                entry.setVersion(version.getVersion());
+                historyEntryList.add(entry);
+            }
+        }
+
+        return new HistoryDTO(historyEntryList);
     }
 
     @Override
