@@ -5,10 +5,7 @@ import eu.eosc.observatory.domain.PrivacyPolicy;
 import eu.eosc.observatory.domain.User;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.service.ParserService;
-import eu.openminted.registry.core.service.ResourceService;
-import eu.openminted.registry.core.service.ResourceTypeService;
-import eu.openminted.registry.core.service.SearchService;
+import eu.openminted.registry.core.service.*;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,9 +27,10 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
                               ResourceService resourceService,
                               SearchService searchService,
+                              VersionService versionService,
                               ParserService parserService,
                               PrivacyPolicyService privacyPolicyService) {
-        super(resourceTypeService, resourceService, searchService, parserService);
+        super(resourceTypeService, resourceService, searchService, versionService, parserService);
         this.privacyPolicyService = privacyPolicyService;
     }
 

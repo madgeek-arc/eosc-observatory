@@ -7,10 +7,7 @@ import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
 import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.service.ParserService;
-import eu.openminted.registry.core.service.ResourceService;
-import eu.openminted.registry.core.service.ResourceTypeService;
-import eu.openminted.registry.core.service.SearchService;
+import eu.openminted.registry.core.service.*;
 import gr.athenarc.catalogue.service.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,12 +36,13 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     public CoordinatorServiceImpl(ResourceTypeService resourceTypeService,
                                   ResourceService resourceService,
                                   SearchService searchService,
+                                  VersionService versionService,
                                   ParserService parserService,
                                   UserService userService,
                                   @Lazy CrudItemService<SurveyAnswer> surveyAnswerCrudService,
                                   PermissionService permissionService,
                                   IdGenerator<String> idGenerator) {
-        super(resourceTypeService, resourceService, searchService, parserService);
+        super(resourceTypeService, resourceService, searchService, versionService, parserService);
         this.userService = userService;
         this.permissionService = permissionService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;

@@ -3,10 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.HistoryEntryDTO;
 import eu.openminted.registry.core.domain.*;
-import eu.openminted.registry.core.service.ParserService;
-import eu.openminted.registry.core.service.ResourceService;
-import eu.openminted.registry.core.service.ResourceTypeService;
-import eu.openminted.registry.core.service.SearchService;
+import eu.openminted.registry.core.service.*;
 import gr.athenarc.catalogue.LoggingUtils;
 import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
 import gr.athenarc.catalogue.exception.ResourceException;
@@ -30,8 +27,9 @@ public abstract class AbstractCrudItemService<T extends Identifiable> extends Ab
     protected AbstractCrudItemService(ResourceTypeService resourceTypeService,
                                       ResourceService resourceService,
                                       SearchService searchService,
+                                      VersionService versionService,
                                       ParserService parserService) {
-        super(searchService, resourceService, resourceTypeService, parserService);
+        super(searchService, resourceService, resourceTypeService, versionService, parserService);
     }
 
     public abstract String createId(T resource);
@@ -41,6 +39,15 @@ public abstract class AbstractCrudItemService<T extends Identifiable> extends Ab
     @Override
     public T get(String id) {
         return super.get(getResourceType(), id);
+    }
+
+    @Override
+    public T getVersion(String id, String version) {
+        Resource resource = getResource(id);
+        Version v = versionService.getVersion(resource.getId(), version);
+        resource.setPayload(v.getPayload());
+        resource.setResourceTypeName(v.getResourceTypeName());
+        return (T) parserPool.deserialize(resource, getClassFromResourceType(resource.getResourceTypeName()));
     }
 
     @Override

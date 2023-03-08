@@ -7,10 +7,7 @@ import eu.eosc.observatory.dto.StakeholderMembers;
 import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
-import eu.openminted.registry.core.service.ParserService;
-import eu.openminted.registry.core.service.ResourceService;
-import eu.openminted.registry.core.service.ResourceTypeService;
-import eu.openminted.registry.core.service.SearchService;
+import eu.openminted.registry.core.service.*;
 import gr.athenarc.authorization.domain.Permission;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
@@ -39,11 +36,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     public StakeholderServiceImpl(ResourceTypeService resourceTypeService,
                                   ResourceService resourceService,
                                   SearchService searchService,
+                                  VersionService versionService,
                                   ParserService parserService,
                                   UserService userService,
                                   @Lazy SurveyService surveyService,
                                   PermissionService permissionService) {
-        super(resourceTypeService, resourceService, searchService, parserService);
+        super(resourceTypeService, resourceService, searchService, versionService, parserService);
         this.userService = userService;
         this.permissionService = permissionService;
         this.surveyService = surveyService;

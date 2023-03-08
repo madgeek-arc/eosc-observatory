@@ -4,10 +4,7 @@ import eu.eosc.observatory.domain.PrivacyPolicy;
 import eu.eosc.observatory.domain.User;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.service.ParserService;
-import eu.openminted.registry.core.service.ResourceService;
-import eu.openminted.registry.core.service.ResourceTypeService;
-import eu.openminted.registry.core.service.SearchService;
+import eu.openminted.registry.core.service.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +23,10 @@ public class UserPrivacyPolicyService extends AbstractCrudItemService<PrivacyPol
     public UserPrivacyPolicyService(ResourceTypeService resourceTypeService,
                                     ResourceService resourceService,
                                     SearchService searchService,
+                                    VersionService versionService,
                                     ParserService parserService,
                                     @Lazy UserService userService) {
-        super(resourceTypeService, resourceService, searchService, parserService);
+        super(resourceTypeService, resourceService, searchService, versionService, parserService);
         this.userService = userService;
     }
 

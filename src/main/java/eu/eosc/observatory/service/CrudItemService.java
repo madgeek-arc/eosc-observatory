@@ -19,6 +19,8 @@ public interface CrudItemService<T extends Identifiable> {
      */
     T get(String id);
 
+    T getVersion(String id, String version);
+
     /**
      * Returns the resource.
      *

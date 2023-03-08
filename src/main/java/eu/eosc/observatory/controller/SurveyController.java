@@ -241,4 +241,10 @@ public class SurveyController {
     public ResponseEntity<HistoryDTO> history(@PathVariable("id") String id) {
         return new ResponseEntity<>(surveyService.getHistory(id), HttpStatus.CREATED);
     }
+
+    @GetMapping("answers/{id}/versions/{version}")
+    @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
+    public ResponseEntity<SurveyAnswer> version(@PathVariable("id") String id, @PathVariable("version") String version) {
+        return new ResponseEntity<>(surveyAnswerService.getVersion(id, version), HttpStatus.CREATED);
+    }
 }
