@@ -1,5 +1,8 @@
 package eu.eosc.observatory.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.eosc.observatory.domain.*;
 import eu.eosc.observatory.dto.*;
 import eu.eosc.observatory.permissions.Groups;
@@ -34,6 +37,7 @@ public class SurveyServiceImpl implements SurveyService {
     private final PermissionService permissionService;
     private final ModelService modelService;
     private final UserService userService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public SurveyServiceImpl(CrudItemService<Stakeholder> stakeholderCrudService,
@@ -133,11 +137,68 @@ public class SurveyServiceImpl implements SurveyService {
     public SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, User user) throws ResourceNotFoundException {
         Date date = new Date();
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
+        if (!hasChanged(surveyAnswer.getAnswer(), answer)) {
+            return surveyAnswer;
+        }
         surveyAnswer.setAnswer(answer);
         surveyAnswer.getHistory().addEntry(user.getId(), date, History.HistoryAction.UPDATED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
         return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
+    }
+
+    @Override
+    public Map<String, Node> surveyAnswerDiff(String surveyAnswerId, String version1Id, String version2Id) {
+        SurveyAnswer answer1 = surveyAnswerCrudService.getVersion(surveyAnswerId, version1Id);
+        SurveyAnswer answer2 = surveyAnswerCrudService.getVersion(surveyAnswerId, version2Id);
+        JsonNode node1 = null;
+        JsonNode node2 = null;
+        try {
+            node1 = objectMapper.readTree(answer1.getAnswer().toJSONString());
+            node2 = objectMapper.readTree(answer2.getAnswer().toJSONString());
+        } catch (JsonProcessingException e) {
+            logger.error(e.getMessage(), e);
+        }
+        Map<String, Node> diffList = new TreeMap<>();
+        if (node1 != null && node2 != null && !node1.equals(node2)) {
+            diffList = getDiff(node2, node1);
+        }
+        return diffList;
+    }
+
+    Map<String, Node> getDiff(JsonNode latestRoot, JsonNode previousRoot) {
+        Map<String, Node> differences = new TreeMap<>();
+        for (Iterator<Map.Entry<String, JsonNode>> it = latestRoot.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> entry = it.next();
+            if (previousRoot == null) {
+//                differences.put(entry.getKey(), new Node(entry.getKey(), new Modification(null, entry.getValue()), getDiff(entry.getValue(), null)));
+            } else if (!entry.getValue().isNull() && previousRoot.get(entry.getKey()) != null && !previousRoot.get(entry.getKey()).isNull()) {
+                if (entry.getValue().isMissingNode() != previousRoot.get(entry.getKey()).isMissingNode()
+                        || (entry.getValue().isArray() && (!entry.getValue().equals(previousRoot.get(entry.getKey()))))) {
+                    differences.put(entry.getKey(), new Node(entry.getKey(), new Modification(previousRoot.get(entry.getKey()), entry.getValue()), getDiff(entry.getValue(), previousRoot.get(entry.getKey()))));
+                }
+                Map<String, Node> inside = getDiff(entry.getValue(), previousRoot.get(entry.getKey()));
+                if (!inside.isEmpty()) {
+                    differences.put(entry.getKey(), new Node(entry.getKey(), null, inside));
+                }
+            } else if (!entry.getValue().equals(previousRoot.get(entry.getKey()))) {
+                differences.put(entry.getKey(), new Node(entry.getKey(), new Modification(previousRoot.get(entry.getKey()), entry.getValue()), getDiff(entry.getValue(), previousRoot.get(entry.getKey()))));
+            }
+        }
+        return differences;
+    }
+
+    private boolean hasChanged(JSONObject before, JSONObject after) {
+        JsonNode b;
+        JsonNode a;
+        try {
+            b = objectMapper.readTree(before.toJSONString());
+            a = objectMapper.readTree(after.toJSONString());
+            return !b.equals(a);
+        } catch (JsonProcessingException e) {
+            logger.error("Error reading json.", e);
+        }
+        return true;
     }
 
     @Override

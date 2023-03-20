@@ -3,6 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.HistoryDTO;
+import eu.eosc.observatory.dto.Node;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -39,6 +40,8 @@ public interface SurveyService {
     SurveyAnswer update(String id, SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException;
 
     SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, User user) throws ResourceNotFoundException;
+
+    Map<String, Node> surveyAnswerDiff(String surveyAnswerId, String version1Id, String version2Id);
 
     SurveyAnswer setAnswerValidated(String surveyAnswerId, boolean validated, User user) throws ResourceNotFoundException;
 

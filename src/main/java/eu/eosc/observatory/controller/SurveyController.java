@@ -1,10 +1,9 @@
 package eu.eosc.observatory.controller;
 
-import eu.eosc.observatory.domain.HistoryEntry;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.HistoryDTO;
-import eu.eosc.observatory.dto.HistoryEntryDTO;
+import eu.eosc.observatory.dto.Node;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.CrudItemService;
@@ -23,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,7 +30,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping
@@ -246,5 +249,11 @@ public class SurveyController {
     @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
     public ResponseEntity<SurveyAnswer> version(@PathVariable("id") String id, @PathVariable("version") String version) {
         return new ResponseEntity<>(surveyAnswerService.getVersion(id, version), HttpStatus.CREATED);
+    }
+
+    @GetMapping(value = "answers/{id}/diff", produces = {MediaType.APPLICATION_JSON_VALUE})
+    @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
+    public ResponseEntity<Map<String, Node>> diff(@PathVariable("id") String id, @RequestParam("v1") String v1, @RequestParam("v2") String v2) {
+        return new ResponseEntity<>(surveyService.surveyAnswerDiff(id, v1, v2), HttpStatus.OK);
     }
 }
