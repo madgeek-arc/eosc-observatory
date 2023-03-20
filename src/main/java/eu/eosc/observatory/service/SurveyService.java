@@ -2,6 +2,7 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.Diff;
 import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.Node;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
@@ -41,7 +42,7 @@ public interface SurveyService {
 
     SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, User user) throws ResourceNotFoundException;
 
-    Map<String, Node> surveyAnswerDiff(String surveyAnswerId, String version1Id, String version2Id);
+    Diff surveyAnswerDiff(String surveyAnswerId, String version1Id, String version2Id);
 
     SurveyAnswer setAnswerValidated(String surveyAnswerId, boolean validated, User user) throws ResourceNotFoundException;
 

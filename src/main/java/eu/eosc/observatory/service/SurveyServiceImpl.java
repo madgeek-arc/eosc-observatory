@@ -148,7 +148,7 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public Map<String, Node> surveyAnswerDiff(String surveyAnswerId, String version1Id, String version2Id) {
+    public Diff surveyAnswerDiff(String surveyAnswerId, String version1Id, String version2Id) {
         SurveyAnswer answer1 = surveyAnswerCrudService.getVersion(surveyAnswerId, version1Id);
         SurveyAnswer answer2 = surveyAnswerCrudService.getVersion(surveyAnswerId, version2Id);
         JsonNode node1 = null;
@@ -159,30 +159,33 @@ public class SurveyServiceImpl implements SurveyService {
         } catch (JsonProcessingException e) {
             logger.error(e.getMessage(), e);
         }
-        Map<String, Node> diffList = new TreeMap<>();
+        Diff diff = new Diff();
         if (node1 != null && node2 != null && !node1.equals(node2)) {
-            diffList = getDiff(node2, node1);
+            diff.setDifferences(getDiff(node2, node1));
         }
-        return diffList;
+        return diff;
     }
 
-    Map<String, Node> getDiff(JsonNode latestRoot, JsonNode previousRoot) {
-        Map<String, Node> differences = new TreeMap<>();
+    List<Node> getDiff(JsonNode latestRoot, JsonNode previousRoot) {
+        List<Node> differences = new LinkedList<>();
         for (Iterator<Map.Entry<String, JsonNode>> it = latestRoot.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> entry = it.next();
             if (previousRoot == null) {
-//                differences.put(entry.getKey(), new Node(entry.getKey(), new Modification(null, entry.getValue()), getDiff(entry.getValue(), null)));
+                // skip children fields (show change only on top level field)
+//                if (!entry.getValue().isNull()) {
+//                    differences.add(new Node(entry.getKey(), new Modification(null, entry.getValue()), getDiff(entry.getValue(), null)));
+//                }
             } else if (!entry.getValue().isNull() && previousRoot.get(entry.getKey()) != null && !previousRoot.get(entry.getKey()).isNull()) {
                 if (entry.getValue().isMissingNode() != previousRoot.get(entry.getKey()).isMissingNode()
                         || (entry.getValue().isArray() && (!entry.getValue().equals(previousRoot.get(entry.getKey()))))) {
-                    differences.put(entry.getKey(), new Node(entry.getKey(), new Modification(previousRoot.get(entry.getKey()), entry.getValue()), getDiff(entry.getValue(), previousRoot.get(entry.getKey()))));
+                    differences.add(new Node(entry.getKey(), new Modification(previousRoot.get(entry.getKey()), entry.getValue()), getDiff(entry.getValue(), previousRoot.get(entry.getKey()))));
                 }
-                Map<String, Node> inside = getDiff(entry.getValue(), previousRoot.get(entry.getKey()));
+                List<Node> inside = getDiff(entry.getValue(), previousRoot.get(entry.getKey()));
                 if (!inside.isEmpty()) {
-                    differences.put(entry.getKey(), new Node(entry.getKey(), null, inside));
+                    differences.add(new Node(entry.getKey(), null, inside));
                 }
             } else if (!entry.getValue().equals(previousRoot.get(entry.getKey()))) {
-                differences.put(entry.getKey(), new Node(entry.getKey(), new Modification(previousRoot.get(entry.getKey()), entry.getValue()), getDiff(entry.getValue(), previousRoot.get(entry.getKey()))));
+                differences.add(new Node(entry.getKey(), new Modification(previousRoot.get(entry.getKey()), entry.getValue()), getDiff(entry.getValue(), previousRoot.get(entry.getKey()))));
             }
         }
         return differences;

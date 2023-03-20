@@ -2,8 +2,8 @@ package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.Diff;
 import eu.eosc.observatory.dto.HistoryDTO;
-import eu.eosc.observatory.dto.Node;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.CrudItemService;
@@ -253,7 +253,7 @@ public class SurveyController {
 
     @GetMapping(value = "answers/{id}/diff", produces = {MediaType.APPLICATION_JSON_VALUE})
     @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
-    public ResponseEntity<Map<String, Node>> diff(@PathVariable("id") String id, @RequestParam("v1") String v1, @RequestParam("v2") String v2) {
+    public ResponseEntity<Diff> diff(@PathVariable("id") String id, @RequestParam("v1") String v1, @RequestParam("v2") String v2) {
         return new ResponseEntity<>(surveyService.surveyAnswerDiff(id, v1, v2), HttpStatus.OK);
     }
 }

@@ -1,17 +1,18 @@
 package eu.eosc.observatory.dto;
 
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.List;
 
 public class Node {
 
     String name;
-    Modification modification;
-    Map<String, Node> fields;
+    Modification modification = null;
+    List<Node> fields = new LinkedList<>();
 
     public Node() {
     }
 
-    public Node(String name, Modification modification, Map<String, Node> fields) {
+    public Node(String name, Modification modification, List<Node> fields) {
         this.name = name;
         this.modification = modification;
         this.fields = fields;
@@ -33,11 +34,11 @@ public class Node {
         this.modification = modification;
     }
 
-    public Map<String, Node> getFields() {
+    public List<Node> getFields() {
         return fields;
     }
 
-    public void setFields(Map<String, Node> fields) {
+    public void setFields(List<Node> fields) {
         this.fields = fields;
     }
 }
