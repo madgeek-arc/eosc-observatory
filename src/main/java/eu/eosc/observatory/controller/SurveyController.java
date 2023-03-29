@@ -242,18 +242,24 @@ public class SurveyController {
     @GetMapping("answers/{id}/history")
     @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
     public ResponseEntity<HistoryDTO> history(@PathVariable("id") String id) {
-        return new ResponseEntity<>(surveyService.getHistory(id), HttpStatus.CREATED);
+        return new ResponseEntity<>(surveyService.getHistory(id), HttpStatus.OK);
     }
 
     @GetMapping("answers/{id}/versions/{version}")
     @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
     public ResponseEntity<SurveyAnswer> version(@PathVariable("id") String id, @PathVariable("version") String version) {
-        return new ResponseEntity<>(surveyAnswerService.getVersion(id, version), HttpStatus.CREATED);
+        return new ResponseEntity<>(surveyAnswerService.getVersion(id, version), HttpStatus.OK);
     }
 
     @GetMapping(value = "answers/{id}/diff", produces = {MediaType.APPLICATION_JSON_VALUE})
     @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
     public ResponseEntity<Diff> diff(@PathVariable("id") String id, @RequestParam("v1") String v1, @RequestParam("v2") String v2) {
         return new ResponseEntity<>(surveyService.surveyAnswerDiff(id, v1, v2), HttpStatus.OK);
+    }
+
+    @PutMapping(value = "answers/{id}/versions/{version}/restore", produces = {MediaType.APPLICATION_JSON_VALUE})
+    @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
+    public ResponseEntity<SurveyAnswer> restoreVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
+        return new ResponseEntity<>(surveyService.restore(id, version), HttpStatus.OK);
     }
 }

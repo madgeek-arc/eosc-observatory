@@ -15,8 +15,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 @Component
 public abstract class AbstractCrudItemService<T extends Identifiable> extends AbstractGenericItemService implements CrudItemService<T> {
@@ -83,6 +85,21 @@ public abstract class AbstractCrudItemService<T extends Identifiable> extends Ab
         }
 
         return new HistoryDTO(historyEntryList);
+    }
+
+    @Override
+    public T restore(String resourceId, String versionId, UnaryOperator<T> transform) {
+        Resource resource = this.getResource(resourceId);
+        Version versionTo = versionService.getVersion(resource.getId(), versionId);
+        resource.setPayload(versionTo.getPayload());
+        T object = (T) parserPool.deserialize(resource, getClassFromResourceType(resource.getResourceTypeName()));
+        object = transform.apply(object);
+        try {
+            object = this.update(resource.getResourceTypeName(), (String) object.getId(), object);
+        } catch (NoSuchFieldException | InvocationTargetException | NoSuchMethodException e) {
+            logger.error(e.getMessage(), e);
+        }
+        return object;
     }
 
     @Override

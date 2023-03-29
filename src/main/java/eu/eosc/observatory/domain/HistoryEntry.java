@@ -5,6 +5,7 @@ public class HistoryEntry {
     String userId;
     long time;
     History.HistoryAction action;
+    String registryVersion;
 
     public HistoryEntry() {
         // no-arg constructor
@@ -14,6 +15,13 @@ public class HistoryEntry {
         this.userId = userId;
         this.time = time;
         this.action = action;
+    }
+
+    public HistoryEntry(String userId, long time, History.HistoryAction action, String version) {
+        this.userId = userId;
+        this.time = time;
+        this.action = action;
+        this.registryVersion = version;
     }
 
     public String getUserId() {
@@ -38,5 +46,13 @@ public class HistoryEntry {
 
     public void setAction(History.HistoryAction action) {
         this.action = action;
+    }
+
+    public String getRegistryVersion() {
+        return registryVersion;
+    }
+
+    public void setRegistryVersion(String registryVersion) {
+        this.registryVersion = registryVersion;
     }
 }

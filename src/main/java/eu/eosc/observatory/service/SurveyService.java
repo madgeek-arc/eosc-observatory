@@ -4,7 +4,6 @@ import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.Diff;
 import eu.eosc.observatory.dto.HistoryDTO;
-import eu.eosc.observatory.dto.Node;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -59,4 +58,6 @@ public interface SurveyService {
     void lockSurveyAndAnswers(String surveyId, boolean lock);
 
     HistoryDTO getHistory(String surveyAnswerId);
+
+    SurveyAnswer restore(String surveyAnswerId, String versionId);
 }

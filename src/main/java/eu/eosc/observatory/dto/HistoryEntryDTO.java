@@ -3,13 +3,17 @@ package eu.eosc.observatory.dto;
 import eu.eosc.observatory.domain.History;
 import eu.eosc.observatory.domain.HistoryEntry;
 import eu.eosc.observatory.domain.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HistoryEntryDTO {
+
+    private static final Logger logger = LoggerFactory.getLogger(HistoryEntryDTO.class);
 
     String email;
     String fullname;
     long time;
-    History.HistoryAction action;
+    HistoryActionDTO action;
     String resourceId;
     String version;
 
@@ -20,11 +24,11 @@ public class HistoryEntryDTO {
     public static HistoryEntryDTO of(HistoryEntry historyEntry, User user) {
         HistoryEntryDTO entry = new HistoryEntryDTO();
         if (!historyEntry.getUserId().equals(user.getId())) {
-            throw new UnsupportedOperationException("wrong user id");
+            logger.error("wrong user id");
         }
         entry.setEmail(user.getEmail());
         entry.setFullname(user.getFullname());
-        entry.setAction(historyEntry.getAction());
+        entry.setAction(HistoryActionDTO.of(historyEntry.getAction(), historyEntry.getRegistryVersion()));
         entry.setTime(historyEntry.getTime());
         return entry;
     }
@@ -53,11 +57,11 @@ public class HistoryEntryDTO {
         this.time = time;
     }
 
-    public History.HistoryAction getAction() {
+    public HistoryActionDTO getAction() {
         return action;
     }
 
-    public void setAction(History.HistoryAction action) {
+    public void setAction(HistoryActionDTO action) {
         this.action = action;
     }
 

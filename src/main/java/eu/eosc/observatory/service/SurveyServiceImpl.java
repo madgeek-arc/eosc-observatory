@@ -22,9 +22,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class SurveyServiceImpl implements SurveyService {
@@ -416,7 +419,22 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public HistoryDTO getHistory(String surveyAnswerId) {
-        return surveyAnswerCrudService.getHistory(surveyAnswerId, this::createHistoryEntry);
+        HistoryDTO history = surveyAnswerCrudService.getHistory(surveyAnswerId, this::createHistoryEntry);
+        return enrichHistory(history);
+    }
+
+    private HistoryDTO enrichHistory(HistoryDTO history) {
+        List<HistoryEntryDTO> restored = history.getEntries()
+                .stream()
+                .filter(entry -> entry.getAction().getType().equals(History.HistoryAction.RESTORED))
+                .collect(Collectors.toList());
+        if (!restored.isEmpty()) {
+            Map<String, HistoryEntryDTO> byVersion = history.getEntries().stream().collect(Collectors.toMap(HistoryEntryDTO::getVersion, Function.identity()));
+            for (HistoryEntryDTO entry : restored) {
+                entry.getAction().setPointsTo(byVersion.get(entry.getAction().getRegistryVersion()));
+            }
+        }
+        return history;
     }
 
     private HistoryEntryDTO createHistoryEntry(Object object) {
@@ -434,6 +452,25 @@ public class SurveyServiceImpl implements SurveyService {
             entry = HistoryEntryDTO.of(historyEntryList.get(historyEntryList.size() - 1), user);
         }
         return entry;
+    }
+
+    @Override
+    public SurveyAnswer restore(String surveyAnswerId, String versionId) {
+        SurveyAnswer answer = surveyAnswerCrudService.get(surveyAnswerId);
+        return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRevertHistory(answer, versionId));
+    }
+
+    private SurveyAnswer createRevertHistory(SurveyAnswer answer, String version) {
+        Date now = new Date();
+        User user = User.of(SecurityContextHolder.getContext().getAuthentication());
+
+        Metadata metadata = answer.getMetadata();
+        metadata.setModifiedBy(user.getId());
+        metadata.setModificationDate(now);
+        answer.setMetadata(metadata);
+        answer.getHistory().addEntry(user.getId(), now, History.HistoryAction.RESTORED, version);
+
+        return answer;
     }
 
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {

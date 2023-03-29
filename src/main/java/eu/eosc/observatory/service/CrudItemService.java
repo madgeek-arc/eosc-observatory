@@ -9,6 +9,7 @@ import eu.openminted.registry.core.exception.ResourceNotFoundException;
 
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public interface CrudItemService<T extends Identifiable> {
     /**
@@ -79,4 +80,6 @@ public interface CrudItemService<T extends Identifiable> {
     Set<T> getWithFilter(String key, String value);
 
     <T> HistoryDTO getHistory(String resourceId, Function<T, HistoryEntryDTO> transform);
+
+    T restore(String resourceId, String versionId, UnaryOperator<T> transform);
 }

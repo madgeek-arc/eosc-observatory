@@ -24,12 +24,17 @@ public class History {
         entries.add(new HistoryEntry(userId, date.getTime(), action));
     }
 
+    public void addEntry(String userId, Date date, HistoryAction action, String version) {
+        entries.add(new HistoryEntry(userId, date.getTime(), action, version));
+    }
+
     public enum HistoryAction {
         CREATED,
         UPDATED,
         VALIDATED,
         INVALIDATED,
         PUBLISHED,
-        UNPUBLISHED;
+        UNPUBLISHED,
+        RESTORED;
     }
 }
