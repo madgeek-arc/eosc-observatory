@@ -173,8 +173,11 @@ public class SurveyController {
 
     @GetMapping("answers/latest")
     @PostAuthorize("hasPermission(returnObject, 'read') or hasCoordinatorAccess(returnObject) or hasStakeholderManagerAccess(returnObject)")
-    public ResponseEntity<SurveyAnswer> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) {
+    public ResponseEntity<SurveyAnswer> getLatest(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) throws ResourceNotFoundException {
         SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
+        if (surveyAnswer == null) {
+            throw new ResourceNotFoundException();
+        }
         return new ResponseEntity<>(surveyAnswer, HttpStatus.OK);
     }
 
