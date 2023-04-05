@@ -3,15 +3,13 @@ package eu.eosc.observatory.websockets;
 import eu.eosc.observatory.domain.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.handler.annotation.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
-import springfox.documentation.annotations.ApiIgnore;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import java.util.*;
 
@@ -45,7 +43,7 @@ public class SessionActivityController {
     public Collection<SessionActivity> addUser(@Header("simpSessionId") String sessionId,
                                                @DestinationVariable("type") String type,
                                                @DestinationVariable("id") String id,
-                                               String action, @ApiIgnore Authentication auth) {
+                                               String action, @Parameter(hidden = true) Authentication auth) {
         resourcesMap.putIfAbsent(type, new TreeMap<>());
         resourcesMap.get(type).putIfAbsent(id, new HashSet<>());
         try {
@@ -63,7 +61,7 @@ public class SessionActivityController {
     public Collection<SessionActivity> removeUser(@Header("simpSessionId") String sessionId,
                                                   @DestinationVariable("type") String type,
                                                   @DestinationVariable("id") String id,
-                                                  String action, @ApiIgnore Authentication auth) {
+                                                  String action, @Parameter(hidden = true) Authentication auth) {
         if (resourcesMap.containsKey(type) && resourcesMap.get(type).containsKey(id)) {
             Set<SessionActivity> userActivities = resourcesMap.get(type).get(id);
             SessionActivity activity = new SessionActivity(sessionId, User.of(auth).getFullname(), action);

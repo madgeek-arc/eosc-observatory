@@ -6,9 +6,10 @@ import eu.eosc.observatory.service.CoordinatorService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
+import gr.athenarc.catalogue.annotations.Browse;
 import gr.athenarc.catalogue.controller.GenericItemController;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+
+import gr.athenarc.catalogue.utils.PagingUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import springfox.documentation.annotations.ApiIgnore;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import java.util.Map;
 import java.util.Set;
@@ -62,17 +63,11 @@ public class CoordinatorController {
         return new ResponseEntity<>(coordinatorService.delete(id), HttpStatus.OK);
     }
 
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "query", value = "Keyword to refine the search", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "from", value = "Starting index in the result set", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "quantity", value = "Quantity to be fetched", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "order", value = "asc / desc", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
-    })
+    @Browse
     @GetMapping()
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Browsing<Coordinator>> getCoordinators(@ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
-        FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
+    public ResponseEntity<Browsing<Coordinator>> getCoordinators(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
+        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
         Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
         return new ResponseEntity<>(coordinators, HttpStatus.OK);
     }

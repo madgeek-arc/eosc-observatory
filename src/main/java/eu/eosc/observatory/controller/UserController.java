@@ -9,10 +9,11 @@ import eu.eosc.observatory.service.CrudItemService;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
+import gr.athenarc.catalogue.annotations.Browse;
 import gr.athenarc.catalogue.controller.GenericItemController;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+
+import gr.athenarc.catalogue.utils.PagingUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
-import springfox.documentation.annotations.ApiIgnore;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
@@ -58,18 +59,18 @@ public class UserController {
         this.applicationProperties = applicationProperties;
     }
 
-    @RequestMapping("refreshLogin")
+    @RequestMapping(value = "refreshLogin", method = RequestMethod.HEAD)
     @PreAuthorize("not isAnonymous()")
-    public void refreshLogin(HttpServletRequest request, HttpServletResponse response, @ApiIgnore Authentication authentication) throws IOException, ServletException {
+    public void refreshLogin(HttpServletRequest request, HttpServletResponse response, @Parameter(hidden = true) Authentication authentication) throws IOException, ServletException {
         if (authentication != null && authentication.getPrincipal() != null) {
             Cookie cookie = new Cookie("AccessToken", ((OidcUser) authentication.getPrincipal()).getIdToken().getTokenValue());
             cookie.setMaxAge(3600);
             cookie.setPath("/");
             response.addCookie(cookie);
-        }//
+        }
     }
 
-    @ApiIgnore
+    @Parameter(hidden = true)
     @GetMapping("user/oidc-principal")
     public OidcUser getOidcUserPrincipal(@AuthenticationPrincipal OidcUser principal) {
         return principal;
@@ -77,7 +78,7 @@ public class UserController {
 
     @GetMapping("user/info")
     @PreAuthorize("not isAnonymous()")
-    public ResponseEntity<UserInfo> userInfo(@ApiIgnore Authentication authentication) {
+    public ResponseEntity<UserInfo> userInfo(@Parameter(hidden = true) Authentication authentication) {
         UserInfo userInfo = getUserInfo(authentication);
         return new ResponseEntity<>(userInfo, HttpStatus.OK);
     }
@@ -102,23 +103,17 @@ public class UserController {
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "query", value = "Keyword to refine the search", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "from", value = "Starting index in the result set", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "quantity", value = "Quantity to be fetched", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "order", value = "asc / desc", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
-    })
+    @Browse
     @GetMapping("users")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Browsing<User>> getUsers(@ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
-        FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
+    public ResponseEntity<Browsing<User>> getUsers(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
+        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
         Browsing<User> users = userService.getAll(filter);
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
     @PatchMapping("user/policies/{id}")
-    public ResponseEntity<User> acceptPolicy(@PathVariable(value = "id") String id, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<User> acceptPolicy(@PathVariable(value = "id") String id, @Parameter(hidden = true) Authentication authentication) {
         User user = userService.acceptPrivacyPolicy(id, authentication);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }

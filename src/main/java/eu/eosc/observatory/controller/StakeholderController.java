@@ -6,9 +6,9 @@ import eu.eosc.observatory.service.StakeholderService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
-import gr.athenarc.catalogue.controller.GenericItemController;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+import gr.athenarc.catalogue.annotations.Browse;
+import gr.athenarc.catalogue.utils.PagingUtils;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import springfox.documentation.annotations.ApiIgnore;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -63,17 +62,11 @@ public class StakeholderController {
         return new ResponseEntity<>(stakeholderService.delete(id), HttpStatus.OK);
     }
 
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "query", value = "Keyword to refine the search", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "from", value = "Starting index in the result set", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "quantity", value = "Quantity to be fetched", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "order", value = "asc / desc", dataTypeClass = String.class, paramType = "query"),
-            @ApiImplicitParam(name = "orderField", value = "Order field", dataTypeClass = String.class, paramType = "query")
-    })
+    @Browse
     @GetMapping()
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@ApiIgnore @RequestParam Map<String, Object> allRequestParams) {
-        FacetFilter filter = GenericItemController.createFacetFilter(allRequestParams);
+    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
+        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
         Browsing<Stakeholder> stakeholders = stakeholderService.getAll(filter);
         return new ResponseEntity<>(stakeholders, HttpStatus.OK);
     }
@@ -96,7 +89,7 @@ public class StakeholderController {
 
     @PostMapping("{id}/contributors")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<StakeholderMembers> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String userId, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<StakeholderMembers> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String userId, @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, userId), HttpStatus.OK);
     }
 

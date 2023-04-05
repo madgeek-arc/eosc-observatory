@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import springfox.documentation.annotations.ApiIgnore;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import java.util.Collection;
 import java.util.List;
@@ -32,7 +32,7 @@ public class PermissionController {
     }
 
     @GetMapping
-    public ResponseEntity<Collection<ResourcePermissions>> getResourcePermissions(@RequestParam("resourceIds") List<String> resourceIds, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<Collection<ResourcePermissions>> getResourcePermissions(@RequestParam("resourceIds") List<String> resourceIds, @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(permissionService.getResourcePermissions(User.getId(authentication), resourceIds), HttpStatus.OK);
     }
 

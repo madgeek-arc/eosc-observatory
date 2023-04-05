@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
+import io.swagger.v3.oas.annotations.Parameter;
 
 @RestController
 @RequestMapping("invitation")
@@ -31,7 +31,7 @@ public class InvitationController {
     public ResponseEntity<String> invitationToken(@RequestParam("inviteeEmail") String invitee,
                                                   @RequestParam("inviteeRole") String role,
                                                   @RequestParam("stakeholder") String stakeholderId,
-                                                  @ApiIgnore Authentication authentication) {
+                                                  @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(invitationService.createInvitation(User.of(authentication), invitee, role, stakeholderId), HttpStatus.OK);
     }
 

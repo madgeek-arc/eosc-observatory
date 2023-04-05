@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
+import io.swagger.v3.oas.annotations.Parameter;
 
 @RestController
 @RequestMapping("privacy/policies")
@@ -30,7 +30,7 @@ public class PrivacyPolicyController extends AbstractCrudController<PrivacyPolic
     }
 
     @GetMapping("status")
-    public ResponseEntity<UserPrivacyPolicyInfo> hasAcceptedPolicy(@RequestParam(value = "type") String type, @ApiIgnore Authentication authentication) {
+    public ResponseEntity<UserPrivacyPolicyInfo> hasAcceptedPolicy(@RequestParam(value = "type") String type, @Parameter(hidden = true) Authentication authentication) {
         UserPrivacyPolicyInfo info = new UserPrivacyPolicyInfo();
         PrivacyPolicy policy = privacyPolicyService.getLatestByType(type);
         if (policy != null) {
