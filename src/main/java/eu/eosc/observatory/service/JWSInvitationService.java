@@ -5,6 +5,7 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jose.util.Base64URL;
 import eu.eosc.observatory.configuration.ApplicationProperties;
+import eu.eosc.observatory.configuration.security.CustomMethodSecurityExpressionRoot;
 import eu.eosc.observatory.domain.Invitation;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
@@ -13,7 +14,9 @@ import gr.athenarc.catalogue.exception.ResourceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
@@ -31,9 +34,13 @@ public class JWSInvitationService implements InvitationService {
     private final JWSSigner signer;
     private final JWSVerifier verifier;
 
+    private final CustomMethodSecurityExpressionRoot securityExpressions;
+
     @Autowired
-    public JWSInvitationService(StakeholderService stakeholderService, ApplicationProperties applicationProperties) {
+    public JWSInvitationService(StakeholderService stakeholderService, ApplicationProperties applicationProperties,
+                                @Lazy CustomMethodSecurityExpressionRoot securityExpressions) {
         this.stakeholderService = stakeholderService;
+        this.securityExpressions = securityExpressions;
 
         // Create HMAC signer/verifier
         try {
@@ -86,10 +93,15 @@ public class JWSInvitationService implements InvitationService {
                 throw new ResourceException("Invitation time has expired.", HttpStatus.FORBIDDEN);
             }
 
-            Stakeholder stakeholder = stakeholderService.get(invitationObject.getStakeholderId());
+            if (invitationObject.getRole().equals("manager")
+                    && securityExpressions.isCoordinatorMember(invitationObject.getInviter())) {
+                stakeholderService.addManager(invitationObject.getStakeholderId(), invitationObject.getInvitee());
+                return true;
+            }
             if (invitationObject.getRole().equals("contributor")
-                    && stakeholder.getManagers().contains(invitationObject.getInviter())) {
-                stakeholderService.addContributor(stakeholder.getId(), invitationObject.getInvitee());
+                    && (securityExpressions.isStakeholderManager(invitationObject.getInviter())
+                        || securityExpressions.isCoordinatorMember(invitationObject.getInviter()))) {
+                stakeholderService.addContributor(invitationObject.getStakeholderId(), invitationObject.getInvitee());
                 return true;
             }
         } catch (ParseException e) {
