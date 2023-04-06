@@ -19,7 +19,7 @@ public class Metadata {
         Date date = new Date();
         this.creationDate = date;
         this.modificationDate = date;
-        this.createdBy = User.of(authentication).getId();
+        this.createdBy = authentication != null ? User.of(authentication).getId() : "unknown";
         this.modifiedBy = this.createdBy;
     }
 

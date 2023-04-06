@@ -53,6 +53,18 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
+    // Do not remove - used by aspect
+    public Stakeholder add(Stakeholder resource) {
+        return super.add(resource);
+    }
+
+    @Override
+    // Do not remove - used by aspect
+    public Stakeholder delete(String id) throws ResourceNotFoundException {
+        return super.delete(id);
+    }
+
+    @Override
     public Stakeholder updateStakeholderAndUserPermissions(String id, Stakeholder resource) throws ResourceNotFoundException {
         updateManagers(id, resource.getManagers());
         updateContributors(id, resource.getContributors());

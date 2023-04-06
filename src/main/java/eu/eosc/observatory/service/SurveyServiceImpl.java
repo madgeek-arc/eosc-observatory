@@ -122,6 +122,7 @@ public class SurveyServiceImpl implements SurveyService {
     public List<SurveyAnswer> getAllByStakeholder(String id) {
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(10000);
+        filter.addFilter("stakeholderId", id);
         return surveyAnswerCrudService.getAll(filter).getResults();
     }
 

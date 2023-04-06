@@ -106,16 +106,20 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public void removePermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds, String group) {
-        for (String id : users) {
-            for (String action : actions) {
-                for (String resourceId : resourceIds) {
-                    Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObjectAndSubjectGroup(id, action, resourceId, group);
-                    for (Permission permission : permissions) {
-                        logger.debug("Deleting permission: {}", permission);
-                        permissionRepository.delete(permission);
+        if (users != null && actions != null && resourceIds != null) {
+            StringBuilder deletedPermissions = new StringBuilder();
+            for (String id : users) {
+                for (String action : actions) {
+                    for (String resourceId : resourceIds) {
+                        Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObjectAndSubjectGroup(id, action, resourceId, group);
+                        for (Permission permission : permissions) {
+                            deletedPermissions.append(String.format("%n%s", permission));
+                            permissionRepository.delete(permission);
+                        }
                     }
                 }
             }
+            logger.debug("Deleted permissions: {}", deletedPermissions);
         }
     }
 
