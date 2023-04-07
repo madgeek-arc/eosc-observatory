@@ -457,8 +457,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer restore(String surveyAnswerId, String versionId) {
-        SurveyAnswer answer = surveyAnswerCrudService.get(surveyAnswerId);
-        return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRevertHistory(answer, versionId));
+        return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRevertHistory(a, versionId));
     }
 
     private SurveyAnswer createRevertHistory(SurveyAnswer answer, String version) {
