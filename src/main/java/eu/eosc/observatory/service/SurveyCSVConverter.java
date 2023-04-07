@@ -141,12 +141,9 @@ public class SurveyCSVConverter implements CSVConverter {
     public String convertToCSV(String modelId, boolean includeSensitiveData, Date from, Date to) {
         StringBuilder csv = new StringBuilder();
         Model model = modelService.get(modelId);
-//        Map<String, List<List<UiField>>> chapterFields = getChapterFields(model);
         List<String> allKeys = new LinkedList<>();
-//        for (Map.Entry<String, List<List<UiField>>> entry : chapterFields.entrySet()) {
-        List<List<UiField>> fieldChainList = getFieldLists(model);
-        allKeys.addAll(getKeys(fieldChainList));
-//        }
+        List<List<UiField>> fieldHierarchy = getFieldHierarchy(model);
+        allKeys.addAll(getKeys(fieldHierarchy));
 
         csv.append(String.join(DELIMITER_PRIMARY, "Creation Date", "Stakeholder Id", "Stakeholder Name"));
         csv.append(DELIMITER_PRIMARY);
@@ -158,7 +155,7 @@ public class SurveyCSVConverter implements CSVConverter {
 
         List<SurveyAnswer> answerSet = getSurveyAnswers(model, from, to);
         for (SurveyAnswer answer : answerSet) {
-            Map<String, List<String>> results = toCsv(answer);
+            Map<String, List<String>> results = toCsv(answer, fieldHierarchy);
             List<String> row = new LinkedList<>();
             row.add(answer.getMetadata().getCreationDate().toString());
             row.add(answer.getStakeholderId());
@@ -242,41 +239,25 @@ public class SurveyCSVConverter implements CSVConverter {
         return fieldList.stream().sorted(orderComparator).collect(Collectors.toList());
     }
 
-    private Map<String, List<List<UiField>>> getChapterFields(Model model) {
-        Map<String, List<List<UiField>>> chapterFields = new TreeMap<>();
-        for (Section chapter : model.getSections()) {
-
-            List<List<UiField>> fields = new LinkedList<>();
-            for (Section section : chapter.getSubSections()) {
-                if (section.getFields() != null) {
-                    List<UiField> sortedFields = sortFieldList(section.getFields());
-                    for (UiField field : sortedFields) {
-                        fields.addAll(fieldsToLeaf(null, field));
-                    }
-                }
-            }
-            chapterFields.put(chapter.getId(), fields);
-        }
-        return chapterFields;
-    }
-
-    private List<List<UiField>> getFieldLists(Model model) {
+    private List<List<UiField>> getFieldHierarchy(Model model) {
         return new LinkedList<>(getSectionFieldsList(model.getSections(), null));
     }
 
     private List<List<UiField>> getSectionFieldsList(List<Section> sections, List<UiField> existingFields) {
         List<List<UiField>> fields = new LinkedList<>();
-        if (existingFields == null) {
-            existingFields = new LinkedList<>();
-        }
+
         for (Section section : sections) {
             if (section.getSubSections() != null) {
+                List<UiField> keepHierarchy = new LinkedList<>();
+                if (existingFields != null) {
+                    keepHierarchy.addAll(existingFields);
+                }
                 UiField falseField = new UiField();
                 falseField.setName(section.getName());
                 falseField.setId(section.getId());
-                falseField.setLabel(StyledString.of(""));
-                existingFields.add(falseField);
-                fields.addAll(getSectionFieldsList(section.getSubSections(), existingFields));
+                falseField.setLabel(StyledString.of(section.getName()));
+                keepHierarchy.add(falseField);
+                fields.addAll(getSectionFieldsList(section.getSubSections(), keepHierarchy));
             }
             if (section.getFields() != null) {
                 List<UiField> sortedFields = sortFieldList(section.getFields());
@@ -311,20 +292,14 @@ public class SurveyCSVConverter implements CSVConverter {
         return allLeafFieldLists;
     }
 
-    private Map<String, List<String>> toCsv(SurveyAnswer surveyAnswer) {
+    private Map<String, List<String>> toCsv(SurveyAnswer surveyAnswer, List<List<UiField>> fields) {
         Map<String, List<String>> resultsMap = new LinkedHashMap<>();
-//        if (surveyAnswer.getChapterAnswers() != null && !surveyAnswer.getChapterAnswers().isEmpty()) {
-//            for (ChapterAnswer chapterAnswer : surveyAnswer.getChapterAnswers().values()) {
-//                List<List<UiField>> fields = chapterFields.get(chapterAnswer.getChapterId());
-        List<List<UiField>> fields = getFieldLists(modelService.get(surveyAnswer.getSurveyId()));
         JSONObject answer = surveyAnswer.getAnswer();
         for (List<UiField> fieldsToLeaf : fields) {
             Pair<String, List<String>> keyValue = getValue(fieldsToLeaf, answer);
             resultsMap.putIfAbsent(keyValue.getFirst(), new LinkedList<>());
             resultsMap.get(keyValue.getFirst()).addAll(keyValue.getSecond());
         }
-//            }
-//        }
         return resultsMap;
     }
 
