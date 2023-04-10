@@ -7,9 +7,8 @@ import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.annotations.Browse;
-import gr.athenarc.catalogue.controller.GenericItemController;
-
 import gr.athenarc.catalogue.utils.PagingUtils;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.Parameter;
 
 import java.util.Map;
 import java.util.Set;
@@ -40,7 +38,7 @@ public class CoordinatorController {
     /*---------------------------*/
 
     @GetMapping("{id}")
-//    @PreAuthorize("isCoordinatorMember(#id)")
+    @PreAuthorize("isCoordinatorMember(#id)")
     public ResponseEntity<Coordinator> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(coordinatorService.get(id), HttpStatus.OK);
     }

@@ -22,9 +22,10 @@ import org.springframework.security.core.GrantedAuthority;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot implements MethodSecurityExpressionOperations, PermissionEvaluator {
+public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot implements MethodSecurityExpressionOperations, PermissionEvaluator, MethodSecurityExpressions {
 
     private static final Logger logger = LoggerFactory.getLogger(CustomMethodSecurityExpressionRoot.class);
 
@@ -118,11 +119,11 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     /*       Custom Security Expression Methods       */
     /* ********************************************** */
 
-    public boolean isStakeholderMember(String stakeholderId) {
-        if (stakeholderId == null) {
+    @Override
+    public boolean userIsStakeholderMember(String userId, String stakeholderId) {
+        if (stakeholderId == null || userId == null) {
             return false;
         }
-        User user = userService.get(User.getId(this.authentication));
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
         Set<String> emails = new HashSet<>();
         if (stakeholder.getContributors() != null) {
@@ -131,27 +132,77 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         if (stakeholder.getManagers() != null) {
             emails.addAll(stakeholder.getManagers());
         }
-        return emails.contains(user.getId());
+        return emails.contains(userId);
     }
 
-    public boolean isStakeholderManager(String stakeholderId) {
-        if (stakeholderId == null) {
+    @Override
+    public boolean isStakeholderMember(String stakeholderId) {
+        User user = userService.get(User.getId(this.authentication));
+        return userIsStakeholderMember(user.getId(), stakeholderId);
+    }
+
+    @Override
+    public boolean userIsStakeholderManager(String userId, String stakeholderId) {
+        if (stakeholderId == null || userId == null) {
             return false;
         }
-        User user = userService.get(User.getId(this.authentication));
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
-        return stakeholder.getManagers() != null && stakeholder.getManagers().contains(user.getId());
+        return stakeholder.getManagers() != null && stakeholder.getManagers().contains(userId);
     }
 
-    public boolean isCoordinatorMember(String coordinatorId) {
-        if (coordinatorId == null) {
+    @Override
+    public boolean isStakeholderManager(String stakeholderId) {
+        User user = userService.get(User.getId(this.authentication));
+        return userIsStakeholderManager(user.getId(), stakeholderId);
+    }
+
+    @Override
+    public boolean userIsCoordinatorMember(String userId, String coordinatorId) {
+        if (coordinatorId == null || userId == null) {
             return false;
         }
-        User user = userService.get(User.getId(this.authentication));
         Coordinator coordinator = coordinatorService.get(coordinatorId);
-        return coordinator.getMembers() != null && coordinator.getMembers().contains(user.getId());
+        return coordinator.getMembers() != null && coordinator.getMembers().contains(userId);
     }
 
+    @Override
+    public boolean isCoordinatorMember(String coordinatorId) {
+        User user = userService.get(User.getId(this.authentication));
+        return userIsCoordinatorMember(user.getId(), coordinatorId);
+    }
+
+    @Override
+    public boolean userIsCoordinatorMemberOfType(String userId, String type) {
+        if (type == null || userId == null) {
+            return false;
+        }
+        FacetFilter ff = new FacetFilter();
+        ff.addFilter("members", userId);
+        ff.addFilter("type", type);
+        List<Coordinator> coordinators = coordinatorService.getAll(ff).getResults();
+        return !coordinators.isEmpty();
+    }
+
+    @Override
+    public boolean isCoordinatorMemberOfType(String type) {
+        User user = userService.get(User.getId(this.authentication));
+        return userIsCoordinatorMemberOfType(user.getId(), type);
+    }
+
+    @Override
+    public boolean userIsCoordinatorMemberOfStakeholder(String userId, String stakeholderId) {
+        Stakeholder stakeholder = stakeholderService.get(stakeholderId);
+        return userIsCoordinatorMemberOfType(userId, stakeholder.getType());
+    }
+
+    @Override
+    public boolean isCoordinatorMemberOfStakeholder(String stakehodlerId) {
+        User user = userService.get(User.getId(this.authentication));
+        Stakeholder stakeholder = stakeholderService.get(stakehodlerId);
+        return userIsCoordinatorMemberOfType(user.getId(), stakeholder.getType());
+    }
+
+    @Override
     public boolean hasStakeholderManagerAccess(Object surveyAnswer) {
         SurveyAnswer answer;
         if (surveyAnswer instanceof String) {
@@ -172,6 +223,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         return false;
     }
 
+    @Override
     public boolean hasStakeholderManagerAccess(String surveyId) {
         if (surveyId == null) {
             return false;
@@ -188,6 +240,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         return false;
     }
 
+    @Override
     public boolean hasCoordinatorAccess(String surveyId) {
         if (surveyId == null) {
             return false;
@@ -204,6 +257,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         return false;
     }
 
+    @Override
     public boolean hasCoordinatorAccess(Object surveyAnswer) {
         SurveyAnswer answer;
         if (surveyAnswer == null) {
@@ -226,6 +280,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
         return false;
     }
 
+    @Override
     public boolean hasAccess(Object resource, Object permission) {
         if ((this.authentication == null) || (resource == null) || !(permission instanceof String)) {
             return false;

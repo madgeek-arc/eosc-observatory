@@ -5,9 +5,8 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jose.util.Base64URL;
 import eu.eosc.observatory.configuration.ApplicationProperties;
-import eu.eosc.observatory.configuration.security.CustomMethodSecurityExpressionRoot;
+import eu.eosc.observatory.configuration.security.MethodSecurityExpressions;
 import eu.eosc.observatory.domain.Invitation;
-import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
 import eu.openminted.registry.core.service.ServiceException;
 import gr.athenarc.catalogue.exception.ResourceException;
@@ -16,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
@@ -34,11 +32,11 @@ public class JWSInvitationService implements InvitationService {
     private final JWSSigner signer;
     private final JWSVerifier verifier;
 
-    private final CustomMethodSecurityExpressionRoot securityExpressions;
+    private final MethodSecurityExpressions securityExpressions;
 
     @Autowired
     public JWSInvitationService(StakeholderService stakeholderService, ApplicationProperties applicationProperties,
-                                @Lazy CustomMethodSecurityExpressionRoot securityExpressions) {
+                                @Lazy MethodSecurityExpressions securityExpressions) {
         this.stakeholderService = stakeholderService;
         this.securityExpressions = securityExpressions;
 
@@ -94,13 +92,13 @@ public class JWSInvitationService implements InvitationService {
             }
 
             if (invitationObject.getRole().equals("manager")
-                    && securityExpressions.isCoordinatorMember(invitationObject.getInviter())) {
+                    && securityExpressions.userIsCoordinatorMemberOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId())) {
                 stakeholderService.addManager(invitationObject.getStakeholderId(), invitationObject.getInvitee());
                 return true;
             }
             if (invitationObject.getRole().equals("contributor")
-                    && (securityExpressions.isStakeholderManager(invitationObject.getInviter())
-                        || securityExpressions.isCoordinatorMember(invitationObject.getInviter()))) {
+                    && (securityExpressions.userIsStakeholderManager(invitationObject.getInviter(), invitationObject.getStakeholderId())
+                    || securityExpressions.userIsCoordinatorMemberOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId()))) {
                 stakeholderService.addContributor(invitationObject.getStakeholderId(), invitationObject.getInvitee());
                 return true;
             }

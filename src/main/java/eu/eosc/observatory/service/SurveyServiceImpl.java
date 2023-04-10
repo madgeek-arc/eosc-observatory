@@ -457,10 +457,10 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer restore(String surveyAnswerId, String versionId) {
-        return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRevertHistory(a, versionId));
+        return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRestoreHistory(a, versionId));
     }
 
-    private SurveyAnswer createRevertHistory(SurveyAnswer answer, String version) {
+    private SurveyAnswer createRestoreHistory(SurveyAnswer answer, String version) {
         Date now = new Date();
         User user = User.of(SecurityContextHolder.getContext().getAuthentication());
 
