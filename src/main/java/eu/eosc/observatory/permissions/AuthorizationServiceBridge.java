@@ -135,15 +135,19 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public void removeAll(Collection<String> users) {
-        for (String user : users) {
-            this.removeAll(user);
+        if (users != null) {
+            for (String user : users) {
+                this.removeAll(user);
+            }
         }
     }
 
     @Override
     public void removeAll(Collection<String> users, String group) {
-        for (String user : users) {
-            this.removeAll(user, group);
+        if (users != null) {
+            for (String user : users) {
+                this.removeAll(user, group);
+            }
         }
     }
 

@@ -122,9 +122,13 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     public Stakeholder updateContributors(String stakeholderId, Set<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
         Set<String> previousContributors = stakeholder.getContributors();
-        for (String contributor : userIds) {
-            previousContributors.remove(contributor);
+
+        if (userIds != null) {
+            for (String contributor : userIds) {
+                previousContributors.remove(contributor);
+            }
         }
+
         permissionService.removeAll(previousContributors, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
 
         // read access for all resources
@@ -176,8 +180,11 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     public Stakeholder updateManagers(String stakeholderId, Set<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
         Set<String> previousManagers = stakeholder.getManagers();
-        for (String manager : userIds) {
-            previousManagers.remove(manager);
+
+        if (userIds != null) {
+            for (String manager : userIds) {
+                previousManagers.remove(manager);
+            }
         }
 
         permissionService.removeAll(previousManagers, Groups.STAKEHOLDER_MANAGER.getKey());
