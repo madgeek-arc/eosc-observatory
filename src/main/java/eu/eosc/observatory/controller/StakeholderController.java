@@ -1,7 +1,9 @@
 package eu.eosc.observatory.controller;
 
+import eu.eosc.observatory.mappers.StakeholderMapper;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.dto.StakeholderMembers;
+import eu.eosc.observatory.dto.StakeholderDTO;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -28,10 +30,12 @@ public class StakeholderController {
     private static final Logger logger = LoggerFactory.getLogger(StakeholderController.class);
 
     private final StakeholderService stakeholderService;
+    private final StakeholderMapper stakeholderMapper;
 
     @Autowired
-    public StakeholderController(StakeholderService stakeholderService) {
+    public StakeholderController(StakeholderService stakeholderService, StakeholderMapper stakeholderMapper) {
         this.stakeholderService = stakeholderService;
+        this.stakeholderMapper = stakeholderMapper;
     }
 
     /*---------------------------*/
@@ -45,15 +49,19 @@ public class StakeholderController {
     }
 
     @PostMapping()
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfType(#stakeholder.type)")
-    public ResponseEntity<Stakeholder> create(@RequestBody Stakeholder stakeholder) {
-        return new ResponseEntity<>(stakeholderService.add(stakeholder), HttpStatus.CREATED);
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfType(#dto.getType())")
+    public ResponseEntity<Stakeholder> create(@RequestBody StakeholderDTO dto) {
+        return new ResponseEntity<>(stakeholderService.add(stakeholderMapper.toStakeholder(dto)), HttpStatus.CREATED);
     }
 
     @PutMapping("{id}")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfStakeholder(#id)")
-    public ResponseEntity<Stakeholder> update(@PathVariable("id") String id, @RequestBody Stakeholder stakeholder) throws ResourceNotFoundException {
-        return new ResponseEntity<>(stakeholderService.updateStakeholderAndUserPermissions(id, stakeholder), HttpStatus.OK);
+    public ResponseEntity<Stakeholder> update(@PathVariable("id") String id, @RequestBody StakeholderDTO dto) {
+        Stakeholder existing = stakeholderService.get(id);
+        Stakeholder toUpdate = stakeholderMapper.toStakeholder(dto);
+        toUpdate.setContributors(existing.getContributors());
+        toUpdate.setManagers(existing.getManagers());
+        return new ResponseEntity<>(stakeholderService.updateStakeholderAndUserPermissions(id, toUpdate), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}")
