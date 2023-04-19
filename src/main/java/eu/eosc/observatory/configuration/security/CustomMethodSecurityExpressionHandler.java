@@ -1,7 +1,6 @@
 package eu.eosc.observatory.configuration.security;
 
-import eu.eosc.observatory.service.*;
-import gr.athenarc.catalogue.ui.service.ModelService;
+import eu.eosc.observatory.service.SecurityService;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -23,12 +22,8 @@ public class CustomMethodSecurityExpressionHandler extends DefaultMethodSecurity
     @Override
     protected MethodSecurityExpressionOperations createSecurityExpressionRoot(Authentication authentication, MethodInvocation invocation) {
         CustomMethodSecurityExpressionRoot root = new CustomMethodSecurityExpressionRoot(authentication,
-                applicationContext.getBean(UserService.class),
-                applicationContext.getBean(SecurityService.class),
-                applicationContext.getBean(CoordinatorService.class),
-                applicationContext.getBean(StakeholderService.class),
-                applicationContext.getBean(ModelService.class),
-                applicationContext.getBean(SurveyAnswerCrudService.class));
+                applicationContext.getBean(MethodSecurityExpressions.class),
+                applicationContext.getBean(SecurityService.class));
         root.setTrustResolver(this.trustResolver);
         root.setRoleHierarchy(getRoleHierarchy());
         return root;

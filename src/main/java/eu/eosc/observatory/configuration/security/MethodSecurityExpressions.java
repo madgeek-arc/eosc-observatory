@@ -1,8 +1,11 @@
 package eu.eosc.observatory.configuration.security;
 
+import org.springframework.security.core.Authentication;
+
 public interface MethodSecurityExpressions {
 
     boolean userIsStakeholderMember(String userId, String stakeholderId);
+
     boolean isStakeholderMember(String stakeholderId);
 
     boolean userIsStakeholderManager(String userId, String stakeholderId);
@@ -12,11 +15,13 @@ public interface MethodSecurityExpressions {
     boolean userIsCoordinatorMember(String userId, String coordinatorId);
 
     boolean isCoordinatorMember(String coordinatorId);
+
     boolean userIsCoordinatorMemberOfType(String userId, String type);
 
     boolean isCoordinatorMemberOfType(String type);
 
     boolean userIsCoordinatorMemberOfStakeholder(String userId, String stakehodlerId);
+
     boolean isCoordinatorMemberOfStakeholder(String stakehodlerId);
 
     boolean hasStakeholderManagerAccess(Object surveyAnswer);
@@ -29,5 +34,6 @@ public interface MethodSecurityExpressions {
 
     boolean hasAccess(Object resource, Object permission);
 
+    boolean isAdmin(Authentication authentication);
 
 }
