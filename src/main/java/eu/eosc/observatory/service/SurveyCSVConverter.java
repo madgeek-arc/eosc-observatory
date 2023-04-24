@@ -1,5 +1,6 @@
 package eu.eosc.observatory.service;
 
+import eu.eosc.observatory.CsvBuilder;
 import eu.eosc.observatory.domain.*;
 import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.domain.Section;
@@ -36,6 +37,8 @@ public class SurveyCSVConverter implements CSVConverter {
     private final SurveyAnswerCrudService surveyAnswerCrudService;
     private final StakeholderService stakeholderService;
     private final UserService userService;
+
+    private CsvBuilder csvBuilder;
 
     @Autowired
     public SurveyCSVConverter(ModelService modelService,
@@ -139,44 +142,37 @@ public class SurveyCSVConverter implements CSVConverter {
 
     @Override
     public String convertToCSV(String modelId, boolean includeSensitiveData, Date from, Date to) {
-        StringBuilder csv = new StringBuilder();
+//        StringBuilder csv = new StringBuilder();
         Model model = modelService.get(modelId);
         List<String> allKeys = new LinkedList<>();
         List<List<UiField>> fieldHierarchy = getFieldHierarchy(model);
         allKeys.addAll(getKeys(fieldHierarchy));
 
-        csv.append(String.join(DELIMITER_PRIMARY, "Creation Date", "Stakeholder Id", "Stakeholder Name"));
-        csv.append(DELIMITER_PRIMARY);
-        if (includeSensitiveData) {
-            csv.append("Edited By");
-            csv.append(DELIMITER_PRIMARY);
-        }
-        csv.append(String.join(DELIMITER_PRIMARY, allKeys));
-
         List<SurveyAnswer> answerSet = getSurveyAnswers(model, from, to);
-        for (SurveyAnswer answer : answerSet) {
-            Map<String, List<String>> results = toCsv(answer, fieldHierarchy);
-            List<String> row = new LinkedList<>();
-            row.add(answer.getMetadata().getCreationDate().toString());
-            row.add(answer.getStakeholderId());
-            Stakeholder stakeholder = stakeholderService.get(answer.getStakeholderId());
-            row.add(stakeholder.getName());
-            if (includeSensitiveData) {
-                row.add(getContributorsInfo(answer));
-            }
-            for (String key : allKeys) {
-                if (!results.containsKey(key) || results.get(key).isEmpty()) {
-                    row.add("");
-                } else {
-                    String value = joinList(DELIMITER_SECONDARY, results.get(key));
-                    row.add(formatText(value));
-                }
-            }
-            csv.append("\n");
-            csv.append(String.join(DELIMITER_PRIMARY, row));
+        int index = 0;
+        List<String> creationDates = answerSet.stream().map(a -> a.getMetadata().getCreationDate().toString()).collect(Collectors.toList());
+        List<String> stakeholderIds = answerSet.stream().map(SurveyAnswer::getStakeholderId).collect(Collectors.toList());
+        List<String> stakeholderNames = answerSet.stream().map(a -> stakeholderService.get(a.getStakeholderId()).getName()).collect(Collectors.toList());
+
+        this.csvBuilder = new CsvBuilder();
+        this.csvBuilder.addColumn("Creation Date", creationDates);
+        this.csvBuilder.addColumn("Stakeholder Id", stakeholderIds);
+        this.csvBuilder.addColumn("Stakeholder Names", stakeholderNames);
+
+        if (includeSensitiveData) {
+            List<String> contributorInfo = answerSet.stream().map(this::getContributorsInfo).collect(Collectors.toList());
+            this.csvBuilder.addColumn("Edited By", contributorInfo);
         }
 
-        return csv.toString();
+        for (SurveyAnswer surveyAnswer : answerSet) {
+            JSONObject answer = surveyAnswer.getAnswer();
+            for (List<UiField> fieldsToLeaf : fieldHierarchy) {
+                createValues(null, fieldsToLeaf, answer, index);
+            }
+            index++;
+        }
+
+        return this.csvBuilder.toCsv();
     }
 
     private List<SurveyAnswer> getSurveyAnswers(Model model, Date from, Date to) {
@@ -292,17 +288,6 @@ public class SurveyCSVConverter implements CSVConverter {
         return allLeafFieldLists;
     }
 
-    private Map<String, List<String>> toCsv(SurveyAnswer surveyAnswer, List<List<UiField>> fields) {
-        Map<String, List<String>> resultsMap = new LinkedHashMap<>();
-        JSONObject answer = surveyAnswer.getAnswer();
-        for (List<UiField> fieldsToLeaf : fields) {
-            Pair<String, List<String>> keyValue = getValue(fieldsToLeaf, answer);
-            resultsMap.putIfAbsent(keyValue.getFirst(), new LinkedList<>());
-            resultsMap.get(keyValue.getFirst()).addAll(keyValue.getSecond());
-        }
-        return resultsMap;
-    }
-
     private Set<String> getKeys(List<List<UiField>> fields) {
         Set<String> keys = new LinkedHashSet<>();
         for (List<UiField> fieldsToLeaf : fields) {
@@ -328,10 +313,11 @@ public class SurveyCSVConverter implements CSVConverter {
         return key;
     }
 
-    private Pair<String, List<String>> getValue(List<UiField> fieldsToLeaf, JSONObject answer) {
+    private void createValues(String key, List<UiField> fieldsToLeaf, JSONObject answer, int index) {
         List values = new LinkedList<>();
-        Pair<String, List<String>> pair;
-        String key = "";
+        if (key == null) {
+            key = "";
+        }
         Object temp = null;
         if (answer != null) {
             temp = JSONValue.parse(answer.toJSONString());
@@ -344,8 +330,17 @@ public class SurveyCSVConverter implements CSVConverter {
                 label = field.getName();
             }
             key = String.format("%s%s%s", key, JOINING_SYMBOL, label);
+
             if (temp instanceof JSONObject && ((JSONObject) temp).containsKey(field.getName())) {
                 temp = ((JSONObject) temp).get(field.getName());
+                if (field.getTypeInfo().isMultiplicity() && field.getTypeInfo().getType().equals("composite") && temp != null) {
+                    for (Object item : (JSONArray) temp) {
+                        createValues(key, fieldsToLeaf.subList(fieldsToLeaf.indexOf(field) + 1, fieldsToLeaf.size()), (JSONObject) item, index);
+                    }
+                    return;
+                }
+            } else if (temp instanceof JSONArray) {
+                temp = ((JSONArray) temp);
             } else {
                 temp = null;
             }
@@ -353,7 +348,11 @@ public class SurveyCSVConverter implements CSVConverter {
 
         if (temp != null) {
             if (fieldsToLeaf.get(fieldsToLeaf.size() - 1).getTypeInfo().isMultiplicity()) {
-                values.addAll((JSONArray) temp);
+                for (Object item : (JSONArray) temp) {
+                    if (item instanceof String) { // Filter out problematic data
+                        values.add(item);
+                    }
+                }
             } else {
                 values.add(temp);
             }
@@ -361,18 +360,6 @@ public class SurveyCSVConverter implements CSVConverter {
         if (key.startsWith(JOINING_SYMBOL)) {
             key = key.replaceFirst(JOINING_SYMBOL, "");
         }
-        pair = Pair.of(key, values);
-        return pair;
-    }
-
-    String formatText(String text) {
-        text = text.replace("\t", "    ");
-        // enclose text inside double quotes if it contains break lines
-        if (text.contains("\n")) {
-            // replace existing double quotes to avoid display problems with Excel, Numbers (mac), etc.
-            text = text.replace("\"", DOUBLE_QUOTE_ENCODED);
-            text = String.format("\"%s\"", text);
-        }
-        return text;
+        this.csvBuilder.addValue(key, index, values.isEmpty() ? null : values);
     }
 }
