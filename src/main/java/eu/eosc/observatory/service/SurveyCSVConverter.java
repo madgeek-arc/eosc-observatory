@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -81,7 +82,7 @@ public class SurveyCSVConverter implements CSVConverter {
             Metadata metadata = new Metadata(authentication);
             Date creationDate = metadata.getCreationDate();
             surveyAnswer.setMetadata(metadata);
-            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, History.HistoryAction.CREATED);
+            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), Roles.Administrative.ADMINISTRATOR.getRoleName(), "", creationDate, History.HistoryAction.CREATED);
 
 
 //            Map<String, ChapterAnswer> chapterAnswerMap = new HashMap<>();
@@ -96,7 +97,7 @@ public class SurveyCSVConverter implements CSVConverter {
             }
 //                ChapterAnswer chapterAnswer = createChapterAnswer(entry.getKey(), headers, csvData[i]); // FIXME: complete method and replace body below, if able
 //                ChapterAnswer chapterAnswer = new ChapterAnswer(idGenerator.createId("ca-"), entry.getKey(), metadata);
-            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, History.HistoryAction.CREATED);
+            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), Roles.Administrative.ADMINISTRATOR.getRoleName(), "", creationDate, History.HistoryAction.CREATED);
 //                chapterAnswer.setChapterId(entry.getKey());
 
             for (int j = 0; j < csvData[i].length; j++) { // for each column (csv headers)

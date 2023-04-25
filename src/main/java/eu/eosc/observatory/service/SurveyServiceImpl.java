@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -127,25 +128,31 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public SurveyAnswer update(String id, SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException {
+    public SurveyAnswer update(String id, SurveyAnswer surveyAnswer, String comment, Authentication authentication) throws ResourceNotFoundException {
         Date date = new Date();
         SurveyAnswer existing = surveyAnswerCrudService.get(id);
+        User user = User.of(authentication);
+        String userRole = getUserRole(authentication, existing.getStakeholderId());
+
         surveyAnswer.setHistory(existing.getHistory());
-        surveyAnswer.getHistory().addEntry(user.getId(), date, History.HistoryAction.UPDATED);
+        surveyAnswer.getHistory().addEntry(user.getId(), userRole, comment, date, History.HistoryAction.UPDATED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
         return surveyAnswerCrudService.update(id, surveyAnswer);
     }
 
     @Override
-    public SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, User user) throws ResourceNotFoundException {
+    public SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, String comment, Authentication authentication) throws ResourceNotFoundException {
         Date date = new Date();
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
         if (!hasChanged(surveyAnswer.getAnswer(), answer)) {
             return surveyAnswer;
         }
+        User user = User.of(authentication);
+        String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
+
         surveyAnswer.setAnswer(answer);
-        surveyAnswer.getHistory().addEntry(user.getId(), date, History.HistoryAction.UPDATED);
+        surveyAnswer.getHistory().addEntry(user.getId(), userRole, comment, date, History.HistoryAction.UPDATED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
         return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
@@ -209,12 +216,14 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public SurveyAnswer setAnswerValidated(String answerId, boolean validated, User user) throws ResourceNotFoundException {
+    public SurveyAnswer setAnswerValidated(String answerId, boolean validated, Authentication authentication) throws ResourceNotFoundException {
         Date date = new Date();
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(answerId);
+        User user = User.of(authentication);
+        String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
         if (surveyAnswer.isValidated() != validated) {
             History.HistoryAction action = validated ? History.HistoryAction.VALIDATED : History.HistoryAction.INVALIDATED;
-            surveyAnswer.getHistory().addEntry(user.getId(), date, action);
+            surveyAnswer.getHistory().addEntry(user.getId(), userRole, "", date, action);
             surveyAnswer.getMetadata().setModifiedBy(user.getId());
             surveyAnswer.getMetadata().setModificationDate(date);
             return validated ? validateAnswer(surveyAnswer) : invalidateAnswer(surveyAnswer);
@@ -223,7 +232,7 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public SurveyAnswer setAnswerPublished(String answerId, boolean published, User user) throws ResourceNotFoundException {
+    public SurveyAnswer setAnswerPublished(String answerId, boolean published, Authentication authentication) throws ResourceNotFoundException {
         throw new UnsupportedOperationException("Not implemented yet...");
         // TODO: implement this method
     }
@@ -257,10 +266,13 @@ public class SurveyServiceImpl implements SurveyService {
         logger.info("Generating SurveyAnswer: [surveyId={}] [stakeholderId={}]", survey.getId(), stakeholder.getId());
         Metadata metadata = new Metadata(authentication);
         Date creationDate = metadata.getCreationDate();
+        User user = User.of(authentication);
+        String userRole = getUserRole(authentication, stakeholder.getId());
+
         // create answer for every stakeholder
         SurveyAnswer surveyAnswer = new SurveyAnswer();
         surveyAnswer.setMetadata(metadata);
-        surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), creationDate, History.HistoryAction.CREATED);
+        surveyAnswer.getHistory().addEntry(user.getId(), userRole, "", creationDate, History.HistoryAction.CREATED);
 
         surveyAnswer.setStakeholderId(stakeholder.getId());
         surveyAnswer.setSurveyId(survey.getId());
@@ -462,13 +474,15 @@ public class SurveyServiceImpl implements SurveyService {
 
     private SurveyAnswer createRestoreHistory(SurveyAnswer answer, String version) {
         Date now = new Date();
-        User user = User.of(SecurityContextHolder.getContext().getAuthentication());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = User.of(authentication);
+        String userRole = getUserRole(authentication, answer.getStakeholderId());
 
         Metadata metadata = answer.getMetadata();
         metadata.setModifiedBy(user.getId());
         metadata.setModificationDate(now);
         answer.setMetadata(metadata);
-        answer.getHistory().addEntry(user.getId(), now, History.HistoryAction.RESTORED, version);
+        answer.getHistory().addEntry(user.getId(), userRole, "", now, History.HistoryAction.RESTORED, version);
 
         return answer;
     }
@@ -492,4 +506,21 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
     }
 
+    public String getUserRole(Authentication authentication, String stakeholderId) {
+        User user = User.of(authentication);
+
+        for (GrantedAuthority grantedAuth : authentication.getAuthorities()) {
+            if (grantedAuth.getAuthority().contains("ADMIN")) {
+                return Roles.Administrative.ADMINISTRATOR.getRoleName();
+            }
+        }
+        Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
+        if (stakeholder.getManagers().contains(user.getId())) {
+            return Roles.Stakeholder.MANAGER.getRoleName();
+        }
+        if (stakeholder.getContributors().contains(user.getId())) {
+            return Roles.Stakeholder.CONTRIBUTOR.getRoleName();
+        }
+        return null;
+    }
 }

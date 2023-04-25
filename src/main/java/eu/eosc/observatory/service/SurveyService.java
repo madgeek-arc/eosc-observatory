@@ -29,23 +29,24 @@ public interface SurveyService {
     List<SurveyAnswer> getAllByStakeholder(String id);
 
     /**
-     * Updates SurveyAnswer object keeping the User and the time of modification as metadata.
+     * Updates SurveyAnswer object keeping the authenticated user and the time of modification as metadata.
      *
      * @param id
      * @param surveyAnswer
-     * @param user
+     * @param comment
+     * @param authentication
      * @return
      * @throws ResourceNotFoundException
      */
-    SurveyAnswer update(String id, SurveyAnswer surveyAnswer, User user) throws ResourceNotFoundException;
+    SurveyAnswer update(String id, SurveyAnswer surveyAnswer, String comment, Authentication authentication) throws ResourceNotFoundException;
 
-    SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, User user) throws ResourceNotFoundException;
+    SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, String comment, Authentication authentication) throws ResourceNotFoundException;
 
     Diff surveyAnswerDiff(String surveyAnswerId, String version1Id, String version2Id);
 
-    SurveyAnswer setAnswerValidated(String surveyAnswerId, boolean validated, User user) throws ResourceNotFoundException;
+    SurveyAnswer setAnswerValidated(String surveyAnswerId, boolean validated, Authentication authentication) throws ResourceNotFoundException;
 
-    SurveyAnswer setAnswerPublished(String surveyAnswerId, boolean published, User user) throws ResourceNotFoundException;
+    SurveyAnswer setAnswerPublished(String surveyAnswerId, boolean published, Authentication authentication) throws ResourceNotFoundException;
 
     List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication);
 

@@ -124,8 +124,9 @@ public class SurveyController {
     @PreAuthorize("hasPermission(#surveyAnswerId, 'write')")
     public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("surveyAnswerId") String surveyAnswerId,
                                                            @RequestBody JSONObject object,
+                                                           @RequestParam(name = "comment", defaultValue = "") String comment,
                                                            @Parameter(hidden = true) Authentication authentication) throws ResourceNotFoundException {
-        return new ResponseEntity<>(surveyService.updateAnswer(surveyAnswerId, object, User.of(authentication)), HttpStatus.OK);
+        return new ResponseEntity<>(surveyService.updateAnswer(surveyAnswerId, object, comment, authentication), HttpStatus.OK);
     }
 
     @DeleteMapping("answers/{surveyAnswerId}")
@@ -139,7 +140,7 @@ public class SurveyController {
     public ResponseEntity<SurveyAnswer> validateSurveyAnswer(@PathVariable("id") String surveyAnswerId,
                                                              @RequestParam(value = "validated") boolean validated,
                                                              @Parameter(hidden = true) Authentication authentication) throws ResourceNotFoundException {
-        return new ResponseEntity<>(surveyService.setAnswerValidated(surveyAnswerId, validated, User.of(authentication)), HttpStatus.OK);
+        return new ResponseEntity<>(surveyService.setAnswerValidated(surveyAnswerId, validated, authentication), HttpStatus.OK);
     }
 
     @PatchMapping("answers/{id}/publish")
@@ -147,7 +148,7 @@ public class SurveyController {
     public ResponseEntity<SurveyAnswer> publishAnswer(@PathVariable("id") String surveyAnswerId,
                                                       @RequestParam(value = "published") boolean published,
                                                       @Parameter(hidden = true) Authentication authentication) throws ResourceNotFoundException {
-        SurveyAnswer surveyAnswers = surveyService.setAnswerPublished(surveyAnswerId, published, User.of(authentication));
+        SurveyAnswer surveyAnswers = surveyService.setAnswerPublished(surveyAnswerId, published, authentication);
         return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
     }
 

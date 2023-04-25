@@ -20,12 +20,12 @@ public class History {
         this.entries = entries;
     }
 
-    public void addEntry(String userId, Date date, HistoryAction action) {
-        entries.add(new HistoryEntry(userId, date.getTime(), action));
+    public void addEntry(String userId, String userRole, String comment, Date date, HistoryAction action) {
+        entries.add(new HistoryEntry(userId, userRole, comment, date.getTime(), action));
     }
 
-    public void addEntry(String userId, Date date, HistoryAction action, String version) {
-        entries.add(new HistoryEntry(userId, date.getTime(), action, version));
+    public void addEntry(String userId, String userRole, String comment, Date date, HistoryAction action, String version) {
+        entries.add(new HistoryEntry(userId, userRole, comment, date.getTime(), action, version));
     }
 
     public enum HistoryAction {

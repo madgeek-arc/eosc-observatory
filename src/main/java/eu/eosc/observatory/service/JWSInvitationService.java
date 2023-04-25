@@ -7,6 +7,7 @@ import com.nimbusds.jose.util.Base64URL;
 import eu.eosc.observatory.configuration.ApplicationProperties;
 import eu.eosc.observatory.configuration.security.MethodSecurityExpressions;
 import eu.eosc.observatory.domain.Invitation;
+import eu.eosc.observatory.domain.Roles;
 import eu.eosc.observatory.domain.User;
 import eu.openminted.registry.core.service.ServiceException;
 import gr.athenarc.catalogue.exception.ResourceException;
@@ -91,12 +92,12 @@ public class JWSInvitationService implements InvitationService {
                 throw new ResourceException("Invitation time has expired.", HttpStatus.FORBIDDEN);
             }
 
-            if (invitationObject.getRole().equals("manager")
+            if (invitationObject.getRole().equalsIgnoreCase(Roles.Stakeholder.MANAGER.name())
                     && securityExpressions.userIsCoordinatorMemberOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId())) {
                 stakeholderService.addManager(invitationObject.getStakeholderId(), invitationObject.getInvitee());
                 return true;
             }
-            if (invitationObject.getRole().equals("contributor")
+            if (invitationObject.getRole().equals(Roles.Stakeholder.CONTRIBUTOR.name())
                     && (securityExpressions.userIsStakeholderManager(invitationObject.getInviter(), invitationObject.getStakeholderId())
                     || securityExpressions.userIsCoordinatorMemberOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId()))) {
                 stakeholderService.addContributor(invitationObject.getStakeholderId(), invitationObject.getInvitee());

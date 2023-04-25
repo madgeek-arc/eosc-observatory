@@ -12,6 +12,8 @@ public class HistoryEntryDTO {
 
     String email;
     String fullname;
+    String role;
+    String comment;
     long time;
     HistoryActionDTO action;
     String resourceId;
@@ -28,6 +30,8 @@ public class HistoryEntryDTO {
         }
         entry.setEmail(user.getEmail());
         entry.setFullname(user.getFullname());
+        entry.setRole(historyEntry.getUserRole());
+        entry.setComment(historyEntry.getComment());
         entry.setAction(HistoryActionDTO.of(historyEntry.getAction(), historyEntry.getRegistryVersion()));
         entry.setTime(historyEntry.getTime());
         return entry;
@@ -47,6 +51,22 @@ public class HistoryEntryDTO {
 
     public void setFullname(String fullname) {
         this.fullname = fullname;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
     }
 
     public long getTime() {
