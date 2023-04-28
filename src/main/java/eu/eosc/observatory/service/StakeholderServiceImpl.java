@@ -77,7 +77,8 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
             return stakeholder.getId();
         }
         String idSuffix;
-        if (Stakeholder.StakeholderType.fromString(stakeholder.getType()) == Stakeholder.StakeholderType.COUNTRY) {
+        if (Stakeholder.StakeholderType.fromString(stakeholder.getType()) == Stakeholder.StakeholderType.COUNTRY
+            || Stakeholder.StakeholderType.fromString(stakeholder.getType()) == Stakeholder.StakeholderType.EOSC_SB) {
             idSuffix = stakeholder.getCountry();
         } else if (stakeholder.getAssociationMember() != null) {
             idSuffix = stakeholder.getAssociationMember().toLowerCase();

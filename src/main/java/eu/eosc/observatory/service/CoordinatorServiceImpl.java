@@ -56,9 +56,9 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
 
     @Override
     public String createId(Coordinator coordinator) {
-        String prefix = String.format("co-%s-", coordinator.getType());
-        String id = idGenerator.createId(prefix);
-        logger.debug(String.format("Created new ID for Coordinator: %s", id));
+        String id = String.format("co-%s", coordinator.getType());
+//        String id = idGenerator.createId(prefix, 0);
+        logger.debug("Created new ID for Coordinator: {}", id);
         return id;
     }
 

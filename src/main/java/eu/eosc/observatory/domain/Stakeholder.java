@@ -104,7 +104,8 @@ public class Stakeholder implements Identifiable<String> {
 
     public enum StakeholderType {
         COUNTRY("country"),
-        ASSOCIATION("association");
+        EOSC_SB("eosc-sb"),
+        EOSC_ASSOCIATION("eosc-a");
 
         private final String type;
 
