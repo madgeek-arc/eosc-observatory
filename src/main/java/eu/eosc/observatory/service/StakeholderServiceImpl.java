@@ -124,7 +124,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         Stakeholder stakeholder = get(stakeholderId);
         Set<String> previousContributors = stakeholder.getContributors();
 
-        if (userIds != null) {
+        if (userIds != null && previousContributors != null) {
             for (String contributor : userIds) {
                 previousContributors.remove(contributor);
             }
@@ -182,7 +182,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         Stakeholder stakeholder = get(stakeholderId);
         Set<String> previousManagers = stakeholder.getManagers();
 
-        if (userIds != null) {
+        if (userIds != null && previousManagers != null) {
             for (String manager : userIds) {
                 previousManagers.remove(manager);
             }
