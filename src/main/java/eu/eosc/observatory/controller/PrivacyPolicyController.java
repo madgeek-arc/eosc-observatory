@@ -35,7 +35,7 @@ public class PrivacyPolicyController extends AbstractCrudController<PrivacyPolic
         PrivacyPolicy policy = privacyPolicyService.getLatestByType(type);
         if (policy != null) {
             info.setPrivacyPolicy(policy);
-            info.setAccepted(privacyPolicyService.hasAcceptedPolicy(policy.getId(), User.of(authentication).getId()));
+            info.setAccepted(privacyPolicyService.hasAcceptedPolicy(policy.getId(), User.getId(authentication)));
         } else {
             logger.warn("There is no Privacy Policy for [type={}]", type);
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);

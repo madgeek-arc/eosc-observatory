@@ -82,23 +82,13 @@ public class SurveyCSVConverter implements CSVConverter {
             Metadata metadata = new Metadata(authentication);
             Date creationDate = metadata.getCreationDate();
             surveyAnswer.setMetadata(metadata);
-            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), Roles.Administrative.ADMINISTRATOR.getRoleName(), "", creationDate, History.HistoryAction.CREATED);
-
-
-//            Map<String, ChapterAnswer> chapterAnswerMap = new HashMap<>();
-//            surveyAnswer.setChapterAnswers(chapterAnswerMap);
-
-            // for each chapter
-//            for (Map.Entry<String, List<List<UiField>>> entry : chapterFields.entrySet()) {
+            surveyAnswer.getHistory().addEntry(User.getId(authentication), Roles.Administrative.ADMINISTRATOR.getRoleName(), "", creationDate, History.HistoryAction.CREATED);
 
             Map<String, List<UiField>> keyToFields = new TreeMap<>();
             for (List<UiField> fieldsToLeaf : getSectionFieldsList(model.getSections(), null)) {
                 keyToFields.put(getKey(fieldsToLeaf), fieldsToLeaf);
             }
-//                ChapterAnswer chapterAnswer = createChapterAnswer(entry.getKey(), headers, csvData[i]); // FIXME: complete method and replace body below, if able
-//                ChapterAnswer chapterAnswer = new ChapterAnswer(idGenerator.createId("ca-"), entry.getKey(), metadata);
-            surveyAnswer.getHistory().addEntry(User.of(authentication).getId(), Roles.Administrative.ADMINISTRATOR.getRoleName(), "", creationDate, History.HistoryAction.CREATED);
-//                chapterAnswer.setChapterId(entry.getKey());
+            surveyAnswer.getHistory().addEntry(User.getId(authentication), Roles.Administrative.ADMINISTRATOR.getRoleName(), "", creationDate, History.HistoryAction.CREATED);
 
             for (int j = 0; j < csvData[i].length; j++) { // for each column (csv headers)
                 if (csvData[i][j] != null && !csvData[i][j].equals("") && keyToFields.containsKey(headers[j])) {

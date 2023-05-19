@@ -88,7 +88,7 @@ public class SurveyController {
     @PostMapping("surveys")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Model> addSurvey(@RequestBody Model survey, @Parameter(hidden = true) Authentication authentication) {
-        survey.setCreatedBy(User.of(authentication).getId());
+        survey.setCreatedBy(User.getId(authentication));
         survey.setModifiedBy(survey.getCreatedBy());
         Date date = new Date();
         survey.setCreationDate(date);
@@ -99,7 +99,7 @@ public class SurveyController {
     @PutMapping("surveys/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Model> updateSurvey(@PathVariable("id") String id, @RequestBody Model survey, @Parameter(hidden = true) Authentication authentication) {
-        survey.setModifiedBy(User.of(authentication).getId());
+        survey.setModifiedBy(User.getId(authentication));
         survey.setModificationDate(new Date());
         return formsController.updateModel(id, survey);
     }
