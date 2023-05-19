@@ -1,10 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.configuration.ApplicationProperties;
-import eu.eosc.observatory.domain.Coordinator;
-import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.domain.User;
-import eu.eosc.observatory.domain.UserInfo;
+import eu.eosc.observatory.domain.*;
 import eu.eosc.observatory.service.CrudItemService;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -25,6 +22,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
@@ -43,20 +41,10 @@ public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
-    private final CrudItemService<Stakeholder> stakeholderService;
-    private final CrudItemService<Coordinator> coordinatorService;
-
-    private final ApplicationProperties applicationProperties;
 
     @Autowired
-    public UserController(UserService userService,
-                          CrudItemService<Stakeholder> stakeholderService,
-                          CrudItemService<Coordinator> coordinatorService,
-                          ApplicationProperties applicationProperties) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.stakeholderService = stakeholderService;
-        this.coordinatorService = coordinatorService;
-        this.applicationProperties = applicationProperties;
     }
 
     @RequestMapping(value = "refreshLogin", method = RequestMethod.HEAD)
@@ -79,14 +67,14 @@ public class UserController {
     @GetMapping("user/info")
     @PreAuthorize("not isAnonymous()")
     public ResponseEntity<UserInfo> userInfo(@Parameter(hidden = true) Authentication authentication) {
-        UserInfo userInfo = getUserInfo(authentication);
+        UserInfo userInfo = userService.getUserInfo(User.getId(authentication));
         return new ResponseEntity<>(userInfo, HttpStatus.OK);
     }
 
     @GetMapping("users/{id}/info")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<UserInfo> userInfo(@PathVariable("id") String userId) {
-        return new ResponseEntity<>(getUserInfo(userId), HttpStatus.OK);
+        return new ResponseEntity<>(userService.getUserInfo(userId), HttpStatus.OK);
     }
 
     @GetMapping("users/{id}")
@@ -123,45 +111,5 @@ public class UserController {
     public ResponseEntity<User> delete(@PathVariable("id") String userId) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
         User user = userService.delete(userId);
         return new ResponseEntity<>(user, HttpStatus.OK);
-    }
-
-    private Set<Coordinator> getCoordinatorsWithFilter(String key, String value) {
-        FacetFilter filter = new FacetFilter();
-        filter.setQuantity(10000);
-        filter.addFilter(key, value);
-        Browsing<Coordinator> results = coordinatorService.getAll(filter);
-        return results.getResults()
-                .stream()
-                .collect(Collectors.toSet());
-    }
-
-    private UserInfo getUserInfo(Authentication authentication) {
-        User user = User.of(authentication);
-        return createUserInfo(user);
-    }
-
-    private UserInfo getUserInfo(String userId) {
-        User user;
-        try {
-            user = userService.get(userId);
-        } catch (ResourceNotFoundException e) {
-            user = new User();
-            user.setEmail(userId);
-        }
-
-        return createUserInfo(user);
-    }
-
-    private UserInfo createUserInfo(User user) {
-        UserInfo info = new UserInfo();
-        info.setUser(user);
-        info.setAdmin(applicationProperties.getAdmins().contains(user.getEmail()));
-        info.setStakeholders(new HashSet<>());
-        info.setCoordinators(new HashSet<>());
-
-        info.getStakeholders().addAll(stakeholderService.getWithFilter("managers", user.getId()));
-        info.getStakeholders().addAll(stakeholderService.getWithFilter("contributors", user.getId()));
-        info.getCoordinators().addAll(getCoordinatorsWithFilter("members", user.getId()));
-        return info;
     }
 }

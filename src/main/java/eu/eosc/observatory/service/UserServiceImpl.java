@@ -1,8 +1,7 @@
 package eu.eosc.observatory.service;
 
-import eu.eosc.observatory.domain.PolicyAccepted;
-import eu.eosc.observatory.domain.PrivacyPolicy;
-import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.configuration.ApplicationProperties;
+import eu.eosc.observatory.domain.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.service.*;
@@ -10,11 +9,14 @@ import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl extends AbstractCrudItemService<User> implements UserService {
@@ -22,6 +24,9 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
     private final PrivacyPolicyService privacyPolicyService;
+    private final CrudItemService<Stakeholder> stakeholderCrudItemService;
+    private final CrudItemService<Coordinator> coordinatorCrudItemService;
+    private final ApplicationProperties applicationProperties;
 
     @Autowired
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
@@ -29,9 +34,15 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
                               SearchService searchService,
                               VersionService versionService,
                               ParserService parserService,
-                              PrivacyPolicyService privacyPolicyService) {
+                              PrivacyPolicyService privacyPolicyService,
+                              @Lazy CrudItemService<Stakeholder> stakeholderCrudItemService,
+                              @Lazy CrudItemService<Coordinator> coordinatorCrudItemService,
+                              ApplicationProperties applicationProperties) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService);
         this.privacyPolicyService = privacyPolicyService;
+        this.stakeholderCrudItemService = stakeholderCrudItemService;
+        this.coordinatorCrudItemService = coordinatorCrudItemService;
+        this.applicationProperties = applicationProperties;
     }
 
     @Override
@@ -55,6 +66,24 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
             user.setEmail(id);
         }
         return user;
+    }
+
+    @Override
+    public UserInfo getUserInfo(String userId) {
+        User user = getUser(userId);
+        return createUserInfo(user);
+    }
+
+    @Override
+    public UserInfo getUserInfo(Authentication authentication) {
+        User user;
+        try {
+            user = get(User.getId(authentication));
+        } catch (ResourceNotFoundException e) {
+            logger.debug("User not found in DB");
+            user = User.of(authentication);
+        }
+        return createUserInfo(user);
     }
 
     @Override
@@ -111,5 +140,18 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
         // survey metadata
         // permissions
         // core versions of the above
+    }
+
+    private UserInfo createUserInfo(User user) {
+        UserInfo info = new UserInfo();
+        info.setUser(user);
+        info.setAdmin(applicationProperties.getAdmins().contains(user.getEmail()));
+        info.setStakeholders(new HashSet<>());
+        info.setCoordinators(new HashSet<>());
+
+        info.getStakeholders().addAll(stakeholderCrudItemService.getWithFilter("managers", user.getId()));
+        info.getStakeholders().addAll(stakeholderCrudItemService.getWithFilter("contributors", user.getId()));
+        info.getCoordinators().addAll(coordinatorCrudItemService.getWithFilter("members", user.getId()));
+        return info;
     }
 }
