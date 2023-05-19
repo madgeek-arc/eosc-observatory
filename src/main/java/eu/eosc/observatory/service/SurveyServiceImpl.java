@@ -507,18 +507,22 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     public String getUserRole(Authentication authentication, String stakeholderId) {
-        User user = User.of(authentication);
+        UserInfo userInfo = userService.getUserInfo(authentication);
 
         for (GrantedAuthority grantedAuth : authentication.getAuthorities()) {
             if (grantedAuth.getAuthority().contains("ADMIN")) {
                 return Roles.Administrative.ADMINISTRATOR.getRoleName();
             }
         }
+
         Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
-        if (stakeholder.getManagers().contains(user.getId())) {
+        if (userInfo.getCoordinators() != null && userInfo.getCoordinators().stream().anyMatch(coordinator -> coordinator.getType().equals(stakeholder.getType()))) {
+            return Roles.Coordinator.COORDINATOR_MEMBER.getRoleName();
+        }
+        if (stakeholder.getManagers() != null && stakeholder.getManagers().contains(userInfo.getUser().getId())) {
             return Roles.Stakeholder.MANAGER.getRoleName();
         }
-        if (stakeholder.getContributors().contains(user.getId())) {
+        if (stakeholder.getContributors() != null && stakeholder.getContributors().contains(userInfo.getUser().getId())) {
             return Roles.Stakeholder.CONTRIBUTOR.getRoleName();
         }
         return null;
