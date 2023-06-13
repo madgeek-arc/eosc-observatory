@@ -117,7 +117,7 @@
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>authorization</artifactId>
-			<version>0.1.0</version>
+			<version>1.0.0-SNAPSHOT</version>
 			<scope>compile</scope>
 		</dependency>
 
