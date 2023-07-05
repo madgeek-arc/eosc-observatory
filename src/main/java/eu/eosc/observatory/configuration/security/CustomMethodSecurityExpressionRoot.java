@@ -78,7 +78,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     @Override
     public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
         logger.debug("hasPermission(auth, targetDomainObject, permission)\nAuthentication: {}\nObject: {}\nPermission: {}", authentication, targetDomainObject, permission);
-        if ((this.authentication == null) || (targetDomainObject == null) || !(permission instanceof String)) {
+        if ((getAuthentication() == null) || (targetDomainObject == null) || !(permission instanceof String)) {
             return false;
         }
         String resourceId = getResourceId(targetDomainObject);
