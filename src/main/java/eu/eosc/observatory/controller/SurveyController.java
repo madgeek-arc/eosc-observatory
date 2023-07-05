@@ -34,8 +34,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import static gr.athenarc.catalogue.utils.PagingUtils.createFacetFilter;
-
 @RestController
 @RequestMapping
 public class SurveyController {
