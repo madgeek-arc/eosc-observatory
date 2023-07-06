@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
@@ -75,7 +76,7 @@ public class JWSInvitationService implements InvitationService {
     }
 
     @Override
-    public boolean acceptInvitation(String invitation) {
+    public boolean acceptInvitation(String invitation, Authentication authentication) {
         String[] parts = invitation.split("\\.");
         if (parts.length != 3) {
             throw new ResourceException("Invalid Token", HttpStatus.BAD_REQUEST);
@@ -91,6 +92,10 @@ public class JWSInvitationService implements InvitationService {
             if (new Date().getTime() > invitationObject.getExpiration()) {
                 throw new ResourceException("Invitation time has expired.", HttpStatus.FORBIDDEN);
             }
+            User authenticatedUser = User.of(authentication);
+            if (!authenticatedUser.getId().equals(invitationObject.getInvitee())) {
+                throw new ResourceException("Authenticated user email is different than invitee email", HttpStatus.FORBIDDEN);
+            }
 
             if (invitationObject.getRole().equalsIgnoreCase(Roles.Stakeholder.MANAGER.name())
                     && securityExpressions.userIsCoordinatorMemberOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId())) {
@@ -103,9 +108,7 @@ public class JWSInvitationService implements InvitationService {
                 stakeholderService.addContributor(invitationObject.getStakeholderId(), invitationObject.getInvitee());
                 return true;
             }
-        } catch (ParseException e) {
-            logger.error(e.getMessage(), e);
-        } catch (JOSEException e) {
+        } catch (ParseException | JOSEException e) {
             logger.error(e.getMessage(), e);
         }
         return false;
