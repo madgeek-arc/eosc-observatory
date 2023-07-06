@@ -145,15 +145,8 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         } else {
             throw new RuntimeException("Unsupported object");
         }
-        User user = userService.get(User.of(getAuthentication()).getId());
-        FacetFilter filter = new FacetFilter();
-        filter.addFilter("managers", user.getId());
-        filter.addFilter("type", answer.getType());
-        Browsing<Stakeholder> stakeholder = stakeholderService.getAll(filter);
-        if (stakeholder.getTotal() > 0) {
-            return true;
-        }
-        return false;
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsManagerOfType(user, answer.getType());
     }
 
     @Override
@@ -162,10 +155,14 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             return false;
         }
         Model survey = modelService.get(surveyId);
-        User user = userService.get(User.of(getAuthentication()).getId());
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsManagerOfType(user, survey.getType());
+    }
+
+    private boolean userIsManagerOfType(User user, String type) {
         FacetFilter filter = new FacetFilter();
         filter.addFilter("managers", user.getId());
-        filter.addFilter("type", survey.getType());
+        filter.addFilter("type", type);
         Browsing<Stakeholder> stakeholder = stakeholderService.getAll(filter);
         if (stakeholder.getTotal() > 0) {
             return true;
@@ -179,15 +176,8 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             return false;
         }
         Model survey = modelService.get(surveyId);
-        User user = userService.get(User.of(getAuthentication()).getId());
-        FacetFilter filter = new FacetFilter();
-        filter.addFilter("members", user.getId());
-        filter.addFilter("type", survey.getType());
-        Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
-        if (coordinators.getTotal() > 0) {
-            return true;
-        }
-        return false;
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsCoordinatorOfType(user, survey.getType());
     }
 
     @Override
@@ -202,10 +192,14 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         } else {
             throw new RuntimeException("Unsupported object");
         }
-        User user = userService.get(User.of(getAuthentication()).getId());
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsCoordinatorOfType(user, answer.getType());
+    }
+
+    private boolean userIsCoordinatorOfType(User user, String type) {
         FacetFilter filter = new FacetFilter();
-        filter.addFilter("members", user.getId());
-        filter.addFilter("type", answer.getType());
+        filter.addFilter("managers", user.getId());
+        filter.addFilter("type", type);
         Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
         if (coordinators.getTotal() > 0) {
             return true;
