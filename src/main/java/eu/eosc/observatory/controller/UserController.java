@@ -3,6 +3,7 @@ package eu.eosc.observatory.controller;
 import eu.eosc.observatory.domain.Profile;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserInfo;
+import eu.eosc.observatory.dto.ProfileDTO;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -18,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -87,9 +89,9 @@ public class UserController {
 
     @PutMapping("users/{id}/profile")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<User> updateUserProfile(@PathVariable("id") String userId, @RequestBody Profile profile) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
+    public ResponseEntity<User> updateUserProfile(@PathVariable("id") String userId, @RequestBody ProfileDTO profileDTO) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
         User user = userService.getUser(userId);
-        user.setProfile(profile);
+        user.setProfile(Profile.of(profileDTO));
         user = userService.update(userId, user);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }

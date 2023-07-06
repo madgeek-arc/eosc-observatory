@@ -1,14 +1,16 @@
 package eu.eosc.observatory.domain;
 
+import eu.eosc.observatory.dto.ProfileDTO;
 import org.springframework.web.client.RestTemplate;
 
-import java.lang.reflect.Array;
+import java.util.Base64;
 
 public class Profile {
 
     byte[] picture;
     String position;
     String affiliation;
+    String webpage;
 
     public Profile() {
         // no-arg constructor
@@ -16,6 +18,15 @@ public class Profile {
 
     public Profile(byte[] picture) {
         this.picture = picture;
+    }
+
+    public static Profile of(ProfileDTO profileDTO) {
+        Profile profile = new Profile();
+        profile.setPicture(Base64.getDecoder().decode(profileDTO.getPicture().getBytes()));
+        profile.setAffiliation(profileDTO.getAffiliation());
+        profile.setPosition(profileDTO.getPosition());
+        profile.setWebpage(profileDTO.getWebpage());
+        return profile;
     }
 
     public static byte[] imageFromUrl(String url) {
@@ -45,5 +56,13 @@ public class Profile {
 
     public void setAffiliation(String affiliation) {
         this.affiliation = affiliation;
+    }
+
+    public String getWebpage() {
+        return webpage;
+    }
+
+    public void setWebpage(String webpage) {
+        this.webpage = webpage;
     }
 }
