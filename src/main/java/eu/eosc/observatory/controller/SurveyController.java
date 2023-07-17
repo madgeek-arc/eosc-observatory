@@ -177,8 +177,22 @@ public class SurveyController {
 
     @GetMapping("answers/{id}/answer")
     @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
-    public ResponseEntity<Object> getAnswer(@PathVariable("id") String id, @Parameter(hidden = true) Authentication authentication) {
+    public ResponseEntity<?> getAnswer(@PathVariable("id") String id, @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(surveyAnswerService.get(id).getAnswer(), HttpStatus.OK);
+    }
+
+    @GetMapping(value = "answers/{id}/public", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getPublicAnswer(@PathVariable("id") String id) {
+        return new ResponseEntity<>(surveyAnswerService.get(id).getAnswer(), HttpStatus.OK);
+    }
+
+    @GetMapping(value = "answers/public", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getPublicAnswer(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
+        if (surveyAnswer == null) {
+            throw new ResourceNotFoundException();
+        }
+        return new ResponseEntity<>(surveyAnswer.getAnswer(), HttpStatus.OK);
     }
 
     @PostMapping("answers/generate/{surveyId}")
