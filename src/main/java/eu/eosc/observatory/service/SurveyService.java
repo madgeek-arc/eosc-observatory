@@ -5,6 +5,7 @@ import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.Diff;
 import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
+import eu.eosc.observatory.dto.SurveyAnswerMetadataDTO;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
@@ -59,6 +60,8 @@ public interface SurveyService {
     void lockSurveyAndAnswers(String surveyId, boolean lock);
 
     HistoryDTO getHistory(String surveyAnswerId);
+
+    SurveyAnswerMetadataDTO getPublicMetadata(String surveyAnswerId);
 
     SurveyAnswer restore(String surveyAnswerId, String versionId);
 }

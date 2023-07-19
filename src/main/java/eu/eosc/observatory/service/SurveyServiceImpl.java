@@ -468,6 +468,24 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
+    public SurveyAnswerMetadataDTO getPublicMetadata(String surveyAnswerId) {
+        SurveyAnswerMetadataDTO metadata = new SurveyAnswerMetadataDTO();
+        SurveyAnswer surveyAnswer = this.surveyAnswerCrudService.get(surveyAnswerId);
+        metadata.setLastUpdate(surveyAnswer.getMetadata().getModificationDate());
+        Map<String, User> editors = new TreeMap<>();
+        for (HistoryEntry entry : surveyAnswer.getHistory().getEntries()) {
+            if (!editors.containsKey(entry.getUserId()) &&
+                    (entry.getAction() == History.HistoryAction.UPDATED
+                            || entry.getAction() == History.HistoryAction.VALIDATED)) {
+                User user = userService.get(entry.getUserId());
+                editors.putIfAbsent(user.getId(), user);
+            }
+        }
+        metadata.setEditors(editors.values().stream().toList());
+        return metadata;
+    }
+
+    @Override
     public SurveyAnswer restore(String surveyAnswerId, String versionId) {
         return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRestoreHistory(a, versionId));
     }

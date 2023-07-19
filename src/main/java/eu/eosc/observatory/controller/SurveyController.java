@@ -5,6 +5,7 @@ import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.Diff;
 import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
+import eu.eosc.observatory.dto.SurveyAnswerMetadataDTO;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.CrudItemService;
 import eu.eosc.observatory.service.StakeholderService;
@@ -193,6 +194,16 @@ public class SurveyController {
             throw new ResourceNotFoundException();
         }
         return new ResponseEntity<>(surveyAnswer.getAnswer(), HttpStatus.OK);
+    }
+
+    @GetMapping(value = "answers/public/metadata", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<SurveyAnswerMetadataDTO> getPublicAnswerMetadata(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
+        if (surveyAnswer == null) {
+            throw new ResourceNotFoundException();
+        }
+        SurveyAnswerMetadataDTO metadataDTO = surveyService.getPublicMetadata(surveyAnswer.getId());
+        return new ResponseEntity<>(metadataDTO, HttpStatus.OK);
     }
 
     @PostMapping("answers/generate/{surveyId}")
