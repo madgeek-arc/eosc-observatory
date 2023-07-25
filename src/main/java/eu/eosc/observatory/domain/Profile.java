@@ -31,14 +31,17 @@ public class Profile {
     }
 
     public static byte[] imageFromUrl(String url) {
-        RestTemplate restTemplate = new RestTemplate();
-        URI uri = null;
-        try {
-            uri = new URI(url);
-        } catch (URISyntaxException e) {
-            return null;
+        if (url != null) {
+            RestTemplate restTemplate = new RestTemplate();
+            URI uri = null;
+            try {
+                uri = new URI(url);
+            } catch (URISyntaxException e) {
+                return null;
+            }
+            return restTemplate.getForObject(uri.toString(), byte[].class);
         }
-        return restTemplate.getForObject(uri.toString(), byte[].class);
+        return null;
     }
 
     public byte[] getPicture() {
