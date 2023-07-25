@@ -3,7 +3,8 @@ package eu.eosc.observatory.domain;
 import eu.eosc.observatory.dto.ProfileDTO;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Base64;
+import java.net.URI;
+import java.net.URISyntaxException;import java.util.Base64;
 
 public class Profile {
 
@@ -31,7 +32,13 @@ public class Profile {
 
     public static byte[] imageFromUrl(String url) {
         RestTemplate restTemplate = new RestTemplate();
-        return restTemplate.getForObject(url, byte[].class);
+        URI uri = null;
+        try {
+            uri = new URI(url);
+        } catch (URISyntaxException e) {
+            return null;
+        }
+        return restTemplate.getForObject(uri.toString(), byte[].class);
     }
 
     public byte[] getPicture() {
