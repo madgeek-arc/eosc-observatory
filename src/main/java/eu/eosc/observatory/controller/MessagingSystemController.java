@@ -1,37 +1,63 @@
 package eu.eosc.observatory.controller;
 
+import eu.eosc.observatory.domain.Coordinator;
+import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.domain.UserInfo;
+import eu.eosc.observatory.service.CoordinatorService;
+import eu.eosc.observatory.service.StakeholderService;
+import eu.eosc.observatory.service.UserService;
 import gr.athenarc.messaging.config.MessagingClientProperties;
 import gr.athenarc.messaging.controller.MessagingController;
 import gr.athenarc.messaging.controller.RestApiPaths;
+import gr.athenarc.messaging.domain.Correspondent;
 import gr.athenarc.messaging.domain.Message;
 import gr.athenarc.messaging.domain.TopicThread;
+import gr.athenarc.messaging.dto.MessageDTO;
 import gr.athenarc.messaging.dto.ThreadDTO;
 import gr.athenarc.messaging.dto.UnreadThreads;
+import gr.athenarc.messaging.mailer.client.service.MailClient;
+import gr.athenarc.messaging.mailer.domain.EmailMessage;
 import gr.athenarc.recaptcha.annotation.ReCaptcha;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 public class MessagingSystemController extends MessagingController {
 
-    public MessagingSystemController(MessagingClientProperties messagingClientProperties) {
+    private final UserService userService;
+    private final CoordinatorService coordinatorService;
+    private final StakeholderService stakeholderService;
+    private final MailClient mailClient;
+
+    public MessagingSystemController(MessagingClientProperties messagingClientProperties,
+                                     UserService userService,
+                                     CoordinatorService coordinatorService,
+                                     StakeholderService stakeholderService,
+                                     MailClient mailClient) {
         super(messagingClientProperties);
+        this.userService = userService;
+        this.coordinatorService = coordinatorService;
+        this.stakeholderService = stakeholderService;
+        this.mailClient = mailClient;
     }
 
     @ReCaptcha("#recaptcha")
     @PostMapping(RestApiPaths.THREADS + "/public")
     public Mono<ThreadDTO> addExternal(@RequestHeader("g-recaptcha-response") String recaptcha, @RequestBody ThreadDTO thread) {
-        return super.add(thread);
+        return super.add(thread).doOnSuccess(t ->
+                Mono.fromRunnable(() -> sendEmails(t))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .subscribe()
+        );
     }
 
     @Override
@@ -44,7 +70,11 @@ public class MessagingSystemController extends MessagingController {
     @Override
     @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
     public Mono<ThreadDTO> add(ThreadDTO thread) {
-        return super.add(thread);
+        return super.add(thread).doOnSuccess(t ->
+                Mono.fromRunnable(() -> sendEmails(t))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .subscribe()
+        );
     }
 
     @Override
@@ -61,9 +91,13 @@ public class MessagingSystemController extends MessagingController {
 
     @Override
     @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groups)")
-    public Mono<UnreadThreads> searchUnreadThreads(List<String> groups, String email) {
+    public Mono<UnreadThreads> searchUnreadThreads(@RequestParam(defaultValue = "") List<String> groups, String email) {
         email = User.getId(SecurityContextHolder.getContext().getAuthentication());
-        return super.searchUnreadThreads(groups, email);
+        List<String> userGroups = new ArrayList<>();
+        UserInfo info = userService.getUserInfo(email);
+        userGroups.addAll(info.getStakeholders().stream().map(Stakeholder::getId).collect(Collectors.toList()));
+        userGroups.addAll(info.getCoordinators().stream().map(Coordinator::getId).collect(Collectors.toList()));
+        return super.searchUnreadThreads(userGroups, email);
     }
 
     @Override
@@ -91,7 +125,11 @@ public class MessagingSystemController extends MessagingController {
     @Override
     @PreAuthorize("isAuthenticated() and authentication.principal.getAttribute('email') == #message.from.email")
     public Mono<ThreadDTO> addMessage(String threadId, Message message, boolean anonymous) {
-        return super.addMessage(threadId, message, anonymous);
+        return super.addMessage(threadId, message, anonymous).doOnSuccess(t ->
+                Mono.fromRunnable(() -> sendEmails(t))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .subscribe()
+        );
     }
 
     @Override
@@ -103,5 +141,35 @@ public class MessagingSystemController extends MessagingController {
         userId = User.getId(SecurityContextHolder.getContext().getAuthentication());
         return super.readMessage(threadId, messageId, read, userId);
 //        return super.get(threadId).map(t -> t.getFrom()) super.readMessage(threadId, messageId, read);
+    }
+
+    List<String> getEmailsOfGroup(String groupId) {
+        Set<String> members = new HashSet<>();
+        if (groupId.startsWith("sh-")) {
+            Stakeholder sh = stakeholderService.get(groupId);
+            members.addAll(sh.getManagers());
+            members.addAll(sh.getContributors());
+        } else if (groupId.startsWith("co-")) {
+            members.addAll(coordinatorService.get(groupId).getMembers());
+        }
+        return members.stream().toList();
+    }
+
+    void sendEmails(ThreadDTO thread) {
+        MessageDTO messageDTO = thread.getMessages().get(thread.getMessages().size() - 1);
+        List<String> ccEmails = new ArrayList<>();
+        List<String> bccEmails = new ArrayList<>();
+        bccEmails.addAll(messageDTO.getTo().stream().map(Correspondent::getGroupId).map(this::getEmailsOfGroup).flatMap(Collection::stream).collect(Collectors.toList()));
+        if (!messageDTO.isAnonymousSender()) {
+            ccEmails.add(messageDTO.getFrom().getEmail());
+        }
+        EmailMessage email = new EmailMessage.EmailBuilder()
+                .setFrom("")
+                .setCc(ccEmails)
+                .setBcc(bccEmails)
+                .setSubject(thread.getSubject())
+                .setText(messageDTO.getBody())
+                .build();
+        mailClient.sendMail(email);
     }
 }
