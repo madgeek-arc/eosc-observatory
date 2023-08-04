@@ -1,9 +1,6 @@
 package eu.eosc.observatory.configuration.security;
 
-import eu.eosc.observatory.domain.Coordinator;
-import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.domain.SurveyAnswer;
-import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.domain.*;
 import eu.eosc.observatory.service.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -20,9 +17,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class MethodSecurityExpressionsService implements MethodSecurityExpressions {
@@ -50,6 +49,20 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         this.modelService = modelService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
 
+    }
+
+    @Override
+    public boolean userIsMemberOfGroup(String userId, String groupId) {
+        return userIsMemberOfGroup(userId, Collections.singletonList(groupId));
+    }
+
+    @Override
+    public boolean userIsMemberOfGroup(String userId, List<String> groupIds) {
+        UserInfo info = userService.getUserInfo(userId);
+        Set<String> userGroups = new HashSet<>();
+        userGroups.addAll(info.getCoordinators().stream().map(Coordinator::getId).collect(Collectors.toSet()));
+        userGroups.addAll(info.getStakeholders().stream().map(Stakeholder::getId).collect(Collectors.toSet()));
+        return userGroups.containsAll(groupIds);
     }
 
     @Override

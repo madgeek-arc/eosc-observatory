@@ -2,7 +2,13 @@ package eu.eosc.observatory.configuration.security;
 
 import org.springframework.security.core.Authentication;
 
+import java.util.List;
+
 public interface MethodSecurityExpressions {
+
+    boolean userIsMemberOfGroup(String userId, String groupId);
+
+    boolean userIsMemberOfGroup(String userId, List<String> groupIds);
 
     boolean userIsStakeholderMember(String userId, String stakeholderId);
 

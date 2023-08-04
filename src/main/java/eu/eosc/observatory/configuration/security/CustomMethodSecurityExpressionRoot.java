@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot implements MethodSecurityExpressionOperations, PermissionEvaluator, MethodSecurityExpressions {
 
@@ -95,6 +96,16 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     /* ********************************************** */
     /*   Custom Security Expression Methods Wrapper   */
     /* ********************************************** */
+
+    @Override
+    public boolean userIsMemberOfGroup(String userId, String groupId) {
+        return securityExpressions.userIsMemberOfGroup(userId, groupId);
+    }
+
+    @Override
+    public boolean userIsMemberOfGroup(String userId, List<String> groupIds) {
+        return securityExpressions.userIsMemberOfGroup(userId, groupIds);
+    }
 
     @Override
     public boolean userIsStakeholderMember(String userId, String stakeholderId) {

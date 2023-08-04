@@ -1,10 +1,6 @@
 package eu.eosc.observatory.controller;
 
-import eu.eosc.observatory.domain.Coordinator;
-import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.User;
-import eu.eosc.observatory.domain.UserInfo;
-import eu.eosc.observatory.service.UserService;
 import gr.athenarc.messaging.config.MessagingClientProperties;
 import gr.athenarc.messaging.controller.MessagingController;
 import gr.athenarc.messaging.controller.RestApiPaths;
@@ -23,20 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @RestController
 public class MessagingSystemController extends MessagingController {
 
-    private final UserService userService;
-
-    public MessagingSystemController(MessagingClientProperties messagingClientProperties,
-                                     UserService userService) {
+    public MessagingSystemController(MessagingClientProperties messagingClientProperties) {
         super(messagingClientProperties);
-        this.userService = userService;
     }
 
     @ReCaptcha("#recaptcha")
@@ -46,15 +35,14 @@ public class MessagingSystemController extends MessagingController {
     }
 
     @Override
-    @PreAuthorize("isAuthenticated()")
-    // FIXME:
-    public Mono<ThreadDTO> get(String threadId, String email) {
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groupId)")
+    public Mono<ThreadDTO> get(String threadId, String email, String groupId) {
         email = User.getId(SecurityContextHolder.getContext().getAuthentication());
-        return super.get(threadId, email);
+        return super.get(threadId, email, groupId);
     }
 
     @Override
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
     public Mono<ThreadDTO> add(ThreadDTO thread) {
         return super.add(thread);
     }
@@ -72,22 +60,21 @@ public class MessagingSystemController extends MessagingController {
     }
 
     @Override
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groups)")
     public Mono<UnreadThreads> searchUnreadThreads(List<String> groups, String email) {
-        return super.searchUnreadThreads(groups, email); // 1 FIXME: returns 0 and empty group list
+        email = User.getId(SecurityContextHolder.getContext().getAuthentication());
+        return super.searchUnreadThreads(groups, email);
     }
 
     @Override
-    @PreAuthorize("isAuthenticated()")
-    // FIXME: check if user is member of provided groupId
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groupId)")
     public Flux<ThreadDTO> searchInbox(String groupId, String regex, String email, String sortBy, Sort.Direction direction, Integer page, Integer size) {
         email = User.getId(SecurityContextHolder.getContext().getAuthentication());
         return super.searchInbox(groupId, regex, email, sortBy, direction, page, size);
     }
 
     @Override
-    @PreAuthorize("isAuthenticated()")
-    // FIXME: check if user is member of provided groups
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groups)")
     // TODO: remove groups argument and find it by authenticated user
     public Flux<ThreadDTO> searchInboxUnread(List<String> groups, String email, String sortBy, Sort.Direction direction, Integer page, Integer size) {
         email = User.getId(SecurityContextHolder.getContext().getAuthentication());
@@ -95,14 +82,10 @@ public class MessagingSystemController extends MessagingController {
     }
 
     @Override
-    @PreAuthorize("isAuthenticated()")
-    // FIXME: check if user is member of provided groupId
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groupId)")
     // TODO: check if email is matching with user emails
     public Flux<ThreadDTO> searchOutbox(String groupId, String regex, String email, String sortBy, Sort.Direction direction, Integer page, Integer size) {
-        if (userIsMemberOfGroup(User.getId(SecurityContextHolder.getContext().getAuthentication()), groupId)) {
-            return super.searchOutbox(groupId, regex, email, sortBy, direction, page, size);
-        }
-        return Flux.just();
+        return super.searchOutbox(groupId, regex, email, sortBy, direction, page, size);
     }
 
     @Override
@@ -120,13 +103,5 @@ public class MessagingSystemController extends MessagingController {
         userId = User.getId(SecurityContextHolder.getContext().getAuthentication());
         return super.readMessage(threadId, messageId, read, userId);
 //        return super.get(threadId).map(t -> t.getFrom()) super.readMessage(threadId, messageId, read);
-    }
-
-    public boolean userIsMemberOfGroup(String userId, String groupId) {
-        UserInfo info = userService.getUserInfo(userId);
-        Set<String> groups = new HashSet<>();
-        groups.addAll(info.getCoordinators().stream().map(Coordinator::getId).collect(Collectors.toSet()));
-        groups.addAll(info.getStakeholders().stream().map(Stakeholder::getId).collect(Collectors.toSet()));
-        return groups.contains(groupId);
     }
 }
