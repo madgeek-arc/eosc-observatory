@@ -20,6 +20,7 @@ import gr.athenarc.messaging.mailer.client.service.MailClient;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
 import gr.athenarc.recaptcha.annotation.ReCaptcha;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -91,13 +92,18 @@ public class MessagingSystemController extends MessagingController {
 
     @Override
     @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groups)")
+    public Flux<ServerSentEvent<UnreadThreads>> streamUnreadThreads(@RequestParam(defaultValue = "") List<String> groups, @RequestParam String email) {
+        email = User.getId(SecurityContextHolder.getContext().getAuthentication());
+        groups = filterUserGroups(email, groups);
+        return super.streamUnreadThreads(groups, email);
+    }
+
+    @Override
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groups)")
     public Mono<UnreadThreads> searchUnreadThreads(@RequestParam(defaultValue = "") List<String> groups, String email) {
         email = User.getId(SecurityContextHolder.getContext().getAuthentication());
-        List<String> userGroups = new ArrayList<>();
-        UserInfo info = userService.getUserInfo(email);
-        userGroups.addAll(info.getStakeholders().stream().map(Stakeholder::getId).collect(Collectors.toList()));
-        userGroups.addAll(info.getCoordinators().stream().map(Coordinator::getId).collect(Collectors.toList()));
-        return super.searchUnreadThreads(userGroups, email);
+        groups = filterUserGroups(email, groups);
+        return super.searchUnreadThreads(groups, email);
     }
 
     @Override
@@ -141,6 +147,17 @@ public class MessagingSystemController extends MessagingController {
         userId = User.getId(SecurityContextHolder.getContext().getAuthentication());
         return super.readMessage(threadId, messageId, read, userId);
 //        return super.get(threadId).map(t -> t.getFrom()) super.readMessage(threadId, messageId, read);
+    }
+
+    private List<String> filterUserGroups(String email, List<String> groups) {
+        List<String> userGroups = new ArrayList<>();
+        UserInfo info = userService.getUserInfo(email);
+        userGroups.addAll(info.getStakeholders().stream().map(Stakeholder::getId).collect(Collectors.toList()));
+        userGroups.addAll(info.getCoordinators().stream().map(Coordinator::getId).collect(Collectors.toList()));
+        if (!groups.isEmpty()) {
+            userGroups = userGroups.stream().filter(groups::contains).collect(Collectors.toList());
+        }
+        return userGroups;
     }
 
     List<String> getEmailsOfGroup(String groupId) {
