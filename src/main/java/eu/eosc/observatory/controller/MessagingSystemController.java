@@ -7,6 +7,9 @@ import eu.eosc.observatory.domain.UserInfo;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.UserService;
+import eu.eosc.observatory.sse.Emitter;
+import eu.eosc.observatory.sse.EmitterMessage;
+import eu.eosc.observatory.sse.EmitterService;
 import gr.athenarc.messaging.config.MessagingClientProperties;
 import gr.athenarc.messaging.controller.MessagingController;
 import gr.athenarc.messaging.controller.RestApiPaths;
@@ -24,6 +27,7 @@ import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -37,17 +41,20 @@ public class MessagingSystemController extends MessagingController {
     private final UserService userService;
     private final CoordinatorService coordinatorService;
     private final StakeholderService stakeholderService;
+    private final EmitterService emitterService;
     private final MailClient mailClient;
 
     public MessagingSystemController(MessagingClientProperties messagingClientProperties,
                                      UserService userService,
                                      CoordinatorService coordinatorService,
                                      StakeholderService stakeholderService,
+                                     EmitterService emitterService,
                                      MailClient mailClient) {
         super(messagingClientProperties);
         this.userService = userService;
         this.coordinatorService = coordinatorService;
         this.stakeholderService = stakeholderService;
+        this.emitterService = emitterService;
         this.mailClient = mailClient;
     }
 
@@ -88,6 +95,20 @@ public class MessagingSystemController extends MessagingController {
     @PreAuthorize("hasRole('ADMIN')")
     public Mono<Void> delete(String threadId) {
         return super.delete(threadId);
+    }
+
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groups)")
+    @GetMapping("/stream-2/inbox/unread")
+    public SseEmitter streamSseMvc(@RequestParam(defaultValue = "") List<String> groups, @RequestParam String email) {
+        Emitter emitter = emitterService.getUserEmitter(User.getId(SecurityContextHolder.getContext().getAuthentication()));
+        SseEmitter sseEmitter = new SseEmitter(Long.MAX_VALUE);
+        emitter.addSseEmitter(sseEmitter);
+        return sseEmitter;
+    }
+
+    public UnreadThreads getUnread(List<String> groups, String email) {
+        groups = filterUserGroups(email, groups);
+        return super.searchUnreadThreads(groups, email).block();
     }
 
     @Override
