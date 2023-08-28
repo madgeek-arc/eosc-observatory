@@ -4,36 +4,28 @@ import eu.eosc.observatory.controller.MessagingSystemController;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.StakeholderService;
-import eu.eosc.observatory.sse.EmitterMessage;
-import eu.eosc.observatory.sse.EmitterService;
 import gr.athenarc.messaging.domain.Correspondent;
 import gr.athenarc.messaging.dto.MessageDTO;
 import gr.athenarc.messaging.dto.ThreadDTO;
 import gr.athenarc.messaging.dto.UnreadThreads;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Aspect
-@Component
 public class MessageUpdatesAspect {
 
-    private final EmitterService emitterService;
     private final CoordinatorService coordinatorService;
     private final StakeholderService stakeholderService;
     private final MessagingSystemController messagingSystemController;
 
-    public MessageUpdatesAspect(EmitterService emitterService,
-                                CoordinatorService coordinatorService,
+    private final Set<String> connectedUsers = Collections.synchronizedSet(new HashSet<>());
+
+    public MessageUpdatesAspect(CoordinatorService coordinatorService,
                                 StakeholderService stakeholderService,
                                 MessagingSystemController messagingSystemController) {
-        this.emitterService = emitterService;
         this.coordinatorService = coordinatorService;
         this.stakeholderService = stakeholderService;
         this.messagingSystemController = messagingSystemController;
@@ -57,13 +49,13 @@ public class MessageUpdatesAspect {
             }
         }
 
+        UnreadThreads unread = null;
         for (String email : userEmails) {
-            UnreadThreads unread = messagingSystemController.getUnread(new ArrayList<>(), email);
-            EmitterMessage emitterMessage = new EmitterMessage();
-            emitterMessage.setData(unread);
-            emitterMessage.setEventName("unread-threads");
-            emitterService.sendDataToUserEmitters(email, emitterMessage);
+            unread = messagingSystemController.getUnread(new ArrayList<>(), email);
+
         }
+        //TODO: send unread to connected users only.
+//        simpMessagingTemplate.convertAndSend("/topic/stream/inbox/unread/" + userId, messagingSystemController.getUnread(new ArrayList<>(), userId), headers);
     }
 
     private List<String> getUsers(String groupId) {
