@@ -37,7 +37,6 @@ public class User implements Identifiable<String> {
             user.name = principal.getGivenName();
             user.surname = principal.getFamilyName();
             user.fullname = principal.getFullName();
-            user.profile = new Profile(Profile.imageFromUrl(principal.getPicture()));
         } else if (auth instanceof OAuth2AuthenticationToken) {
             OAuth2User principal = ((OAuth2AuthenticationToken) auth).getPrincipal();
             user.sub = principal.getAttribute("subject");
@@ -45,7 +44,6 @@ public class User implements Identifiable<String> {
             user.name = principal.getAttribute("givenName");
             user.surname = principal.getAttribute("familyName");
             user.fullname = principal.getAttribute("fullName");
-            user.profile = new Profile(Profile.imageFromUrl(principal.getAttribute("picture")));
         } else {
             throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
         }
