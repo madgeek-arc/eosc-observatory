@@ -11,6 +11,7 @@ import gr.athenarc.messaging.dto.ThreadDTO;
 import gr.athenarc.messaging.dto.UnreadThreads;
 import gr.athenarc.messaging.mailer.client.service.MailClient;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -34,7 +35,7 @@ public class MessagingService {
 
     private final SimpMessagingTemplate simpMessagingTemplate;
 
-    public MessagingService(MessagingSystemController messagingSystemController,
+    public MessagingService(@Lazy MessagingSystemController messagingSystemController,
                             GroupService groupService,
                             UserService userService,
                             MailClient mailClient,
