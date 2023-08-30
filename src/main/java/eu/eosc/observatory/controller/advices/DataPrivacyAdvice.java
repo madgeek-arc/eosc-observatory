@@ -34,6 +34,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
     private final PropertyUtilsBean propertyUtilsBean = new PropertyUtilsBean();
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final List<String> classNames;
 
 
     public DataPrivacyAdvice(SecurityService securityService,
@@ -42,6 +43,10 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
         this.securityService = securityService;
         this.securityExpressions = securityExpressions;
         this.privacyProperties = privacyProperties;
+        this.classNames = privacyProperties.getEntries()
+                .stream()
+                .map(PrivacyProperties.FieldPrivacy::getClassName)
+                .toList();
     }
 
     @Override
@@ -53,7 +58,6 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
     public T beforeBodyWrite(T body, MethodParameter returnType, MediaType selectedContentType, Class<? extends HttpMessageConverter<?>> selectedConverterType, ServerHttpRequest request, ServerHttpResponse response) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        List<String> classNames = privacyProperties.getEntries().stream().map(PrivacyProperties.FieldPrivacy::getClassName).toList();
         if (body != null && classNames.contains(body.getClass().getCanonicalName())) {
 
             try {
@@ -73,6 +77,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
 
     /**
      * Uses {@link PrivacyProperties} to filter out sensitive information in the responses.
+     *
      * @param obj
      */
     public void modifyContent(T obj) {
@@ -93,6 +98,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
 
     /**
      * Accepts an {@link java.lang.Object} and uses recursion to replace its data on the specified field-path.
+     *
      * @param obj
      * @param field
      * @param value
@@ -117,6 +123,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
     /**
      * This method is a workaround to get the ID field of an object that does not have a declared id field.
      * e.g. {@link java.util.Map}, {@link org.json.simple.JSONObject}
+     *
      * @param obj
      * @return
      */
