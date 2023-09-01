@@ -39,7 +39,7 @@
       "multivalued": true,
       "name": "users",
       "label": "Users",
-      "path": "$.[admins,members][*]",
+      "path": "$['admins','members'][*]",
       "type": "java.lang.String"
     }
   ],

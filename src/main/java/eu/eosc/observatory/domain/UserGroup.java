@@ -1,9 +1,11 @@
 package eu.eosc.observatory.domain;
 
-import com.google.common.collect.ImmutableSet;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import eu.eosc.observatory.service.Identifiable;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class UserGroup implements Identifiable<String> {
@@ -66,11 +68,12 @@ public class UserGroup implements Identifiable<String> {
                 .collect(Collectors.toSet());
     }
 
-    public Set<String> getUsers() {
+    @JsonIgnore
+    public final Set<String> getUsers() {
         Set<String> users = new TreeSet<>();
         users.addAll(this.admins);
         users.addAll(this.members);
-        return Collections.unmodifiableSet(users);
+        return users;
     }
 
     public enum GroupType {
