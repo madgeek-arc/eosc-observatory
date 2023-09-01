@@ -3,6 +3,7 @@ package eu.eosc.observatory.aspect;
 import eu.eosc.observatory.domain.Coordinator;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
+import eu.eosc.observatory.domain.UserGroup;
 import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
@@ -40,12 +41,10 @@ public class PermissionsUpdateAspect {
 
     @AfterReturning(value = "execution(* eu.eosc.observatory.service.SurveyAnswerCrudService.add(..))", returning = "surveyAnswer")
     public void onAddSurveyAnswer(JoinPoint joinPoint, SurveyAnswer surveyAnswer) {
-
-        Stakeholder stakeholder = stakeholderService.get(surveyAnswer.getStakeholderId());
-        Set<Coordinator> coordinators = coordinatorService.getWithFilter("type", surveyAnswer.getType());
-
         logger.info("Adding permissions for SurveyAnswer with [id: {}]", surveyAnswer.getId());
 
+        // adds Stakeholder permissions
+        Stakeholder stakeholder = stakeholderService.get(surveyAnswer.getStakeholderId());
         List<String> managerPermissions = Arrays.asList(
                 Permissions.READ.getKey(),
                 Permissions.WRITE.getKey(),
@@ -61,12 +60,10 @@ public class PermissionsUpdateAspect {
         permissionService.addPermissions(stakeholder.getAdmins(), managerPermissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
         permissionService.addPermissions(stakeholder.getMembers(), contributorPermissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
 
-        Set<String> coordinatorMembers = coordinators.stream().map(coordinator -> {
-                    Set<String> set = new HashSet<>();
-                    set.addAll(coordinator.getAdmins());
-                    set.addAll(coordinator.getMembers());
-                    return set;
-                })
+        // adds permissions to associated Coordinators
+        Set<Coordinator> coordinators = coordinatorService.getWithFilter("type", surveyAnswer.getType());
+        Set<String> coordinatorMembers = coordinators.stream()
+                .map(UserGroup::getUsers)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toSet());
         permissionService.addPermissions(coordinatorMembers, Collections.singletonList(Permissions.READ.getKey()), resourceIds, Groups.COORDINATOR.getKey());
@@ -74,10 +71,10 @@ public class PermissionsUpdateAspect {
 
     @AfterReturning(value = "execution(* eu.eosc.observatory.service.SurveyAnswerCrudService.delete(..))", returning = "surveyAnswer")
     public void onDeleteSurveyAnswer(JoinPoint joinPoint, SurveyAnswer surveyAnswer) {
-        Stakeholder stakeholder = stakeholderService.get(surveyAnswer.getStakeholderId());
-        Set<Coordinator> coordinators = coordinatorService.getWithFilter("type", surveyAnswer.getType());
-
         logger.info("Deleting permissions for SurveyAnswer with [id: {}]", surveyAnswer.getId());
+
+        // removes Stakeholder permissions
+        Stakeholder stakeholder = stakeholderService.get(surveyAnswer.getStakeholderId());
         List<String> permissions = Arrays.asList(
                 Permissions.READ.getKey(),
                 Permissions.WRITE.getKey(),
@@ -90,12 +87,10 @@ public class PermissionsUpdateAspect {
         permissionService.removePermissions(stakeholder.getAdmins(), permissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
         permissionService.removePermissions(stakeholder.getMembers(), permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
 
-        Set<String> coordinatorMembers = coordinators.stream().map(coordinator -> {
-                    Set<String> set = new HashSet<>();
-                    set.addAll(coordinator.getAdmins());
-                    set.addAll(coordinator.getMembers());
-                    return set;
-        })
+        // removes permissions from associated Coordinators
+        Set<Coordinator> coordinators = coordinatorService.getWithFilter("type", surveyAnswer.getType());
+        Set<String> coordinatorMembers = coordinators.stream()
+                .map(UserGroup::getUsers)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toSet());
         permissionService.removePermissions(coordinatorMembers, permissions, resourceIds, Groups.COORDINATOR.getKey());

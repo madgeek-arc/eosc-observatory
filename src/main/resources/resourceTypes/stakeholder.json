@@ -51,22 +51,29 @@
     },
     {
       "multivalued": true,
-      "name": "managers",
+      "name": "admins",
       "label": "Managers",
-      "path": "$.managers[*]",
+      "path": "$.admins[*]",
       "type": "java.lang.String"
     },
     {
       "multivalued": true,
-      "name": "contributors",
+      "name": "members",
       "label": "Contributors",
-      "path": "$.contributors[*]",
+      "path": "$.members[*]",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "users",
+      "label": "Users",
+      "path": "$.[admins,members][*]",
       "type": "java.lang.String"
     }
   ],
   "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
   "name": "stakeholder",
-  "aliasGroup": "resourceTypes",
+  "aliasGroup": "userGroups",
   "payloadType": "json",
   "properties": {
     "class": "eu.eosc.observatory.domain.Stakeholder"

@@ -149,9 +149,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         info.setStakeholders(new HashSet<>());
         info.setCoordinators(new HashSet<>());
 
-        info.getStakeholders().addAll(stakeholderCrudService.getWithFilter("managers", user.getId()));
-        info.getStakeholders().addAll(stakeholderCrudService.getWithFilter("contributors", user.getId()));
-        info.getCoordinators().addAll(coordinatorCrudService.getWithFilter("members", user.getId()));
+        info.getStakeholders().addAll(stakeholderCrudService.getWithFilter("users", user.getId()));
+        info.getCoordinators().addAll(coordinatorCrudService.getWithFilter("users", user.getId()));
         return info;
     }
 }
