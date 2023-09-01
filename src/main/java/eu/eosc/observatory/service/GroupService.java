@@ -24,8 +24,8 @@ public class GroupService {
         Set<String> members = new HashSet<>();
         if (groupId.startsWith("sh-")) {
             Stakeholder sh = stakeholderService.get(groupId);
-            members.addAll(sh.getManagers());
-            members.addAll(sh.getContributors());
+            members.addAll(sh.getAdmins());
+            members.addAll(sh.getMembers());
         } else if (groupId.startsWith("co-")) {
             members.addAll(coordinatorService.get(groupId).getMembers());
         }

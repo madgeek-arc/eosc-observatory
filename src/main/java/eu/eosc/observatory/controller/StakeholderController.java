@@ -2,7 +2,7 @@ package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.mappers.StakeholderMapper;
 import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.dto.StakeholderMembers;
+import eu.eosc.observatory.dto.GroupMembers;
 import eu.eosc.observatory.dto.StakeholderDTO;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -59,8 +59,8 @@ public class StakeholderController {
     public ResponseEntity<Stakeholder> update(@PathVariable("id") String id, @RequestBody StakeholderDTO dto) {
         Stakeholder existing = stakeholderService.get(id);
         Stakeholder toUpdate = stakeholderMapper.toStakeholder(dto);
-        toUpdate.setContributors(existing.getContributors());
-        toUpdate.setManagers(existing.getManagers());
+        toUpdate.setMembers(existing.getMembers());
+        toUpdate.setAdmins(existing.getAdmins());
         return new ResponseEntity<>(stakeholderService.updateStakeholderAndUserPermissions(id, toUpdate), HttpStatus.OK);
     }
 
@@ -85,8 +85,8 @@ public class StakeholderController {
 
     @GetMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId) or isCoordinatorMemberOfStakeholder(#stakeholderId)")
-    public ResponseEntity<StakeholderMembers> getMembers(@PathVariable("id") String stakeholderId) {
-        return new ResponseEntity<>(stakeholderService.getMembers(stakeholderId), HttpStatus.OK);
+    public ResponseEntity<GroupMembers> getMembers(@PathVariable("id") String stakeholderId) {
+        return new ResponseEntity<>(stakeholderService.getAllMembers(stakeholderId), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/contributors")
@@ -97,13 +97,13 @@ public class StakeholderController {
 
     @PostMapping("{id}/contributors")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<StakeholderMembers> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String userId, @Parameter(hidden = true) Authentication authentication) {
+    public ResponseEntity<GroupMembers> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String userId, @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(stakeholderService.addContributor(stakeholderId, userId), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/contributors/{userId}")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfStakeholder(#stakeholderId) or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<StakeholderMembers> removeContributor(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
+    public ResponseEntity<GroupMembers> removeContributor(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeContributor(stakeholderId, userId), HttpStatus.OK);
     }
 
@@ -116,13 +116,13 @@ public class StakeholderController {
 
     @PostMapping("{id}/managers")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<StakeholderMembers> addManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+    public ResponseEntity<GroupMembers> addManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
         return new ResponseEntity<>(stakeholderService.addManager(stakeholderId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/managers/{userId}")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfStakeholder(#stakeholderId)")
-    public ResponseEntity<StakeholderMembers> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
+    public ResponseEntity<GroupMembers> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeManager(stakeholderId, userId), HttpStatus.OK);
     }
 

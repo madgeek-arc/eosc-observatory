@@ -21,16 +21,15 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 @Component
-public abstract class AbstractCrudItemService<T extends Identifiable> extends AbstractGenericItemService implements CrudItemService<T> {
+public abstract class AbstractCrudService<T extends Identifiable> extends AbstractGenericItemService implements CrudService<T> {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractCrudItemService.class);
+    private static final Logger logger = LoggerFactory.getLogger(AbstractCrudService.class);
 
-    @Autowired
-    protected AbstractCrudItemService(ResourceTypeService resourceTypeService,
-                                      ResourceService resourceService,
-                                      SearchService searchService,
-                                      VersionService versionService,
-                                      ParserService parserService) {
+    protected AbstractCrudService(ResourceTypeService resourceTypeService,
+                                  ResourceService resourceService,
+                                  SearchService searchService,
+                                  VersionService versionService,
+                                  ParserService parserService) {
         super(searchService, resourceService, resourceTypeService, versionService, parserService);
     }
 

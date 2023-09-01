@@ -44,7 +44,7 @@ public class PermissionsUpdateAspect {
         Stakeholder stakeholder = stakeholderService.get(surveyAnswer.getStakeholderId());
         Set<Coordinator> coordinators = coordinatorService.getWithFilter("type", surveyAnswer.getType());
 
-        logger.info(String.format("Adding permissions for SurveyAnswer with [id: %s]", surveyAnswer.getId()));
+        logger.info("Adding permissions for SurveyAnswer with [id: {}]", surveyAnswer.getId());
 
         List<String> managerPermissions = Arrays.asList(
                 Permissions.READ.getKey(),
@@ -58,10 +58,17 @@ public class PermissionsUpdateAspect {
 
         List<String> resourceIds = new ArrayList<>();
         resourceIds.add(surveyAnswer.getId());
-        permissionService.addPermissions(stakeholder.getManagers(), managerPermissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
-        permissionService.addPermissions(stakeholder.getContributors(), contributorPermissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+        permissionService.addPermissions(stakeholder.getAdmins(), managerPermissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
+        permissionService.addPermissions(stakeholder.getMembers(), contributorPermissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
 
-        List<String> coordinatorMembers = coordinators.stream().flatMap(coordinator -> coordinator.getMembers().stream()).collect(Collectors.toList());
+        Set<String> coordinatorMembers = coordinators.stream().map(coordinator -> {
+                    Set<String> set = new HashSet<>();
+                    set.addAll(coordinator.getAdmins());
+                    set.addAll(coordinator.getMembers());
+                    return set;
+                })
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
         permissionService.addPermissions(coordinatorMembers, Collections.singletonList(Permissions.READ.getKey()), resourceIds, Groups.COORDINATOR.getKey());
     }
 
@@ -70,7 +77,7 @@ public class PermissionsUpdateAspect {
         Stakeholder stakeholder = stakeholderService.get(surveyAnswer.getStakeholderId());
         Set<Coordinator> coordinators = coordinatorService.getWithFilter("type", surveyAnswer.getType());
 
-        logger.info(String.format("Deleting permissions for SurveyAnswer with [id: %s]", surveyAnswer.getId()));
+        logger.info("Deleting permissions for SurveyAnswer with [id: {}]", surveyAnswer.getId());
         List<String> permissions = Arrays.asList(
                 Permissions.READ.getKey(),
                 Permissions.WRITE.getKey(),
@@ -80,10 +87,17 @@ public class PermissionsUpdateAspect {
         List<String> resourceIds = new ArrayList<>();
         resourceIds.add(surveyAnswer.getId());
 
-        permissionService.removePermissions(stakeholder.getManagers(), permissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
-        permissionService.removePermissions(stakeholder.getContributors(), permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+        permissionService.removePermissions(stakeholder.getAdmins(), permissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
+        permissionService.removePermissions(stakeholder.getMembers(), permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
 
-        List<String> coordinatorMembers = coordinators.stream().flatMap(coordinator -> coordinator.getMembers().stream()).collect(Collectors.toList());
+        Set<String> coordinatorMembers = coordinators.stream().map(coordinator -> {
+                    Set<String> set = new HashSet<>();
+                    set.addAll(coordinator.getAdmins());
+                    set.addAll(coordinator.getMembers());
+                    return set;
+        })
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
         permissionService.removePermissions(coordinatorMembers, permissions, resourceIds, Groups.COORDINATOR.getKey());
     }
 }

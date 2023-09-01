@@ -5,13 +5,6 @@ import eu.eosc.observatory.domain.User;
 
 import java.util.Set;
 
-public interface CoordinatorService extends CrudItemService<Coordinator> {
+public interface CoordinatorService extends CrudService<Coordinator>, UserGroupService {
 
-    Set<User> getMembers(String id);
-
-    Set<User> updateMembers(String coordinatorId, Set<String> userIds);
-
-    Set<User> addMember(String coordinatorId, String userId);
-
-    Set<User> removeMember(String coordinatorId, String userId);
 }

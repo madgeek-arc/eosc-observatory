@@ -21,27 +21,27 @@ import java.util.stream.Collectors;
 import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
 @Service
-public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator> implements CoordinatorService {
+public class CoordinatorServiceAbstract extends AbstractCrudService<Coordinator> implements CoordinatorService {
 
-    private static final Logger logger = LoggerFactory.getLogger(CoordinatorServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(CoordinatorServiceAbstract.class);
 
     private static final String RESOURCE_TYPE = "coordinator";
 
     private final UserService userService;
-    private final CrudItemService<SurveyAnswer> surveyAnswerCrudService;
+    private final CrudService<SurveyAnswer> surveyAnswerCrudService;
     private final PermissionService permissionService;
     private final IdGenerator<String> idGenerator;
 
     @Autowired
-    public CoordinatorServiceImpl(ResourceTypeService resourceTypeService,
-                                  ResourceService resourceService,
-                                  SearchService searchService,
-                                  VersionService versionService,
-                                  ParserService parserService,
-                                  UserService userService,
-                                  @Lazy CrudItemService<SurveyAnswer> surveyAnswerCrudService,
-                                  PermissionService permissionService,
-                                  IdGenerator<String> idGenerator) {
+    public CoordinatorServiceAbstract(ResourceTypeService resourceTypeService,
+                                      ResourceService resourceService,
+                                      SearchService searchService,
+                                      VersionService versionService,
+                                      ParserService parserService,
+                                      UserService userService,
+                                      @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
+                                      PermissionService permissionService,
+                                      IdGenerator<String> idGenerator) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService);
         this.userService = userService;
         this.permissionService = permissionService;
@@ -65,26 +65,25 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     @Override
     public Coordinator add(Coordinator coordinator) {
         Coordinator newCoordinator = super.add(coordinator);
-        updateRoles(newCoordinator.getId(), coordinator.getMembers());
+        updateMemberRoles(newCoordinator.getId(), coordinator.getMembers());
         return newCoordinator;
     }
 
     @Override
     public Coordinator update(String id, Coordinator coordinator) {
-        updateRoles(id, coordinator.getMembers());
+        updateMemberRoles(id, coordinator.getMembers());
         return super.update(id, coordinator);
     }
 
     @Override
-    public Set<User> getMembers(String id) {
-        Coordinator coordinator = get(id);
+    public Set<User> getMembers(String coordinatorId) {
+        Coordinator coordinator = get(coordinatorId);
         return getMembers(coordinator);
     }
 
     @Override
     public Set<User> updateMembers(String coordinatorId, Set<String> userIds) {
-        Coordinator coordinator = updateRoles(coordinatorId, userIds);
-
+        Coordinator coordinator = updateMemberRoles(coordinatorId, userIds);
         coordinator = super.update(coordinatorId, coordinator);
         return getMembers(coordinator);
     }
@@ -116,6 +115,46 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         return getMembers(coordinator);
     }
 
+    @Override
+    public Set<User> getAdmins(String coordinatorId) {
+        Coordinator coordinator = get(coordinatorId);
+        return getAdmins(coordinator);
+    }
+
+    @Override
+    public Set<User> updateAdmins(String coordinatorId, Set<String> adminIds) {
+        Coordinator coordinator = updateMemberRoles(coordinatorId, adminIds);
+        coordinator = super.update(coordinatorId, coordinator);
+        return getAdmins(coordinator);
+    }
+
+    @Override
+    public Set<User> addAdmin(String coordinatorId, String adminId) {
+        Coordinator coordinator = get(coordinatorId);
+        if (coordinator.getAdmins() == null) {
+            coordinator.setAdmins(new HashSet<>());
+        }
+        coordinator.getAdmins().add(adminId);
+        coordinator = super.update(coordinatorId, coordinator);
+
+        // read access for all resources
+        permissionService.addPermissions(Collections.singletonList(adminId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinator), coordinatorId);
+
+        return getMembers(coordinator);
+    }
+
+    @Override
+    public Set<User> removeAdmin(String coordinatorId, String adminId) {
+        Coordinator coordinator = get(coordinatorId);
+        coordinator.getAdmins().remove(adminId);
+        coordinator = super.update(coordinatorId, coordinator);
+
+        // remove Coordinator permissions from user
+        permissionService.removeAll(adminId, Groups.COORDINATOR.getKey());
+        permissionService.removeAll(adminId, coordinatorId);
+        return getAdmins(coordinator);
+    }
+
 
     private Set<User> getMembers(Coordinator coordinator) {
         Set<User> members = new HashSet<>();
@@ -127,6 +166,37 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
                     .collect(Collectors.toSet());
         }
         return members;
+    }
+
+
+    private Set<User> getAdmins(Coordinator coordinator) {
+        Set<User> members = new HashSet<>();
+        if (coordinator.getMembers() != null) {
+            members = coordinator.getAdmins()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .map(userService::getUser)
+                    .collect(Collectors.toSet());
+        }
+        return members;
+    }
+
+    private Coordinator updateMemberRoles(String coordinatorId, Set<String> userIds) {
+        Coordinator coordinator = get(coordinatorId);
+        Set<String> previousMembers = coordinator.getMembers();
+        for (String member : userIds) {
+            previousMembers.remove(member);
+        }
+
+        // remove Coordinator permissions from removed members
+        permissionService.removeAll(previousMembers, Groups.COORDINATOR.getKey());
+        permissionService.removeAll(previousMembers, coordinatorId);
+
+        // read access for all resources
+        permissionService.addPermissions(userIds, Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinator), coordinatorId);
+
+        coordinator.setMembers(userIds);
+        return coordinator;
     }
 
     private Coordinator updateRoles(String coordinatorId, Set<String> userIds) {

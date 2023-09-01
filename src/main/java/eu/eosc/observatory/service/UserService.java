@@ -5,7 +5,7 @@ import eu.eosc.observatory.domain.UserInfo;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
 import org.springframework.security.core.Authentication;
 
-public interface UserService extends CrudItemService<User> {
+public interface UserService extends CrudService<User> {
 
     User getUser(String id);
 
