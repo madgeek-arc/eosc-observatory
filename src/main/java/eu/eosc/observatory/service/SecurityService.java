@@ -15,7 +15,6 @@ public class SecurityService {
     private final PermissionService permissionService;
     private final UserService userService;
 
-    @Autowired
     public SecurityService(PermissionService permissionService, UserService userService) {
         this.permissionService = permissionService;
         this.userService = userService;

@@ -19,7 +19,6 @@ public class UserPrivacyPolicyService extends AbstractCrudService<PrivacyPolicy>
 
     private final UserService userService;
 
-    @Autowired
     public UserPrivacyPolicyService(ResourceTypeService resourceTypeService,
                                     ResourceService resourceService,
                                     SearchService searchService,

@@ -43,7 +43,6 @@ public class SurveyServiceImpl implements SurveyService {
     private final UserService userService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Autowired
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
                              CrudService<SurveyAnswer> surveyAnswerCrudService,
                              @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,

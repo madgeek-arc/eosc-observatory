@@ -15,7 +15,6 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
 
     private final IdGenerator<String> idGenerator;
 
-    @Autowired
     public SurveyAnswerCrudService(ResourceTypeService resourceTypeService,
                                    ResourceService resourceService,
                                    SearchService searchService,

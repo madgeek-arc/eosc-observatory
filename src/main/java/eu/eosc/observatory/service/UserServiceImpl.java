@@ -27,7 +27,6 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private final CrudService<Coordinator> coordinatorCrudService;
     private final ApplicationProperties applicationProperties;
 
-    @Autowired
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
                               ResourceService resourceService,
                               SearchService searchService,
