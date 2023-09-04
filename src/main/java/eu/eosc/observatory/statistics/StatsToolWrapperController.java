@@ -1,4 +1,4 @@
-package eu.eosc.observatory.controller;
+package eu.eosc.observatory.statistics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,14 +25,17 @@ public class StatsToolWrapperController {
 
     private static final Logger logger = LoggerFactory.getLogger(StatsToolWrapperController.class);
     private final String endpoint;
+    private final StatsQuerySecurity statsQuerySecurity;
     private final WebClient webClient;
 
-    public StatsToolWrapperController(@Value("${stats-tool.endpoint}") String endpoint) {
+    public StatsToolWrapperController(@Value("${stats-tool.endpoint}") String endpoint,
+                                      StatsQuerySecurity statsQuerySecurity) {
         this.endpoint = endpoint;
+        this.statsQuerySecurity = statsQuerySecurity;
         this.webClient = WebClient.builder().baseUrl(this.endpoint).build();
     }
 
-    @PreAuthorize("isFullyAuthenticated()")
+    @PreAuthorize("isFullyAuthenticated() and @statsQuerySecurity.authorize(#json, authentication)")
     @GetMapping(value = "raw")
     public Mono<?> getRawData(@RequestParam(name = "json") String json) {
         return webClient.get()
