@@ -1,28 +1,24 @@
 package eu.eosc.observatory.statistics;
 
+import eu.eosc.observatory.domain.UserGroup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 
 @Component
 @ConfigurationProperties("stats-tool")
 public class StatsToolProperties {
 
     private String endpoint;
-    private String query;
-    private Group[] groups;
+    private List<QueryAccess> queryAccess;
 
-    private Map<String, List<Group>> queryAccess;
-
-    public Map<String, List<Group>> getQueryAccess() {
+    public List<QueryAccess> getQueryAccess() {
         return queryAccess;
     }
 
-    public StatsToolProperties setQueryAccess(Map<String, List<Group>> queryAccess) {
+    public void setQueryAccess(List<QueryAccess> queryAccess) {
         this.queryAccess = queryAccess;
-        return this;
     }
 
     public String getEndpoint() {
@@ -34,28 +30,46 @@ public class StatsToolProperties {
         return this;
     }
 
-    public String getQuery() {
-        return query;
+    public enum Access {
+        OPEN,
+        CLOSED,
+        RESTRICTED
     }
 
-    public StatsToolProperties setQuery(String query) {
-        this.query = query;
-        return this;
-    }
+    public static class QueryAccess {
+        private String queryPattern;
+        private Access access;
+        private List<Group> groups;
 
-    public Group[] getGroups() {
-        return groups;
-    }
 
-    public StatsToolProperties setGroups(Group[] groups) {
-        this.groups = groups;
-        return this;
+        public String getQueryPattern() {
+            return queryPattern;
+        }
+
+        public void setQueryPattern(String queryPattern) {
+            this.queryPattern = queryPattern;
+        }
+
+        public Access getAccess() {
+            return access;
+        }
+
+        public void setAccess(Access access) {
+            this.access = access;
+        }
+
+        public List<Group> getGroups() {
+            return groups;
+        }
+
+        public void setGroups(List<Group> groups) {
+            this.groups = groups;
+        }
     }
 
     public static class Group {
         private String role;
-        private String type;
-        private String access;
+        private UserGroup.GroupType type;
         private String pattern;
 
         public String getRole() {
@@ -68,20 +82,11 @@ public class StatsToolProperties {
         }
 
         public String getType() {
-            return type;
+            return type.getKey();
         }
 
-        public Group setType(String type) {
+        public Group setType(UserGroup.GroupType type) {
             this.type = type;
-            return this;
-        }
-
-        public String getAccess() {
-            return access;
-        }
-
-        public Group setAccess(String access) {
-            this.access = access;
             return this;
         }
 

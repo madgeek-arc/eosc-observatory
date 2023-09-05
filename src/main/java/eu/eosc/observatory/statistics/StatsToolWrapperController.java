@@ -35,7 +35,7 @@ public class StatsToolWrapperController {
         this.webClient = WebClient.builder().baseUrl(this.endpoint).build();
     }
 
-    @PreAuthorize("isFullyAuthenticated() and @statsQuerySecurity.authorize(#json, authentication)")
+    @PreAuthorize("@statsQuerySecurity.authorize(#json, authentication)")
     @GetMapping(value = "raw")
     public Mono<?> getRawData(@RequestParam(name = "json") String json) {
         return webClient.get()
