@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.eosc.observatory.domain.UserInfo;
 import eu.eosc.observatory.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -15,6 +17,7 @@ import java.util.regex.Pattern;
 @Service
 public class StatsQuerySecurity {
 
+    private static final Logger logger = LoggerFactory.getLogger(StatsQuerySecurity.class);
     private final UserService userService;
     private final StatsToolProperties statsToolProperties;
     private final ObjectMapper objectMapper;
@@ -36,24 +39,26 @@ public class StatsQuerySecurity {
         }
 
         QueryRequest queryRequest = convert(json);
-        if (queryRequest.getSeries().length > 1) {
-            throw new UnsupportedOperationException("No implementation for multiple queries");
-        }
 
         // search if query matches
-        for (StatsToolProperties.QueryAccess queryAccess : statsToolProperties.getQueryAccess()) {
-            Pattern pattern = Pattern.compile(queryAccess.getQueryPattern());
-            if (pattern.matcher(queryRequest.getSeries()[0].getQuery().getName()).matches()) {
+        for (QueryRequest.Series series : queryRequest.getSeries()) {
+            if (!StringUtils.hasText(series.getQuery().getName())) {
+                logger.warn("Given query is empty.");
+            }
+            for (StatsToolProperties.QueryAccess queryAccess : statsToolProperties.getQueryAccess()) {
+                Pattern pattern = Pattern.compile(queryAccess.getQueryPattern());
+                if (pattern.matcher(series.getQuery().getName()).matches()) {
 
-                switch (queryAccess.getAccess()) {
-                    case OPEN -> authorized = true;
-                    case CLOSED -> authorized = userInfo.isPresent() && userInfo.get().isAdmin();
-                    case RESTRICTED -> authorized = /*userInfo.isPresent() && userInfo.get().isAdmin() ||*/
-                            hasGroupAccess(userInfo.orElse(null), queryAccess.getGroups());
-                }
+                    switch (queryAccess.getAccess()) {
+                        case OPEN -> authorized = true;
+                        case CLOSED -> authorized = userInfo.isPresent() && userInfo.get().isAdmin();
+                        case RESTRICTED -> authorized = /*userInfo.isPresent() && userInfo.get().isAdmin() ||*/
+                                hasGroupAccess(userInfo.orElse(null), queryAccess.getGroups());
+                    }
 
-                if (authorized) {
-                    break;
+                    if (authorized) {
+                        break;
+                    }
                 }
             }
         }
