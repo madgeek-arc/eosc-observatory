@@ -2,10 +2,13 @@ package eu.eosc.observatory.statistics;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import eu.eosc.observatory.domain.UserInfo;
-import eu.eosc.observatory.service.UserService;
+import eu.eosc.observatory.configuration.security.MethodSecurityExpressions;
+import eu.eosc.observatory.domain.User;
+import eu.openminted.registry.core.domain.FacetFilter;
+import gr.athenarc.catalogue.service.GenericItemService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -18,13 +21,16 @@ import java.util.regex.Pattern;
 public class StatsQuerySecurity {
 
     private static final Logger logger = LoggerFactory.getLogger(StatsQuerySecurity.class);
-    private final UserService userService;
+    private final MethodSecurityExpressions securityExpressions;
+    private final GenericItemService genericItemService;
     private final StatsToolProperties statsToolProperties;
     private final ObjectMapper objectMapper;
 
-    public StatsQuerySecurity(UserService userService,
+    public StatsQuerySecurity(MethodSecurityExpressions securityExpressions,
+                              @Qualifier(value = "catalogueGenericItemService") GenericItemService genericItemService,
                               StatsToolProperties statsToolProperties) {
-        this.userService = userService;
+        this.securityExpressions = securityExpressions;
+        this.genericItemService = genericItemService;
         this.statsToolProperties = statsToolProperties;
         this.objectMapper = new ObjectMapper();
     }
@@ -32,9 +38,9 @@ public class StatsQuerySecurity {
     public boolean authorize(String json, Authentication authentication) {
         boolean authorized = true;
 
-        Optional<UserInfo> userInfo = Optional.empty();
+        Optional<User> user = Optional.empty();
         try {
-            userInfo = Optional.of(userService.getUserInfo(authentication));
+            user = Optional.of(User.of(authentication));
         } catch (Exception ignore) {
         }
 
@@ -51,9 +57,9 @@ public class StatsQuerySecurity {
 
                     switch (queryAccess.getAccess()) {
                         case OPEN -> authorized = true;
-                        case CLOSED -> authorized = userInfo.isPresent() && userInfo.get().isAdmin();
-                        case RESTRICTED -> authorized = /*userInfo.isPresent() && userInfo.get().isAdmin() ||*/
-                                hasGroupAccess(userInfo.orElse(null), queryAccess.getGroups());
+                        case CLOSED -> authorized = securityExpressions.isAdmin(authentication);
+                        case RESTRICTED -> authorized = /*securityExpressions.isAdmin(authentication) ||*/
+                                hasGroupAccess(user.orElse(null), queryAccess.getGroups());
                     }
 
                     if (authorized) {
@@ -74,8 +80,8 @@ public class StatsQuerySecurity {
         }
     }
 
-    private boolean hasGroupAccess(UserInfo userInfo, List<StatsToolProperties.Group> groups) {
-        if (userInfo == null || groups == null || groups.isEmpty()) {
+    private boolean hasGroupAccess(User user, List<StatsToolProperties.Group> groups) {
+        if (user == null || groups == null || groups.isEmpty()) {
             return false;
         }
         for (StatsToolProperties.Group group : groups) {
@@ -86,11 +92,14 @@ public class StatsQuerySecurity {
             }
             // check access without pattern
             else {
-                if (
-                        (group.getRole().equalsIgnoreCase("stakeholder") &&
-                                userInfo.getStakeholders().stream().anyMatch(s -> s.getType().equals(group.getType())))
-                                || (group.getRole().equalsIgnoreCase("coordinator") &&
-                                userInfo.getCoordinators().stream().anyMatch(s -> s.getType().equals(group.getType())))) {
+                FacetFilter filter = new FacetFilter();
+                filter.setResourceType(group.getName());
+                filter.addFilter("type", group.getType());
+                if (!StringUtils.hasText(group.getRole())) {
+                    filter.addFilter(group.getRole(), user.getId());
+                }
+                List<?> results = genericItemService.getResults(filter).getResults();
+                if (!results.isEmpty()) {
                     return true;
                 }
             }

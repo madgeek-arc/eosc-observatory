@@ -254,9 +254,11 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
     @Override
     public boolean isAdmin(Authentication auth) {
-        for (GrantedAuthority grantedAuth : auth.getAuthorities()) {
-            if (grantedAuth.getAuthority().contains("ADMIN")) {
-                return true;
+        if (auth != null) {
+            for (GrantedAuthority grantedAuth : auth.getAuthorities()) {
+                if (grantedAuth.getAuthority().contains("ADMIN")) {
+                    return true;
+                }
             }
         }
         return false;

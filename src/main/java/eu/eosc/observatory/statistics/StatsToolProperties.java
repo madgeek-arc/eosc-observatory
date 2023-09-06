@@ -68,9 +68,19 @@ public class StatsToolProperties {
     }
 
     public static class Group {
+        private String name;
         private String role;
         private UserGroup.GroupType type;
         private String pattern;
+
+        public String getName() {
+            return name;
+        }
+
+        public Group setName(String name) {
+            this.name = name;
+            return this;
+        }
 
         public String getRole() {
             return role;
