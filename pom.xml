@@ -13,8 +13,8 @@
 	<name>observatory</name>
 	<description>EOSC Portal Observatory</description>
 	<properties>
-		<java.version>11</java.version>
-		<registry-core.version>2.5.1</registry-core.version>
+		<java.version>17</java.version>
+		<registry-core.version>2.6.0-SNAPSHOT</registry-core.version>
 		<mapstruct.version>1.5.3.Final</mapstruct.version>
 	</properties>
 	<dependencies>
