@@ -11,6 +11,9 @@ import gr.athenarc.messaging.dto.ThreadDTO;
 import gr.athenarc.messaging.dto.UnreadThreads;
 import gr.athenarc.recaptcha.annotation.ReCaptcha;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -54,7 +57,7 @@ public class MessagingSystemController extends MessagingController {
     @ReCaptcha("#recaptcha")
     @PostMapping(RestApiPaths.THREADS + "/public")
     public Mono<ThreadDTO> addExternal(@RequestHeader("g-recaptcha-response") String recaptcha, @RequestBody ThreadDTO thread) {
-        return super.add(thread).doOnSuccess(t ->
+        return super.add(thread).doOnNext(t ->
                 Mono.fromRunnable(() -> messagingService.sendEmails(t))
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()
@@ -71,7 +74,7 @@ public class MessagingSystemController extends MessagingController {
     @Override
     @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
     public Mono<ThreadDTO> add(ThreadDTO thread) {
-        return super.add(thread).doOnSuccess(t ->
+        return super.add(thread).doOnNext(t ->
                 Mono.fromRunnable(() -> messagingService.sendEmails(t))
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()
@@ -105,6 +108,23 @@ public class MessagingSystemController extends MessagingController {
         return super.searchInbox(groupId, regex, email, sortBy, direction, page, size);
     }
 
+
+    @GetMapping("inbox/threads")
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groupId)")
+    public Mono<Page<ThreadDTO>> getInboxPage(@RequestParam String groupId,
+                                              @RequestParam(defaultValue = "") String regex,
+                                              @RequestParam(defaultValue = "") String email,
+                                              @RequestParam(defaultValue = "created") String sortBy,
+                                              @RequestParam(defaultValue = "DESC") Sort.Direction direction,
+                                              @RequestParam(defaultValue = "0") Integer page,
+                                              @RequestParam(defaultValue = "10") Integer size) {
+        email = User.getId(SecurityContextHolder.getContext().getAuthentication());
+        return super.searchInbox(groupId, regex, email, sortBy, direction, page, size)
+                .collectList()
+                .zipWith(super.countInbox(groupId, regex, email))
+                .map(p -> new PageImpl<>(p.getT1(), PageRequest.of(page, size, Sort.by(direction, sortBy)), p.getT2()));
+    }
+
     @Override
     @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groups)")
     public Flux<ThreadDTO> searchInboxUnread(List<String> groups, String email, String sortBy, Sort.Direction direction, Integer page, Integer size) {
@@ -118,10 +138,25 @@ public class MessagingSystemController extends MessagingController {
         return super.searchOutbox(groupId, regex, email, sortBy, direction, page, size);
     }
 
+    @GetMapping("outbox/threads")
+    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #groupId)")
+    public Mono<Page<ThreadDTO>> getOutboxPage(@RequestParam String groupId,
+                                               @RequestParam(defaultValue = "") String regex,
+                                               @RequestParam(defaultValue = "created") String sortBy,
+                                               @RequestParam(defaultValue = "DESC") Sort.Direction direction,
+                                               @RequestParam(defaultValue = "0") Integer page,
+                                               @RequestParam(defaultValue = "10") Integer size) {
+        String email = User.getId(SecurityContextHolder.getContext().getAuthentication());
+        return super.searchOutbox(groupId, regex, email, sortBy, direction, page, size)
+                .collectList()
+                .zipWith(super.countOutbox(groupId, regex, email))
+                .map(p -> new PageImpl<>(p.getT1(), PageRequest.of(page, size, Sort.by(direction, sortBy)), p.getT2()));
+    }
+
     @Override
     @PreAuthorize("isAuthenticated() and authentication.principal.getAttribute('email') == #message.from.email")
     public Mono<ThreadDTO> addMessage(String threadId, Message message, boolean anonymous) {
-        return super.addMessage(threadId, message, anonymous).doOnSuccess(t ->
+        return super.addMessage(threadId, message, anonymous).doOnNext(t ->
                 Mono.fromRunnable(() -> messagingService.sendEmails(t))
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()

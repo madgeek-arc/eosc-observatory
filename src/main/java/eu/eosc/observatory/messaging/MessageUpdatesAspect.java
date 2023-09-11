@@ -31,7 +31,11 @@ public class MessageUpdatesAspect {
             " || (execution(* eu.eosc.observatory.messaging.MessagingSystemController.add(..)))" +
             " || (execution(* eu.eosc.observatory.messaging.MessagingSystemController.addMessage(..)))", returning = "threadDTOMono")
     public void unreadMessagesNotification(Mono<ThreadDTO> threadDTOMono) {
-        ThreadDTO threadDTO = threadDTOMono.block();
+        // update user Unread Messages after mono returns successfully.
+        threadDTOMono.doOnSuccess(this::updateUnread);
+    }
+
+    private void updateUnread(ThreadDTO threadDTO) {
         List<MessageDTO> messages = threadDTO.getMessages();
         MessageDTO message = messages.get(messages.size() - 1);
         List<Correspondent> to = message.getTo();
@@ -46,6 +50,5 @@ public class MessageUpdatesAspect {
         }
 
         messagingService.updateUnreadOfUser(userEmails);
-
     }
 }
