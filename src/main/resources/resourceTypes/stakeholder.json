@@ -73,7 +73,7 @@
   ],
   "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
   "name": "stakeholder",
-  "aliasGroup": "userGroups",
+  "aliases": ["userGroup"],
   "payloadType": "json",
   "properties": {
     "class": "eu.eosc.observatory.domain.Stakeholder"
