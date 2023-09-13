@@ -45,7 +45,7 @@
   ],
   "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
   "name": "coordinator",
-  "aliases": ["userGroup"],
+  "aliases": ["resourceTypes", "userGroup"],
   "payloadType": "json",
   "properties": {
     "class": "eu.eosc.observatory.domain.Coordinator"
