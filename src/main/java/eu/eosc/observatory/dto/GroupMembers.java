@@ -1,5 +1,6 @@
 package eu.eosc.observatory.dto;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -18,9 +19,10 @@ public class GroupMembers<T> {
     }
 
     public <U> GroupMembers<U> map(Function<? super T, ? extends U> converter) {
-        return new GroupMembers<>(
-                this.getMembers().stream().map(converter).collect(Collectors.toSet()),
-                this.getAdmins().stream().map(converter).collect(Collectors.toSet())
+        return new GroupMembers<>(this.getMembers() == null ? null :
+                this.getMembers().stream().filter(Objects::nonNull).map(converter).collect(Collectors.toSet()),
+                this.getAdmins() == null ? null :
+                        this.getAdmins().stream().filter(Objects::nonNull).map(converter).collect(Collectors.toSet())
         );
     }
 
