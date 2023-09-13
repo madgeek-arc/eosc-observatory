@@ -95,9 +95,8 @@ public class StatsQuerySecurity {
                 FacetFilter filter = new FacetFilter();
                 filter.setResourceType(group.getName());
                 filter.addFilter("type", group.getType());
-                if (!StringUtils.hasText(group.getRole())) {
-                    filter.addFilter(group.getRole(), user.getId());
-                }
+                filter.addFilter(group.getRole(), user.getId());
+
                 List<?> results = genericItemService.getResults(filter).getResults();
                 if (!results.isEmpty()) {
                     return true;

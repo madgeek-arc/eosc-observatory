@@ -3,7 +3,10 @@ package eu.eosc.observatory.statistics;
 import eu.eosc.observatory.domain.UserGroup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+import javax.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -11,7 +14,7 @@ import java.util.List;
 public class StatsToolProperties {
 
     private String endpoint;
-    private List<QueryAccess> queryAccess;
+    private List<QueryAccess> queryAccess = new ArrayList<>();
 
     public List<QueryAccess> getQueryAccess() {
         return queryAccess;
@@ -38,8 +41,8 @@ public class StatsToolProperties {
 
     public static class QueryAccess {
         private String queryPattern;
-        private Access access;
-        private List<Group> groups;
+        private Access access = Access.OPEN;
+        private List<Group> groups = new ArrayList<>();
 
 
         public String getQueryPattern() {
@@ -107,6 +110,43 @@ public class StatsToolProperties {
         public Group setPattern(String pattern) {
             this.pattern = pattern;
             return this;
+        }
+    }
+
+    @PostConstruct
+    void validateProperties() throws Exception {
+        StringBuilder errors = new StringBuilder();
+        for (int i = 0; i < this.getQueryAccess().size(); i++) {
+
+            if (!StringUtils.hasText(this.getQueryAccess().get(i).getQueryPattern())) {
+                errors.append(String.format("%n- stats-tool.query-access[%s].query-pattern", i));
+            }
+            if (this.getQueryAccess().get(i).getAccess() == null) {
+                errors.append(String.format("%n- stats-tool.query-access[%s].access", i));
+            } else {
+
+                switch (this.getQueryAccess().get(i).getAccess()) {
+                    case RESTRICTED -> { // RESTRICTED -> more properties required
+                        for (int j = 0; j < this.getQueryAccess().get(i).getGroups().size(); j++) {
+                            if (!StringUtils.hasText(this.getQueryAccess().get(i).getGroups().get(j).getName())) {
+                                errors.append(String.format("%n- stats-tool.query-access[%s].groups[%s].name", i, j));
+                            }
+                            if (this.getQueryAccess().get(i).getGroups().get(j).type == null) {
+                                errors.append(String.format("%n- stats-tool.query-access[%s].groups[%s].type", i, j));
+                            }
+                            if (!StringUtils.hasText(this.getQueryAccess().get(i).getGroups().get(j).getRole())) {
+                                errors.append(String.format("%n- stats-tool.query-access[%s].groups[%s].role", i, j));
+                            }
+                        }
+                    }
+                    case CLOSED, OPEN -> {} // no other properties required
+                }
+
+            }
+        }
+        errors.append('\n');
+        if (StringUtils.hasText(errors)) {
+            throw new Exception("Could not start service because there are missing properties.\nMissing properties: " + errors);
         }
     }
 }
