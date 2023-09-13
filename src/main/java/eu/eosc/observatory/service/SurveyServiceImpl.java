@@ -35,17 +35,16 @@ public class SurveyServiceImpl implements SurveyService {
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyServiceImpl.class);
 
-    private final CrudItemService<Stakeholder> stakeholderCrudService;
-    private final CrudItemService<SurveyAnswer> surveyAnswerCrudService;
+    private final CrudService<Stakeholder> stakeholderCrudService;
+    private final CrudService<SurveyAnswer> surveyAnswerCrudService;
     private final GenericItemService genericItemService;
     private final PermissionService permissionService;
     private final ModelService modelService;
     private final UserService userService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Autowired
-    public SurveyServiceImpl(CrudItemService<Stakeholder> stakeholderCrudService,
-                             CrudItemService<SurveyAnswer> surveyAnswerCrudService,
+    public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
+                             CrudService<SurveyAnswer> surveyAnswerCrudService,
                              @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,
                              PermissionService permissionService,
                              ModelService modelService,
@@ -419,11 +418,11 @@ public class SurveyServiceImpl implements SurveyService {
             if (answer == null)
                 continue;
             if (lock) {
-                permissionService.removePermissions(stakeholder.getManagers(), managerPermissions, Collections.singleton(answer.getId()));
-                permissionService.removePermissions(stakeholder.getContributors(), permissions, Collections.singleton(answer.getId()));
+                permissionService.removePermissions(stakeholder.getAdmins(), managerPermissions, Collections.singleton(answer.getId()));
+                permissionService.removePermissions(stakeholder.getMembers(), permissions, Collections.singleton(answer.getId()));
             } else {
-                permissionService.addPermissions(stakeholder.getManagers(), managerPermissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
-                permissionService.addPermissions(stakeholder.getContributors(), permissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+                permissionService.addPermissions(stakeholder.getAdmins(), managerPermissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
+                permissionService.addPermissions(stakeholder.getMembers(), permissions, Collections.singleton(answer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
             }
         }
         survey.setLocked(lock);
@@ -507,8 +506,8 @@ public class SurveyServiceImpl implements SurveyService {
 
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
-        Set<String> members = stakeholder.getManagers();
-        members.addAll(stakeholder.getContributors());
+        Set<String> members = stakeholder.getAdmins();
+        members.addAll(stakeholder.getMembers());
         permissionService.removePermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()));
         surveyAnswer.setValidated(true);
         return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
@@ -516,9 +515,9 @@ public class SurveyServiceImpl implements SurveyService {
 
     private SurveyAnswer invalidateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
-        Set<String> members = stakeholder.getManagers();
+        Set<String> members = stakeholder.getAdmins();
         permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
-        members = stakeholder.getContributors();
+        members = stakeholder.getMembers();
         permissionService.addPermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
         surveyAnswer.setValidated(false);
         return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
@@ -537,10 +536,10 @@ public class SurveyServiceImpl implements SurveyService {
         if (userInfo.getCoordinators() != null && userInfo.getCoordinators().stream().anyMatch(coordinator -> coordinator.getType().equals(stakeholder.getType()))) {
             return Roles.Coordinator.COORDINATOR_MEMBER.getRoleName();
         }
-        if (stakeholder.getManagers() != null && stakeholder.getManagers().contains(userInfo.getUser().getId())) {
+        if (stakeholder.getAdmins() != null && stakeholder.getAdmins().contains(userInfo.getUser().getId())) {
             return Roles.Stakeholder.MANAGER.getRoleName();
         }
-        if (stakeholder.getContributors() != null && stakeholder.getContributors().contains(userInfo.getUser().getId())) {
+        if (stakeholder.getMembers() != null && stakeholder.getMembers().contains(userInfo.getUser().getId())) {
             return Roles.Stakeholder.CONTRIBUTOR.getRoleName();
         }
         return null;

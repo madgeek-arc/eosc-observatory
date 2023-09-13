@@ -2,51 +2,43 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Coordinator;
 import eu.eosc.observatory.domain.SurveyAnswer;
-import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.service.*;
-import gr.athenarc.catalogue.service.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
 @Service
-public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator> implements CoordinatorService {
+public class CoordinatorServiceImpl extends AbstractUserGroupService<Coordinator> implements CoordinatorService {
 
     private static final Logger logger = LoggerFactory.getLogger(CoordinatorServiceImpl.class);
 
     private static final String RESOURCE_TYPE = "coordinator";
 
-    private final UserService userService;
-    private final CrudItemService<SurveyAnswer> surveyAnswerCrudService;
+    private final CrudService<SurveyAnswer> surveyAnswerCrudService;
     private final PermissionService permissionService;
-    private final IdGenerator<String> idGenerator;
 
-    @Autowired
     public CoordinatorServiceImpl(ResourceTypeService resourceTypeService,
                                   ResourceService resourceService,
                                   SearchService searchService,
                                   VersionService versionService,
                                   ParserService parserService,
                                   UserService userService,
-                                  @Lazy CrudItemService<SurveyAnswer> surveyAnswerCrudService,
-                                  PermissionService permissionService,
-                                  IdGenerator<String> idGenerator) {
-        super(resourceTypeService, resourceService, searchService, versionService, parserService);
-        this.userService = userService;
+                                  @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
+                                  PermissionService permissionService) {
+        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService);
         this.permissionService = permissionService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
-        this.idGenerator = idGenerator;
     }
 
     @Override
@@ -57,94 +49,81 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
     @Override
     public String createId(Coordinator coordinator) {
         String id = String.format("co-%s", coordinator.getType());
-//        String id = idGenerator.createId(prefix, 0);
         logger.debug("Created new ID for Coordinator: {}", id);
         return id;
     }
 
     @Override
     public Coordinator add(Coordinator coordinator) {
-        Coordinator newCoordinator = super.add(coordinator);
-        updateRoles(newCoordinator.getId(), coordinator.getMembers());
-        return newCoordinator;
+        coordinator = super.add(coordinator);
+        updatePermissions(coordinator, Collections.emptySet(), coordinator.getMembers());
+        updatePermissions(coordinator, Collections.emptySet(), coordinator.getAdmins());
+        return coordinator;
     }
 
     @Override
     public Coordinator update(String id, Coordinator coordinator) {
-        updateRoles(id, coordinator.getMembers());
+        Coordinator existing = get(id);
+        updatePermissions(coordinator, existing.getMembers(), coordinator.getMembers());
+        updatePermissions(coordinator, existing.getAdmins(), coordinator.getAdmins());
         return super.update(id, coordinator);
     }
 
     @Override
-    public Set<User> getMembers(String id) {
-        Coordinator coordinator = get(id);
-        return getMembers(coordinator);
+    public Set<String> updateMembers(String coordinatorId, Set<String> userIds) {
+        return super.updateMembers(coordinatorId, userIds, existing -> {
+            updatePermissions((Coordinator) existing, existing.getMembers(), userIds);
+        });
     }
 
     @Override
-    public Set<User> updateMembers(String coordinatorId, Set<String> userIds) {
-        Coordinator coordinator = updateRoles(coordinatorId, userIds);
-
-        coordinator = super.update(coordinatorId, coordinator);
-        return getMembers(coordinator);
-    }
-
-    @Override
-    public Set<User> addMember(String coordinatorId, String userId) {
-        Coordinator coordinator = get(coordinatorId);
-        if (coordinator.getMembers() == null) {
-            coordinator.setMembers(new HashSet<>());
-        }
-        coordinator.getMembers().add(userId);
-        coordinator = super.update(coordinatorId, coordinator);
-
+    public Set<String> addMember(String coordinatorId, String userId) {
         // read access for all resources
-        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinator), coordinatorId);
-
-        return getMembers(coordinator);
+        permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinatorId), coordinatorId);
+        return super.addMember(coordinatorId, userId);
     }
 
     @Override
-    public Set<User> removeMember(String coordinatorId, String userId) {
-        Coordinator coordinator = get(coordinatorId);
-        coordinator.getMembers().remove(userId);
-        coordinator = super.update(coordinatorId, coordinator);
-
+    public Set<String> removeMember(String coordinatorId, String adminId) {
         // remove Coordinator permissions from user
-        permissionService.removeAll(userId, Groups.COORDINATOR.getKey());
-        permissionService.removeAll(userId, coordinatorId);
-        return getMembers(coordinator);
+        permissionService.removeAll(adminId, Groups.COORDINATOR.getKey());
+        permissionService.removeAll(adminId, coordinatorId);
+        return super.removeMember(coordinatorId, adminId);
     }
 
-
-    private Set<User> getMembers(Coordinator coordinator) {
-        Set<User> members = new HashSet<>();
-        if (coordinator.getMembers() != null) {
-            members = coordinator.getMembers()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(userService::getUser)
-                    .collect(Collectors.toSet());
-        }
-        return members;
+    @Override
+    public Set<String> updateAdmins(String coordinatorId, Set<String> adminIds) {
+        return super.updateAdmins(coordinatorId, adminIds, existing -> {
+            updatePermissions((Coordinator) existing, existing.getAdmins(), adminIds);
+        });
     }
 
-    private Coordinator updateRoles(String coordinatorId, Set<String> userIds) {
-        Coordinator coordinator = get(coordinatorId);
-        Set<String> previousMembers = coordinator.getMembers();
+    @Override
+    public Set<String> addAdmin(String coordinatorId, String adminId) {
+        // read access for all resources
+        permissionService.addPermissions(Collections.singletonList(adminId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinatorId), coordinatorId);
+        return super.addAdmin(coordinatorId, adminId);
+    }
+
+    @Override
+    public Set<String> removeAdmin(String coordinatorId, String adminId) {
+        // remove Coordinator permissions from user
+        permissionService.removeAll(adminId, Groups.COORDINATOR.getKey());
+        permissionService.removeAll(adminId, coordinatorId);
+        return super.removeAdmin(coordinatorId, adminId);
+    }
+
+    private void updatePermissions(Coordinator coordinator, Set<String> existingUsers, Set<String> userIds) {
         for (String member : userIds) {
-            previousMembers.remove(member);
+            existingUsers.remove(member);
         }
 
         // remove Coordinator permissions from removed members
-        permissionService.removeAll(previousMembers, Groups.COORDINATOR.getKey());
-        permissionService.removeAll(previousMembers, coordinatorId);
+        permissionService.removeAll(existingUsers, Groups.COORDINATOR.getKey());
+        permissionService.removeAll(existingUsers, coordinator.getId());
 
         // read access for all resources
-        permissionService.addPermissions(userIds, Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinator), coordinatorId);
-
-        coordinator.setMembers(userIds);
-        return coordinator;
+        permissionService.addPermissions(userIds, Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinator), coordinator.getId());
     }
 
     private List<String> getAccessibleResourceIds(Coordinator coordinator) {
@@ -154,5 +133,9 @@ public class CoordinatorServiceImpl extends AbstractCrudItemService<Coordinator>
         filter.addFilter("type", coordinator.getType());
         List<SurveyAnswer> resourceIds = surveyAnswerCrudService.getAll(filter).getResults();
         return getSurveyAnswerIds(resourceIds);
+    }
+
+    private List<String> getAccessibleResourceIds(String coordinatorId) {
+        return getAccessibleResourceIds(get(coordinatorId));
     }
 }

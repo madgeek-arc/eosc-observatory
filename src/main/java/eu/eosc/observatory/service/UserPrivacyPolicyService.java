@@ -13,13 +13,12 @@ import org.springframework.stereotype.Service;
 
 
 @Service
-public class UserPrivacyPolicyService extends AbstractCrudItemService<PrivacyPolicy> implements PrivacyPolicyService {
+public class UserPrivacyPolicyService extends AbstractCrudService<PrivacyPolicy> implements PrivacyPolicyService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserPrivacyPolicyService.class);
 
     private final UserService userService;
 
-    @Autowired
     public UserPrivacyPolicyService(ResourceTypeService resourceTypeService,
                                     ResourceService resourceService,
                                     SearchService searchService,

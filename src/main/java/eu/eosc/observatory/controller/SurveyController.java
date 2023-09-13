@@ -7,7 +7,7 @@ import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.eosc.observatory.dto.SurveyAnswerMetadataDTO;
 import eu.eosc.observatory.service.CoordinatorService;
-import eu.eosc.observatory.service.CrudItemService;
+import eu.eosc.observatory.service.CrudService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.SurveyService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -42,14 +42,14 @@ public class SurveyController {
     private static final Logger logger = LoggerFactory.getLogger(SurveyController.class);
 
     private final FormsController formsController;
-    private final CrudItemService<SurveyAnswer> surveyAnswerService;
+    private final CrudService<SurveyAnswer> surveyAnswerService;
     private final SurveyService surveyService;
     private final StakeholderService stakeholderService;
     private final CoordinatorService coordinatorService;
 
     @Autowired
     public SurveyController(FormsController formsController,
-                            CrudItemService<SurveyAnswer> surveyAnswerService,
+                            CrudService<SurveyAnswer> surveyAnswerService,
                             SurveyService surveyService,
                             StakeholderService stakeholderService,
                             CoordinatorService coordinatorService) {

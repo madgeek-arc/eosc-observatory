@@ -72,11 +72,11 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         }
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
         Set<String> emails = new HashSet<>();
-        if (stakeholder.getContributors() != null) {
-            emails.addAll(stakeholder.getContributors());
+        if (stakeholder.getMembers() != null) {
+            emails.addAll(stakeholder.getMembers());
         }
-        if (stakeholder.getManagers() != null) {
-            emails.addAll(stakeholder.getManagers());
+        if (stakeholder.getAdmins() != null) {
+            emails.addAll(stakeholder.getAdmins());
         }
         return emails.contains(userId);
     }
@@ -93,7 +93,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             return false;
         }
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
-        return stakeholder.getManagers() != null && stakeholder.getManagers().contains(userId);
+        return stakeholder.getAdmins() != null && stakeholder.getAdmins().contains(userId);
     }
 
     @Override
@@ -254,9 +254,11 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
     @Override
     public boolean isAdmin(Authentication auth) {
-        for (GrantedAuthority grantedAuth : auth.getAuthorities()) {
-            if (grantedAuth.getAuthority().contains("ADMIN")) {
-                return true;
+        if (auth != null) {
+            for (GrantedAuthority grantedAuth : auth.getAuthorities()) {
+                if (grantedAuth.getAuthority().contains("ADMIN")) {
+                    return true;
+                }
             }
         }
         return false;

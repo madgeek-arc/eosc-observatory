@@ -99,13 +99,13 @@ public class JWSInvitationService implements InvitationService {
 
             if (invitationObject.getRole().equalsIgnoreCase(Roles.Stakeholder.MANAGER.name())
                     && securityExpressions.userIsCoordinatorMemberOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId())) {
-                stakeholderService.addManager(invitationObject.getStakeholderId(), invitationObject.getInvitee());
+                stakeholderService.addAdmin(invitationObject.getStakeholderId(), invitationObject.getInvitee());
                 return true;
             }
             if (invitationObject.getRole().equals(Roles.Stakeholder.CONTRIBUTOR.name())
                     && (securityExpressions.userIsStakeholderManager(invitationObject.getInviter(), invitationObject.getStakeholderId())
                     || securityExpressions.userIsCoordinatorMemberOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId()))) {
-                stakeholderService.addContributor(invitationObject.getStakeholderId(), invitationObject.getInvitee());
+                stakeholderService.addMember(invitationObject.getStakeholderId(), invitationObject.getInvitee());
                 return true;
             }
         } catch (ParseException | JOSEException e) {

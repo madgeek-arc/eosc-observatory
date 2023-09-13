@@ -2,8 +2,7 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
-import eu.eosc.observatory.domain.User;
-import eu.eosc.observatory.dto.StakeholderMembers;
+import eu.eosc.observatory.domain.UserGroup;
 import eu.eosc.observatory.permissions.Groups;
 import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
@@ -12,27 +11,26 @@ import gr.athenarc.authorization.domain.Permission;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static eu.eosc.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
 @Service
-public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder> implements StakeholderService {
+public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder> implements StakeholderService {
 
     private static final Logger logger = LoggerFactory.getLogger(StakeholderServiceImpl.class);
 
     private static final String RESOURCE_TYPE = "stakeholder";
 
-    private final UserService userService;
     private final SurveyService surveyService;
     private final PermissionService permissionService;
 
-    @Autowired
     public StakeholderServiceImpl(ResourceTypeService resourceTypeService,
                                   ResourceService resourceService,
                                   SearchService searchService,
@@ -41,8 +39,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
                                   UserService userService,
                                   @Lazy SurveyService surveyService,
                                   PermissionService permissionService) {
-        super(resourceTypeService, resourceService, searchService, versionService, parserService);
-        this.userService = userService;
+        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService);
         this.permissionService = permissionService;
         this.surveyService = surveyService;
     }
@@ -66,8 +63,8 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
 
     @Override
     public Stakeholder updateStakeholderAndUserPermissions(String id, Stakeholder resource) throws ResourceNotFoundException {
-        updateManagers(id, resource.getManagers());
-        updateContributors(id, resource.getContributors());
+        updateManagers(id, resource.getAdmins());
+        updateContributors(id, resource.getMembers());
         return update(id, resource);
     }
 
@@ -77,8 +74,8 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
             return stakeholder.getId();
         }
         String idSuffix;
-        if (Stakeholder.StakeholderType.fromString(stakeholder.getType()) == Stakeholder.StakeholderType.COUNTRY
-            || Stakeholder.StakeholderType.fromString(stakeholder.getType()) == Stakeholder.StakeholderType.EOSC_SB) {
+        if (UserGroup.GroupType.fromString(stakeholder.getType()) == UserGroup.GroupType.COUNTRY
+                || UserGroup.GroupType.fromString(stakeholder.getType()) == UserGroup.GroupType.EOSC_SB) {
             idSuffix = stakeholder.getCountry();
         } else if (stakeholder.getAssociationMember() != null) {
             idSuffix = stakeholder.getAssociationMember().toLowerCase();
@@ -92,37 +89,11 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         return String.format("sh-%s-%s", stakeholder.getType(), idSuffix);
     }
 
-    @Override
-    public StakeholderMembers getMembers(String id) {
-        Stakeholder stakeholder = this.get(id);
-        return getMembers(stakeholder);
-    }
-
-    private StakeholderMembers getMembers(Stakeholder stakeholder) {
-        Set<User> managers = new HashSet<>();
-        Set<User> contributors = new HashSet<>();
-        if (stakeholder.getManagers() != null) {
-            managers = stakeholder.getManagers()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(userService::getUser)
-                    .collect(Collectors.toSet());
-        }
-        if (stakeholder.getContributors() != null) {
-            contributors = stakeholder.getContributors()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(userService::getUser)
-                    .collect(Collectors.toSet());
-        }
-
-        return new StakeholderMembers(contributors, managers);
-    }
 
     @Override
     public Stakeholder updateContributors(String stakeholderId, Set<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
-        Set<String> previousContributors = stakeholder.getContributors();
+        Set<String> previousContributors = stakeholder.getMembers();
 
         if (userIds != null && previousContributors != null) {
             for (String contributor : userIds) {
@@ -131,6 +102,7 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         }
 
         permissionService.removeAll(previousContributors, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+        stakeholder.setMembers(userIds);
 
         // read access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
@@ -142,17 +114,16 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         List<String> resourceIds = getSurveyAnswerIds(answers);
         addContributorFullPermissions(userIds, resourceIds);
 
-        stakeholder.setContributors(userIds);
         return update(stakeholderId, stakeholder);
     }
 
     @Override
-    public StakeholderMembers addContributor(String stakeholderId, String userId) {
+    public Set<String> addMember(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
-        if (stakeholder.getContributors() == null) {
-            stakeholder.setContributors(new HashSet<>());
+        if (stakeholder.getMembers() == null) {
+            stakeholder.setMembers(new HashSet<>());
         }
-        stakeholder.getContributors().add(userId);
+        stakeholder.getMembers().add(userId);
         stakeholder = update(stakeholderId, stakeholder);
 
         // read access for all resources
@@ -165,22 +136,19 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         List<String> resourceIds = getSurveyAnswerIds(answers);
         addContributorFullPermissions(Collections.singleton(userId), resourceIds);
 
-        return getMembers(stakeholder);
+        return stakeholder.getMembers();
     }
 
     @Override
-    public StakeholderMembers removeContributor(String stakeholderId, String userId) {
-        Stakeholder stakeholder = get(stakeholderId);
-        stakeholder.getContributors().remove(userId);
-        stakeholder = update(stakeholderId, stakeholder);
-        permissionService.removeAll(userId, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
-        return getMembers(stakeholder);
+    public Set<String> removeMember(String stakeholderId, String memberId) {
+        permissionService.removeAll(memberId, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+        return super.removeMember(stakeholderId, memberId);
     }
 
     @Override
     public Stakeholder updateManagers(String stakeholderId, Set<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
-        Set<String> previousManagers = stakeholder.getManagers();
+        Set<String> previousManagers = stakeholder.getAdmins();
 
         if (userIds != null && previousManagers != null) {
             for (String manager : userIds) {
@@ -189,15 +157,14 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         }
 
         permissionService.removeAll(previousManagers, Groups.STAKEHOLDER_MANAGER.getKey());
-        stakeholder.setManagers(userIds);
-
+        stakeholder.setAdmins(userIds);
 
         // read/manage/publish access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
         List<String> allResourceIds = getSurveyAnswerIds(answers);
         addManagerPermissions(userIds, allResourceIds);
 
-        // all manager permissions for active resource
+        // all manager permissions for active resources
         answers = surveyService.getActive(stakeholderId);
         List<String> resourceIds = getSurveyAnswerIds(answers);
         addManagerFullPermissions(userIds, resourceIds);
@@ -206,12 +173,12 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     }
 
     @Override
-    public StakeholderMembers addManager(String stakeholderId, String userId) {
+    public Set<String> addAdmin(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
-        if (stakeholder.getManagers() == null) {
-            stakeholder.setManagers(new HashSet<>());
+        if (stakeholder.getAdmins() == null) {
+            stakeholder.setAdmins(new HashSet<>());
         }
-        stakeholder.getManagers().add(userId);
+        stakeholder.getAdmins().add(userId);
         stakeholder = update(stakeholderId, stakeholder);
 
         // read/manage/publish access for all resources
@@ -224,16 +191,13 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
         List<String> resourceIds = getSurveyAnswerIds(answers);
         addManagerFullPermissions(Collections.singleton(userId), resourceIds);
 
-        return getMembers(stakeholder);
+        return stakeholder.getAdmins();
     }
 
     @Override
-    public StakeholderMembers removeManager(String stakeholderId, String userId) {
-        Stakeholder stakeholder = get(stakeholderId);
-        stakeholder.getManagers().remove(userId);
-        stakeholder = update(stakeholderId, stakeholder);
-        permissionService.removeAll(userId, Groups.STAKEHOLDER_MANAGER.getKey());
-        return getMembers(stakeholder);
+    public Set<String> removeAdmin(String stakeholderId, String adminId) {
+        permissionService.removeAll(adminId, Groups.STAKEHOLDER_MANAGER.getKey());
+        return super.removeAdmin(stakeholderId, adminId);
     }
 
     private Set<Permission> addManagerFullPermissions(Set<String> users, List<String> resourceIds) {
@@ -261,5 +225,15 @@ public class StakeholderServiceImpl extends AbstractCrudItemService<Stakeholder>
     private Set<Permission> addContributorPermissions(Set<String> users, List<String> resourceIds) {
         List<String> permissions = List.of(Permissions.READ.getKey());
         return permissionService.addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+    }
+
+    @Override
+    public Set<String> updateMembers(String groupId, Set<String> memberIds) {
+        return updateContributors(groupId, memberIds).getMembers();
+    }
+
+    @Override
+    public Set<String> updateAdmins(String groupId, Set<String> adminIds) {
+        return updateManagers(groupId, adminIds).getAdmins();
     }
 }

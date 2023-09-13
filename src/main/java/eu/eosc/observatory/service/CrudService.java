@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
-public interface CrudItemService<T extends Identifiable> {
+public interface CrudService<T extends Identifiable> {
     /**
      * Returns the resource.
      *

@@ -1,7 +1,6 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.Coordinator;
-import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -11,7 +10,6 @@ import gr.athenarc.catalogue.utils.PagingUtils;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,7 +26,6 @@ public class CoordinatorController {
 
     private final CoordinatorService coordinatorService;
 
-    @Autowired
     public CoordinatorController(CoordinatorService coordinatorService) {
         this.coordinatorService = coordinatorService;
     }
@@ -76,26 +73,26 @@ public class CoordinatorController {
 
     @GetMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN')")// or isCoordinatorMember(#coordinatorId)")
-    public ResponseEntity<Set<User>> getMembers(@PathVariable("id") String coordinatorId) {
+    public ResponseEntity<Set<String>> getMembers(@PathVariable("id") String coordinatorId) {
         return new ResponseEntity<>(coordinatorService.getMembers(coordinatorId), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<User>> updateMembers(@PathVariable("id") String coordinatorId, @RequestBody Set<String> emails) {
+    public ResponseEntity<Set<?>> updateMembers(@PathVariable("id") String coordinatorId, @RequestBody Set<String> emails) {
         return new ResponseEntity<>(coordinatorService.updateMembers(coordinatorId, emails), HttpStatus.OK);
     }
 
 
     @PostMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<User>> addMember(@PathVariable("id") String coordinatorId, @RequestBody String email) {
+    public ResponseEntity<Set<String>> addMember(@PathVariable("id") String coordinatorId, @RequestBody String email) {
         return new ResponseEntity<>(coordinatorService.addMember(coordinatorId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/members/{memberId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<User>> removeMember(@PathVariable("id") String coordinatorId, @PathVariable("memberId") String memberId) {
+    public ResponseEntity<Set<String>> removeMember(@PathVariable("id") String coordinatorId, @PathVariable("memberId") String memberId) {
         return new ResponseEntity<>(coordinatorService.removeMember(coordinatorId, memberId), HttpStatus.OK);
     }
 

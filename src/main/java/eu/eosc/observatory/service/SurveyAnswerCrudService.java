@@ -9,13 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class SurveyAnswerCrudService extends AbstractCrudItemService<SurveyAnswer> implements CrudItemService<SurveyAnswer> {
+public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> implements CrudService<SurveyAnswer> {
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyAnswerCrudService.class);
 
     private final IdGenerator<String> idGenerator;
 
-    @Autowired
     public SurveyAnswerCrudService(ResourceTypeService resourceTypeService,
                                    ResourceService resourceService,
                                    SearchService searchService,
