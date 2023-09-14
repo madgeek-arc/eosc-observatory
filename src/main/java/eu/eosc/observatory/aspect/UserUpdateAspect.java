@@ -40,9 +40,8 @@ public class UserUpdateAspect {
         // update user info
         try {
             User user = User.of(authentication);
-            if (!stakeholderService.getWithFilter("managers", user.getId()).isEmpty()
-                    || !stakeholderService.getWithFilter("contributors", user.getId()).isEmpty()
-                    || !coordinatorService.getWithFilter("members", user.getId()).isEmpty()) {
+            if (!stakeholderService.getWithFilter("users", user.getId()).isEmpty()
+                    || !coordinatorService.getWithFilter("users", user.getId()).isEmpty()) {
                 userService.updateUserDetails(authentication);
             }
         } catch (RuntimeException e) {

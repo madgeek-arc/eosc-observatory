@@ -5,8 +5,9 @@ import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.Diff;
 import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
+import eu.eosc.observatory.dto.SurveyAnswerMetadataDTO;
 import eu.eosc.observatory.service.CoordinatorService;
-import eu.eosc.observatory.service.CrudItemService;
+import eu.eosc.observatory.service.CrudService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.SurveyService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -41,14 +42,14 @@ public class SurveyController {
     private static final Logger logger = LoggerFactory.getLogger(SurveyController.class);
 
     private final FormsController formsController;
-    private final CrudItemService<SurveyAnswer> surveyAnswerService;
+    private final CrudService<SurveyAnswer> surveyAnswerService;
     private final SurveyService surveyService;
     private final StakeholderService stakeholderService;
     private final CoordinatorService coordinatorService;
 
     @Autowired
     public SurveyController(FormsController formsController,
-                            CrudItemService<SurveyAnswer> surveyAnswerService,
+                            CrudService<SurveyAnswer> surveyAnswerService,
                             SurveyService surveyService,
                             StakeholderService stakeholderService,
                             CoordinatorService coordinatorService) {
@@ -177,8 +178,32 @@ public class SurveyController {
 
     @GetMapping("answers/{id}/answer")
     @PreAuthorize("hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
-    public ResponseEntity<Object> getAnswer(@PathVariable("id") String id, @Parameter(hidden = true) Authentication authentication) {
+    public ResponseEntity<?> getAnswer(@PathVariable("id") String id, @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(surveyAnswerService.get(id).getAnswer(), HttpStatus.OK);
+    }
+
+    @GetMapping(value = "answers/{id}/public", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getPublicAnswer(@PathVariable("id") String id) {
+        return new ResponseEntity<>(surveyAnswerService.get(id).getAnswer(), HttpStatus.OK);
+    }
+
+    @GetMapping(value = "answers/public", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getPublicAnswer(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
+        if (surveyAnswer == null) {
+            throw new ResourceNotFoundException();
+        }
+        return new ResponseEntity<>(surveyAnswer.getAnswer(), HttpStatus.OK);
+    }
+
+    @GetMapping(value = "answers/public/metadata", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<SurveyAnswerMetadataDTO> getPublicAnswerMetadata(@RequestParam("surveyId") String surveyId, @RequestParam("stakeholderId") String stakeholderId) throws ResourceNotFoundException {
+        SurveyAnswer surveyAnswer = surveyService.getLatest(surveyId, stakeholderId);
+        if (surveyAnswer == null) {
+            throw new ResourceNotFoundException();
+        }
+        SurveyAnswerMetadataDTO metadataDTO = surveyService.getPublicMetadata(surveyAnswer.getId());
+        return new ResponseEntity<>(metadataDTO, HttpStatus.OK);
     }
 
     @PostMapping("answers/generate/{surveyId}")

@@ -16,32 +16,30 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Set;
 
 @Service
-public class UserServiceImpl extends AbstractCrudItemService<User> implements UserService {
+public class UserServiceImpl extends AbstractCrudService<User> implements UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
     private final PrivacyPolicyService privacyPolicyService;
-    private final CrudItemService<Stakeholder> stakeholderCrudItemService;
-    private final CrudItemService<Coordinator> coordinatorCrudItemService;
+    private final CrudService<Stakeholder> stakeholderCrudService;
+    private final CrudService<Coordinator> coordinatorCrudService;
     private final ApplicationProperties applicationProperties;
 
-    @Autowired
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
                               ResourceService resourceService,
                               SearchService searchService,
                               VersionService versionService,
                               ParserService parserService,
                               PrivacyPolicyService privacyPolicyService,
-                              @Lazy CrudItemService<Stakeholder> stakeholderCrudItemService,
-                              @Lazy CrudItemService<Coordinator> coordinatorCrudItemService,
+                              @Lazy CrudService<Stakeholder> stakeholderCrudService,
+                              @Lazy CrudService<Coordinator> coordinatorCrudService,
                               ApplicationProperties applicationProperties) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService);
         this.privacyPolicyService = privacyPolicyService;
-        this.stakeholderCrudItemService = stakeholderCrudItemService;
-        this.coordinatorCrudItemService = coordinatorCrudItemService;
+        this.stakeholderCrudService = stakeholderCrudService;
+        this.coordinatorCrudService = coordinatorCrudService;
         this.applicationProperties = applicationProperties;
     }
 
@@ -123,6 +121,7 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
             if (!existing.getFullname().equals(user.getFullname())) {
                 existing.setName(user.getName());
                 existing.setSurname(user.getSurname());
+//                this.update(existing.getId(), existing);
             }
         } catch (ResourceNotFoundException e) {
             logger.debug(String.format("User not found! Adding User to database [user=%s]", user));
@@ -149,9 +148,8 @@ public class UserServiceImpl extends AbstractCrudItemService<User> implements Us
         info.setStakeholders(new HashSet<>());
         info.setCoordinators(new HashSet<>());
 
-        info.getStakeholders().addAll(stakeholderCrudItemService.getWithFilter("managers", user.getId()));
-        info.getStakeholders().addAll(stakeholderCrudItemService.getWithFilter("contributors", user.getId()));
-        info.getCoordinators().addAll(coordinatorCrudItemService.getWithFilter("members", user.getId()));
+        info.getStakeholders().addAll(stakeholderCrudService.getWithFilter("users", user.getId()));
+        info.getCoordinators().addAll(coordinatorCrudService.getWithFilter("users", user.getId()));
         return info;
     }
 }

@@ -41,7 +41,6 @@ public class SurveyCSVConverter implements CSVConverter {
 
     private CsvBuilder csvBuilder;
 
-    @Autowired
     public SurveyCSVConverter(ModelService modelService,
                               SurveyService surveyService,
                               SurveyAnswerCrudService surveyAnswerCrudService,

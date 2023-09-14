@@ -1,16 +1,15 @@
 package eu.eosc.observatory.controller;
 
-import eu.eosc.observatory.configuration.ApplicationProperties;
-import eu.eosc.observatory.domain.*;
-import eu.eosc.observatory.service.CrudItemService;
+import eu.eosc.observatory.domain.Profile;
+import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.domain.UserInfo;
+import eu.eosc.observatory.dto.ProfileDTO;
 import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.annotations.Browse;
-import gr.athenarc.catalogue.controller.GenericItemController;
-import gr.athenarc.catalogue.exception.ResourceNotFoundException;
-
 import gr.athenarc.catalogue.utils.PagingUtils;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +19,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.ServletException;
@@ -29,10 +28,7 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("")
@@ -67,7 +63,7 @@ public class UserController {
     @GetMapping("user/info")
     @PreAuthorize("not isAnonymous()")
     public ResponseEntity<UserInfo> userInfo(@Parameter(hidden = true) Authentication authentication) {
-        UserInfo userInfo = userService.getUserInfo(User.getId(authentication));
+        UserInfo userInfo = userService.getUserInfo(authentication);
         return new ResponseEntity<>(userInfo, HttpStatus.OK);
     }
 
@@ -87,6 +83,27 @@ public class UserController {
     @PutMapping("users/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<User> updateUser(@PathVariable("id") String userId, @RequestBody User user) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
+        user = userService.update(userId, user);
+        return new ResponseEntity<>(user, HttpStatus.OK);
+    }
+
+    @PutMapping("users/{id}/profile")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<User> updateUserProfile(@PathVariable("id") String userId, @RequestBody ProfileDTO profileDTO) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
+        User user = userService.getUser(userId);
+        user.setProfile(Profile.of(profileDTO));
+        user = userService.update(userId, user);
+        return new ResponseEntity<>(user, HttpStatus.OK);
+    }
+
+    @PostMapping("users/{id}/profile/picture")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<User> updateUserPicture(@PathVariable("id") String userId, @RequestPart(name = "picture") MultipartFile picture) throws eu.openminted.registry.core.exception.ResourceNotFoundException, IOException {
+        User user = userService.getUser(userId);
+        if (user.getProfile() == null) {
+            user.setProfile(new Profile());
+        }
+        user.getProfile().setPicture(picture.getBytes());
         user = userService.update(userId, user);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }

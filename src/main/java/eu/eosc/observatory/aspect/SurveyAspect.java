@@ -1,10 +1,7 @@
 package eu.eosc.observatory.aspect;
 
-import eu.eosc.observatory.domain.PrivacyPolicy;
 import eu.eosc.observatory.domain.Stakeholder;
 import eu.eosc.observatory.domain.SurveyAnswer;
-import eu.eosc.observatory.permissions.PermissionService;
-import eu.eosc.observatory.service.CrudItemService;
 import eu.eosc.observatory.service.SurveyAnswerCrudService;
 import eu.eosc.observatory.service.SurveyService;
 import eu.openminted.registry.core.domain.Browsing;
@@ -12,11 +9,9 @@ import eu.openminted.registry.core.domain.FacetFilter;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.ui.domain.Model;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.After;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.flywaydb.core.internal.strategy.RetryStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.retry.annotation.Retryable;

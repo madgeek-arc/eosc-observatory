@@ -20,6 +20,7 @@ public class User implements Identifiable<String> {
     private String surname;
     private String fullname;
     private List<PolicyAccepted> policiesAccepted;
+    private Profile profile;
 
     public User() {
     }
@@ -46,9 +47,6 @@ public class User implements Identifiable<String> {
         } else {
             throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
         }
-        if (user.getEmail() != null) {
-            user.setEmail(user.getEmail().toLowerCase());
-        }
         logger.debug(String.format("UserService from Authentication: %s", user));
         return user;
     }
@@ -66,7 +64,10 @@ public class User implements Identifiable<String> {
     }
 
     public void setEmail(String email) {
-        this.email = email.toLowerCase();
+        if (email != null) {
+            email = email.toLowerCase();
+        }
+        this.email = email;
     }
 
     public String getName() {
@@ -101,6 +102,14 @@ public class User implements Identifiable<String> {
         this.policiesAccepted = policiesAccepted;
     }
 
+    public Profile getProfile() {
+        return profile;
+    }
+
+    public void setProfile(Profile profile) {
+        this.profile = profile;
+    }
+
     public static String getId(Authentication auth) {
         logger.trace(String.format("Retrieving id from Authentication: %n%s", auth));
         String id = null;
@@ -124,7 +133,7 @@ public class User implements Identifiable<String> {
 
     @Override
     public String getId() {
-        return this.email.toLowerCase();
+        return this.email != null ? this.email.toLowerCase() : null;
     }
 
     @Override

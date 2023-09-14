@@ -18,7 +18,7 @@ public class SessionActivityController {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionActivityController.class);
 
-    private final Map<String, Map<String, Set<SessionActivity>>> resourcesMap = new TreeMap<>();
+    private final Map<String, Map<String, Set<SessionActivity>>> resourcesMap = Collections.synchronizedMap(new TreeMap<>());
     private final SimpMessagingTemplate simpMessagingTemplate;
 
     public SessionActivityController(SimpMessagingTemplate simpMessagingTemplate) {

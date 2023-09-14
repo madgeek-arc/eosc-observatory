@@ -54,9 +54,9 @@ public class FacetEnrichmentAspect {
         searchSourceBuilder
                 .from(0)
                 .size(10000)
-                .fetchField("*_id")
-                .fetchField("resource_internal_id")
-                .fetchField("name")
+                .docValueField("*_id")
+                .docValueField("resource_internal_id")
+                .docValueField("name")
                 .fetchSource(false)
                 .explain(true);
         searchRequest.source(searchSourceBuilder);

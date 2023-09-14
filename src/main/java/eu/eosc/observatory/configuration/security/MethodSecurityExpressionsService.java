@@ -1,9 +1,6 @@
 package eu.eosc.observatory.configuration.security;
 
-import eu.eosc.observatory.domain.Coordinator;
-import eu.eosc.observatory.domain.Stakeholder;
-import eu.eosc.observatory.domain.SurveyAnswer;
-import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.domain.*;
 import eu.eosc.observatory.service.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -20,9 +17,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class MethodSecurityExpressionsService implements MethodSecurityExpressions {
@@ -53,17 +52,31 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     }
 
     @Override
+    public boolean userIsMemberOfGroup(String userId, String groupId) {
+        return userIsMemberOfGroup(userId, Collections.singletonList(groupId));
+    }
+
+    @Override
+    public boolean userIsMemberOfGroup(String userId, List<String> groupIds) {
+        UserInfo info = userService.getUserInfo(userId);
+        Set<String> userGroups = new HashSet<>();
+        userGroups.addAll(info.getCoordinators().stream().map(Coordinator::getId).collect(Collectors.toSet()));
+        userGroups.addAll(info.getStakeholders().stream().map(Stakeholder::getId).collect(Collectors.toSet()));
+        return userGroups.containsAll(groupIds);
+    }
+
+    @Override
     public boolean userIsStakeholderMember(String userId, String stakeholderId) {
         if (stakeholderId == null || userId == null) {
             return false;
         }
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
         Set<String> emails = new HashSet<>();
-        if (stakeholder.getContributors() != null) {
-            emails.addAll(stakeholder.getContributors());
+        if (stakeholder.getMembers() != null) {
+            emails.addAll(stakeholder.getMembers());
         }
-        if (stakeholder.getManagers() != null) {
-            emails.addAll(stakeholder.getManagers());
+        if (stakeholder.getAdmins() != null) {
+            emails.addAll(stakeholder.getAdmins());
         }
         return emails.contains(userId);
     }
@@ -80,7 +93,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             return false;
         }
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
-        return stakeholder.getManagers() != null && stakeholder.getManagers().contains(userId);
+        return stakeholder.getAdmins() != null && stakeholder.getAdmins().contains(userId);
     }
 
     @Override
@@ -145,15 +158,8 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         } else {
             throw new RuntimeException("Unsupported object");
         }
-        User user = userService.get(User.of(getAuthentication()).getId());
-        FacetFilter filter = new FacetFilter();
-        filter.addFilter("managers", user.getId());
-        filter.addFilter("type", answer.getType());
-        Browsing<Stakeholder> stakeholder = stakeholderService.getAll(filter);
-        if (stakeholder.getTotal() > 0) {
-            return true;
-        }
-        return false;
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsManagerOfType(user, answer.getType());
     }
 
     @Override
@@ -162,10 +168,14 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             return false;
         }
         Model survey = modelService.get(surveyId);
-        User user = userService.get(User.of(getAuthentication()).getId());
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsManagerOfType(user, survey.getType());
+    }
+
+    private boolean userIsManagerOfType(User user, String type) {
         FacetFilter filter = new FacetFilter();
         filter.addFilter("managers", user.getId());
-        filter.addFilter("type", survey.getType());
+        filter.addFilter("type", type);
         Browsing<Stakeholder> stakeholder = stakeholderService.getAll(filter);
         if (stakeholder.getTotal() > 0) {
             return true;
@@ -179,15 +189,8 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             return false;
         }
         Model survey = modelService.get(surveyId);
-        User user = userService.get(User.of(getAuthentication()).getId());
-        FacetFilter filter = new FacetFilter();
-        filter.addFilter("members", user.getId());
-        filter.addFilter("type", survey.getType());
-        Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
-        if (coordinators.getTotal() > 0) {
-            return true;
-        }
-        return false;
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsCoordinatorOfType(user, survey.getType());
     }
 
     @Override
@@ -202,10 +205,14 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         } else {
             throw new RuntimeException("Unsupported object");
         }
-        User user = userService.get(User.of(getAuthentication()).getId());
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsCoordinatorOfType(user, answer.getType());
+    }
+
+    private boolean userIsCoordinatorOfType(User user, String type) {
         FacetFilter filter = new FacetFilter();
-        filter.addFilter("members", user.getId());
-        filter.addFilter("type", answer.getType());
+        filter.addFilter("managers", user.getId());
+        filter.addFilter("type", type);
         Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
         if (coordinators.getTotal() > 0) {
             return true;
@@ -247,9 +254,11 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
     @Override
     public boolean isAdmin(Authentication auth) {
-        for (GrantedAuthority grantedAuth : auth.getAuthorities()) {
-            if (grantedAuth.getAuthority().contains("ADMIN")) {
-                return true;
+        if (auth != null) {
+            for (GrantedAuthority grantedAuth : auth.getAuthorities()) {
+                if (grantedAuth.getAuthority().contains("ADMIN")) {
+                    return true;
+                }
             }
         }
         return false;
