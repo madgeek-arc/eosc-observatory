@@ -6,9 +6,9 @@ import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserInfo;
 import eu.eosc.observatory.service.GroupService;
 import eu.eosc.observatory.service.UserService;
+import gr.athenarc.messaging.domain.Correspondent;
 import gr.athenarc.messaging.dto.MessageDTO;
 import gr.athenarc.messaging.dto.ThreadDTO;
-import gr.athenarc.messaging.dto.UnreadThreads;
 import gr.athenarc.messaging.mailer.client.service.MailClient;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
 import org.springframework.context.annotation.Lazy;
@@ -57,11 +57,29 @@ public class MessagingService {
         this.connectedUsers.remove(User.getId((OAuth2AuthenticationToken) event.getUser()));
     }
 
+    public void updateUnread(ThreadDTO threadDTO) {
+        List<MessageDTO> messages = threadDTO.getMessages();
+        MessageDTO message = messages.get(messages.size() - 1);
+        List<Correspondent> to = message.getTo();
+        Set<String> userEmails = new HashSet<>();
+        for (Correspondent entry : to) {
+            if (entry.getEmail() != null) {
+                userEmails.add(entry.getEmail());
+            }
+            if (entry.getGroupId() != null) {
+                userEmails.addAll(groupService.getUserIds(entry.getGroupId()));
+            }
+        }
+        this.updateUnreadOfUser(userEmails);
+    }
+
     public void updateUnreadOfUser(Set<String> userEmails) {
         for (String email : userEmails) {
             if (connectedUsers.contains(email)) {
-                UnreadThreads unread = messagingSystemController.getUnread(email);
-                simpMessagingTemplate.convertAndSend("/topic/messages/inbox/unread/" + email, unread);
+                messagingSystemController.getUnread(email).subscribe(unread -> {
+                            simpMessagingTemplate.convertAndSend("/topic/messages/inbox/unread/" + email, unread);
+                        }
+                );
             }
         }
     }
