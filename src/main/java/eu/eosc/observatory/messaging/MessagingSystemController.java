@@ -51,14 +51,17 @@ public class MessagingSystemController extends MessagingController {
         if (!userId.equals(User.getId(auth))) {
             throw new AccessDeniedException(String.format("%nUser ID: %s%nAuthenticated user ID: %s", userId, User.getId(auth)));
         }
-        return getUnread(userId);
+        return getUnread(userId).block();
     }
 
     @ReCaptcha("#recaptcha")
     @PostMapping(RestApiPaths.THREADS + "/public")
     public Mono<ThreadDTO> addExternal(@RequestHeader("g-recaptcha-response") String recaptcha, @RequestBody ThreadDTO thread) {
         return super.add(thread).doOnNext(t ->
-                Mono.fromRunnable(() -> messagingService.sendEmails(t))
+                Mono.fromRunnable(() -> {
+                            messagingService.updateUnread(t);
+                            messagingService.sendEmails(t);
+                        })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()
         );
@@ -75,7 +78,10 @@ public class MessagingSystemController extends MessagingController {
     @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
     public Mono<ThreadDTO> add(ThreadDTO thread) {
         return super.add(thread).doOnNext(t ->
-                Mono.fromRunnable(() -> messagingService.sendEmails(t))
+                Mono.fromRunnable(() -> {
+                            messagingService.updateUnread(t);
+                            messagingService.sendEmails(t);
+                        })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()
         );
@@ -157,26 +163,29 @@ public class MessagingSystemController extends MessagingController {
     @PreAuthorize("isAuthenticated() and authentication.principal.getAttribute('email') == #message.from.email")
     public Mono<ThreadDTO> addMessage(String threadId, Message message, boolean anonymous) {
         return super.addMessage(threadId, message, anonymous).doOnNext(t ->
-                Mono.fromRunnable(() -> messagingService.sendEmails(t))
+                Mono.fromRunnable(() -> {
+                            messagingService.updateUnread(t);
+                            messagingService.sendEmails(t);
+                        })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()
         );
     }
 
     @Override
-    @PreAuthorize("isAuthenticated() and authentication.principal.getAttribute('email') == #userId")
-    // FIXME: check if user is member of this thread.
+    @PreAuthorize("isFullyAuthenticated()")
     public Mono<ThreadDTO> readMessage(String threadId, String messageId, boolean read, String userId) {
+        userId = User.getId(SecurityContextHolder.getContext().getAuthentication());
         return super.readMessage(threadId, messageId, read, userId);
     }
 
-    public UnreadThreads getUnread(String email) {
+    public Mono<UnreadThreads> getUnread(String email) {
         return getUnread(new ArrayList<>(), email);
     }
 
-    public UnreadThreads getUnread(List<String> groups, String email) {
+    public Mono<UnreadThreads> getUnread(List<String> groups, String email) {
         groups = messagingService.filterUserGroups(email, groups);
-        return super.searchUnreadThreads(groups, email).block();
+        return super.searchUnreadThreads(groups, email);
     }
 
     @ExceptionHandler(value = AccessDeniedException.class)
