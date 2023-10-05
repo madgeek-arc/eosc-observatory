@@ -7,10 +7,12 @@ import eu.eosc.observatory.configuration.PrivacyProperties;
 import eu.eosc.observatory.configuration.security.MethodSecurityExpressions;
 import eu.eosc.observatory.dto.IdField;
 import eu.eosc.observatory.service.SecurityService;
+import gr.athenarc.catalogue.exception.ResourceException;
 import org.apache.commons.beanutils.PropertyUtilsBean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
@@ -57,40 +59,49 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
     @Override
     public T beforeBodyWrite(T body, MethodParameter returnType, MediaType selectedContentType, Class<? extends HttpMessageConverter<?>> selectedConverterType, ServerHttpRequest request, ServerHttpResponse response) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
+        T ret = null;
         if (body != null && classNames.contains(body.getClass().getCanonicalName())) {
 
             try {
                 String id = getId(body);
                 if (auth instanceof AnonymousAuthenticationToken || (!securityExpressions.isAdmin(auth) && !securityService.canRead(auth, id))) {
                     logger.trace("User lacks read permission : removing sensitive information");
-                    modifyContent(body);
-                    logger.trace("Final Object: {}", mapper.writeValueAsString(body));
+
+                    // transform body to json and convert back to T (deep copy)
+                    String json = mapper.writeValueAsString(body);
+                    ret = (T) mapper.readValue(json, body.getClass());
+
+                    // apply content transformations
+                    modifyContent(ret);
+
+                    logger.trace("Final Object: {}", json);
                 }
             } catch (JsonProcessingException e) {
                 logger.error(e.getMessage(), e);
             }
         }
 
-        return body;
+        return ret == null ? body : ret;
     }
 
     /**
-     * Uses {@link PrivacyProperties} to filter out sensitive information in the responses.
+     * Uses {@link PrivacyProperties} to filter out sensitive information in the provided object.
      *
      * @param obj
      */
     public void modifyContent(T obj) {
-        Class<?> clazz = obj.getClass();
+        if (obj != null) {
+            Class<?> clazz = obj.getClass();
 
-        for (PrivacyProperties.FieldPrivacy fieldPrivacy : privacyProperties.getEntries()) {
-            if (clazz.getCanonicalName().equals(fieldPrivacy.getClassName())) {
+            for (PrivacyProperties.FieldPrivacy fieldPrivacy : privacyProperties.getEntries()) {
+                if (clazz.getCanonicalName().equals(fieldPrivacy.getClassName())) {
 
-                try {
-                    logger.info("Removing non-public Data");
-                    replaceData(obj, fieldPrivacy.getField(), null);
-                } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
-                    throw new RuntimeException(e);
+                    try {
+                        logger.info("Removing non-public Data");
+                        replaceData(obj, fieldPrivacy.getField(), null);
+                    } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
+                        throw new ResourceException(e, HttpStatus.INTERNAL_SERVER_ERROR);
+                    }
                 }
             }
         }
@@ -124,8 +135,8 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
      * This method is a workaround to get the ID field of an object that does not have a declared id field.
      * e.g. {@link java.util.Map}, {@link org.json.simple.JSONObject}
      *
-     * @param obj
-     * @return
+     * @param obj The object whose ID must be found
+     * @return the id
      */
     public String getId(Object obj) {
         // TODO:
