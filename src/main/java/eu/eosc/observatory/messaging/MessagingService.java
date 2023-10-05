@@ -6,6 +6,8 @@ import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserInfo;
 import eu.eosc.observatory.service.GroupService;
 import eu.eosc.observatory.service.UserService;
+import freemarker.template.Configuration;
+import freemarker.template.TemplateException;
 import gr.athenarc.messaging.domain.Correspondent;
 import gr.athenarc.messaging.dto.MessageDTO;
 import gr.athenarc.messaging.dto.ThreadDTO;
@@ -19,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,6 +34,7 @@ public class MessagingService {
     private final GroupService groupService;
     private final UserService userService;
     private final MailClient mailClient;
+    private final Configuration configuration;
 
     private final Set<String> connectedUsers = Collections.synchronizedSet(new HashSet<>());
 
@@ -39,12 +44,14 @@ public class MessagingService {
                             GroupService groupService,
                             UserService userService,
                             MailClient mailClient,
-                            SimpMessagingTemplate simpMessagingTemplate) {
+                            SimpMessagingTemplate simpMessagingTemplate,
+                            Configuration configuration) {
         this.messagingSystemController = messagingSystemController;
         this.groupService = groupService;
         this.userService = userService;
         this.mailClient = mailClient;
         this.simpMessagingTemplate = simpMessagingTemplate;
+        this.configuration = configuration;
     }
 
     @EventListener
@@ -96,7 +103,19 @@ public class MessagingService {
     }
 
     public void sendEmails(ThreadDTO thread) {
+        // TODO: refactor
         MessageDTO messageDTO = thread.getMessages().get(thread.getMessages().size() - 1);
+        StringWriter stringWriter = new StringWriter();
+        Map<String, String> data = new HashMap<>();
+        data.put("subject", thread.getSubject());
+        data.put("content", messageDTO.getBody());
+        data.put("user", messageDTO.getFrom().getName() != null ? messageDTO.getFrom().getName() : messageDTO.getFrom().getGroupId());
+        try {
+            configuration.getTemplate("message.ftlh").process(data, stringWriter);
+        } catch (Exception e) {
+
+        }
+
         List<String> ccEmails = new ArrayList<>();
         List<String> bccEmails = messageDTO
                 .getTo()
@@ -113,11 +132,12 @@ public class MessagingService {
             ccEmails.add(messageDTO.getFrom().getEmail());
         }
         EmailMessage email = new EmailMessage.EmailBuilder()
-                .setFrom("")
-                .setCc(ccEmails)
+                .setFrom("no-reply@openaire.eu")
+//                .setCc(ccEmails)
                 .setBcc(bccEmails)
                 .setSubject(thread.getSubject())
-                .setText(messageDTO.getBody())
+                .setText(stringWriter.getBuffer().toString())
+                .setHtml(true)
                 .build();
         mailClient.sendMail(email);
     }
