@@ -128,48 +128,48 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     }
 
     @Override
-    public boolean userIsCoordinatorMember(String userId, String coordinatorId) {
-        return securityExpressions.userIsCoordinatorMember(userId, coordinatorId);
+    public boolean userIsCoordinator(String userId, String coordinatorId) {
+        return securityExpressions.userIsCoordinator(userId, coordinatorId);
     }
 
     @Override
-    public boolean isCoordinatorMember(String coordinatorId) {
-        return securityExpressions.isCoordinatorMember(coordinatorId);
+    public boolean isCoordinator(String coordinatorId) {
+        return securityExpressions.isCoordinator(coordinatorId);
     }
 
     @Override
-    public boolean userIsCoordinatorMemberOfType(String userId, String type) {
-        return securityExpressions.userIsCoordinatorMemberOfType(userId, type);
+    public boolean userIsCoordinatorOfType(String userId, String type) {
+        return securityExpressions.userIsCoordinatorOfType(userId, type);
     }
 
     @Override
-    public boolean isCoordinatorMemberOfType(String type) {
-        return securityExpressions.isCoordinatorMemberOfType(type);
+    public boolean isCoordinatorOfType(String type) {
+        return securityExpressions.isCoordinatorOfType(type);
     }
 
     @Override
-    public boolean userIsCoordinatorMemberOfStakeholder(String userId, String stakehodlerId) {
-        return securityExpressions.userIsCoordinatorMemberOfStakeholder(userId, stakehodlerId);
+    public boolean userIsCoordinatorOfStakeholder(String userId, String stakehodlerId) {
+        return securityExpressions.userIsCoordinatorOfStakeholder(userId, stakehodlerId);
     }
 
     @Override
-    public boolean isCoordinatorMemberOfStakeholder(String stakehodlerId) {
-        return securityExpressions.isCoordinatorMemberOfStakeholder(stakehodlerId);
+    public boolean isCoordinatorOfStakeholder(String stakehodlerId) {
+        return securityExpressions.isCoordinatorOfStakeholder(stakehodlerId);
+    }
+
+    @Override
+    public boolean hasStakeholderManagerAccessOnSurvey(String surveyId) {
+        return securityExpressions.hasStakeholderManagerAccessOnSurvey(surveyId);
+    }
+
+    @Override
+    public boolean hasCoordinatorAccessOnSurvey(String surveyId) {
+        return securityExpressions.hasCoordinatorAccessOnSurvey(surveyId);
     }
 
     @Override
     public boolean hasStakeholderManagerAccess(Object surveyAnswer) {
         return securityExpressions.hasStakeholderManagerAccess(surveyAnswer);
-    }
-
-    @Override
-    public boolean hasStakeholderManagerAccess(String surveyId) {
-        return securityExpressions.hasStakeholderManagerAccess(surveyId);
-    }
-
-    @Override
-    public boolean hasCoordinatorAccess(String surveyId) {
-        return securityExpressions.hasCoordinatorAccess(surveyId);
     }
 
     @Override

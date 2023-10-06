@@ -103,7 +103,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     }
 
     @Override
-    public boolean userIsCoordinatorMember(String userId, String coordinatorId) {
+    public boolean userIsCoordinator(String userId, String coordinatorId) {
         if (coordinatorId == null || userId == null) {
             return false;
         }
@@ -112,40 +112,40 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     }
 
     @Override
-    public boolean isCoordinatorMember(String coordinatorId) {
+    public boolean isCoordinator(String coordinatorId) {
         User user = userService.get(User.getId(getAuthentication()));
-        return userIsCoordinatorMember(user.getId(), coordinatorId);
+        return userIsCoordinator(user.getId(), coordinatorId);
     }
 
     @Override
-    public boolean userIsCoordinatorMemberOfType(String userId, String type) {
+    public boolean userIsCoordinatorOfType(String userId, String type) {
         if (type == null || userId == null) {
             return false;
         }
         FacetFilter ff = new FacetFilter();
-        ff.addFilter("members", userId);
+        ff.addFilter("users", userId);
         ff.addFilter("type", type);
         List<Coordinator> coordinators = coordinatorService.getAll(ff).getResults();
         return !coordinators.isEmpty();
     }
 
     @Override
-    public boolean isCoordinatorMemberOfType(String type) {
+    public boolean isCoordinatorOfType(String type) {
         User user = userService.get(User.getId(getAuthentication()));
-        return userIsCoordinatorMemberOfType(user.getId(), type);
+        return userIsCoordinatorOfType(user.getId(), type);
     }
 
     @Override
-    public boolean userIsCoordinatorMemberOfStakeholder(String userId, String stakeholderId) {
+    public boolean userIsCoordinatorOfStakeholder(String userId, String stakeholderId) {
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
-        return userIsCoordinatorMemberOfType(userId, stakeholder.getType());
+        return userIsCoordinatorOfType(userId, stakeholder.getType());
     }
 
     @Override
-    public boolean isCoordinatorMemberOfStakeholder(String stakehodlerId) {
+    public boolean isCoordinatorOfStakeholder(String stakehodlerId) {
         User user = userService.get(User.getId(getAuthentication()));
         Stakeholder stakeholder = stakeholderService.get(stakehodlerId);
-        return userIsCoordinatorMemberOfType(user.getId(), stakeholder.getType());
+        return userIsCoordinatorOfType(user.getId(), stakeholder.getType());
     }
 
     @Override
@@ -159,22 +159,22 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             throw new RuntimeException("Unsupported object");
         }
         User user = userService.get(User.getId(getAuthentication()));
-        return userIsManagerOfType(user, answer.getType());
+        return userIsStakeholderManagerOfType(user, answer.getType());
     }
 
     @Override
-    public boolean hasStakeholderManagerAccess(String surveyId) {
+    public boolean hasStakeholderManagerAccessOnSurvey(String surveyId) {
         if (surveyId == null) {
             return false;
         }
         Model survey = modelService.get(surveyId);
         User user = userService.get(User.getId(getAuthentication()));
-        return userIsManagerOfType(user, survey.getType());
+        return userIsStakeholderManagerOfType(user, survey.getType());
     }
 
-    private boolean userIsManagerOfType(User user, String type) {
+    private boolean userIsStakeholderManagerOfType(User user, String type) {
         FacetFilter filter = new FacetFilter();
-        filter.addFilter("managers", user.getId());
+        filter.addFilter("admins", user.getId());
         filter.addFilter("type", type);
         Browsing<Stakeholder> stakeholder = stakeholderService.getAll(filter);
         if (stakeholder.getTotal() > 0) {
@@ -184,7 +184,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     }
 
     @Override
-    public boolean hasCoordinatorAccess(String surveyId) {
+    public boolean hasCoordinatorAccessOnSurvey(String surveyId) {
         if (surveyId == null) {
             return false;
         }
@@ -211,7 +211,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
     private boolean userIsCoordinatorOfType(User user, String type) {
         FacetFilter filter = new FacetFilter();
-        filter.addFilter("managers", user.getId());
+        filter.addFilter("users", user.getId());
         filter.addFilter("type", type);
         Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
         if (coordinators.getTotal() > 0) {
@@ -229,7 +229,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
         // convert to Object when resource is a returnObject (@PostConstruct)
         if (resource instanceof ResponseEntity) {
-            resource = ((ResponseEntity) resource).getBody();
+            resource = ((ResponseEntity<?>) resource).getBody();
             if (resource == null) { // FIXME: throw ResourceNotFound exception ?
                 return false;
             }

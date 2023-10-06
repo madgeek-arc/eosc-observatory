@@ -32,7 +32,7 @@ public class CsvController {
             value = "/export/answers/{id}",
             produces = {MediaType.APPLICATION_OCTET_STREAM_VALUE}
     )
-    @PreAuthorize("hasAuthority('ADMIN') or hasCoordinatorAccess(#modelId) or hasStakeholdeManagerAccess(#modelId)")
+    @PreAuthorize("hasAuthority('ADMIN') or hasCoordinatorAccessOnSurvey(#modelId) or hasStakeholderManagerAccessOnSurvey(#modelId)")
     public ResponseEntity<byte[]> exportSurveysToCsv(@PathVariable("id") String modelId,
                                                      @RequestParam(value = "dateFrom", required = false) String dateFrom,
                                                      @RequestParam(value = "dateTo", required = false) String dateTo,

@@ -18,23 +18,23 @@ public interface MethodSecurityExpressions {
 
     boolean isStakeholderManager(String stakeholderId);
 
-    boolean userIsCoordinatorMember(String userId, String coordinatorId);
+    boolean userIsCoordinator(String userId, String coordinatorId);
 
-    boolean isCoordinatorMember(String coordinatorId);
+    boolean isCoordinator(String coordinatorId);
 
-    boolean userIsCoordinatorMemberOfType(String userId, String type);
+    boolean userIsCoordinatorOfType(String userId, String type);
 
-    boolean isCoordinatorMemberOfType(String type);
+    boolean isCoordinatorOfType(String type);
 
-    boolean userIsCoordinatorMemberOfStakeholder(String userId, String stakehodlerId);
+    boolean userIsCoordinatorOfStakeholder(String userId, String stakehodlerId);
 
-    boolean isCoordinatorMemberOfStakeholder(String stakehodlerId);
+    boolean isCoordinatorOfStakeholder(String stakehodlerId);
+
+    boolean hasStakeholderManagerAccessOnSurvey(String surveyId);
+
+    boolean hasCoordinatorAccessOnSurvey(String surveyId);
 
     boolean hasStakeholderManagerAccess(Object surveyAnswer);
-
-    boolean hasStakeholderManagerAccess(String surveyId);
-
-    boolean hasCoordinatorAccess(String surveyId);
 
     boolean hasCoordinatorAccess(Object surveyAnswer);
 

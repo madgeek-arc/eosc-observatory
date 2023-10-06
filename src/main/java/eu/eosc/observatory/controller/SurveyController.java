@@ -226,7 +226,7 @@ public class SurveyController {
 
     @Browse
     @GetMapping("answers/info")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMember(#coordinatorId) or isStakeholderManager(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#coordinatorId) or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(value = "coordinator", required = false) String coordinatorId,
                                                                     @RequestParam(value = "stakeholder", required = false) String stakeholderId,
                                                                     @Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
@@ -268,7 +268,7 @@ public class SurveyController {
     }
 
     @PutMapping(value = "answers/{id}/versions/{version}/restore", produces = {MediaType.APPLICATION_JSON_VALUE})
-    @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'read') or hasCoordinatorAccess(#id) or hasStakeholderManagerAccess(#id)")
+    @PreAuthorize("hasAuthority('ADMIN') or hasPermission(#id, 'write')")
     public ResponseEntity<SurveyAnswer> restoreVersion(@PathVariable("id") String id, @PathVariable("version") String version) {
         return new ResponseEntity<>(surveyService.restore(id, version), HttpStatus.OK);
     }
