@@ -37,11 +37,14 @@ import java.util.List;
 public class MessagingSystemController extends MessagingController {
 
     private final MessagingService messagingService;
+    private final EmailOperations emailOperations;
 
     public MessagingSystemController(MessagingClientProperties messagingClientProperties,
-                                     MessagingService messagingService) {
+                                     MessagingService messagingService,
+                                     EmailOperations emailOperations) {
         super(messagingClientProperties);
         this.messagingService = messagingService;
+        this.emailOperations = emailOperations;
     }
 
     @MessageMapping("messages/inbox/unread/{userId}")
@@ -60,7 +63,7 @@ public class MessagingSystemController extends MessagingController {
         return super.add(thread).doOnNext(t ->
                 Mono.fromRunnable(() -> {
                             messagingService.updateUnread(t);
-                            messagingService.sendEmails(t);
+                            emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()
@@ -80,7 +83,7 @@ public class MessagingSystemController extends MessagingController {
         return super.add(thread).doOnNext(t ->
                 Mono.fromRunnable(() -> {
                             messagingService.updateUnread(t);
-                            messagingService.sendEmails(t);
+                            emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()
@@ -165,7 +168,7 @@ public class MessagingSystemController extends MessagingController {
         return super.addMessage(threadId, message, anonymous).doOnNext(t ->
                 Mono.fromRunnable(() -> {
                             messagingService.updateUnread(t);
-                            messagingService.sendEmails(t);
+                            emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe()

@@ -97,7 +97,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
                 if (clazz.getCanonicalName().equals(fieldPrivacy.getClassName())) {
 
                     try {
-                        logger.info("Removing non-public Data");
+                        logger.debug("Removing non-public Data");
                         replaceData(obj, fieldPrivacy.getField(), null);
                     } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
                         throw new ResourceException(e, HttpStatus.INTERNAL_SERVER_ERROR);
