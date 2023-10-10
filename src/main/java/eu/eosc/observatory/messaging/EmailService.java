@@ -54,7 +54,7 @@ public class EmailService implements EmailOperations {
     String createEmailMessageText(ThreadDTO threadDTO, String template) {
         MessageDTO messageDTO = threadDTO.getMessages().get(threadDTO.getMessages().size() - 1);
 
-        if (messageDTO.isAnonymousSender() && !StringUtils.hasText(messageDTO.getFrom().getName())) {
+        if (messageDTO.isAnonymousSender() || !StringUtils.hasText(messageDTO.getFrom().getName())) {
             messageDTO.getFrom().setName(null);
         }
 
@@ -84,8 +84,12 @@ public class EmailService implements EmailOperations {
             externalUsers = getUserEmails(messageDTO.getTo(), false);
         }
 
-        emails.add(createEmail(thread, from, internalUsers, "message.ftlh"));
-        emails.add(createEmail(thread, from, externalUsers, "external-user_message.ftlh"));
+        if (!internalUsers.isEmpty()) {
+            emails.add(createEmail(thread, from, internalUsers, "message.ftlh"));
+        }
+        if (!externalUsers.isEmpty()) {
+            emails.add(createEmail(thread, from, externalUsers, "external-user_message.ftlh"));
+        }
 
         return emails;
     }
