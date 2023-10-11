@@ -1,5 +1,6 @@
 package eu.eosc.observatory.messaging;
 
+import eu.eosc.observatory.configuration.ApplicationProperties;
 import eu.eosc.observatory.service.GroupService;
 import freemarker.template.Configuration;
 import gr.athenarc.messaging.domain.Correspondent;
@@ -12,8 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.StringWriter;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class EmailService implements EmailOperations {
@@ -22,15 +24,18 @@ public class EmailService implements EmailOperations {
     private final GroupService groupService;
     private final Configuration configuration;
     private final String emailFrom;
+    private final ApplicationProperties applicationProperties;
 
     public EmailService(MailClient mailClient,
                         GroupService groupService,
                         Configuration configuration,
-                        @Value("${mailer.from}") String emailFrom) {
+                        @Value("${mailer.from}") String emailFrom,
+                        ApplicationProperties applicationProperties) {
         this.mailClient = mailClient;
         this.groupService = groupService;
         this.configuration = configuration;
         this.emailFrom = emailFrom;
+        this.applicationProperties = applicationProperties;
     }
 
     @Override
@@ -51,11 +56,11 @@ public class EmailService implements EmailOperations {
         throw new UnsupportedOperationException("Not implemented yet.");
     }
 
-    String createEmailMessageText(ThreadDTO threadDTO, String template) {
+    String createEmailMessageText(ThreadDTO threadDTO, String group, String template) {
         MessageDTO messageDTO = threadDTO.getMessages().get(threadDTO.getMessages().size() - 1);
 
-        if (messageDTO.isAnonymousSender() || !StringUtils.hasText(messageDTO.getFrom().getName())) {
-            messageDTO.getFrom().setName(null);
+        if (messageDTO.isAnonymousSender() && !StringUtils.hasText(messageDTO.getFrom().getGroupId())) {
+            messageDTO.getFrom().setName(groupService.getGroupName(messageDTO.getFrom().getGroupId()));
         }
 
         StringWriter stringWriter = new StringWriter();
@@ -63,6 +68,7 @@ public class EmailService implements EmailOperations {
         data.put("subject", threadDTO.getSubject());
         data.put("content", messageDTO.getBody());
         data.put("user", messageDTO.getFrom().getName());
+        data.put("url", String.format("%s/contributions/%s/messages/%s", applicationProperties.getLoginRedirect(), group, threadDTO.getId()));
         try {
             configuration.getTemplate(template).process(data, stringWriter);
         } catch (Exception e) {
@@ -75,50 +81,50 @@ public class EmailService implements EmailOperations {
         List<EmailMessage> emails = new ArrayList<>();
 
         MessageDTO messageDTO = thread.getMessages().get(thread.getMessages().size() - 1);
-        List<String> internalUsers = getUserEmails(messageDTO.getTo(), true);
-        List<String> externalUsers;
+        Map<String, Set<String>> userGroupEmails = getUserGroupEmails(messageDTO.getTo(), true);
         if (StringUtils.hasText(messageDTO.getReplyToMessageId())) {
             MessageDTO replyToMessage = thread.getMessages().get(Integer.parseInt(messageDTO.getReplyToMessageId()));
-            externalUsers = getUserEmails(List.of(replyToMessage.getFrom()), false);
+            userGroupEmails.putAll(getUserGroupEmails(List.of(replyToMessage.getFrom()), false));
         } else {
-            externalUsers = getUserEmails(messageDTO.getTo(), false);
+            userGroupEmails.putAll(getUserGroupEmails(messageDTO.getTo(), false));
         }
 
-        if (!internalUsers.isEmpty()) {
-            emails.add(createEmail(thread, from, internalUsers, "message.ftlh"));
-        }
-        if (!externalUsers.isEmpty()) {
-            emails.add(createEmail(thread, from, externalUsers, "external-user_message.ftlh"));
+        for (Map.Entry<String, Set<String>> entry : userGroupEmails.entrySet()) {
+            if (StringUtils.hasText(entry.getKey())) {
+                emails.add(createEmail(thread, from, entry.getKey(), entry.getValue(), "message.ftlh"));
+            } else {
+                emails.add(createEmail(thread, from, entry.getKey(), entry.getValue(), "external-user_message.ftlh"));
+            }
         }
 
         return emails;
     }
 
-    EmailMessage createEmail(ThreadDTO thread, String from, List<String> emails, String template) {
+    EmailMessage createEmail(ThreadDTO thread, String from, String group, Set<String> emails, String template) {
         return new EmailMessage.EmailBuilder()
                 .setFrom(from)
 //                .setCc(ccEmails)
-                .setBcc(emails)
+                .setBcc(new ArrayList<>(emails))
                 .setSubject(thread.getSubject())
-                .setText(createEmailMessageText(thread, template))
+                .setText(createEmailMessageText(thread, group, template))
                 .setHtml(true)
                 .build();
     }
 
-    List<String> getUserEmails(List<Correspondent> correspondents, boolean isMember) {
-        return correspondents
-                .stream()
-                .map(correspondent -> {
-                    if (isMember && correspondent.getGroupId() != null) {
-                        return groupService.getUserIds(correspondent.getGroupId());
-                    } else if (!isMember && correspondent.getGroupId() == null) {
-                        return List.of(correspondent.getEmail());
-                    } else {
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+    Map<String, Set<String>> getUserGroupEmails(List<Correspondent> correspondents, boolean isMember) {
+        Map<String, Set<String>> userGroupMap = new TreeMap<>();
+        for (Correspondent correspondent : correspondents) {
+            if (correspondent.getGroupId() != null && isMember) {
+                if (userGroupMap.containsKey(correspondent.getGroupId())) {
+                    userGroupMap.get(correspondent.getGroupId()).addAll(groupService.getUserIds(correspondent.getGroupId()));
+                } else {
+                    userGroupMap.put(correspondent.getGroupId(), groupService.getUserIds(correspondent.getGroupId()));
+                }
+            } else {
+                userGroupMap.putIfAbsent("", new HashSet<>());
+                userGroupMap.get("").add(correspondent.getEmail());
+            }
+        }
+        return userGroupMap;
     }
 }
