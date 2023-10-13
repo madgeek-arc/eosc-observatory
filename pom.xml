@@ -116,7 +116,7 @@
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>catalogue</artifactId>
-			<version>5.0.0</version>
+			<version>5.0.1</version>
 		</dependency>
 
 		<dependency>
@@ -129,14 +129,14 @@
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>messaging-client</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>0.0.1</version>
 			<scope>compile</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>gr.athenarc.messaging</groupId>
 			<artifactId>mailer-client</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>0.0.1</version>
 		</dependency>
 
 		<dependency>
