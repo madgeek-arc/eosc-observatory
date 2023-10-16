@@ -44,12 +44,16 @@ public class MessagingService {
 
     @EventListener
     private void subscribe(SessionConnectEvent event) {
-        this.connectedUsers.add(User.getId((OAuth2AuthenticationToken) event.getUser()));
+        if (event.getUser() != null) {
+            this.connectedUsers.add(User.getId((OAuth2AuthenticationToken) event.getUser()));
+        }
     }
 
     @EventListener
     public void unsubscribe(SessionDisconnectEvent event) {
-        this.connectedUsers.remove(User.getId((OAuth2AuthenticationToken) event.getUser()));
+        if (event.getUser() != null) {
+            this.connectedUsers.remove(User.getId((OAuth2AuthenticationToken) event.getUser()));
+        }
     }
 
     public void updateUnread(ThreadDTO threadDTO) {
