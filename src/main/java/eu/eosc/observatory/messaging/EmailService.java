@@ -1,8 +1,11 @@
 package eu.eosc.observatory.messaging;
 
 import eu.eosc.observatory.configuration.ApplicationProperties;
+import eu.eosc.observatory.domain.NotificationPreferences;
+import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserGroup;
 import eu.eosc.observatory.service.GroupService;
+import eu.eosc.observatory.service.UserService;
 import freemarker.template.Configuration;
 import gr.athenarc.messaging.domain.Correspondent;
 import gr.athenarc.messaging.dto.MessageDTO;
@@ -24,17 +27,15 @@ public class EmailService implements EmailOperations {
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
     private final MailClient mailClient;
     private final GroupService groupService;
+    private final UserService userService;
     private final Configuration configuration;
     private final String emailFrom;
     private final ApplicationProperties applicationProperties;
 
-    public EmailService(MailClient mailClient,
-                        GroupService groupService,
-                        Configuration configuration,
-                        @Value("${mailer.from}") String emailFrom,
-                        ApplicationProperties applicationProperties) {
+    public EmailService(MailClient mailClient, GroupService groupService, UserService userService, Configuration configuration, @Value("${mailer.from}") String emailFrom, ApplicationProperties applicationProperties) {
         this.mailClient = mailClient;
         this.groupService = groupService;
+        this.userService = userService;
         this.configuration = configuration;
         this.emailFrom = emailFrom;
         this.applicationProperties = applicationProperties;
@@ -79,6 +80,7 @@ public class EmailService implements EmailOperations {
         }
 
         for (Map.Entry<String, Set<String>> entry : userGroupEmails.entrySet()) {
+            entry.setValue(filterEmailAddressesBasedOnUserPreferences(entry.getValue()));
             if (StringUtils.hasText(entry.getKey())) {
                 emails.add(createEmail(thread, sender, entry.getKey(), entry.getValue(), "emails/inlined-css/message.ftlh"));
             } else {
@@ -90,8 +92,40 @@ public class EmailService implements EmailOperations {
     }
 
     /**
+     * Given a {@link Set} of email addresses, it creates a new collection with the user preferred email addresses.
+     * For each email address, it checks whether a {@link User} exists and uses its
+     * {@link NotificationPreferences notification preferences} to decide which email address/es
+     * to include in the new collection.
+     *
+     * @param emailAddresses a {@link Set} of email addresses.
+     * @return {@link Set}
+     */
+    Set<String> filterEmailAddressesBasedOnUserPreferences(Set<String> emailAddresses) {
+        Set<String> preferredEmailAddresses = new HashSet<>();
+        if (emailAddresses != null) {
+            for (String email : emailAddresses) {
+                User user = userService.getUser(email);
+                if (user != null && user.getSettings() != null && user.getSettings().getNotificationPreferences() != null) {
+                    if (!user.getSettings().getNotificationPreferences().isEmailNotifications()) {
+                        continue;
+                    }
+                    if (!user.getSettings().getNotificationPreferences().getForwardEmails().isEmpty()) {
+                        preferredEmailAddresses.addAll(user.getSettings().getNotificationPreferences().getForwardEmails());
+                    } else {
+                        preferredEmailAddresses.add(email);
+                    }
+                } else {
+                    preferredEmailAddresses.add(email);
+                }
+            }
+        }
+        return preferredEmailAddresses;
+    }
+
+    /**
      * Creates an EmailMessage based on the provided info using the {@link EmailMessage.EmailBuilder EmailBuilder}.
      * It uses {@link EmailService#createEmailBody} method under the hood to generate the email body.
+     *
      * @param thread the thread
      * @param sender The email address to be used as sender.
      * @param group The group id of the users to send the message.
@@ -113,6 +147,7 @@ public class EmailService implements EmailOperations {
     /**
      * Creates an html email body, based on a <a href="https://freemarker.apache.org">FreeMarker</a> template.
      * It contains the user, the subject of the {@link ThreadDTO thread}(conversation) and the body of the message sent.
+     *
      * @param threadDTO The {@link ThreadDTO thread}(conversation).
      * @param group The group id of the users the message is referring.
      * @param template The path of a <a href="https://freemarker.apache.org">FreeMarker</a> template file.
@@ -141,6 +176,7 @@ public class EmailService implements EmailOperations {
 
     /**
      * Returns a map where each key is a {@link UserGroup#id group id} and its value is the group's users' email.
+     *
      * @param correspondents the list of {@link Correspondent correspondents}
      * @param isMember whether the returned results will return only member emails or only non-members.
      * @return {@link Map}<{@link String}, {@link Set}<{@link String}>>
