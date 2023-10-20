@@ -77,8 +77,6 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
         if (UserGroup.GroupType.fromString(stakeholder.getType()) == UserGroup.GroupType.COUNTRY
                 || UserGroup.GroupType.fromString(stakeholder.getType()) == UserGroup.GroupType.EOSC_SB) {
             idSuffix = stakeholder.getCountry();
-        } else if (stakeholder.getAssociationMember() != null) {
-            idSuffix = stakeholder.getAssociationMember().toLowerCase();
         } else {
             idSuffix = stakeholder.getName().toLowerCase();
         }
