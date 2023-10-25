@@ -41,6 +41,17 @@ public interface SurveyService {
      */
     SurveyAnswer update(String id, SurveyAnswer surveyAnswer, String comment, Authentication authentication) throws ResourceNotFoundException;
 
+    /**
+     * Imports the data of an existing survey answer.
+     *
+     * @param surveyAnswerId The id of the survey answer.
+     * @param modelFrom The id of the {@link Model model} whose {@link SurveyAnswer#getAnswer() data} will be imported.
+     * @param authentication The user authentication.
+     * @return {@link SurveyAnswer}
+     * @throws ResourceNotFoundException
+     */
+    SurveyAnswer importAnswer(String surveyAnswerId, String modelFrom, Authentication authentication) throws ResourceNotFoundException;
+
     SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, String comment, Authentication authentication) throws ResourceNotFoundException;
 
     Diff surveyAnswerDiff(String surveyAnswerId, String version1Id, String version2Id);

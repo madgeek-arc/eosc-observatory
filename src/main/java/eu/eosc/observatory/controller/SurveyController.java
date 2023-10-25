@@ -119,6 +119,14 @@ public class SurveyController {
     /*           Survey Answers            */
     /*-------------------------------------*/
 
+    @PutMapping("answers/{surveyAnswerId}/import/{model}")
+    @PreAuthorize("hasPermission(#surveyAnswerId, 'write')")
+    public ResponseEntity<SurveyAnswer> importSurveyAnswer(@PathVariable("surveyAnswerId") String surveyAnswerId,
+                                                           @PathVariable("model") String modelFrom,
+                                                           @Parameter(hidden = true) Authentication authentication) throws ResourceNotFoundException {
+        return new ResponseEntity<>(surveyService.importAnswer(surveyAnswerId, modelFrom, authentication), HttpStatus.OK);
+    }
+
     @PutMapping("answers/{surveyAnswerId}/answer")
     @PreAuthorize("hasPermission(#surveyAnswerId, 'write')")
     public ResponseEntity<SurveyAnswer> updateSurveyAnswer(@PathVariable("surveyAnswerId") String surveyAnswerId,
