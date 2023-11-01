@@ -4,7 +4,7 @@ import java.util.List;
 
 public class NotificationPreferences {
 
-    private boolean emailNotifications;
+    private boolean emailNotifications = true;
     private List<String> forwardEmails;
 
     public NotificationPreferences() {
