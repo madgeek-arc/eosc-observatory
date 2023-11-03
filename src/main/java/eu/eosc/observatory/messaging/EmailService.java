@@ -109,7 +109,8 @@ public class EmailService implements EmailOperations {
                     if (!user.getSettings().getNotificationPreferences().isEmailNotifications()) {
                         continue;
                     }
-                    if (!user.getSettings().getNotificationPreferences().getForwardEmails().isEmpty()) {
+                    if (user.getSettings().getNotificationPreferences().getForwardEmails() != null
+                            && !user.getSettings().getNotificationPreferences().getForwardEmails().isEmpty()) {
                         preferredEmailAddresses.addAll(user.getSettings().getNotificationPreferences().getForwardEmails());
                     } else {
                         preferredEmailAddresses.add(email);
