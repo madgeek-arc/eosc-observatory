@@ -104,7 +104,12 @@ public class EmailService implements EmailOperations {
         Set<String> preferredEmailAddresses = new HashSet<>();
         if (emailAddresses != null) {
             for (String email : emailAddresses) {
-                User user = userService.getUser(email);
+                User user = null;
+                try {
+                    user = userService.getUser(email);
+                } catch (Exception e) {
+                    logger.warn(e.getMessage(), e);
+                }
                 if (user != null && user.getSettings() != null && user.getSettings().getNotificationPreferences() != null) {
                     if (!user.getSettings().getNotificationPreferences().isEmailNotifications()) {
                         continue;
