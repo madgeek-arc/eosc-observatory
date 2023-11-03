@@ -45,7 +45,7 @@ public class UserGroup implements Identifiable<String> {
     }
 
     public Set<String> getAdmins() {
-        return admins;
+        return Optional.ofNullable(this.admins).orElse(new HashSet<>());
     }
 
     public void setAdmins(Set<String> admins) {
@@ -56,7 +56,7 @@ public class UserGroup implements Identifiable<String> {
     }
 
     public Set<String> getMembers() {
-        return members;
+        return Optional.ofNullable(this.members).orElse(new HashSet<>());
     }
 
     public void setMembers(Set<String> members) {
