@@ -179,7 +179,12 @@ public class MessagingSystemController extends MessagingController {
     @PreAuthorize("isFullyAuthenticated()")
     public Mono<ThreadDTO> readMessage(String threadId, String messageId, boolean read, String userId) {
         userId = User.getId(SecurityContextHolder.getContext().getAuthentication());
-        return super.readMessage(threadId, messageId, read, userId);
+        return super.readMessage(threadId, messageId, read, userId).doOnNext(t ->
+                Mono.fromRunnable(() -> {
+                            messagingService.updateUnread(t);
+                        })
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .subscribe());
     }
 
     public Mono<UnreadThreads> getUnread(String email) {

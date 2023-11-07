@@ -57,28 +57,19 @@ public class MessagingService {
     }
 
     public void updateUnread(ThreadDTO threadDTO) {
-        List<MessageDTO> messages = threadDTO.getMessages();
-        MessageDTO message = messages.get(messages.size() - 1);
-        List<Correspondent> to = message.getTo();
-        Set<String> userEmails = new HashSet<>();
-        for (Correspondent entry : to) {
-            if (entry.getEmail() != null) {
-                userEmails.add(entry.getEmail());
-            }
-            if (entry.getGroupId() != null) {
-                userEmails.addAll(groupService.getUserIds(entry.getGroupId()));
+        for (String email : userEmails(threadDTO)) {
+            if (connectedUsers.contains(email)) {
+                messagingSystemController.getUnread(email).subscribe(unread ->
+                        simpMessagingTemplate.convertAndSend("/topic/messages/inbox/unread/" + email, unread)
+                );
             }
         }
-        this.updateUnreadOfUser(userEmails);
     }
 
-    public void updateUnreadOfUser(Set<String> userEmails) {
-        for (String email : userEmails) {
+    public void incomingMailNotification(ThreadDTO threadDTO) {
+        for (String email : userEmails(threadDTO)) {
             if (connectedUsers.contains(email)) {
-                messagingSystemController.getUnread(email).subscribe(unread -> {
-                            simpMessagingTemplate.convertAndSend("/topic/messages/inbox/unread/" + email, unread);
-                        }
-                );
+                simpMessagingTemplate.convertAndSend("/topic/messages/inbox/notification/" + email, threadDTO);
             }
         }
     }
@@ -94,4 +85,19 @@ public class MessagingService {
         return userGroups;
     }
 
+    private Set<String> userEmails(ThreadDTO threadDTO) {
+        List<MessageDTO> messages = threadDTO.getMessages();
+        MessageDTO message = messages.get(messages.size() - 1);
+        List<Correspondent> to = message.getTo();
+        Set<String> userEmails = new HashSet<>();
+        for (Correspondent entry : to) {
+            if (entry.getEmail() != null) {
+                userEmails.add(entry.getEmail());
+            }
+            if (entry.getGroupId() != null) {
+                userEmails.addAll(groupService.getUserIds(entry.getGroupId()));
+            }
+        }
+        return userEmails;
+    }
 }
