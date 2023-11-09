@@ -78,7 +78,8 @@ public class UserGroup implements Identifiable<String> {
         COUNTRY("country"),
         EOSC_SB("eosc-sb"),
         EOSC_ASSOCIATION("eosc-a"),
-        CLIMATE("climate");
+        CLIMATE("climate"),
+        AI("ai");
 
         private final String type;
 
