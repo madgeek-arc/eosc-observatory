@@ -63,6 +63,7 @@ public class MessagingSystemController extends MessagingController {
         return super.add(thread).doOnNext(t ->
                 Mono.fromRunnable(() -> {
                             messagingService.updateUnread(t);
+                            messagingService.incomingMailNotification(t);
                             emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
@@ -83,6 +84,7 @@ public class MessagingSystemController extends MessagingController {
         return super.add(thread).doOnNext(t ->
                 Mono.fromRunnable(() -> {
                             messagingService.updateUnread(t);
+                            messagingService.incomingMailNotification(t);
                             emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
@@ -168,6 +170,7 @@ public class MessagingSystemController extends MessagingController {
         return super.addMessage(threadId, message, anonymous).doOnNext(t ->
                 Mono.fromRunnable(() -> {
                             messagingService.updateUnread(t);
+                            messagingService.incomingMailNotification(t);
                             emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
