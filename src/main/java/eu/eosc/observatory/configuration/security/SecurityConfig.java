@@ -3,52 +3,78 @@ package eu.eosc.observatory.configuration.security;
 import eu.eosc.observatory.configuration.ApplicationProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
+import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 @Configuration
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     private final AuthenticationSuccessHandler authSuccessHandler;
+    private final ClientRegistrationRepository clientRegistrationRepository;
     private final ApplicationProperties applicationProperties;
 
-    @Autowired
     public SecurityConfig(AuthenticationSuccessHandler authSuccessHandler,
+                          ClientRegistrationRepository clientRegistrationRepository,
                           ApplicationProperties applicationProperties) {
         this.authSuccessHandler = authSuccessHandler;
+        this.clientRegistrationRepository = clientRegistrationRepository;
         this.applicationProperties = applicationProperties;
     }
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeRequests(authorizeRequests -> authorizeRequests
-                        .regexMatchers("/forms/.*", "/dump/.*", "/restore/", "/resources.*", "/resourceType.*", "/search.*").hasAnyAuthority("ADMIN")
-                        .anyRequest().permitAll())
-                .oauth2Login()
-                .successHandler(authSuccessHandler)
-                .and()
-                .logout().logoutSuccessUrl(applicationProperties.getLogoutRedirect())
-                .and()
-                .cors().disable()
-                .csrf().disable();
+
+                .authorizeRequests(authorizeRequests ->
+                        authorizeRequests
+                                .regexMatchers("/forms/.*", "/dump/.*", "/restore/", "/resources.*", "/resourceType.*", "/search.*").hasAnyAuthority("ADMIN")
+                                .antMatchers("/websocket").authenticated()
+                                .anyRequest().permitAll())
+
+                .oauth2Login(oauth2login ->
+                        oauth2login
+                                .successHandler(authSuccessHandler))
+
+                .logout(logout ->
+                        logout
+                                .logoutSuccessHandler(oidcLogoutSuccessHandler())
+                                .deleteCookies()
+                                .clearAuthentication(true)
+                                .invalidateHttpSession(true))
+                .cors(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable);
+
+        return http.build();
+    }
+
+    private LogoutSuccessHandler oidcLogoutSuccessHandler() {
+        OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler =
+                new OidcClientInitiatedLogoutSuccessHandler(
+                        this.clientRegistrationRepository);
+
+        oidcLogoutSuccessHandler.setPostLogoutRedirectUri(applicationProperties.getLogoutRedirect());
+
+        return oidcLogoutSuccessHandler;
     }
 
     @Bean
