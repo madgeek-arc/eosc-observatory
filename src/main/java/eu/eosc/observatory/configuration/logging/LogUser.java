@@ -8,11 +8,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+
 @Component
 public class LogUser extends AbstractLogContextFilter {
 
     @Override
-    public void editMDC(MDCAdapter mdc) {
+    public void editMDC(MDCAdapter mdc, ServletRequest request, ServletResponse response) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null) {
             try {
