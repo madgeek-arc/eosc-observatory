@@ -4,7 +4,7 @@ import java.util.List;
 
 public interface DatasetService {
 
-    DatasetEntry add(DatasetEntry datasetEntry);
+    DatasetEntry save(DatasetEntry datasetEntry);
 
     DatasetEntry get(long id);
 

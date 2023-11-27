@@ -1,9 +1,9 @@
 package eu.eosc.observatory.datasets;
 
-import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DefaultDatasetService implements DatasetService {
@@ -16,16 +16,15 @@ public class DefaultDatasetService implements DatasetService {
     }
 
     @Override
-    public DatasetEntry add(DatasetEntry datasetEntry) {
-        if (datasetEntry.getId() != null && datasetRepository.findById(datasetEntry.getId()).isPresent()) {
-            throw new ResourceAlreadyExistsException();
-        }
+    public DatasetEntry save(DatasetEntry datasetEntry) {
+        Optional<DatasetEntry> existing = datasetRepository.findByYearAndCountryAndNameAndAuthority(datasetEntry.getYear(), datasetEntry.getCountry(), datasetEntry.getName(), datasetEntry.getAuthority());
+        existing.ifPresent(entry -> datasetEntry.setId(entry.getId()));
         return datasetRepository.save(datasetEntry);
     }
 
     @Override
     public DatasetEntry get(long id) {
-        return datasetRepository.findById(id).get();
+        return datasetRepository.findById(id).orElse(null);
     }
 
     @Override

@@ -35,17 +35,11 @@ public class DatasourceConfig {
         return new DataSourceProperties();
     }
 
-//    @Value("${datasets.jpa.hibernate.hbm2ddl.auto:update}")
-//    private String hbm2ddl;
-
     @Bean
     @ConfigurationProperties("datasets.jpa.properties")
     public Map<String, String> datasetsProperties() {
         return new HashMap<>();
     }
-
-    ;
-
 
     @Bean(name = "datasetsDataSource")
     @ConditionalOnMissingBean(name = "datasetsDataSource")

@@ -30,17 +30,17 @@ public class CustomIngestService implements IngestService {
                 .parse();
         for (CustomCsv entry : entries) {
             if (StringUtils.hasText(entry.getResearchers()))
-                datasetService.add(new DatasetEntry(entry.getYear(), entry.getCountry(), "researchers", "EUROSTAT", entry.getResearchers(), ""));
+                datasetService.save(new DatasetEntry(entry.getYear(), entry.getCountry(), "researchers", "EUROSTAT", entry.getResearchers(), ""));
             if (StringUtils.hasText(entry.getPublications()))
-                datasetService.add(new DatasetEntry(entry.getYear(), entry.getCountry(), "publications", "OpenAIRE", entry.getPublications(), ""));
+                datasetService.save(new DatasetEntry(entry.getYear(), entry.getCountry(), "publications", "OpenAIRE", entry.getPublications(), ""));
             if (StringUtils.hasText(entry.getDatasets()))
-                datasetService.add(new DatasetEntry(entry.getYear(), entry.getCountry(), "datasets", "OpenAIRE", entry.getDatasets(), ""));
+                datasetService.save(new DatasetEntry(entry.getYear(), entry.getCountry(), "datasets", "OpenAIRE", entry.getDatasets(), ""));
             if (StringUtils.hasText(entry.getSoftware()))
-                datasetService.add(new DatasetEntry(entry.getYear(), entry.getCountry(), "software", "OpenAIRE", entry.getSoftware(), ""));
+                datasetService.save(new DatasetEntry(entry.getYear(), entry.getCountry(), "software", "OpenAIRE", entry.getSoftware(), ""));
             if (StringUtils.hasText(entry.getServices()))
-                datasetService.add(new DatasetEntry(entry.getYear(), entry.getCountry(), "services", "EOSC", entry.getServices(), ""));
+                datasetService.save(new DatasetEntry(entry.getYear(), entry.getCountry(), "services", "EOSC", entry.getServices(), ""));
             if (StringUtils.hasText(entry.getSignatories()))
-                datasetService.add(new DatasetEntry(entry.getYear(), entry.getCountry(), "signatories", "COARA", entry.getSignatories(), ""));
+                datasetService.save(new DatasetEntry(entry.getYear(), entry.getCountry(), "signatories", "COARA", entry.getSignatories(), ""));
         }
     }
 }
