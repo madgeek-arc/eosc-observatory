@@ -108,7 +108,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             return false;
         }
         Coordinator coordinator = coordinatorService.get(coordinatorId);
-        return coordinator.getMembers() != null && coordinator.getMembers().contains(userId);
+        return coordinator.getUsers() != null && coordinator.getUsers().contains(userId);
     }
 
     @Override
