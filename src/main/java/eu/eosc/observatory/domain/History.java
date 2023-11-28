@@ -30,6 +30,7 @@ public class History {
 
     public enum HistoryAction {
         CREATED,
+        IMPORTED,
         UPDATED,
         VALIDATED,
         INVALIDATED,

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class GroupService {
@@ -20,7 +21,17 @@ public class GroupService {
         this.stakeholderService = stakeholderService;
     }
 
-    public List<String> getUserIds(String groupId) {
+    public String getGroupName(String groupId) {
+        String groupName = "";
+        if (groupId.startsWith("sh-")) {
+            groupName = stakeholderService.get(groupId).getName();
+        } else if (groupId.startsWith("co-")) {
+            groupName = coordinatorService.get(groupId).getName();
+        }
+        return groupName;
+    }
+
+    public Set<String> getUserIds(String groupId) {
         Set<String> members = new HashSet<>();
         if (groupId.startsWith("sh-")) {
             Stakeholder sh = stakeholderService.get(groupId);
@@ -29,6 +40,6 @@ public class GroupService {
         } else if (groupId.startsWith("co-")) {
             members.addAll(coordinatorService.get(groupId).getMembers());
         }
-        return members.stream().toList();
+        return members;
     }
 }

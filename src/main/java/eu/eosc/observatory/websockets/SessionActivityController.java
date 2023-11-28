@@ -67,6 +67,6 @@ public class SessionActivityController {
             SessionActivity activity = new SessionActivity(sessionId, User.of(auth).getFullname(), action);
             userActivities.remove(activity);
         }
-        return resourcesMap.get(type).get(id);
+        return resourcesMap.containsKey(type) ? resourcesMap.get(type).get(id) : Set.of();
     }
 }

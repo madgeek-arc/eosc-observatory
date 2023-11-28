@@ -21,6 +21,7 @@ public class User implements Identifiable<String> {
     private String fullname;
     private List<PolicyAccepted> policiesAccepted;
     private Profile profile;
+    private Settings settings = new Settings();
 
     public User() {
     }
@@ -108,6 +109,15 @@ public class User implements Identifiable<String> {
 
     public void setProfile(Profile profile) {
         this.profile = profile;
+    }
+
+    public Settings getSettings() {
+        return settings;
+    }
+
+    public User setSettings(Settings settings) {
+        this.settings = settings;
+        return this;
     }
 
     public static String getId(Authentication auth) {

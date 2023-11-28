@@ -19,7 +19,6 @@ import gr.athenarc.catalogue.ui.service.ModelService;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -138,6 +137,35 @@ public class SurveyServiceImpl implements SurveyService {
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
         return surveyAnswerCrudService.update(id, surveyAnswer);
+    }
+
+    @Override
+    public SurveyAnswer importAnswer(String surveyAnswerId, String modelFrom, Authentication authentication) throws ResourceNotFoundException {
+        Date date = new Date();
+        Model modelToImport = modelService.get(modelFrom);
+        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
+
+        validateImportable(surveyAnswer.getSurveyId(), modelToImport);
+
+        SurveyAnswer previous = getLatest(modelFrom, surveyAnswer.getStakeholderId());
+
+        User user = User.of(authentication);
+        String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
+
+        surveyAnswer.setAnswer(previous.getAnswer());
+
+        surveyAnswer.getHistory().addEntry(user.getId(), userRole, String.format("Imported data from '%s'", modelToImport.getName()), date, History.HistoryAction.IMPORTED);
+        surveyAnswer.getMetadata().setModifiedBy(user.getId());
+        surveyAnswer.getMetadata().setModificationDate(date);
+        return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
+    }
+
+    private void validateImportable(String surveyId, Model modelToImport) {
+        Model model = modelService.get(surveyId);
+        if (!model.getConfiguration().isPrefillable() || model.getConfiguration().getImportFrom() == null
+                || model.getConfiguration().getImportFrom().isEmpty() || !model.getConfiguration().getImportFrom().contains(modelToImport.getId())) {
+            throw new UnsupportedOperationException("Import from '" + modelToImport.getName() + "' is not supported.");
+        }
     }
 
     @Override

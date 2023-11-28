@@ -47,19 +47,19 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#id) or isCoordinatorMemberOfStakeholder(#id)")
+    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#id) or isCoordinatorOfStakeholder(#id)")
     public ResponseEntity<Stakeholder> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(stakeholderService.get(id), HttpStatus.OK);
     }
 
     @PostMapping()
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfType(#dto.getType())")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#dto.getType())")
     public ResponseEntity<Stakeholder> create(@RequestBody StakeholderDTO dto) {
         return new ResponseEntity<>(stakeholderService.add(stakeholderMapper.toStakeholder(dto)), HttpStatus.CREATED);
     }
 
     @PutMapping("{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfStakeholder(#id)")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#id)")
     public ResponseEntity<Stakeholder> update(@PathVariable("id") String id, @RequestBody StakeholderDTO dto) {
         Stakeholder existing = stakeholderService.get(id);
         Stakeholder toUpdate = stakeholderMapper.toStakeholder(dto);
@@ -76,7 +76,7 @@ public class StakeholderController {
 
     @Browse
     @GetMapping()
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfType(#allRequestParams.get('type'))")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#allRequestParams.get('type'))")
     public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
         FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
         Browsing<Stakeholder> stakeholders = stakeholderService.getAll(filter);
@@ -88,7 +88,7 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}/members")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId) or isCoordinatorMemberOfStakeholder(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
     public ResponseEntity<GroupMembers<User>> getMembers(@PathVariable("id") String stakeholderId) {
         return new ResponseEntity<>(stakeholderService.getGroupMembers(stakeholderId).map(userService::getUser), HttpStatus.OK);
     }
@@ -106,7 +106,7 @@ public class StakeholderController {
     }
 
     @DeleteMapping("{id}/contributors/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfStakeholder(#stakeholderId) or isStakeholderManager(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId) or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<Set<String>> removeContributor(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeMember(stakeholderId, userId), HttpStatus.OK);
     }
@@ -125,7 +125,7 @@ public class StakeholderController {
     }
 
     @DeleteMapping("{id}/managers/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMemberOfStakeholder(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId)")
     public ResponseEntity<Set<String>> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeAdmin(stakeholderId, userId), HttpStatus.OK);
     }

@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 
 public class CsvBuilder {
 
-    private LinkedHashMap<String, Column> columns = new LinkedHashMap<>();
+    private final LinkedHashMap<String, Column> columns = new LinkedHashMap<>();
     private transient Character delimiter = '\t';
     private transient String listDelimiter = ";";
     private static final String DOUBLE_QUOTE_ENCODED = "%22";
@@ -55,7 +55,7 @@ public class CsvBuilder {
         columns.putAll(temp);
     }
 
-    public void addValue(String label, int index, List<String> data) {
+    public void addValue(String label, int index, List<Object> data) {
         if (index >= columnSize) {
             for (Column column : columns.values()) {
                 for (int i = columnSize - 1; i <= index; i++) {
@@ -73,13 +73,13 @@ public class CsvBuilder {
         for (Map.Entry<String, Column> entry : columns.entrySet()) {
             data.put(entry.getKey(), new ArrayList<>());
             List<String> values = data.get(entry.getKey());
-            for (List<String> item : entry.getValue().getContents()) {
+            for (List<Object> item : entry.getValue().getContents()) {
                 values.add(formatText(createCellData(item)));
             }
             for (int i = 0; i < entry.getValue().getSiblings().size(); i++) {
                 String siblingLabel = String.format("%s (%s)", entry.getKey(), i + 1);
                 data.putIfAbsent(siblingLabel, new ArrayList<>());
-                for (List<String> siblingItem : entry.getValue().getSiblings().get(i).getContents()) {
+                for (List<Object> siblingItem : entry.getValue().getSiblings().get(i).getContents()) {
                     data.get(siblingLabel).add(formatText(createCellData(siblingItem)));
                 }
             }
@@ -119,24 +119,23 @@ public class CsvBuilder {
         return text;
     }
 
-    private String createCellData(List<String> data) {
+    private String createCellData(List<Object> data) {
+        List<String> stringData = null;
         if (data != null) {
-            try {
-                data = data.stream().map(item -> {
-                    if (item == null) return "";
-                    else return item;
-                }).collect(Collectors.toList());
-            } catch (RuntimeException e) {
-                throw e;
-            }
+            stringData = data.stream()
+                    .map(item -> {
+                        if (item == null) return "";
+                        else return String.valueOf(item);
+                    })
+                    .collect(Collectors.toList());
         }
-        return data != null ? String.join(listDelimiter, data) : "";
+        return data != null ? String.join(listDelimiter, stringData) : "";
     }
 
     class Column {
 
         private String label;
-        private List<List<String>> contents = new LinkedList<>();
+        private List<List<Object>> contents = new LinkedList<>();
         private List<Column> siblings = new LinkedList<>();
 
         public Column(String label) {
@@ -159,19 +158,19 @@ public class CsvBuilder {
             }
         }
 
-        public void add(int i, List<String> data) {
+        public void add(int i, List<Object> data) {
 
             if (i >= contents.size()) {
                 try {
-                for (int j = contents.size(); j <= i; j++) {
-                    contents.add(null);
-                    for (Column sibling : siblings) {
-                        sibling.getContents().add(i, null);
+                    for (int j = contents.size(); j <= i; j++) {
+                        contents.add(null);
+                        for (Column sibling : siblings) {
+                            sibling.getContents().add(i, null);
+                        }
                     }
-                }
-                contents.set(i, data);
+                    contents.set(i, data);
 
-            } catch (IndexOutOfBoundsException e) {
+                } catch (IndexOutOfBoundsException e) {
                     System.out.println("error");
                     throw e;
                 }
@@ -204,11 +203,11 @@ public class CsvBuilder {
             this.label = label;
         }
 
-        public List<List<String>> getContents() {
+        public List<List<Object>> getContents() {
             return contents;
         }
 
-        public void setContents(List<List<String>> contents) {
+        public void setContents(List<List<Object>> contents) {
             this.contents = contents;
         }
 

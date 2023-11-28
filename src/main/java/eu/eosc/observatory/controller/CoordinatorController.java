@@ -35,7 +35,7 @@ public class CoordinatorController {
     /*---------------------------*/
 
     @GetMapping("{id}")
-    @PreAuthorize("isCoordinatorMember(#id)")
+    @PreAuthorize("isCoordinator(#id)")
     public ResponseEntity<Coordinator> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(coordinatorService.get(id), HttpStatus.OK);
     }
