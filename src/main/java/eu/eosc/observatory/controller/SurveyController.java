@@ -235,15 +235,28 @@ public class SurveyController {
     @Browse
     @GetMapping("answers/info")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#coordinatorId) or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(value = "coordinator", required = false) String coordinatorId,
+    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(value = "groupId", required = false) String groupId,
+                                                                    @RequestParam(value = "coordinator", required = false) String coordinatorId,
                                                                     @RequestParam(value = "stakeholder", required = false) String stakeholderId,
                                                                     @Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
         allRequestParams.remove("coordinator");
         allRequestParams.remove("stakeholder");
+        allRequestParams.remove("groupId");
         FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
         String type = null;
         if (coordinatorId != null && stakeholderId != null) {
             throw new UnsupportedOperationException("Only one of ['coordinator', 'stakeholder'] is expected..");
+        }
+        if (groupId != null) {
+            if (groupId.startsWith("co-")) {
+                coordinatorId = groupId;
+                stakeholderId = null;
+            } else if (groupId.startsWith("sh-")) {
+                stakeholderId = groupId;
+                coordinatorId = null;
+            } else {
+                throw new UnsupportedOperationException("unrecognized group id");
+            }
         }
         if (coordinatorId != null) {
             type = coordinatorService.get(coordinatorId).getType();
