@@ -152,7 +152,7 @@ public class SurveyServiceImpl implements SurveyService {
         User user = User.of(authentication);
         String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
 
-        surveyAnswer.setAnswer(previous.getAnswer());
+        surveyAnswer.setAnswer(previous != null ? previous.getAnswer() : null);
 
         surveyAnswer.getHistory().addEntry(user.getId(), userRole, String.format("Imported data from '%s'", modelToImport.getName()), date, History.HistoryAction.IMPORTED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
