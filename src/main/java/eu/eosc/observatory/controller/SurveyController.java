@@ -234,7 +234,7 @@ public class SurveyController {
 
     @Browse
     @GetMapping("answers/info")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#coordinatorId) or isStakeholderManager(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#coordinatorId != null ? #coordinatorId : #groupId) or isStakeholderManager(#stakeholderId != null ? #stakeholderId : #groupId)")
     public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(value = "groupId", required = false) String groupId,
                                                                     @RequestParam(value = "coordinator", required = false) String coordinatorId,
                                                                     @RequestParam(value = "stakeholder", required = false) String stakeholderId,

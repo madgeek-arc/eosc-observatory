@@ -4,6 +4,7 @@ import eu.eosc.observatory.domain.*;
 import eu.eosc.observatory.service.*;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
+import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import gr.athenarc.catalogue.utils.ReflectUtils;
@@ -70,7 +71,12 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         if (stakeholderId == null || userId == null) {
             return false;
         }
-        Stakeholder stakeholder = stakeholderService.get(stakeholderId);
+        Stakeholder stakeholder;
+        try {
+            stakeholder = stakeholderService.get(stakeholderId);
+        } catch (ResourceNotFoundException e) {
+            return false;
+        }
         Set<String> emails = new HashSet<>();
         if (stakeholder.getMembers() != null) {
             emails.addAll(stakeholder.getMembers());
@@ -107,7 +113,12 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         if (coordinatorId == null || userId == null) {
             return false;
         }
-        Coordinator coordinator = coordinatorService.get(coordinatorId);
+        Coordinator coordinator;
+        try {
+            coordinator = coordinatorService.get(coordinatorId);
+        } catch (ResourceNotFoundException e) {
+            return false;
+        }
         return coordinator.getUsers() != null && coordinator.getUsers().contains(userId);
     }
 
