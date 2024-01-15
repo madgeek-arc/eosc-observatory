@@ -62,7 +62,6 @@ public class UserController {
     }
 
     @GetMapping("user/info")
-    @PreAuthorize("not isAnonymous()")
     public ResponseEntity<UserInfo> userInfo(@Parameter(hidden = true) Authentication authentication) {
         UserInfo userInfo = userService.getUserInfo(authentication);
         return new ResponseEntity<>(userInfo, HttpStatus.OK);
