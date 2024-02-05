@@ -102,7 +102,7 @@ public class JWSInvitationService implements InvitationService {
                 stakeholderService.addAdmin(invitationObject.getStakeholderId(), invitationObject.getInvitee());
                 return true;
             }
-            if (invitationObject.getRole().equals(Roles.Stakeholder.CONTRIBUTOR.name())
+            if (invitationObject.getRole().equalsIgnoreCase(Roles.Stakeholder.CONTRIBUTOR.name())
                     && (securityExpressions.userIsStakeholderManager(invitationObject.getInviter(), invitationObject.getStakeholderId())
                     || securityExpressions.userIsCoordinatorOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId()))) {
                 stakeholderService.addMember(invitationObject.getStakeholderId(), invitationObject.getInvitee());
