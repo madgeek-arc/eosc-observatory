@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.14</version>
+		<version>2.7.17</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>eu.eosc</groupId>
@@ -50,23 +50,11 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
-<!--		<dependency>-->
-<!--			<groupId>org.springframework.security.oauth</groupId>-->
-<!--			<artifactId>spring-security-oauth2</artifactId>-->
-<!--			<version>2.5.1.RELEASE</version>-->
-<!--		</dependency>-->
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-oauth2-client</artifactId>
-			<version>2.6.1</version>
+			<version>2.6.4</version>
 		</dependency>
-
-<!--		<dependency>-->
-<!--			<groupId>org.springframework.boot</groupId>-->
-<!--			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>-->
-<!--			<version>2.6.1</version>-->
-<!--		</dependency>-->
 
 		<!-- Redis Session -->
 		<dependency>
@@ -115,23 +103,6 @@
 			<artifactId>sentry-log4j2</artifactId>
 			<version>7.0.0</version>
 		</dependency>
-
-<!--		<dependency>-->
-<!--			<groupId>eu.openminted</groupId>-->
-<!--			<artifactId>registry-core-api</artifactId>-->
-<!--			<version>${registry-core.version}</version>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>eu.openminted</groupId>-->
-<!--			<artifactId>registry-core-rest</artifactId>-->
-<!--			<version>${registry-core.version}</version>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>eu.openminted</groupId>-->
-<!--			<artifactId>registry-core-helper</artifactId>-->
-<!--			<version>${registry-core.version}</version>-->
-<!--			<scope>compile</scope>-->
-<!--		</dependency>-->
 
 		<dependency>
 			<groupId>gr.athenarc</groupId>
@@ -204,7 +175,7 @@
 		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>jquery</artifactId>
-			<version>3.6.2</version>
+			<version>3.7.1</version>
 		</dependency>
 
 		<dependency>
