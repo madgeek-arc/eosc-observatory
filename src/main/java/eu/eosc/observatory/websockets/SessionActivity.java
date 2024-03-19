@@ -7,6 +7,7 @@ public class SessionActivity {
     String sessionId;
     String fullname;
     String action;
+    String position;
     Date date;
 
     public SessionActivity() {
@@ -49,6 +50,14 @@ public class SessionActivity {
 
     public void setAction(String action) {
         this.action = action;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
     }
 
     public Date getDate() {
