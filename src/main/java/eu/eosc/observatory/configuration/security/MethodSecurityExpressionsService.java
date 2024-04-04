@@ -32,6 +32,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     private final UserService userService;
     private final SecurityService securityService;
     private final CoordinatorService coordinatorService;
+    private final AdministratorService administratorService;
     private final StakeholderService stakeholderService;
     private final ModelService modelService;
     private final SurveyAnswerCrudService surveyAnswerCrudService;
@@ -40,12 +41,14 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     public MethodSecurityExpressionsService(UserService userService,
                                             SecurityService securityService,
                                             CoordinatorService coordinatorService,
+                                            AdministratorService administratorService,
                                             StakeholderService stakeholderService,
                                             ModelService modelService,
                                             SurveyAnswerCrudService surveyAnswerCrudService) {
         this.userService = userService;
         this.securityService = securityService;
         this.coordinatorService = coordinatorService;
+        this.administratorService = administratorService;
         this.stakeholderService = stakeholderService;
         this.modelService = modelService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
@@ -61,6 +64,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     public boolean userIsMemberOfGroup(String userId, List<String> groupIds) {
         UserInfo info = userService.getUserInfo(userId);
         Set<String> userGroups = new HashSet<>();
+        userGroups.addAll(info.getAdministrators().stream().map(Administrator::getId).collect(Collectors.toSet()));
         userGroups.addAll(info.getCoordinators().stream().map(Coordinator::getId).collect(Collectors.toSet()));
         userGroups.addAll(info.getStakeholders().stream().map(Stakeholder::getId).collect(Collectors.toSet()));
         return userGroups.containsAll(groupIds);
@@ -261,6 +265,44 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         }
         return isAdmin(authentication) ||
                 securityService.hasPermission(authentication, permission.toString().toLowerCase(), resourceId);
+    }
+
+    @Override
+    public boolean userIsAdministrator(String userId, String administratorId) {
+        if (administratorId == null || userId == null) {
+            return false;
+        }
+        Administrator administrator;
+        try {
+            administrator = administratorService.get(administratorId);
+        } catch (ResourceNotFoundException e) {
+            return false;
+        }
+        return administrator.getUsers() != null && administrator.getUsers().contains(userId);
+    }
+
+    @Override
+    public boolean isAdministrator(String administratorId) {
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsAdministrator(user.getId(), administratorId);
+    }
+
+    @Override
+    public boolean userIsAdministratorOfType(String userId, String type) {
+        if (type == null || userId == null) {
+            return false;
+        }
+        FacetFilter ff = new FacetFilter();
+        ff.addFilter("users", userId);
+        ff.addFilter("type", type);
+        List<Administrator> administrators = administratorService.getAll(ff).getResults();
+        return !administrators.isEmpty();
+    }
+
+    @Override
+    public boolean isAdministratorOfType(String type) {
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsAdministratorOfType(user.getId(), type);
     }
 
     @Override

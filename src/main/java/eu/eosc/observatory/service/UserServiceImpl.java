@@ -25,6 +25,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private final PrivacyPolicyService privacyPolicyService;
     private final CrudService<Stakeholder> stakeholderCrudService;
     private final CrudService<Coordinator> coordinatorCrudService;
+    private final CrudService<Administrator> administratorCrudService;
     private final ApplicationProperties applicationProperties;
 
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
@@ -35,11 +36,13 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               PrivacyPolicyService privacyPolicyService,
                               @Lazy CrudService<Stakeholder> stakeholderCrudService,
                               @Lazy CrudService<Coordinator> coordinatorCrudService,
+                              @Lazy CrudService<Administrator> administratorCrudService,
                               ApplicationProperties applicationProperties) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService);
         this.privacyPolicyService = privacyPolicyService;
         this.stakeholderCrudService = stakeholderCrudService;
         this.coordinatorCrudService = coordinatorCrudService;
+        this.administratorCrudService = administratorCrudService;
         this.applicationProperties = applicationProperties;
     }
 
@@ -147,9 +150,11 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         info.setAdmin(applicationProperties.getAdmins().contains(user.getEmail()));
         info.setStakeholders(new HashSet<>());
         info.setCoordinators(new HashSet<>());
+        info.setAdministrators(new HashSet<>());
 
         info.getStakeholders().addAll(stakeholderCrudService.getWithFilter("users", user.getId()));
         info.getCoordinators().addAll(coordinatorCrudService.getWithFilter("users", user.getId()));
+        info.getAdministrators().addAll(administratorCrudService.getWithFilter("users", user.getId()));
         return info;
     }
 }

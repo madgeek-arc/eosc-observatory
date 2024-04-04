@@ -138,6 +138,21 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     }
 
     @Override
+    public boolean isAdministrator(String adminId) {
+        return securityExpressions.isAdministrator(adminId);
+    }
+
+    @Override
+    public boolean userIsAdministratorOfType(String userId, String type) {
+        return securityExpressions.userIsAdministratorOfType(userId, type);
+    }
+
+    @Override
+    public boolean isAdministratorOfType(String type) {
+        return securityExpressions.isAdministratorOfType(type);
+    }
+
+    @Override
     public boolean userIsCoordinatorOfType(String userId, String type) {
         return securityExpressions.userIsCoordinatorOfType(userId, type);
     }
@@ -180,6 +195,11 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot i
     @Override
     public boolean hasAccess(Object resource, Object permission) {
         return securityExpressions.hasAccess(resource, permission);
+    }
+
+    @Override
+    public boolean userIsAdministrator(String userId, String administratorId) {
+        return securityExpressions.userIsAdministrator(userId, administratorId);
     }
 
     @Override

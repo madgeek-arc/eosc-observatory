@@ -6,9 +6,13 @@ import java.util.List;
 
 public interface MethodSecurityExpressions {
 
+    // UserGroup Methods
+
     boolean userIsMemberOfGroup(String userId, String groupId);
 
     boolean userIsMemberOfGroup(String userId, List<String> groupIds);
+
+    // Stakeholder Methods
 
     boolean userIsStakeholderMember(String userId, String stakeholderId);
 
@@ -17,6 +21,8 @@ public interface MethodSecurityExpressions {
     boolean userIsStakeholderManager(String userId, String stakeholderId);
 
     boolean isStakeholderManager(String stakeholderId);
+
+    // Coordinator Methods
 
     boolean userIsCoordinator(String userId, String coordinatorId);
 
@@ -37,6 +43,21 @@ public interface MethodSecurityExpressions {
     boolean hasStakeholderManagerAccess(Object surveyAnswer);
 
     boolean hasCoordinatorAccess(Object surveyAnswer);
+
+    // Administrator Methods
+    boolean userIsAdministrator(String userId, String administratorId);
+
+    boolean isAdministrator(String administratorId);
+
+    boolean userIsAdministratorOfType(String userId, String type);
+
+    boolean isAdministratorOfType(String type);
+
+//    boolean userIsAdministratorOfStakeholder(String userId, String stakehodlerId);
+
+//    boolean isAdministratorOfStakeholder(String stakehodlerId);
+
+    // Extra Methods
 
     boolean hasAccess(Object resource, Object permission);
 
