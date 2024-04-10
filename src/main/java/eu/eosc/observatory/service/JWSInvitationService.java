@@ -117,7 +117,7 @@ public class JWSInvitationService implements InvitationService {
     private Map<String, Object> createInvitationObject(User inviter, String invitee, String role, String stakeholderId, Date expiration) {
         Map<String, Object> invitation = new LinkedHashMap<>();
         invitation.put("inviter", inviter.getEmail());
-        invitation.put("invitee", invitee);
+        invitation.put("invitee", invitee.toLowerCase());
         invitation.put("role", role);
         invitation.put("stakeholder", stakeholderId);
         invitation.put("expiration", expiration.getTime());
