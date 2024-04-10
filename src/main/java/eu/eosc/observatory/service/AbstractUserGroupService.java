@@ -54,14 +54,14 @@ public abstract class AbstractUserGroupService<T extends UserGroup> extends Abst
         if (group.getMembers() == null) {
             group.setMembers(new HashSet<>());
         }
-        group.getMembers().add(memberId);
+        group.getMembers().add(memberId.toLowerCase());
         return super.update(groupId, group).getMembers();
     }
 
     @Override
     public Set<String> removeMember(String groupId, String memberId) {
         T group = get(groupId);
-        group.getMembers().remove(memberId);
+        group.getMembers().remove(memberId.toLowerCase());
         return super.update(groupId, group).getMembers();
     }
 
@@ -90,14 +90,14 @@ public abstract class AbstractUserGroupService<T extends UserGroup> extends Abst
         if (group.getAdmins() == null) {
             group.setAdmins(new HashSet<>());
         }
-        group.getAdmins().add(adminId);
+        group.getAdmins().add(adminId.toLowerCase());
         return super.update(groupId, group).getAdmins();
     }
 
     @Override
     public Set<String> removeAdmin(String groupId, String adminId) {
         T group = get(groupId);
-        group.getAdmins().remove(adminId);
+        group.getAdmins().remove(adminId.toLowerCase());
         return super.update(groupId, group).getAdmins();
     }
 
