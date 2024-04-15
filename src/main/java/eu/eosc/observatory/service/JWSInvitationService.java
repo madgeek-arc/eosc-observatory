@@ -31,15 +31,19 @@ public class JWSInvitationService implements InvitationService {
     private static final Logger logger = LoggerFactory.getLogger(JWSInvitationService.class);
 
     private final StakeholderService stakeholderService;
+    private final UserService userService;
     private final JWSSigner signer;
     private final JWSVerifier verifier;
 
     private final MethodSecurityExpressions securityExpressions;
 
     @Autowired
-    public JWSInvitationService(StakeholderService stakeholderService, ApplicationProperties applicationProperties,
+    public JWSInvitationService(StakeholderService stakeholderService,
+                                UserService userService,
+                                ApplicationProperties applicationProperties,
                                 @Lazy MethodSecurityExpressions securityExpressions) {
         this.stakeholderService = stakeholderService;
+        this.userService = userService;
         this.securityExpressions = securityExpressions;
 
         // Create HMAC signer/verifier
@@ -100,12 +104,14 @@ public class JWSInvitationService implements InvitationService {
             if (invitationObject.getRole().equalsIgnoreCase(Roles.Stakeholder.MANAGER.name())
                     && securityExpressions.userIsCoordinatorOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId())) {
                 stakeholderService.addAdmin(invitationObject.getStakeholderId(), invitationObject.getInvitee());
+                userService.add(User.of(authentication));
                 return true;
             }
             if (invitationObject.getRole().equalsIgnoreCase(Roles.Stakeholder.CONTRIBUTOR.name())
                     && (securityExpressions.userIsStakeholderManager(invitationObject.getInviter(), invitationObject.getStakeholderId())
                     || securityExpressions.userIsCoordinatorOfStakeholder(invitationObject.getInviter(), invitationObject.getStakeholderId()))) {
                 stakeholderService.addMember(invitationObject.getStakeholderId(), invitationObject.getInvitee());
+                userService.add(User.of(authentication));
                 return true;
             }
         } catch (ParseException | JOSEException e) {
