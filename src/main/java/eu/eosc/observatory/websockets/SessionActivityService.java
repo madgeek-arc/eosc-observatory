@@ -58,11 +58,15 @@ public class SessionActivityService {
         return resourcesMap.containsKey(type) ? resourcesMap.get(type).get(id) : Set.of();
     }
 
-    public Collection<SessionActivity> editSurvey(String sessionId, String type, String id, String field) {
+    public Collection<SessionActivity> focusOnField(String sessionId, String type, String id, String field, Authentication auth) {
+        if (!resourcesMap.containsKey(type)) {
+            add(sessionId, type, id, "edit", auth);
+        }
         Set<SessionActivity> activities = resourcesMap.get(type).get(id);
         for (SessionActivity activity : activities) {
             if (activity.getSessionId().equals(sessionId)) {
                 activity.setPosition(field);
+                activity.setDate(new Date());
             }
         }
 

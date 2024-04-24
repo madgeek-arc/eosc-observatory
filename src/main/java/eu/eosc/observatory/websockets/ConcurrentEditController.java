@@ -9,18 +9,21 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import java.io.IOException;
 
 @Controller
 public class ConcurrentEditController {
 
     private static final Logger logger = LoggerFactory.getLogger(ConcurrentEditController.class);
 
-    @MessageMapping("revision/{type}/{id}")
-    @SendTo("/topic/revision/{type}/{id}")
-    public String editField(@Header("simpSessionId") String sessionId,
+    @MessageMapping("edit/{type}/{id}")
+    @SendTo("/topic/edit/{type}/{id}")
+    public Revision editField(@Header("simpSessionId") String sessionId,
                             @DestinationVariable("type") String type,
                             @DestinationVariable("id") String id,
-                            String value, @Parameter(hidden = true) Authentication auth) {
-        return value;
+                            Revision revision, @Parameter(hidden = true) Authentication auth) {
+        return revision;
     }
 }

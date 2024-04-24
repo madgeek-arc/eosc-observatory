@@ -41,13 +41,13 @@ public class SessionActivityController {
         return sessionActivityService.delete(sessionId, type, id, action, auth);
     }
 
-    @MessageMapping("edit/{type}/{id}/{field}")
+    @MessageMapping("focus/{type}/{id}/{field}")
     @SendTo("/topic/active-users/{type}/{id}")
-    public Collection<SessionActivity> editSurvey(@Header("simpSessionId") String sessionId,
+    public Collection<SessionActivity> focusOnField(@Header("simpSessionId") String sessionId,
                                                   @DestinationVariable("type") String type,
                                                   @DestinationVariable("id") String id,
                                                   @DestinationVariable("field") String field,
                                                   @Parameter(hidden = true) Authentication auth) {
-        return sessionActivityService.editSurvey(sessionId, type, id, field);
+        return sessionActivityService.focusOnField(sessionId, type, id, field, auth);
     }
 }
