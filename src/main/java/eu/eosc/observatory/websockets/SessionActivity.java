@@ -82,4 +82,15 @@ public class SessionActivity {
     public int hashCode() {
         return getSessionId() != null ? getSessionId().hashCode() : 0;
     }
+
+    @Override
+    public String toString() {
+        return "SessionActivity{" +
+                "sessionId='" + sessionId + '\'' +
+                ", fullname='" + fullname + '\'' +
+                ", action='" + action + '\'' +
+                ", position='" + position + '\'' +
+                ", date=" + date +
+                '}';
+    }
 }

@@ -1,15 +1,18 @@
 package eu.eosc.observatory.websockets;
 
 import eu.eosc.observatory.domain.User;
+import io.sentry.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class SessionActivityService {
@@ -21,6 +24,27 @@ public class SessionActivityService {
 
     public SessionActivityService(SimpMessagingTemplate simpMessagingTemplate) {
         this.simpMessagingTemplate = simpMessagingTemplate;
+    }
+
+    @Scheduled(fixedRate = 300_000)
+    void removeInactiveSessions() {
+        Date now = new Date();
+        for (Map.Entry<String, Map<String, Set<SessionActivity>>> type : resourcesMap.entrySet()) {
+            for (Map.Entry<String, Set<SessionActivity>> id : type.getValue().entrySet()) {
+                boolean foundStale = false;
+                for (Iterator<SessionActivity> it = id.getValue().iterator(); it.hasNext();) {
+                    SessionActivity session = it.next();
+                    if ((session.getDate().getTime() + 3_600_000) < now.getTime()) {
+                        it.remove();
+                        logger.debug("Removing stale session: {}", session);
+                        foundStale = true;
+                    }
+                }
+                if (foundStale) { // broadcast changes in active-users
+                    simpMessagingTemplate.convertAndSend(String.format("/topic/active-users/%s/%s", type.getKey(), id.getKey()), id.getValue());
+                }
+            }
+        }
     }
 
     @EventListener
@@ -41,9 +65,10 @@ public class SessionActivityService {
         resourcesMap.get(type).putIfAbsent(id, new HashSet<>());
         try {
             String user = User.of(auth).getFullname();
-            resourcesMap.get(type).get(id).add(new SessionActivity(sessionId, user, action));
+            SessionActivity session = new SessionActivity(sessionId, user, action);
+            resourcesMap.get(type).get(id).add(session);
         } catch (Exception e) {
-            logger.error("user unauthorized");
+            logger.error("User Unauthorized");
         }
         logger.info("{}: {}", id, action);
         return resourcesMap.get(type).get(id);
@@ -59,9 +84,7 @@ public class SessionActivityService {
     }
 
     public Collection<SessionActivity> focusOnField(String sessionId, String type, String id, String field, Authentication auth) {
-        if (!resourcesMap.containsKey(type)) {
-            add(sessionId, type, id, "edit", auth);
-        }
+        add(sessionId, type, id, "edit", auth);
         Set<SessionActivity> activities = resourcesMap.get(type).get(id);
         for (SessionActivity activity : activities) {
             if (activity.getSessionId().equals(sessionId)) {
