@@ -18,12 +18,20 @@ public class ConcurrentEditController {
 
     private static final Logger logger = LoggerFactory.getLogger(ConcurrentEditController.class);
 
+    private final ConcurrentEditService concurrentEditService;
+
+    public ConcurrentEditController(ConcurrentEditService concurrentEditService) {
+        this.concurrentEditService = concurrentEditService;
+    }
+
     @MessageMapping("edit/{type}/{id}")
     @SendTo("/topic/edit/{type}/{id}")
     public Revision editField(@Header("simpSessionId") String sessionId,
                             @DestinationVariable("type") String type,
                             @DestinationVariable("id") String id,
                             Revision revision, @Parameter(hidden = true) Authentication auth) {
+        revision.setSessionId(sessionId);
+        concurrentEditService.edit(id, revision, auth);
         return revision;
     }
 }

@@ -2,9 +2,10 @@ package eu.eosc.observatory.domain;
 
 import org.springframework.security.core.Authentication;
 
+import java.io.Serializable;
 import java.util.Date;
 
-public class Metadata {
+public class Metadata implements Serializable {
 
     private Date creationDate;
     private String createdBy;

@@ -1,6 +1,8 @@
 package eu.eosc.observatory.domain;
 
-public class HistoryEntry {
+import java.io.Serializable;
+
+public class HistoryEntry implements Serializable {
 
     String userId;
     String userRole;

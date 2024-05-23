@@ -3,7 +3,9 @@ package eu.eosc.observatory.domain;
 import eu.eosc.observatory.service.Identifiable;
 import org.json.simple.JSONObject;
 
-public class SurveyAnswer implements Identifiable<String> {
+import java.io.Serializable;
+
+public class SurveyAnswer implements Identifiable<String>, Serializable {
 
     private String id;
     private String surveyId;

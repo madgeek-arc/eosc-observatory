@@ -1,9 +1,14 @@
 package eu.eosc.observatory.websockets;
 
-public class Revision {
+import java.io.Serializable;
+import java.util.Date;
+
+public class Revision implements Serializable {
 
     private String field;
     private Object value;
+    private String sessionId;
+    private Date date = new Date();
 
     public Revision() {
         // no-arg constructor
@@ -23,5 +28,23 @@ public class Revision {
 
     public void setValue(Object value) {
         this.value = value;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public Revision setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+        return this;
+    }
+
+    public Date getDate() {
+        return date;
+    }
+
+    public Revision setDate(Date date) {
+        this.date = date;
+        return this;
     }
 }
