@@ -10,58 +10,43 @@
 
 package eu.eosc.observatory.websockets;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.DocumentContext;
-import com.jayway.jsonpath.JsonPath;
-import eu.eosc.observatory.domain.*;
 import eu.eosc.observatory.service.SurveyAnswerCrudService;
-import eu.eosc.observatory.service.SurveyService;
 import eu.eosc.observatory.service.UserService;
-import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
-
-import javax.annotation.Resource;
 
 @Service
 public class ConcurrentEditService {
 
     private static final Logger logger = LoggerFactory.getLogger(ConcurrentEditService.class);
 
-    private RedisTemplate<String, String> template;
-
     private final ObjectMapper objectMapper;
     private final UserService userService;
     private final SurveyAnswerCrudService surveyService;
+    private final ListOperations<String, SurveyAnswerRevisionsAggregation> listOps;
 
-//    // inject the template as ListOperations
-    @Resource(name="redisTemplate")
-    private ListOperations<String, SurveyAnswerRevisionsAggregation> listOps;
-
-
-    public ConcurrentEditService(RedisTemplate<String, String> template, ObjectMapper objectMapper,
+    public ConcurrentEditService(RedisTemplate<String, SurveyAnswerRevisionsAggregation> redisTemplate, ObjectMapper objectMapper,
                                  UserService userService, SurveyAnswerCrudService surveyService) {
-        this.template = template;
+        this.listOps = redisTemplate.opsForList();
         this.objectMapper = objectMapper;
         this.userService = userService;
         this.surveyService = surveyService;
     }
 
     void edit(String surveyAnswerId, Revision revision, Authentication authentication) {
+        // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
         SurveyAnswerRevisionsAggregation sara = get(surveyAnswerId);
         sara.applyRevision(revision);
-        save(sara);
+        saveToCache(sara);
     }
 
-    private void save(SurveyAnswerRevisionsAggregation sara) {
-        // TODO: save to cache
+    private void saveToCache(SurveyAnswerRevisionsAggregation sara) {
+        // save to cache
         listOps.leftPush(sara.getSurveyAnswer().getId(), sara);
     }
 
