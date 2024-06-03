@@ -1,7 +1,10 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.Administrator;
+import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.GroupMembers;
 import eu.eosc.observatory.service.AdministratorService;
+import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
@@ -25,9 +28,12 @@ public class AdministratorController {
     private static final Logger logger = LoggerFactory.getLogger(AdministratorController.class);
 
     private final AdministratorService administratorService;
+    private final UserService userService;
 
-    public AdministratorController(AdministratorService administratorService) {
+    public AdministratorController(AdministratorService administratorService,
+                                   UserService userService) {
         this.administratorService = administratorService;
+        this.userService = userService;
     }
 
     /*---------------------------*/
@@ -70,6 +76,13 @@ public class AdministratorController {
     /*---------------------------*/
     /*       Member methods      */
     /*---------------------------*/
+
+
+    @GetMapping("{id}/users")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorMember(#administratorId)")
+    public ResponseEntity<GroupMembers<User>> getUsers(@PathVariable("id") String administratorId) {
+        return new ResponseEntity<>(administratorService.getGroupMembers(administratorId).map(userService::getUser), HttpStatus.OK);
+    }
 
     @GetMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN')")// or isAdministratorMember(#administratorId)")

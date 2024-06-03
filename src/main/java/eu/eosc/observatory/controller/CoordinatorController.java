@@ -1,7 +1,10 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.Coordinator;
+import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.dto.GroupMembers;
 import eu.eosc.observatory.service.CoordinatorService;
+import eu.eosc.observatory.service.UserService;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
@@ -25,9 +28,12 @@ public class CoordinatorController {
     private static final Logger logger = LoggerFactory.getLogger(CoordinatorController.class);
 
     private final CoordinatorService coordinatorService;
+    private final UserService userService;
 
-    public CoordinatorController(CoordinatorService coordinatorService) {
+    public CoordinatorController(CoordinatorService coordinatorService,
+                                 UserService userService) {
         this.coordinatorService = coordinatorService;
+        this.userService = userService;
     }
 
     /*---------------------------*/
@@ -71,10 +77,16 @@ public class CoordinatorController {
     /*       Member methods      */
     /*---------------------------*/
 
+    @GetMapping("{id}/users")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMember(#coordinatorId)")
+    public ResponseEntity<GroupMembers<User>> getUsers(@PathVariable("id") String coordinatorId) {
+        return new ResponseEntity<>(coordinatorService.getGroupMembers(coordinatorId).map(userService::getUser), HttpStatus.OK);
+    }
+
     @GetMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN')")// or isCoordinatorMember(#coordinatorId)")
-    public ResponseEntity<Set<String>> getMembers(@PathVariable("id") String coordinatorId) {
-        return new ResponseEntity<>(coordinatorService.getMembers(coordinatorId), HttpStatus.OK);
+    public ResponseEntity<GroupMembers<User>> getMembers(@PathVariable("id") String coordinatorId) {
+        return new ResponseEntity<>(coordinatorService.getGroupMembers(coordinatorId).map(userService::getUser), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/members")
