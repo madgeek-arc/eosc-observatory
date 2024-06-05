@@ -124,7 +124,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             if (!existing.getFullname().equals(user.getFullname())) {
                 existing.setName(user.getName());
                 existing.setSurname(user.getSurname());
-//                this.update(existing.getId(), existing);
+                existing.setFullname(user.getFullname());
+                this.update(existing.getId(), existing); // save previous user object with updated name/surname
             }
         } catch (ResourceNotFoundException e) {
             logger.debug(String.format("User not found! Adding User to database [user=%s]", user));
