@@ -1,42 +1,30 @@
-package eu.eosc.observatory.websockets;
+/*
+ * Copyright 2024 OpenAIRE AMKE
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ */
 
-import com.jayway.jsonpath.*;
-import eu.eosc.observatory.domain.SurveyAnswer;
+package eu.eosc.observatory.utils;
+
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
+import com.jayway.jsonpath.ReadContext;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 
-public class SurveyAnswerRevisionsAggregation implements Serializable {
+public class JSONObjectUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(SurveyAnswerRevisionsAggregation.class);
-    private SurveyAnswer surveyAnswer;
-    private List<Revision> revisions;
-
-//    private static final Configuration conf = Configuration.defaultConfiguration()
-//            .addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL);
-
-    public SurveyAnswerRevisionsAggregation(SurveyAnswer surveyAnswer) {
-        this.surveyAnswer = surveyAnswer;
-        this.revisions = new ArrayList<>();
-    }
-
-    public void applyRevision(Revision revision) {
-        JSONObject ans = this.getSurveyAnswer().getAnswer();
-        try {
-            ans = JsonPath/*.using(conf)*/.parse(ans).set(revision.getField(), revision.getValue()).json();
-        } catch (PathNotFoundException e) {
-            ans = add(revision.getField(), revision.getValue(), ans);
-        }
-        this.getSurveyAnswer().setAnswer(ans);
-        this.getRevisions().add(revision);
-    }
+    private static final Logger logger = LoggerFactory.getLogger(JSONObjectUtils.class);
 
     /**
      * <p>Generates the path to the required field in the provided JSON Object.
@@ -45,7 +33,7 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
      * @param field the path to the field expressed in JSON Path.
      * @param obj the JSON Object.
      */
-    public void createPath(String field, JSONObject obj) {
+    public static void createPath(String field, JSONObject obj) {
         List<String> fields = Arrays.stream(field.split("\\.")).toList();
         StringBuilder path = new StringBuilder();
 
@@ -89,7 +77,7 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
      * @param obj the JSON Object.
      * @return the JSON Object.
      */
-    public JSONObject add(String field, Object value, JSONObject obj) {
+    public static JSONObject add(String field, Object value, JSONObject obj) {
         createPath(field, obj);
         if (field.matches(".*\\[\\d+\\]")) {
             obj = addToArray(field, value, obj);
@@ -107,25 +95,12 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
      * @param obj the JSON Object.
      * @return the JSON Object.
      */
-    private JSONObject addToArray(String field, Object value, JSONObject obj) {
+    private static JSONObject addToArray(String field, Object value, JSONObject obj) {
         field = field.substring(0, field.lastIndexOf("."));
         obj = JsonPath/*.using(conf)*/.parse(obj).add(field, value).json();
         return obj;
     }
 
-    public SurveyAnswer getSurveyAnswer() {
-        return surveyAnswer;
-    }
-
-    public void setSurveyAnswer(SurveyAnswer surveyAnswer) {
-        this.surveyAnswer = surveyAnswer;
-    }
-
-    public List<Revision> getRevisions() {
-        return revisions;
-    }
-
-    public void setRevisions(List<Revision> revisions) {
-        this.revisions = revisions;
+    private JSONObjectUtils() {
     }
 }

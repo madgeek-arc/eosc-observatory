@@ -1,4 +1,4 @@
-package eu.eosc.observatory.websockets;
+package eu.eosc.observatory.domain;
 
 public class Position {
 

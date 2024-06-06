@@ -1,11 +1,15 @@
 package eu.eosc.observatory.domain;
 
 import java.io.Serializable;
+import java.util.*;
 
 public class HistoryEntry implements Serializable {
 
+    @Deprecated
     String userId;
+    @Deprecated
     String userRole;
+    List<Editor> editors = new ArrayList<>();
     String comment;
     long time;
     History.HistoryAction action;
@@ -15,36 +19,63 @@ public class HistoryEntry implements Serializable {
         // no-arg constructor
     }
 
+    public HistoryEntry(List<Editor> editors, String comment, long time, History.HistoryAction action) {
+        this.editors = editors;
+        this.comment = comment;
+        this.time = time;
+        this.action = action;
+    }
+
+    public HistoryEntry(Editor editor, String comment, long time, History.HistoryAction action) {
+        this.editors.add(editor);
+        this.comment = comment;
+        this.time = time;
+        this.action = action;
+    }
+
     public HistoryEntry(String userId, String userRole, String comment, long time, History.HistoryAction action) {
-        this.userId = userId;
-        this.userRole = userRole;
+        Editor editor = new Editor(userId, userRole);
+        this.editors.add(editor);
         this.comment = comment;
         this.time = time;
         this.action = action;
     }
 
     public HistoryEntry(String userId, String userRole, String comment, long time, History.HistoryAction action, String version) {
-        this.userId = userId;
-        this.userRole = userRole;
+        Editor editor = new Editor(userId, userRole);
+        this.editors.add(editor);
         this.time = time;
         this.action = action;
         this.registryVersion = version;
     }
 
+    @Deprecated
     public String getUserId() {
         return userId;
     }
 
+    @Deprecated
     public void setUserId(String userId) {
         this.userId = userId;
     }
 
+    @Deprecated
     public String getUserRole() {
         return userRole;
     }
 
+    @Deprecated
     public void setUserRole(String userRole) {
         this.userRole = userRole;
+    }
+
+    public List<Editor> getEditors() {
+        return editors;
+    }
+
+    public HistoryEntry setEditors(List<Editor> editors) {
+        this.editors = editors;
+        return this;
     }
 
     public String getComment() {

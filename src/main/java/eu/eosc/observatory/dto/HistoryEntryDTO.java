@@ -1,18 +1,24 @@
 package eu.eosc.observatory.dto;
 
-import eu.eosc.observatory.domain.History;
 import eu.eosc.observatory.domain.HistoryEntry;
 import eu.eosc.observatory.domain.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.util.*;
+
 public class HistoryEntryDTO {
 
     private static final Logger logger = LoggerFactory.getLogger(HistoryEntryDTO.class);
 
+    @Deprecated
     String email;
+    @Deprecated
     String fullname;
+    @Deprecated
     String role;
+    List<EditorDTO> editors = new ArrayList<>();
     String comment;
     long time;
     HistoryActionDTO action;
@@ -25,15 +31,27 @@ public class HistoryEntryDTO {
 
     public static HistoryEntryDTO of(HistoryEntry historyEntry, User user) {
         HistoryEntryDTO entry = new HistoryEntryDTO();
-        if (!historyEntry.getUserId().equals(user.getId())) {
-            logger.error("wrong user id");
+//        if (historyEntry.getUserId() != null && !historyEntry.getUserId().equals(user.getId())) {
+//            logger.error("wrong user id");
+//        }
+        if (historyEntry.getEditors() != null && !historyEntry.getEditors().isEmpty()) {
+            entry.setEditors(historyEntry.getEditors().stream().map(u -> new EditorDTO(u.getUser(), u.getRole(), u.getUpdateDate())).toList());
+        } else {
+            EditorDTO editorDTO = new EditorDTO(historyEntry.getUserId(), historyEntry.getUserRole(), Date.from(Instant.ofEpochSecond(historyEntry.getTime())));
+            entry.setEditors(new ArrayList<>());
+            entry.getEditors().add(editorDTO);
         }
-        entry.setEmail(user.getEmail());
-        entry.setFullname(user.getFullname());
-        entry.setRole(historyEntry.getUserRole());
         entry.setComment(historyEntry.getComment());
         entry.setAction(HistoryActionDTO.of(historyEntry.getAction(), historyEntry.getRegistryVersion()));
         entry.setTime(historyEntry.getTime());
+
+        // --> For backward compatibility reasons
+        // TODO: remove
+        entry.setEmail(user.getEmail());
+        entry.setFullname(user.getFullname());
+        entry.setRole(historyEntry.getUserRole());
+        // <-- For backward compatibility reasons
+
         return entry;
     }
 
@@ -59,6 +77,15 @@ public class HistoryEntryDTO {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public List<EditorDTO> getEditors() {
+        return editors;
+    }
+
+    public HistoryEntryDTO setEditors(List<EditorDTO> editors) {
+        this.editors = editors;
+        return this;
     }
 
     public String getComment() {
