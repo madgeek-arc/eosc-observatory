@@ -143,7 +143,7 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public void edit(String id, Revision revision, Authentication authentication) {
+    public synchronized void edit(String id, Revision revision, Authentication authentication) {
         // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
         SurveyAnswerRevisionsAggregation sara = getMostRecent(id);
         User user = User.of(authentication);
