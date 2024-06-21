@@ -27,11 +27,26 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
 
     public void applyRevision(Revision revision, Editor editor) {
         JSONObject ans = this.getSurveyAnswer().getAnswer();
-        try {
-            ans = JsonPath/*.using(conf)*/.parse(ans).set(revision.getField(), revision.getValue()).json();
-        } catch (PathNotFoundException e) {
-            ans = JSONObjectUtils.add(revision.getField(), revision.getValue(), ans);
+
+        switch (revision.getAction().getType()) {
+            case ADD -> ans = JSONObjectUtils.add(revision.getField(), revision.getValue(), ans);
+            case UPDATE -> {
+                try {
+                    ans = JsonPath.parse(ans).set(revision.getField(), revision.getValue()).json();
+                } catch (PathNotFoundException e) {
+                    ans = JSONObjectUtils.add(revision.getField(), revision.getValue(), ans);
+                }
+            }
+            case DELETE -> ans = JsonPath.parse(ans).delete(revision.getField()).json();
+            case MOVE -> {
+                String destination = revision.getField().replaceAll("\\[\\d+\\]$", "[" + revision.getAction().getIndex() + "]");
+                Object from = JsonPath.parse(ans).read(revision.getField());
+                Object to = JsonPath.parse(ans).read(destination);
+                ans = JsonPath.parse(ans).set(revision.getField(), to).json();
+                ans = JsonPath.parse(ans).set(destination, from).json();
+            }
         }
+
         this.getSurveyAnswer().setAnswer(ans);
         this.getRevisions().add(revision);
         this.addEditor(editor);

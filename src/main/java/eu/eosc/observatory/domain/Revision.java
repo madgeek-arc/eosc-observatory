@@ -7,7 +7,7 @@ public class Revision implements Serializable {
 
     private String field;
     private Object value;
-    private String action = "update";
+    private Action action = new Action();
     private String sessionId;
     private Date date = new Date();
 
@@ -31,11 +31,11 @@ public class Revision implements Serializable {
         this.value = value;
     }
 
-    public String getAction() {
+    public Action getAction() {
         return action;
     }
 
-    public Revision setAction(String action) {
+    public Revision setAction(Action action) {
         this.action = action;
         return this;
     }
