@@ -1,10 +1,11 @@
 package eu.eosc.observatory.domain;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class History {
+public class History implements Serializable {
 
     List<HistoryEntry> entries = new ArrayList<>();
 

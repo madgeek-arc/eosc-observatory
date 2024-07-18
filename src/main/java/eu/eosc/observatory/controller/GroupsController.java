@@ -1,6 +1,7 @@
 package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.IdNameTuple;
+import eu.eosc.observatory.domain.UserGroup;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.openminted.registry.core.domain.FacetFilter;
@@ -10,9 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -42,5 +41,10 @@ public class GroupsController {
         groupsMap.put("Survey Improvements", coordinatorService.getAll(coordinatorsFilter).getResults().stream().map(coordinator -> new IdNameTuple(coordinator.getId(), coordinator.getName())).collect(Collectors.toList()));
         groupsMap.put("Dashboard Improvement", List.of(new IdNameTuple("admin", "Administrators")));
         return groupsMap;
+    }
+
+    @GetMapping("groups/types")
+    public List<String> getUserGroupTypes() {
+        return Arrays.stream(UserGroup.GroupType.values()).map(UserGroup.GroupType::getKey).toList();
     }
 }

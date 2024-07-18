@@ -41,19 +41,22 @@ public class SurveyServiceImpl implements SurveyService {
     private final ModelService modelService;
     private final UserService userService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final CacheService<String, SurveyAnswerRevisionsAggregation> cacheService;
 
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
                              CrudService<SurveyAnswer> surveyAnswerCrudService,
                              @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,
                              PermissionService permissionService,
                              ModelService modelService,
-                             UserService userService) {
+                             UserService userService,
+                             CacheService<String, SurveyAnswerRevisionsAggregation> cacheService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericItemService = genericItemService;
         this.permissionService = permissionService;
         this.modelService = modelService;
         this.userService = userService;
+        this.cacheService = cacheService;
     }
 
     @Override
@@ -137,6 +140,27 @@ public class SurveyServiceImpl implements SurveyService {
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
         surveyAnswer.getMetadata().setModificationDate(date);
         return surveyAnswerCrudService.update(id, surveyAnswer);
+    }
+
+    @Override
+    public synchronized void edit(String id, Revision revision, Authentication authentication) {
+        // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
+        SurveyAnswerRevisionsAggregation sara = getMostRecent(id);
+        User user = User.of(authentication);
+        Editor editor = new Editor();
+        editor.setUser(user.getId());
+        editor.setRole(getUserRole(authentication, sara.getSurveyAnswer().getStakeholderId()));
+        sara.applyRevision(revision, editor);
+        cacheService.save(sara.getSurveyAnswer().getId(), sara);
+    }
+
+    private SurveyAnswerRevisionsAggregation getMostRecent(String surveyAnswerId) {
+        // TODO: find survey answer in Redis Cache or fetch it from db (only if not validated)
+        SurveyAnswerRevisionsAggregation sara = cacheService.fetch(surveyAnswerId);
+        if (sara == null) {
+            sara = new SurveyAnswerRevisionsAggregation(surveyAnswerCrudService.get(surveyAnswerId));
+        }
+        return sara;
     }
 
     @Override
@@ -466,12 +490,20 @@ public class SurveyServiceImpl implements SurveyService {
     private HistoryDTO enrichHistory(HistoryDTO history) {
         List<HistoryEntryDTO> restored = history.getEntries()
                 .stream()
-                .filter(entry -> entry.getAction().getType().equals(History.HistoryAction.RESTORED))
-                .collect(Collectors.toList());
+                .filter(entry -> Objects.equals(entry.getAction().getType(), History.HistoryAction.RESTORED))
+                .toList();
         if (!restored.isEmpty()) {
             Map<String, HistoryEntryDTO> byVersion = history.getEntries().stream().collect(Collectors.toMap(HistoryEntryDTO::getVersion, Function.identity()));
             for (HistoryEntryDTO entry : restored) {
                 entry.getAction().setPointsTo(byVersion.get(entry.getAction().getRegistryVersion()));
+            }
+        }
+
+        // Enrich Editors
+        for (HistoryEntryDTO entryDTO : history.getEntries()) {
+            for (EditorDTO editorDTO : entryDTO.getEditors()) {
+                User user = userService.get(editorDTO.getEmail());
+                editorDTO.setFullname(user.getFullname());
             }
         }
         return history;
@@ -483,6 +515,7 @@ public class SurveyServiceImpl implements SurveyService {
             User user;
             String userId = ((SurveyAnswer) object).getMetadata().getModifiedBy();
             try {
+                userId = userId.split(",", 2)[0];
                 user = userService.get(userId);
             } catch (gr.athenarc.catalogue.exception.ResourceNotFoundException e) {
                 user = new User();

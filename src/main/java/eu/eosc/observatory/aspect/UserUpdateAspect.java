@@ -1,6 +1,7 @@
 package eu.eosc.observatory.aspect;
 
 import eu.eosc.observatory.domain.User;
+import eu.eosc.observatory.service.AdministratorService;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.UserService;
@@ -23,14 +24,17 @@ public class UserUpdateAspect {
     private final UserService userService;
     private final StakeholderService stakeholderService;
     private final CoordinatorService coordinatorService;
+    private final AdministratorService administratorService;
 
     @Autowired
     public UserUpdateAspect(UserService userService,
                             StakeholderService stakeholderService,
-                            CoordinatorService coordinatorService) {
+                            CoordinatorService coordinatorService,
+                            AdministratorService administratorService) {
         this.userService = userService;
         this.stakeholderService = stakeholderService;
         this.coordinatorService = coordinatorService;
+        this.administratorService = administratorService;
     }
 
     @Before("execution(* eu.eosc.observatory.configuration.security.AuthSuccessHandler.onAuthenticationSuccess(..))")
@@ -41,7 +45,8 @@ public class UserUpdateAspect {
         try {
             User user = User.of(authentication);
             if (!stakeholderService.getWithFilter("users", user.getId()).isEmpty()
-                    || !coordinatorService.getWithFilter("users", user.getId()).isEmpty()) {
+                    || !coordinatorService.getWithFilter("users", user.getId()).isEmpty()
+                    || !administratorService.getWithFilter("users", user.getId()).isEmpty()) {
                 userService.updateUserDetails(authentication);
             }
         } catch (RuntimeException e) {

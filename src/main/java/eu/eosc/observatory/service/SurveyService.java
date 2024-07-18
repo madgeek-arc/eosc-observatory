@@ -1,11 +1,11 @@
 package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.SurveyAnswer;
-import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.Diff;
 import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.SurveyAnswerInfo;
 import eu.eosc.observatory.dto.SurveyAnswerMetadataDTO;
+import eu.eosc.observatory.domain.Revision;
 import eu.openminted.registry.core.domain.Browsing;
 import eu.openminted.registry.core.domain.FacetFilter;
 import eu.openminted.registry.core.exception.ResourceNotFoundException;
@@ -40,6 +40,15 @@ public interface SurveyService {
      * @throws ResourceNotFoundException
      */
     SurveyAnswer update(String id, SurveyAnswer surveyAnswer, String comment, Authentication authentication) throws ResourceNotFoundException;
+
+    /**
+     * Applies provided Revision on SurveyAnswer object.
+     *
+     * @param id the SurveyAnswer id
+     * @param revision the revision to apply
+     * @param authentication the authentication of the user who edited the survey answer
+     */
+    void edit(String id, Revision revision, Authentication authentication);
 
     /**
      * Imports the data of an existing survey answer.

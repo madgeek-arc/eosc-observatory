@@ -87,9 +87,9 @@ public class StakeholderController {
     /*       Other methods       */
     /*---------------------------*/
 
-    @GetMapping("{id}/members")
+    @GetMapping("{id}/users")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
-    public ResponseEntity<GroupMembers<User>> getMembers(@PathVariable("id") String stakeholderId) {
+    public ResponseEntity<GroupMembers<User>> getUsers(@PathVariable("id") String stakeholderId) {
         return new ResponseEntity<>(stakeholderService.getGroupMembers(stakeholderId).map(userService::getUser), HttpStatus.OK);
     }
 

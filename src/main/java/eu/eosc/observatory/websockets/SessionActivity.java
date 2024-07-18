@@ -7,6 +7,7 @@ public class SessionActivity {
     String sessionId;
     String fullname;
     String action;
+    String position;
     Date date;
 
     public SessionActivity() {
@@ -51,6 +52,14 @@ public class SessionActivity {
         this.action = action;
     }
 
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
+
     public Date getDate() {
         return date;
     }
@@ -72,5 +81,16 @@ public class SessionActivity {
     @Override
     public int hashCode() {
         return getSessionId() != null ? getSessionId().hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "SessionActivity{" +
+                "sessionId='" + sessionId + '\'' +
+                ", fullname='" + fullname + '\'' +
+                ", action='" + action + '\'' +
+                ", position='" + position + '\'' +
+                ", date=" + date +
+                '}';
     }
 }
