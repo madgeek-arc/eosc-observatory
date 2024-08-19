@@ -534,14 +534,14 @@ public class SurveyServiceImpl implements SurveyService {
         metadata.setLastUpdate(surveyAnswer.getMetadata().getModificationDate());
         Map<String, User> editors = new TreeMap<>();
         for (HistoryEntry entry : surveyAnswer.getHistory().getEntries()) {
-            if (!editors.containsKey(entry.getUserId()) &&
-                    (entry.getAction() == History.HistoryAction.UPDATED
-                            || entry.getAction() == History.HistoryAction.VALIDATED)) {
-                User user = userService.get(entry.getUserId());
-                editors.putIfAbsent(user.getId(), user);
+            for (Editor editor : Objects.requireNonNullElse(entry.getEditors(), new ArrayList<Editor>())) {
+                if (entry.getAction() == History.HistoryAction.UPDATED
+                        || entry.getAction() == History.HistoryAction.VALIDATED) {
+                    editors.putIfAbsent(editor.getUser(), userService.get(editor.getUser()));
+                }
             }
         }
-        metadata.setEditors(editors.values().stream().toList());
+        metadata.setEditors(editors.values());
         return metadata;
     }
 
