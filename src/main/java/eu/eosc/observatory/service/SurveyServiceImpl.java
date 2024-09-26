@@ -549,6 +549,20 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
+    public List<String> getCountriesWithValidatedAnswer(String surveyId) {
+        FacetFilter filter = new FacetFilter();
+        filter.addFilter("surveyId", surveyId);
+        filter.addFilter("validated", true);
+        return surveyAnswerCrudService
+                .getAll(filter)
+                .getResults()
+                .stream()
+                .map(a -> stakeholderCrudService.get(a.getStakeholderId()).getCountry())
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public SurveyAnswer restore(String surveyAnswerId, String versionId) {
         return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRestoreHistory(a, versionId));
     }
