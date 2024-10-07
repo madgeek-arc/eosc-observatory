@@ -551,6 +551,7 @@ public class SurveyServiceImpl implements SurveyService {
     @Override
     public List<String> getCountriesWithValidatedAnswer(String surveyId) {
         FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
         filter.addFilter("surveyId", surveyId);
         filter.addFilter("validated", true);
         return surveyAnswerCrudService
