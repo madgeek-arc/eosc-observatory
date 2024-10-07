@@ -116,7 +116,7 @@ public class SurveyController {
     /*-------------------------------------*/
 
     @GetMapping("surveys/{id}/answers/validated")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'COORDINATOR', 'STAKEHOLDER')")
+//    @PreAuthorize("hasAnyAuthority('ADMIN', 'COORDINATOR', 'STAKEHOLDER')")
     public ResponseEntity<List<String>> getCountriesWithValidatedAnswers(@PathVariable("id") String surveyId,
                                            @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(surveyService.getCountriesWithValidatedAnswer(surveyId), HttpStatus.OK);
