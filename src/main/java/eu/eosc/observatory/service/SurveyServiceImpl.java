@@ -534,15 +534,33 @@ public class SurveyServiceImpl implements SurveyService {
         metadata.setLastUpdate(surveyAnswer.getMetadata().getModificationDate());
         Map<String, User> editors = new TreeMap<>();
         for (HistoryEntry entry : surveyAnswer.getHistory().getEntries()) {
-            if (!editors.containsKey(entry.getUserId()) &&
-                    (entry.getAction() == History.HistoryAction.UPDATED
-                            || entry.getAction() == History.HistoryAction.VALIDATED)) {
-                User user = userService.get(entry.getUserId());
-                editors.putIfAbsent(user.getId(), user);
+            if (entry.getAction() == History.HistoryAction.UPDATED
+                    || entry.getAction() == History.HistoryAction.VALIDATED) {
+                if (entry.getUserId() != null) { // TODO: added for backward compatibility
+                    editors.putIfAbsent(entry.getUserId(), userService.get(entry.getUserId()));
+                }
+                for (Editor editor : Objects.requireNonNullElse(entry.getEditors(), new ArrayList<Editor>())) {
+                    editors.putIfAbsent(editor.getUser(), userService.get(editor.getUser()));
+                }
             }
         }
-        metadata.setEditors(editors.values().stream().toList());
+        metadata.setEditors(editors.values());
         return metadata;
+    }
+
+    @Override
+    public List<String> getCountriesWithValidatedAnswer(String surveyId) {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        filter.addFilter("surveyId", surveyId);
+        filter.addFilter("validated", true);
+        return surveyAnswerCrudService
+                .getAll(filter)
+                .getResults()
+                .stream()
+                .map(a -> stakeholderCrudService.get(a.getStakeholderId()).getCountry())
+                .sorted()
+                .collect(Collectors.toList());
     }
 
     @Override

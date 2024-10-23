@@ -2,13 +2,13 @@ package eu.eosc.observatory.dto;
 
 import eu.eosc.observatory.domain.User;
 
+import java.util.Collection;
 import java.util.Date;
-import java.util.List;
 
 public class SurveyAnswerMetadataDTO {
 
     Date lastUpdate;
-    List<User> editors;
+    Collection<User> editors;
 
     public SurveyAnswerMetadataDTO() {
     }
@@ -21,11 +21,11 @@ public class SurveyAnswerMetadataDTO {
         this.lastUpdate = lastUpdate;
     }
 
-    public List<User> getEditors() {
+    public Collection<User> getEditors() {
         return editors;
     }
 
-    public void setEditors(List<User> editors) {
+    public void setEditors(Collection<User> editors) {
         this.editors = editors;
     }
 }

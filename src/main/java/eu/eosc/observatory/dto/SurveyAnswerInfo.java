@@ -1,13 +1,10 @@
 package eu.eosc.observatory.dto;
 
-import eu.eosc.observatory.domain.HistoryEntry;
+import eu.eosc.observatory.domain.Editor;
 import eu.eosc.observatory.domain.SurveyAnswer;
 import gr.athenarc.catalogue.ui.domain.Model;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class SurveyAnswerInfo {
@@ -36,7 +33,15 @@ public class SurveyAnswerInfo {
         info.setPublished(answer.isPublished());
         info.setStakeholder(stakeholderInfo);
         info.setLastUpdate(answer.getMetadata().getModificationDate());
-        Set<String> editedBy = answer.getHistory().getEntries().stream().map(HistoryEntry::getUserId).collect(Collectors.toSet());
+        Set<String> editedBy = answer
+                .getHistory()
+                .getEntries()
+                .stream()
+                .flatMap(he -> Objects.requireNonNullElse(he.getEditors(), new ArrayList<Editor>())
+                        .stream()
+                        .map(Editor::getUser)
+                )
+                .collect(Collectors.toSet());
         info.setEditedBy(new ArrayList<>(editedBy));
         return info;
     }

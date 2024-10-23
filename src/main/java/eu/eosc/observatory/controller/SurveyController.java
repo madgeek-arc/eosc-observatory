@@ -29,10 +29,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping
@@ -116,6 +114,13 @@ public class SurveyController {
     /*-------------------------------------*/
     /*           Survey Answers            */
     /*-------------------------------------*/
+
+    @GetMapping("surveys/{id}/answers/validated")
+//    @PreAuthorize("hasAnyAuthority('ADMIN', 'COORDINATOR', 'STAKEHOLDER')")
+    public ResponseEntity<List<String>> getCountriesWithValidatedAnswers(@PathVariable("id") String surveyId,
+                                           @Parameter(hidden = true) Authentication authentication) {
+        return new ResponseEntity<>(surveyService.getCountriesWithValidatedAnswer(surveyId), HttpStatus.OK);
+    }
 
     @PutMapping("answers/{surveyAnswerId}/import/{model}")
     @PreAuthorize("hasPermission(#surveyAnswerId, 'write')")

@@ -84,4 +84,11 @@ public interface SurveyService {
     SurveyAnswerMetadataDTO getPublicMetadata(String surveyAnswerId);
 
     SurveyAnswer restore(String surveyAnswerId, String versionId);
+
+    /**
+     * Finds the Countries with validated survey answers.
+     * @param surveyId the survey id to check
+     * @return a list of country codes
+     */
+    List<String> getCountriesWithValidatedAnswer(String surveyId);
 }
