@@ -2,8 +2,8 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.HistoryEntryDTO;
-import eu.openminted.registry.core.domain.*;
-import eu.openminted.registry.core.service.*;
+import gr.uoa.di.madgik.registry.domain.*;
+import gr.uoa.di.madgik.registry.service.*;
 import gr.athenarc.catalogue.utils.LoggingUtils;
 import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
 import gr.athenarc.catalogue.exception.ResourceException;

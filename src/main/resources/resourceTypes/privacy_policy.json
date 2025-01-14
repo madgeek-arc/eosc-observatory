@@ -22,7 +22,7 @@
       "type": "java.util.Date"
     }
   ],
-  "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
+  "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
   "name": "privacy_policy",
   "aliasGroup": "resourceTypes",
   "payloadType": "json",

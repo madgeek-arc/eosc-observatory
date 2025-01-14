@@ -3,7 +3,7 @@ package eu.eosc.observatory.service;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserGroup;
 import eu.eosc.observatory.dto.GroupMembers;
-import eu.openminted.registry.core.service.*;
+import gr.uoa.di.madgik.registry.service.*;
 
 import java.util.HashSet;
 import java.util.Set;

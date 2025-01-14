@@ -1,7 +1,7 @@
 package eu.eosc.observatory.aspect;
 
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.Facet;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.Facet;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.elasticsearch.action.search.SearchRequest;
@@ -31,7 +31,7 @@ public class FacetEnrichmentAspect {
         this.client = client;
     }
 
-    @AfterReturning(pointcut = "within(eu.eosc.observatory.service.SurveyService+) && execution(* browseSurveyAnswersInfo(eu.openminted.registry.core.domain.FacetFilter) )",
+    @AfterReturning(pointcut = "within(eu.eosc.observatory.service.SurveyService+) && execution(* browseSurveyAnswersInfo(gr.uoa.di.madgik.registry.domain.FacetFilter) )",
             returning = "browsing")
     public void enrichPagingFacets(Browsing<?> browsing) {
         browsing.setFacets(createLabels(browsing.getFacets()));

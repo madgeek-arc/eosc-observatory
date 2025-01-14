@@ -2,10 +2,10 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.SurveyAnswer;
 import eu.eosc.observatory.domain.SurveyAnswerRevisionsAggregation;
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.domain.Resource;
-import eu.openminted.registry.core.service.*;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.domain.Resource;
+import gr.uoa.di.madgik.registry.service.*;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.service.id.IdGenerator;
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
 
 
     @Scheduled(fixedDelay = 60_000)
-    void autoSaveCache() throws eu.openminted.registry.core.exception.ResourceNotFoundException {
+    void autoSaveCache() throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException {
         Set<String> keys = cacheService.fetchKeys("sa-*");
         for (String key : keys) {
             SurveyAnswerRevisionsAggregation sara = cacheService.fetch(key);

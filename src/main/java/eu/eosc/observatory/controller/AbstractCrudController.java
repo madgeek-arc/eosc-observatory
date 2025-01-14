@@ -2,19 +2,15 @@ package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.service.CrudService;
 import eu.eosc.observatory.service.Identifiable;
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.exception.ResourceNotFoundException;
-import gr.athenarc.catalogue.annotations.Browse;
-
-import gr.athenarc.catalogue.utils.PagingUtils;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.Parameter;
-
-import java.util.Map;
 
 public abstract class AbstractCrudController<T extends Identifiable<?>> {
 
@@ -41,11 +37,10 @@ public abstract class AbstractCrudController<T extends Identifiable<?>> {
         return new ResponseEntity<>(crudService.delete(id), HttpStatus.OK);
     }
 
-    @Browse
     @GetMapping()
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Browsing<T>> browse(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
-        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
+    public ResponseEntity<Browsing<T>> browse(@Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<T> tBrowsing = crudService.getAll(filter);
         return new ResponseEntity<>(tBrowsing, HttpStatus.OK);
     }

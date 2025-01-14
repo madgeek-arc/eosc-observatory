@@ -9,7 +9,7 @@ import eu.eosc.observatory.configuration.security.MethodSecurityExpressions;
 import eu.eosc.observatory.domain.Invitation;
 import eu.eosc.observatory.domain.Roles;
 import eu.eosc.observatory.domain.User;
-import eu.openminted.registry.core.service.ServiceException;
+import gr.uoa.di.madgik.registry.service.ServiceException;
 import gr.athenarc.catalogue.exception.ResourceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

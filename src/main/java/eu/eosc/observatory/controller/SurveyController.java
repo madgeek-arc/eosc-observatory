@@ -10,13 +10,11 @@ import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.CrudService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.SurveyService;
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.exception.ResourceNotFoundException;
-import gr.athenarc.catalogue.annotations.Browse;
 import gr.athenarc.catalogue.ui.controller.FormsController;
 import gr.athenarc.catalogue.ui.domain.Model;
-import gr.athenarc.catalogue.utils.PagingUtils;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
@@ -27,10 +25,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
 
 @RestController
 @RequestMapping
@@ -66,11 +66,10 @@ public class SurveyController {
         return formsController.getModel(id);
     }
 
-    @Browse
     @GetMapping("surveys")
-    public ResponseEntity<Browsing<Model>> getSurveysByStakeholderOrType(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams, @RequestParam(value = "stakeholderId", defaultValue = "") String stakeholderId, @RequestParam(value = "type", defaultValue = "") String type) {
+    public ResponseEntity<Browsing<Model>> getSurveysByStakeholderOrType(@Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams, @RequestParam(value = "stakeholderId", defaultValue = "") String stakeholderId, @RequestParam(value = "type", defaultValue = "") String type) {
         allRequestParams.remove("stakeholderId");
-        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
+        FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<Model> surveyBrowsing;
         if (stakeholderId != null && !"".equals(stakeholderId)) {
             surveyBrowsing = surveyService.getByStakeholder(filter, stakeholderId);
@@ -118,7 +117,7 @@ public class SurveyController {
     @GetMapping("surveys/{id}/answers/validated")
 //    @PreAuthorize("hasAnyAuthority('ADMIN', 'COORDINATOR', 'STAKEHOLDER')")
     public ResponseEntity<List<String>> getCountriesWithValidatedAnswers(@PathVariable("id") String surveyId,
-                                           @Parameter(hidden = true) Authentication authentication) {
+                                                                         @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(surveyService.getCountriesWithValidatedAnswer(surveyId), HttpStatus.OK);
     }
 
@@ -162,11 +161,10 @@ public class SurveyController {
         return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
     }
 
-    @Browse
     @GetMapping("answers")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Browsing<SurveyAnswer>> getAnswers(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
-        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
+    public ResponseEntity<Browsing<SurveyAnswer>> getAnswers(@Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<SurveyAnswer> answers = surveyAnswerService.getAll(filter);
         return new ResponseEntity<>(answers, HttpStatus.OK);
     }
@@ -235,17 +233,16 @@ public class SurveyController {
     /*       Other methods       */
     /*---------------------------*/
 
-    @Browse
     @GetMapping("answers/info")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#coordinatorId != null ? #coordinatorId : #groupId) or isStakeholderManager(#stakeholderId != null ? #stakeholderId : #groupId)")
     public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(value = "groupId", required = false) String groupId,
                                                                     @RequestParam(value = "coordinator", required = false) String coordinatorId,
                                                                     @RequestParam(value = "stakeholder", required = false) String stakeholderId,
-                                                                    @Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
+                                                                    @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
         allRequestParams.remove("coordinator");
         allRequestParams.remove("stakeholder");
         allRequestParams.remove("groupId");
-        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
+        FacetFilter filter = FacetFilter.from(allRequestParams);
         String type = null;
         if (coordinatorId != null && stakeholderId != null) {
             throw new UnsupportedOperationException("Only one of ['coordinator', 'stakeholder'] is expected..");

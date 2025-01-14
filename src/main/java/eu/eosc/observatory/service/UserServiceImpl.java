@@ -2,9 +2,9 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.configuration.ApplicationProperties;
 import eu.eosc.observatory.domain.*;
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.service.*;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.service.*;
 import gr.athenarc.catalogue.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

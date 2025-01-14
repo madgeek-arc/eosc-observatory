@@ -7,11 +7,9 @@ import eu.eosc.observatory.dto.StakeholderDTO;
 import eu.eosc.observatory.mappers.StakeholderMapper;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.UserService;
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.exception.ResourceNotFoundException;
-import gr.athenarc.catalogue.annotations.Browse;
-import gr.athenarc.catalogue.utils.PagingUtils;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,9 +17,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -74,11 +76,10 @@ public class StakeholderController {
         return new ResponseEntity<>(stakeholderService.delete(id), HttpStatus.OK);
     }
 
-    @Browse
     @GetMapping()
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#allRequestParams.get('type'))")
-    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
-        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
+    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<Stakeholder> stakeholders = stakeholderService.getAll(filter);
         return new ResponseEntity<>(stakeholders, HttpStatus.OK);
     }

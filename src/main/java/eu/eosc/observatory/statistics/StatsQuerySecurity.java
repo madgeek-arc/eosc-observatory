@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.eosc.observatory.configuration.security.MethodSecurityExpressions;
 import eu.eosc.observatory.domain.User;
-import eu.openminted.registry.core.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.athenarc.catalogue.service.GenericItemService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

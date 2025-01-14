@@ -37,7 +37,7 @@ public class SurveyAnswerInfo {
                 .getHistory()
                 .getEntries()
                 .stream()
-                .flatMap(he -> Objects.requireNonNullElse(he.getEditors(), new ArrayList<Editor>())
+                .flatMap(he -> Objects.requireNonNullElse(he.getEditors(), new ArrayList<Editor>()) // TODO: add userId as well ??
                         .stream()
                         .map(Editor::getUser)
                 )

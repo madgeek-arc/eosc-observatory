@@ -4,7 +4,7 @@ import eu.eosc.observatory.domain.IdNameTuple;
 import eu.eosc.observatory.domain.UserGroup;
 import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.StakeholderService;
-import eu.openminted.registry.core.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

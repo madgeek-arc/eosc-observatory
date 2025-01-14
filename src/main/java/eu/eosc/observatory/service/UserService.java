@@ -2,7 +2,7 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserInfo;
-import eu.openminted.registry.core.exception.ResourceNotFoundException;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.springframework.security.core.Authentication;
 
 public interface UserService extends CrudService<User> {

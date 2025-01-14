@@ -6,11 +6,13 @@ import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.domain.UserInfo;
 import eu.eosc.observatory.dto.ProfileDTO;
 import eu.eosc.observatory.service.UserService;
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.FacetFilter;
-import gr.athenarc.catalogue.annotations.Browse;
-import gr.athenarc.catalogue.utils.PagingUtils;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,16 +22,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Map;
 
 @RestController
 @RequestMapping("")
@@ -75,7 +72,7 @@ public class UserController {
 
     @PutMapping("users/{id}/profile")
     @PreAuthorize("hasAuthority('ADMIN') or (isAuthenticated() and authentication.principal.getAttribute('email') == #userId)")
-    public ResponseEntity<User> updateUserProfile(@PathVariable("id") String userId, @RequestBody ProfileDTO profileDTO) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
+    public ResponseEntity<User> updateUserProfile(@PathVariable("id") String userId, @RequestBody ProfileDTO profileDTO) throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException {
         User user = userService.getUser(userId);
         user.setProfile(Profile.of(profileDTO));
         user = userService.update(userId, user);
@@ -84,7 +81,7 @@ public class UserController {
 
     @PostMapping("users/{id}/profile/picture")
     @PreAuthorize("hasAuthority('ADMIN') or (isAuthenticated() and authentication.principal.getAttribute('email') == #userId)")
-    public ResponseEntity<User> updateUserPicture(@PathVariable("id") String userId, @RequestPart(name = "picture") MultipartFile picture) throws eu.openminted.registry.core.exception.ResourceNotFoundException, IOException {
+    public ResponseEntity<User> updateUserPicture(@PathVariable("id") String userId, @RequestPart(name = "picture") MultipartFile picture) throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException, IOException {
         User user = userService.getUser(userId);
         if (user.getProfile() == null) {
             user.setProfile(new Profile());
@@ -96,7 +93,7 @@ public class UserController {
 
     @PutMapping("users/{id}/settings")
     @PreAuthorize("hasAuthority('ADMIN') or (isAuthenticated() and authentication.principal.getAttribute('email') == #userId)")
-    public ResponseEntity<User> updateUserSettings(@PathVariable("id") String userId, @RequestBody Settings settings) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
+    public ResponseEntity<User> updateUserSettings(@PathVariable("id") String userId, @RequestBody Settings settings) throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException {
         User user = userService.getUser(userId);
         user.setSettings(settings);
         user = userService.update(userId, user);
@@ -106,11 +103,10 @@ public class UserController {
 
     // ADMIN METHODS
 
-    @Browse
     @GetMapping("users")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Browsing<User>> getUsers(@Parameter(hidden = true) @RequestParam Map<String, Object> allRequestParams) {
-        FacetFilter filter = PagingUtils.createFacetFilter(allRequestParams);
+    public ResponseEntity<Browsing<User>> getUsers(@Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<User> users = userService.getAll(filter);
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
@@ -130,14 +126,14 @@ public class UserController {
 
     @PutMapping("users/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<User> updateUser(@PathVariable("id") String userId, @RequestBody User user) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
+    public ResponseEntity<User> updateUser(@PathVariable("id") String userId, @RequestBody User user) throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException {
         user = userService.update(userId, user);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
     @DeleteMapping("users/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<User> delete(@PathVariable("id") String userId) throws eu.openminted.registry.core.exception.ResourceNotFoundException {
+    public ResponseEntity<User> delete(@PathVariable("id") String userId) throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException {
         User user = userService.delete(userId);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }

@@ -2,10 +2,10 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.dto.HistoryDTO;
 import eu.eosc.observatory.dto.HistoryEntryDTO;
-import eu.openminted.registry.core.domain.Browsing;
-import eu.openminted.registry.core.domain.FacetFilter;
-import eu.openminted.registry.core.domain.Resource;
-import eu.openminted.registry.core.exception.ResourceNotFoundException;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.domain.Resource;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 
 import java.util.Set;
 import java.util.function.Function;
