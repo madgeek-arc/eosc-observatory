@@ -10,7 +10,7 @@ import eu.eosc.observatory.domain.Invitation;
 import eu.eosc.observatory.domain.Roles;
 import eu.eosc.observatory.domain.User;
 import gr.uoa.di.madgik.registry.service.ServiceException;
-import gr.athenarc.catalogue.exception.ResourceException;
+import gr.uoa.di.madgik.registry.exception.ResourceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

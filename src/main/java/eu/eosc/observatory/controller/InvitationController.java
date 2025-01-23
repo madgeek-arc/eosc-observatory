@@ -2,7 +2,7 @@ package eu.eosc.observatory.controller;
 
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.service.InvitationService;
-import gr.athenarc.catalogue.exception.ResourceException;
+import gr.uoa.di.madgik.registry.exception.ResourceException;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

@@ -5,13 +5,12 @@ import eu.eosc.observatory.dto.HistoryEntryDTO;
 import gr.uoa.di.madgik.registry.domain.*;
 import gr.uoa.di.madgik.registry.service.*;
 import gr.athenarc.catalogue.utils.LoggingUtils;
-import gr.athenarc.catalogue.exception.ResourceAlreadyExistsException;
-import gr.athenarc.catalogue.exception.ResourceException;
-import gr.athenarc.catalogue.exception.ResourceNotFoundException;
-import gr.athenarc.catalogue.service.AbstractGenericItemService;
+import gr.uoa.di.madgik.registry.exception.ResourceAlreadyExistsException;
+import gr.uoa.di.madgik.registry.exception.ResourceException;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
+import gr.athenarc.catalogue.service.GenericResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +20,7 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 @Component
-public abstract class AbstractCrudService<T extends Identifiable> extends AbstractGenericItemService implements CrudService<T> {
+public abstract class AbstractCrudService<T extends Identifiable> extends GenericResourceManager implements CrudService<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractCrudService.class);
 

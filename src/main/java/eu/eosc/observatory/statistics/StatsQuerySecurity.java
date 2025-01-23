@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.eosc.observatory.configuration.security.MethodSecurityExpressions;
 import eu.eosc.observatory.domain.User;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
-import gr.athenarc.catalogue.service.GenericItemService;
+import gr.athenarc.catalogue.service.GenericResourceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,15 +22,15 @@ public class StatsQuerySecurity {
 
     private static final Logger logger = LoggerFactory.getLogger(StatsQuerySecurity.class);
     private final MethodSecurityExpressions securityExpressions;
-    private final GenericItemService genericItemService;
+    private final GenericResourceService genericResourceService;
     private final StatsToolProperties statsToolProperties;
     private final ObjectMapper objectMapper;
 
     public StatsQuerySecurity(MethodSecurityExpressions securityExpressions,
-                              @Qualifier(value = "catalogueGenericItemService") GenericItemService genericItemService,
+                              @Qualifier(value = "catalogueGenericResourceService") GenericResourceService genericResourceService,
                               StatsToolProperties statsToolProperties) {
         this.securityExpressions = securityExpressions;
-        this.genericItemService = genericItemService;
+        this.genericResourceService = genericResourceService;
         this.statsToolProperties = statsToolProperties;
         this.objectMapper = new ObjectMapper();
     }
@@ -97,7 +97,7 @@ public class StatsQuerySecurity {
                 filter.addFilter("type", group.getType());
                 filter.addFilter(group.getRole(), user.getId());
 
-                List<?> results = genericItemService.getResults(filter).getResults();
+                List<?> results = genericResourceService.getResults(filter).getResults();
                 if (!results.isEmpty()) {
                     return true;
                 }

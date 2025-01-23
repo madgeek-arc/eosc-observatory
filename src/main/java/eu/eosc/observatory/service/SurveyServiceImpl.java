@@ -11,7 +11,7 @@ import eu.eosc.observatory.permissions.Permissions;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
-import gr.athenarc.catalogue.service.GenericItemService;
+import gr.athenarc.catalogue.service.GenericResourceService;
 import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.domain.Section;
 import gr.athenarc.catalogue.ui.domain.UiField;
@@ -36,7 +36,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     private final CrudService<Stakeholder> stakeholderCrudService;
     private final CrudService<SurveyAnswer> surveyAnswerCrudService;
-    private final GenericItemService genericItemService;
+    private final GenericResourceService genericResourceService;
     private final PermissionService permissionService;
     private final ModelService modelService;
     private final UserService userService;
@@ -45,14 +45,14 @@ public class SurveyServiceImpl implements SurveyService {
 
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
                              CrudService<SurveyAnswer> surveyAnswerCrudService,
-                             @Qualifier("catalogueGenericItemService") GenericItemService genericItemService,
+                             @Qualifier("catalogueGenericResourceService") GenericResourceService genericResourceService,
                              PermissionService permissionService,
                              ModelService modelService,
                              UserService userService,
                              CacheService<String, SurveyAnswerRevisionsAggregation> cacheService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
-        this.genericItemService = genericItemService;
+        this.genericResourceService = genericResourceService;
         this.permissionService = permissionService;
         this.modelService = modelService;
         this.userService = userService;
@@ -65,7 +65,7 @@ public class SurveyServiceImpl implements SurveyService {
         if (type != null && !"".equals(type)) {
             filter.addFilter("type", type);
         }
-        Browsing<Model> surveyBrowsing = this.genericItemService.getResults(filter);
+        Browsing<Model> surveyBrowsing = this.genericResourceService.getResults(filter);
         return surveyBrowsing;
     }
 
@@ -80,7 +80,7 @@ public class SurveyServiceImpl implements SurveyService {
 //                filter.setKeyword("chapterSubTypes=" + stakeholder.getSubType());
 //            }
         }
-        Browsing<Model> surveyBrowsing = this.genericItemService.getResults(filter);
+        Browsing<Model> surveyBrowsing = this.genericResourceService.getResults(filter);
         return surveyBrowsing;
     }
 
@@ -290,7 +290,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication) {
-        Model survey = genericItemService.get("model", surveyId);
+        Model survey = genericResourceService.get("model", surveyId);
         logger.debug("Generating new cycle of Survey Answers for Survey: [id={}] [name={}]", survey.getId(), survey.getName());
         List<SurveyAnswer> surveyAnswers = new ArrayList<>();
         FacetFilter filter = new FacetFilter();
@@ -309,7 +309,7 @@ public class SurveyServiceImpl implements SurveyService {
     @Override
     public SurveyAnswer generateStakeholderAnswer(String stakeholderId, String surveyId, Authentication authentication) {
         Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
-        Model survey = genericItemService.get("model", surveyId);
+        Model survey = genericResourceService.get("model", surveyId);
         return generateAnswer(stakeholder, survey, authentication);
     }
 
@@ -337,7 +337,7 @@ public class SurveyServiceImpl implements SurveyService {
     @Override // TODO: optimize
     public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter) {
         filter.setResourceType("survey_answer");
-        Browsing<SurveyAnswer> surveyAnswerBrowsing = genericItemService.getResults(filter);
+        Browsing<SurveyAnswer> surveyAnswerBrowsing = genericResourceService.getResults(filter);
         Browsing<SurveyAnswerInfo> surveyAnswerInfoBrowsing = new Browsing<>();
         surveyAnswerInfoBrowsing.setFrom(surveyAnswerBrowsing.getFrom());
         surveyAnswerInfoBrowsing.setTo(surveyAnswerBrowsing.getTo());
@@ -346,8 +346,8 @@ public class SurveyServiceImpl implements SurveyService {
         List<SurveyAnswerInfo> results = new ArrayList<>();
         for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
             logger.debug("SurveyAnswer [id={}]", answer.getId());
-            Model survey = genericItemService.get("model", answer.getSurveyId());
-            Stakeholder stakeholder = genericItemService.get("stakeholder", answer.getStakeholderId());
+            Model survey = genericResourceService.get("model", answer.getSurveyId());
+            Stakeholder stakeholder = genericResourceService.get("stakeholder", answer.getStakeholderId());
             SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
             setProgress(info, answer, survey);
             results.add(info);
@@ -517,7 +517,7 @@ public class SurveyServiceImpl implements SurveyService {
             try {
                 userId = userId.split(",", 2)[0];
                 user = userService.get(userId);
-            } catch (gr.athenarc.catalogue.exception.ResourceNotFoundException e) {
+            } catch (ResourceNotFoundException e) {
                 user = new User();
                 user.setId(userId);
             }

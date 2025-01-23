@@ -2,7 +2,7 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.permissions.PermissionService;
-import gr.athenarc.catalogue.exception.ResourceNotFoundException;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;

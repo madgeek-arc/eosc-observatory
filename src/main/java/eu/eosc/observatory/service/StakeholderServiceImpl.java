@@ -8,7 +8,7 @@ import eu.eosc.observatory.permissions.PermissionService;
 import eu.eosc.observatory.permissions.Permissions;
 import gr.uoa.di.madgik.registry.service.*;
 import gr.athenarc.authorization.domain.Permission;
-import gr.athenarc.catalogue.exception.ResourceNotFoundException;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;

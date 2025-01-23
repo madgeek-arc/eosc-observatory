@@ -10,7 +10,7 @@ import eu.eosc.observatory.service.SurveyAnswerCrudService;
 import eu.eosc.observatory.service.SurveyService;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
-import gr.athenarc.catalogue.exception.ResourceNotFoundException;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.athenarc.catalogue.ui.domain.Model;
 import gr.athenarc.catalogue.ui.service.ModelService;
 import org.aspectj.lang.ProceedingJoinPoint;

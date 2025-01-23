@@ -15,6 +15,8 @@ import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -40,6 +42,7 @@ public class PermissionsUpdateAspect {
     }
 
     @AfterReturning(value = "execution(* eu.eosc.observatory.service.SurveyAnswerCrudService.add(..))", returning = "surveyAnswer")
+    @Retryable(maxAttempts = 5, backoff = @Backoff(delay = 5000))
     public void onAddSurveyAnswer(JoinPoint joinPoint, SurveyAnswer surveyAnswer) {
         logger.info("Adding permissions for SurveyAnswer with [id: {}]", surveyAnswer.getId());
 

@@ -7,7 +7,7 @@ import eu.eosc.observatory.configuration.PrivacyProperties;
 import eu.eosc.observatory.configuration.security.MethodSecurityExpressions;
 import eu.eosc.observatory.dto.IdField;
 import eu.eosc.observatory.service.SecurityService;
-import gr.athenarc.catalogue.exception.ResourceException;
+import gr.uoa.di.madgik.registry.exception.ResourceException;
 import org.apache.commons.beanutils.PropertyUtilsBean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
