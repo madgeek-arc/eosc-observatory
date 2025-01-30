@@ -16,13 +16,12 @@
 package eu.eosc.observatory;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class CsvBuilder {
 
     private final LinkedHashMap<String, Column> columns = new LinkedHashMap<>();
-    private transient Character delimiter = '\t';
-    private transient String listDelimiter = ";";
+    private Character delimiter = '\t';
+    private String listDelimiter = ";";
     private static final String DOUBLE_QUOTE_ENCODED = "%22";
     private int columnSize = 0;
 
@@ -50,7 +49,7 @@ public class CsvBuilder {
         columns.putIfAbsent(label, new Column(label, dataSize));
     }
 
-    public void addColumn(String label, List<String> data) {
+    public CsvBuilder addColumn(String label, List<String> data) {
         if (!columns.isEmpty()) {
             if (data.size() != columnSize) {
                 throw new RuntimeException("Cannot add column of different size.");
@@ -61,16 +60,18 @@ public class CsvBuilder {
             columnSize = data.size();
         }
         columns.put(label, new Column(label, data));
+        return this;
     }
 
-    public void appendColumnToStart(String label, List<String> data) {
+    public CsvBuilder appendColumnToStart(String label, List<String> data) {
         LinkedHashMap<String, Column> temp = (LinkedHashMap<String, Column>) columns.clone();
         columns.clear();
         columns.put(label, new Column(label, data));
         columns.putAll(temp);
+        return this;
     }
 
-    public void addValue(String label, int index, List<Object> data) {
+    public CsvBuilder addValue(String label, int index, List<Object> data) {
         if (index >= columnSize) {
             for (Column column : columns.values()) {
                 for (int i = columnSize - 1; i <= index; i++) {
@@ -81,6 +82,7 @@ public class CsvBuilder {
         }
         columns.putIfAbsent(label, new Column(label, columnSize));
         this.columns.get(label).add(index, data);
+        return this;
     }
 
     public Map<String, List<String>> getData() {
@@ -142,7 +144,7 @@ public class CsvBuilder {
                         if (item == null) return "";
                         else return String.valueOf(item);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         return data != null ? String.join(listDelimiter, stringData) : "";
     }
@@ -176,19 +178,13 @@ public class CsvBuilder {
         public void add(int i, List<Object> data) {
 
             if (i >= contents.size()) {
-                try {
-                    for (int j = contents.size(); j <= i; j++) {
-                        contents.add(null);
-                        for (Column sibling : siblings) {
-                            sibling.getContents().add(i, null);
-                        }
+                for (int j = contents.size(); j <= i; j++) {
+                    contents.add(null);
+                    for (Column sibling : siblings) {
+                        sibling.getContents().add(i, null);
                     }
-                    contents.set(i, data);
-
-                } catch (IndexOutOfBoundsException e) {
-                    System.out.println("error");
-                    throw e;
                 }
+                contents.set(i, data);
             } else if (contents.get(i) == null) {
                 contents.set(i, data);
             } else {
