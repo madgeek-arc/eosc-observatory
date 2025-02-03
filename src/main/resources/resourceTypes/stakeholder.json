@@ -76,7 +76,7 @@
   "aliases": ["resourceTypes", "userGroup"],
   "payloadType": "json",
   "properties": {
-    "class": "eu.eosc.observatory.domain.Stakeholder"
+    "class": "eu.openaire.observatory.domain.Stakeholder"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
 }

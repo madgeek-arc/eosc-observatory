@@ -1,0 +1,100 @@
+springdoc:
+  group-configs[0]:
+    group: observatory
+    display-name: Observatory
+    packages-to-scan:
+      - eu.observatory
+  group-configs[1]:
+    group: catalogue-lib
+    display-name: Data Catalogue Library
+    packages-to-scan:
+      - gr.uoa.di.madgik.catalogue
+  group-configs[2]:
+    group: registry
+    display-name: Registry
+    packages-to-scan:
+      - gr.uoa.di.madgik.registry
+
+spring:
+  flyway:
+    enabled: false
+
+  main:
+    allow-circular-references: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 1081667473465-s1g236hvbh3m7rniptoqtfktboees0rh.apps.googleusercontent.com
+            client-secret: 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
+          #            scope:
+          #              - openid
+          #              - email
+          #              - profile
+          eosc:
+            client-id: 7238dc4a-f88b-4c45-8261-50caed648dda
+            client-secret: F2yUrLupII9hMfeZz9Xe92pR3ordqhJSfYWyH1685q-QSo2haOXIJggUq2JfHWczBBvqghO0WKBOaYueeN3ApA
+            #            redirect-uri: http://localhost:8090/eic-registry/openid_connect_login
+            scope:
+              - openid
+              - email
+              - profile
+
+        provider:
+          eosc:
+            issuer-uri: https://aai-demo.eosc-portal.eu/oidc/
+  #            authorization-uri: https://aai.eosc-portal.eu/oidc/authorize
+  #            token-uri: https://aai.eosc-portal.eu/oidc/token
+  #            jwk-set-uri: https://aai.eosc-portal.eu/oidc/jwk
+  #            user-info-uri: https://aai.eosc-portal.eu/oidc/userinfo
+  #            user-name-attribute: sub
+  #      eosc:
+  #        jwt:
+  #          issuer-uri: https://aai-demo.eosc-portal.eu/oidc/
+  #          jwk-set-uri: https://aai-demo.eosc-portal.eu/oidc/jwk
+  redis:
+    host: vereniki.athenarc.gr
+    port: 6379
+    password: redis13031992k
+
+observatory:
+  loginRedirect: http://localhost:4200
+  logoutRedirect: http://localhost:4200
+  admins:
+    - spyroukon@gmail.com
+    - j.balasis92@gmail.com
+#    - stefania.martziou@gmail.com
+privacy:
+  users:
+    test: "strict"
+  surveys:
+    metadata: "strict"
+    history: strict
+
+stats-tool:
+  query-access[0]:
+    query-pattern: eosc.sb.2021.Question10
+    access: restricted
+    groups[0]:
+      role: Coordinator
+      type: eosc-sb
+    groups[1]:
+      role: Stakeholder
+      type: eosc-sb
+  query-access[1]:
+    query-pattern: eosc.sb.2021.Question[0-5]
+    access: open
+  query-access[2]:
+    query-pattern: eosc.sb.2022
+    access: closed
+
+
+
+logging:
+  level:
+    org.springframework.security.: DEBUG
+    org.springframework.security.web.util.: INFO
+    org.springframework.web.client.RestTemplate: DEBUG
+    org.reflections.Reflections: WARN

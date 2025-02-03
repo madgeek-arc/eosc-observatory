@@ -48,7 +48,7 @@
   "aliases": ["resourceTypes", "userGroup"],
   "payloadType": "json",
   "properties": {
-    "class": "eu.eosc.observatory.domain.Administrator"
+    "class": "eu.openaire.observatory.domain.Administrator"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
 }
