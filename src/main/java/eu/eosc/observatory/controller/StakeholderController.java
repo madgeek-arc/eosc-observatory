@@ -95,7 +95,7 @@ public class StakeholderController {
     @GetMapping()
     @BrowseParameters
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type)")
-    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@RequestParam(name = "type", required = false)
+    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@RequestParam(value = "type", required = false)
                                                                  String type,
                                                                  @Parameter(hidden = true) @RequestParam
                                                                  MultiValueMap<String, Object> allRequestParams) {

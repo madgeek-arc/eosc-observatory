@@ -16,7 +16,7 @@
 package eu.eosc.observatory.messaging;
 
 import eu.eosc.observatory.domain.User;
-import gr.athenarc.catalogue.exception.ServerError;
+import gr.uoa.di.madgik.catalogue.exception.ServerError;
 import gr.athenarc.messaging.config.MessagingClientProperties;
 import gr.athenarc.messaging.controller.MessagingController;
 import gr.athenarc.messaging.controller.RestApiPaths;

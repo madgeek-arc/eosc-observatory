@@ -18,7 +18,7 @@ package eu.eosc.observatory.controller;
 import eu.eosc.observatory.domain.User;
 import eu.eosc.observatory.dto.ResourcePermissions;
 import eu.eosc.observatory.permissions.PermissionService;
-import gr.athenarc.authorization.domain.Permission;
+import gr.uoa.di.madgik.authorization.domain.Permission;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -16,7 +16,7 @@
 package eu.eosc.observatory.permissions;
 
 import eu.eosc.observatory.dto.ResourcePermissions;
-import gr.athenarc.authorization.domain.Permission;
+import gr.uoa.di.madgik.authorization.domain.Permission;
 
 import java.util.Collection;
 import java.util.Set;

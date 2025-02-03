@@ -24,8 +24,8 @@ import eu.eosc.observatory.domain.Revision;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
-import gr.athenarc.catalogue.ui.domain.Model;
-import gr.athenarc.catalogue.ui.domain.UiField;
+import gr.uoa.di.madgik.catalogue.ui.domain.Model;
+import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
 import org.json.simple.JSONObject;
 import org.springframework.security.core.Authentication;
 

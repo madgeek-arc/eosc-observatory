@@ -17,7 +17,7 @@ package eu.eosc.observatory.dto;
 
 import eu.eosc.observatory.domain.Editor;
 import eu.eosc.observatory.domain.SurveyAnswer;
-import gr.athenarc.catalogue.ui.domain.Model;
+import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 
 import java.util.*;
 import java.util.stream.Collectors;

@@ -17,11 +17,11 @@ package eu.eosc.observatory.service;
 
 import eu.eosc.observatory.CsvBuilder;
 import eu.eosc.observatory.domain.*;
-import gr.athenarc.catalogue.ui.domain.Model;
-import gr.athenarc.catalogue.ui.domain.Section;
-import gr.athenarc.catalogue.ui.domain.StyledString;
-import gr.athenarc.catalogue.ui.domain.UiField;
-import gr.athenarc.catalogue.ui.service.ModelService;
+import gr.uoa.di.madgik.catalogue.ui.domain.Model;
+import gr.uoa.di.madgik.catalogue.ui.domain.Section;
+import gr.uoa.di.madgik.catalogue.ui.domain.StyledString;
+import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
+import gr.uoa.di.madgik.catalogue.ui.service.ModelService;
 import jakarta.validation.constraints.NotNull;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;

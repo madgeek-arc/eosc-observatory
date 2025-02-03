@@ -16,9 +16,9 @@
 package eu.eosc.observatory.permissions;
 
 import eu.eosc.observatory.dto.ResourcePermissions;
-import gr.athenarc.authorization.domain.Permission;
-import gr.athenarc.authorization.repository.PermissionRepository;
-import gr.athenarc.authorization.service.AuthorizationService;
+import gr.uoa.di.madgik.authorization.domain.Permission;
+import gr.uoa.di.madgik.authorization.repository.PermissionRepository;
+import gr.uoa.di.madgik.authorization.service.AuthorizationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

@@ -25,8 +25,8 @@ import eu.eosc.observatory.service.CoordinatorService;
 import eu.eosc.observatory.service.CrudService;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.SurveyService;
-import gr.athenarc.catalogue.ui.controller.FormsController;
-import gr.athenarc.catalogue.ui.domain.Model;
+import gr.uoa.di.madgik.catalogue.ui.controller.FormsController;
+import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
@@ -251,8 +251,10 @@ public class SurveyController {
 
     @GetMapping("answers/info")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#groupId) or isStakeholderManager(#groupId)")
-    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(value = "groupId", required = false) String groupId,
-                                                                    @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(name = "groupId", required = false)
+                                                                    String groupId,
+                                                                    @Parameter(hidden = true) @RequestParam
+                                                                    MultiValueMap<String, Object> allRequestParams) {
         allRequestParams.remove("groupId");
         FacetFilter filter = FacetFilter.from(allRequestParams);
         String type = null;

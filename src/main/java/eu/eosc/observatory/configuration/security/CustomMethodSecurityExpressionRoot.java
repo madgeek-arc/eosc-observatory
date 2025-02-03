@@ -17,7 +17,7 @@ package eu.eosc.observatory.configuration.security;
 
 import eu.eosc.observatory.service.Identifiable;
 import eu.eosc.observatory.service.SecurityService;
-import gr.athenarc.catalogue.utils.ReflectUtils;
+import gr.uoa.di.madgik.catalogue.utils.ReflectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;

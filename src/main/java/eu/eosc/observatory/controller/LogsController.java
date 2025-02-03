@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import jakarta.servlet.http.HttpServletResponse;
 
-public class LogsController extends gr.athenarc.catalogue.controller.LogsController {
+public class LogsController extends gr.uoa.di.madgik.catalogue.controller.LogsController {
 
     private static final Logger logger = LoggerFactory.getLogger(LogsController.class);
 

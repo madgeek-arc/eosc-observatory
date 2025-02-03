@@ -22,7 +22,7 @@ import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Resource;
 import gr.uoa.di.madgik.registry.service.*;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
-import gr.athenarc.catalogue.service.id.IdGenerator;
+import gr.uoa.di.madgik.catalogue.service.id.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;

@@ -15,8 +15,8 @@
  */
 package eu.eosc.observatory.controller.advices;
 
-import gr.athenarc.catalogue.controller.GenericExceptionController;
-import gr.athenarc.catalogue.exception.ServerError;
+import gr.uoa.di.madgik.catalogue.controller.GenericExceptionController;
+import gr.uoa.di.madgik.catalogue.exception.ServerError;
 import io.sentry.Sentry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;

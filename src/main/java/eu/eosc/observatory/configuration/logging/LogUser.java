@@ -16,7 +16,7 @@
 package eu.eosc.observatory.configuration.logging;
 
 import eu.eosc.observatory.domain.User;
-import gr.athenarc.catalogue.config.logging.AbstractLogContextFilter;
+import gr.uoa.di.madgik.catalogue.config.logging.AbstractLogContextFilter;
 import org.slf4j.spi.MDCAdapter;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;

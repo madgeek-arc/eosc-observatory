@@ -53,7 +53,7 @@ public class StatsToolWrapperController {
 
     @PreAuthorize("@statsQuerySecurity.authorize(#json, authentication)")
     @GetMapping(value = "raw")
-    public Mono<?> getRawData(@RequestParam("json") String json) {
+    public Mono<?> getRawData(@RequestParam(name = "json") String json) {
         return webClient.get()
                 .uri(statsUrl("raw", json))
                 .retrieve()
