@@ -41,6 +41,7 @@ import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
@@ -86,7 +87,7 @@ public class SurveyController {
         allRequestParams.remove("stakeholderId");
         FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<Model> surveyBrowsing;
-        if (stakeholderId != null && !"".equals(stakeholderId)) {
+        if (StringUtils.hasText(stakeholderId)) {
             surveyBrowsing = surveyService.getByStakeholder(filter, stakeholderId);
         } else {
             surveyBrowsing = surveyService.getByType(filter, type);
@@ -236,7 +237,7 @@ public class SurveyController {
                                                               @RequestParam(value = "stakeholderId", required = false, defaultValue = "") String stakeholderId,
                                                               @Parameter(hidden = true) Authentication authentication) {
         List<SurveyAnswer> answers;
-        if (stakeholderId != null && !"".equals(stakeholderId)) {
+        if (StringUtils.hasText(stakeholderId)) {
             answers = Collections.singletonList(surveyService.generateStakeholderAnswer(stakeholderId, surveyId, authentication));
         } else {
             answers = surveyService.generateAnswers(surveyId, authentication);
@@ -249,36 +250,21 @@ public class SurveyController {
     /*---------------------------*/
 
     @GetMapping("answers/info")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#coordinatorId != null ? #coordinatorId : #groupId) or isStakeholderManager(#stakeholderId != null ? #stakeholderId : #groupId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#groupId) or isStakeholderManager(#groupId)")
     public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(value = "groupId", required = false) String groupId,
-                                                                    @RequestParam(value = "coordinator", required = false) String coordinatorId,
-                                                                    @RequestParam(value = "stakeholder", required = false) String stakeholderId,
                                                                     @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
-        allRequestParams.remove("coordinator");
-        allRequestParams.remove("stakeholder");
         allRequestParams.remove("groupId");
         FacetFilter filter = FacetFilter.from(allRequestParams);
         String type = null;
-        if (coordinatorId != null && stakeholderId != null) {
-            throw new UnsupportedOperationException("Only one of ['coordinator', 'stakeholder'] is expected..");
-        }
+
         if (groupId != null) {
             if (groupId.startsWith("co-")) {
-                coordinatorId = groupId;
-                stakeholderId = null;
+                type = coordinatorService.get(groupId).getType();
             } else if (groupId.startsWith("sh-")) {
-                stakeholderId = groupId;
-                coordinatorId = null;
+                type = stakeholderService.get(groupId).getType();
             } else {
                 throw new UnsupportedOperationException("unrecognized group id");
             }
-        }
-        if (coordinatorId != null) {
-            type = coordinatorService.get(coordinatorId).getType();
-        } else if (stakeholderId != null) {
-            type = stakeholderService.get(stakeholderId).getType();
-        } else {
-            throw new UnsupportedOperationException("One of ['coordinator', 'stakeholder'] is expected..");
         }
 
         filter.addFilter("type", type);
