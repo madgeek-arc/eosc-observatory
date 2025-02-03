@@ -22,6 +22,7 @@ import eu.eosc.observatory.dto.StakeholderDTO;
 import eu.eosc.observatory.mappers.StakeholderMapper;
 import eu.eosc.observatory.service.StakeholderService;
 import eu.eosc.observatory.service.UserService;
+import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
@@ -92,8 +93,12 @@ public class StakeholderController {
     }
 
     @GetMapping()
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#allRequestParams.get('type'))")
-    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+    @BrowseParameters
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type)")
+    public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@RequestParam(name = "type", required = false)
+                                                                 String type,
+                                                                 @Parameter(hidden = true) @RequestParam
+                                                                 MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<Stakeholder> stakeholders = stakeholderService.getAll(filter);
         return new ResponseEntity<>(stakeholders, HttpStatus.OK);
