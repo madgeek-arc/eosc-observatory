@@ -19,6 +19,8 @@ import eu.openaire.observatory.service.SecurityService;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.expression.EvaluationContext;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
 import org.springframework.security.authentication.AuthenticationTrustResolver;
@@ -26,16 +28,20 @@ import org.springframework.security.authentication.AuthenticationTrustResolverIm
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-@Service
+import java.util.function.Supplier;
+
 public class CustomMethodSecurityExpressionHandler extends DefaultMethodSecurityExpressionHandler {
 
-    private AuthenticationTrustResolver trustResolver = new AuthenticationTrustResolverImpl();
+    private final AuthenticationTrustResolver trustResolver = new AuthenticationTrustResolverImpl();
+    private final ApplicationContext applicationContext;
 
-    @Autowired
-    private ApplicationContext applicationContext;
+    public CustomMethodSecurityExpressionHandler(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 
     @Override
-    protected MethodSecurityExpressionOperations createSecurityExpressionRoot(Authentication authentication, MethodInvocation invocation) {
+    protected MethodSecurityExpressionOperations createSecurityExpressionRoot(Authentication authentication,
+                                                                              MethodInvocation invocation) {
         CustomMethodSecurityExpressionRoot root = new CustomMethodSecurityExpressionRoot(authentication,
                 applicationContext.getBean(MethodSecurityExpressions.class),
                 applicationContext.getBean(SecurityService.class));

@@ -30,7 +30,8 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
-public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot implements MethodSecurityExpressionOperations, PermissionEvaluator, MethodSecurityExpressions {
+public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
+        implements MethodSecurityExpressionOperations, PermissionEvaluator, MethodSecurityExpressions {
 
     private static final Logger logger = LoggerFactory.getLogger(CustomMethodSecurityExpressionRoot.class);
 
