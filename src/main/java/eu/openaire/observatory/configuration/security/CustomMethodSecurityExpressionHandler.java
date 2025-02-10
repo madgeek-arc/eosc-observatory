@@ -40,13 +40,14 @@ public class CustomMethodSecurityExpressionHandler extends DefaultMethodSecurity
     }
 
     @Override
-    protected MethodSecurityExpressionOperations createSecurityExpressionRoot(Authentication authentication,
-                                                                              MethodInvocation invocation) {
-        CustomMethodSecurityExpressionRoot root = new CustomMethodSecurityExpressionRoot(authentication,
+    public EvaluationContext createEvaluationContext(Supplier<Authentication> authentication, MethodInvocation mi) {
+        StandardEvaluationContext ctx = (StandardEvaluationContext) super.createEvaluationContext(authentication, mi);
+        CustomMethodSecurityExpressionRoot root = new CustomMethodSecurityExpressionRoot(authentication.get(),
                 applicationContext.getBean(MethodSecurityExpressions.class),
                 applicationContext.getBean(SecurityService.class));
         root.setTrustResolver(this.trustResolver);
         root.setRoleHierarchy(getRoleHierarchy());
-        return root;
+        ctx.setRootObject(root);
+        return ctx;
     }
 }
