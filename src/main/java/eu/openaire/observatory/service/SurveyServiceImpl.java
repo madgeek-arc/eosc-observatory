@@ -193,14 +193,13 @@ public class SurveyServiceImpl implements SurveyService {
         Model modelToImport = modelService.get(modelFrom);
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
 
-        validateImportable(surveyAnswer.getSurveyId(), modelToImport);
+        Model model = modelService.get(surveyAnswer.getSurveyId());
+        validateImportCompatibility(model, modelToImport);
 
-        SurveyAnswer previous = getLatest(modelFrom, surveyAnswer.getStakeholderId());
+        prefill(modelToImport, surveyAnswer);
 
         User user = User.of(authentication);
         String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
-
-        surveyAnswer.setAnswer(previous != null ? previous.getAnswer() : null);
 
         surveyAnswer.getHistory().addEntry(user.getId(), userRole, String.format("Imported data from '%s'", modelToImport.getName()), date, History.HistoryAction.IMPORTED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
@@ -208,11 +207,66 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
     }
 
-    private void validateImportable(String surveyId, Model modelToImport) {
-        Model model = modelService.get(surveyId);
+    /**
+     * Prefills a survey answer based on a previous model's response.
+     *
+     * @param previousModel the previous model to check for compatibility
+     * @param surveyAnswer the survey answer to prefill
+     */
+    private void prefill(Model previousModel, SurveyAnswer surveyAnswer) {
+        SurveyAnswer previous = getLatest(previousModel.getId(), surveyAnswer.getStakeholderId());
+        JSONObject toImport = previous.getAnswer();
+        //TODO: enable following when ready
+//        JSONObject toImport = removeDeprecated(model, previous.getAnswer());
+        surveyAnswer.setAnswer(toImport);
+    }
+
+    /**
+     * Creates a new json from an existing, with its deprecated fields removed.
+     *
+     * @param model the model to use
+     * @param obj the original json object
+     * @return the json object without deprecated fields
+     */
+    private JSONObject removeDeprecated(Model model, JSONObject obj) {
+        JSONObject json = new JSONObject(obj);
+        // TODO: recurse sub sections
+        for (Section section : model.getSections()) {
+            for (UiField field : section.getFields()) {
+                removeDeprecatedFields(field, "", json);
+            }
+        }
+        return obj;
+    }
+
+    /**
+     * Removes deprecated fields from a json response.
+     *
+     * @param field the current field to check
+     * @param path the full path of the field
+     * @param json the json object
+     */
+    private void removeDeprecatedFields(UiField field, String path, JSONObject json) {
+        if (field.isDeprecated()) {
+            json.remove(path);
+        } else {
+            for (UiField f : field.getSubFields()) {
+                removeDeprecatedFields(f, String.join(".", path, f.getName()), json);
+            }
+        }
+    }
+
+    /**
+     * Ensure whether a previous model is <b>compatible</b> to be imported in a new model.
+     *
+     * @param model the new model
+     * @param previousModel the model from which to import data
+     * @throws UnsupportedOperationException when the models are incompatible
+     */
+    private void validateImportCompatibility(Model model, Model previousModel) {
         if (!model.getConfiguration().isPrefillable() || model.getConfiguration().getImportFrom() == null
-                || model.getConfiguration().getImportFrom().isEmpty() || !model.getConfiguration().getImportFrom().contains(modelToImport.getId())) {
-            throw new UnsupportedOperationException("Import from '" + modelToImport.getName() + "' is not supported.");
+                || model.getConfiguration().getImportFrom().isEmpty() || !model.getConfiguration().getImportFrom().contains(previousModel.getId())) {
+            throw new UnsupportedOperationException("Import from '" + previousModel.getName() + "' is not supported.");
         }
     }
 
