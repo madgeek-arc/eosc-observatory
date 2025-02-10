@@ -18,6 +18,8 @@ package eu.openaire.observatory.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.dto.Diff;
 import eu.openaire.observatory.dto.EditorDTO;
@@ -32,6 +34,7 @@ import eu.openaire.observatory.dto.SurveyAnswerMetadataDTO;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
+import eu.openaire.observatory.utils.JSONObjectUtils;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
@@ -193,14 +196,13 @@ public class SurveyServiceImpl implements SurveyService {
         Model modelToImport = modelService.get(modelFrom);
         SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
 
-        validateImportable(surveyAnswer.getSurveyId(), modelToImport);
+        Model model = modelService.get(surveyAnswer.getSurveyId());
+        validateImportCompatibility(model, modelToImport);
 
-        SurveyAnswer previous = getLatest(modelFrom, surveyAnswer.getStakeholderId());
+        prefill(modelToImport, surveyAnswer);
 
         User user = User.of(authentication);
         String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
-
-        surveyAnswer.setAnswer(previous != null ? previous.getAnswer() : null);
 
         surveyAnswer.getHistory().addEntry(user.getId(), userRole, String.format("Imported data from '%s'", modelToImport.getName()), date, History.HistoryAction.IMPORTED);
         surveyAnswer.getMetadata().setModifiedBy(user.getId());
@@ -208,11 +210,86 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
     }
 
-    private void validateImportable(String surveyId, Model modelToImport) {
-        Model model = modelService.get(surveyId);
+    /**
+     * Prefills a survey answer based on a previous model's response.
+     *
+     * @param previousModel the previous model to check for compatibility
+     * @param surveyAnswer the survey answer to prefill
+     */
+    private void prefill(Model previousModel, SurveyAnswer surveyAnswer) {
+        SurveyAnswer previous = getLatest(previousModel.getId(), surveyAnswer.getStakeholderId());
+        Model model = modelService.get(surveyAnswer.getSurveyId());
+        JSONObject toImport = removeDeprecatedFields(model, previous.getAnswer());
+        surveyAnswer.setAnswer(toImport);
+    }
+
+    /**
+     * Creates a new json from an existing, with its deprecated fields removed.
+     *
+     * @param model the model to use
+     * @param obj the original json object
+     * @return the json object without deprecated fields
+     */
+    private JSONObject removeDeprecatedFields(Model model, JSONObject obj) {
+        JSONObject json = new JSONObject(obj);
+        for (Section section : model.getSections()) {
+            removeDeprecatedFieldsFromSection(section, ".", json);
+        }
+        return obj;
+    }
+
+    /**
+     * Removes deprecated fields from Section and its subsections (recursive).
+     *
+     * @param section the section to use
+     * @param path the current path of the field
+     * @param obj the json to modify
+     */
+    private void removeDeprecatedFieldsFromSection(Section section, String path, JSONObject obj) {
+        if (section.getFields() != null) {
+            for (UiField field : section.getFields()) {
+                removeDeprecatedFields(field, String.join(".", path, field.getName()), obj);
+            }
+        }
+        if (section.getSubSections() != null) {
+            for (Section s : section.getSubSections()) {
+                removeDeprecatedFieldsFromSection(s, "." + section.getName(), obj);
+            }
+        }
+    }
+
+    /**
+     * Removes deprecated fields from a UiField and its subfields (recursive).
+     *
+     * @param field the current field to check
+     * @param path the current path of the field
+     * @param json the json object to modify
+     */
+    private void removeDeprecatedFields(UiField field, String path, JSONObject json) {
+        if (field.isDeprecated()) {
+            try {
+                JsonPath.parse(json).delete(path).json();
+            } catch (PathNotFoundException ignored) {}
+        } else {
+            if (field.getSubFields() != null) {
+                for (UiField f : field.getSubFields()) {
+                    removeDeprecatedFields(f, String.join(".", path, f.getName()), json);
+                }
+            }
+        }
+    }
+
+    /**
+     * Ensure whether a previous model is <b>compatible</b> to be imported in a new model.
+     *
+     * @param model the new model
+     * @param previousModel the model from which to import data
+     * @throws UnsupportedOperationException when the models are incompatible
+     */
+    private void validateImportCompatibility(Model model, Model previousModel) {
         if (!model.getConfiguration().isPrefillable() || model.getConfiguration().getImportFrom() == null
-                || model.getConfiguration().getImportFrom().isEmpty() || !model.getConfiguration().getImportFrom().contains(modelToImport.getId())) {
-            throw new UnsupportedOperationException("Import from '" + modelToImport.getName() + "' is not supported.");
+                || model.getConfiguration().getImportFrom().isEmpty() || !model.getConfiguration().getImportFrom().contains(previousModel.getId())) {
+            throw new UnsupportedOperationException("Import from '" + previousModel.getName() + "' is not supported.");
         }
     }
 
