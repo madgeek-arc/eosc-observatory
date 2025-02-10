@@ -18,6 +18,7 @@ package eu.openaire.observatory.permissions;
 import eu.openaire.observatory.dto.ResourcePermissions;
 import gr.uoa.di.madgik.authorization.domain.Permission;
 import gr.uoa.di.madgik.authorization.repository.PermissionRepository;
+import gr.uoa.di.madgik.authorization.service.Authorization;
 import gr.uoa.di.madgik.authorization.service.AuthorizationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,10 +34,10 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthorizationServiceBridge.class);
 
-    private final AuthorizationService authorizationService;
+    private final Authorization authorizationService;
     private final PermissionRepository permissionRepository;
 
-    public AuthorizationServiceBridge(AuthorizationService authorizationService,
+    public AuthorizationServiceBridge(Authorization authorizationService,
                                       PermissionRepository permissionRepository) {
         this.authorizationService = authorizationService;
         this.permissionRepository = permissionRepository;
@@ -66,22 +67,6 @@ public class AuthorizationServiceBridge implements PermissionService {
             resourcePermissionsList.add(resourcePermissions);
         }
         return resourcePermissionsList;
-    }
-
-    @Override
-    public Set<Permission> addManagers(Collection<String> users, Collection<String> resourceIds) {
-        List<String> permissions = Arrays.asList(
-                Permissions.READ.getKey(),
-                Permissions.WRITE.getKey(),
-                Permissions.MANAGE.getKey(),
-                Permissions.PUBLISH.getKey());
-        return addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
-    }
-
-    @Override
-    public Set<Permission> addContributors(Collection<String> users, Collection<String> resourceIds) {
-        List<String> permissions = Arrays.asList(Permissions.READ.getKey(), Permissions.WRITE.getKey());
-        return addPermissions(users, permissions, resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
     }
 
     @Override

@@ -35,12 +35,6 @@ public interface PermissionService {
 
     void removePermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds, String group);
 
-    @Deprecated
-    Set<Permission> addManagers(Collection<String> users, Collection<String> resourceIds);
-
-    @Deprecated
-    Set<Permission> addContributors(Collection<String> users, Collection<String> resourceIds);
-
     void removeAll(String user);
 
     void removeAll(String user, String group);
