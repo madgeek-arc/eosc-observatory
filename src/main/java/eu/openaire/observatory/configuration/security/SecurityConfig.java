@@ -62,7 +62,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
-                                .requestMatchers("/forms/.*", "/dump/.*", "/restore/", "/resources.*", "/resourceType.*", "/search.*").hasAnyAuthority("ADMIN")
+                                .requestMatchers("/forms/**", "/dump/", "/restore/", "/resources/**", "/resourceType/**", "/search/**").hasAuthority("ADMIN")
                                 .requestMatchers("/websocket").authenticated()
                                 .anyRequest().permitAll())
 
