@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.GrantedAuthority;
@@ -32,7 +34,9 @@ import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 import java.util.HashSet;
@@ -60,22 +64,26 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
 
-                .authorizeHttpRequests(authorizeRequests ->
-                        authorizeRequests
-                                .requestMatchers("/forms/**", "/dump/", "/restore/", "/resources/**", "/resourceType/**", "/search/**").hasAuthority("ADMIN")
-                                .requestMatchers("/websocket").authenticated()
-                                .anyRequest().permitAll())
-
-                .oauth2Login(oauth2login ->
-                        oauth2login
-                                .successHandler(authSuccessHandler))
-
-                .logout(logout ->
-                        logout
-                                .logoutSuccessHandler(oidcLogoutSuccessHandler())
-                                .deleteCookies()
-                                .clearAuthentication(true)
-                                .invalidateHttpSession(true))
+                .authorizeHttpRequests((authorize) -> authorize
+                        .requestMatchers(
+                                "/forms/**",
+                                "/dump/",
+                                "/restore/",
+                                "/resources/**",
+                                "/resourceType/**",
+                                "/search/**").hasAuthority("ADMIN")
+                        .requestMatchers("/websocket").authenticated()
+                        .anyRequest().permitAll()
+                )
+                .oauth2Login((oauth2login) -> oauth2login
+                        .successHandler(authSuccessHandler)
+                )
+                .logout((logout) -> logout
+                        .logoutSuccessHandler(oidcLogoutSuccessHandler())
+                        .deleteCookies()
+                        .clearAuthentication(true)
+                        .invalidateHttpSession(true)
+                )
                 .cors(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable);
 
