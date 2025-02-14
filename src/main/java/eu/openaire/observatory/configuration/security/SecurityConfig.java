@@ -66,6 +66,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers(
+                                "/logs/**",
                                 "/forms/**",
                                 "/dump/",
                                 "/restore/",
