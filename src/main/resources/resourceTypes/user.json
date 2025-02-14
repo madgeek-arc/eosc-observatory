@@ -57,12 +57,12 @@
       "type": "java.lang.Long"
     }
   ],
-  "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
+  "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
   "name": "user",
   "aliasGroup": "resourceTypes",
   "payloadType": "json",
   "properties": {
-    "class": "eu.eosc.observatory.domain.User"
+    "class": "eu.openaire.observatory.domain.User"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
 }

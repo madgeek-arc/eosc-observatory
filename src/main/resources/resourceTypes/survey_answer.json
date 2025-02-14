@@ -92,12 +92,12 @@
       "type": "java.lang.String"
     }
   ],
-  "indexMapperClass": "eu.openminted.registry.core.index.DefaultIndexMapper",
+  "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
   "name": "survey_answer",
   "aliasGroup": "resourceTypes",
   "payloadType": "json",
   "properties": {
-    "class": "eu.eosc.observatory.domain.SurveyAnswer"
+    "class": "eu.openaire.observatory.domain.SurveyAnswer"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
 }
