@@ -20,7 +20,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
-import org.springframework.boot.autoconfigure.orm.jpa.JpaProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
@@ -33,6 +32,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import jakarta.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 @EntityScan(basePackages = "eu.openaire.observatory.datasets")
@@ -49,10 +50,10 @@ public class DatasourceConfig {
         return new DataSourceProperties();
     }
 
-    @Bean(name = "datasetsJpaProperties")
+    @Bean
     @ConfigurationProperties("datasets.jpa.properties")
-    public JpaProperties datasetsJpaProperties() {
-        return new JpaProperties();
+    public Map<String, String> datasetsProperties() {
+        return new HashMap<>();
     }
 
     @Bean(name = "datasetsDataSource")
@@ -64,15 +65,13 @@ public class DatasourceConfig {
     @Bean(name = "datasetsEntityManagerFactory")
     @ConditionalOnMissingBean(name = "datasetsEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean datasetsEntityManagerFactory(
-            EntityManagerFactoryBuilder datasetsEntityManagerFactoryBuilder,
-            @Qualifier("datasetsDataSource") DataSource datasetsDataSource,
-            @Qualifier("datasetsJpaProperties") JpaProperties datasetsJpaProperties) {
+            EntityManagerFactoryBuilder datasetsEntityManagerFactoryBuilder, @Qualifier("datasetsDataSource") DataSource datasetsDataSource, Map<String, String> datasetProperties) {
 
         return datasetsEntityManagerFactoryBuilder
                 .dataSource(datasetsDataSource)
                 .packages("eu.openaire.observatory.datasets")
                 .persistenceUnit("datasetsDataSource")
-                .properties(datasetsJpaProperties.getProperties())
+                .properties(datasetProperties)
                 .build();
     }
 
