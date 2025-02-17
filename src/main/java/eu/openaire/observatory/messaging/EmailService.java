@@ -25,8 +25,8 @@ import freemarker.template.Configuration;
 import gr.athenarc.messaging.domain.Correspondent;
 import gr.athenarc.messaging.dto.MessageDTO;
 import gr.athenarc.messaging.dto.ThreadDTO;
-import gr.athenarc.messaging.mailer.client.service.MailClient;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
+import gr.athenarc.messaging.mailer.service.Mailer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,14 +40,14 @@ import java.util.*;
 public class EmailService implements EmailOperations {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
-    private final MailClient mailClient;
+    private final Mailer mailClient;
     private final GroupService groupService;
     private final UserService userService;
     private final Configuration configuration;
     private final String emailFrom;
     private final ApplicationProperties applicationProperties;
 
-    public EmailService(MailClient mailClient, GroupService groupService, UserService userService, Configuration configuration, @Value("${mailer.from}") String emailFrom, ApplicationProperties applicationProperties) {
+    public EmailService(Mailer mailClient, GroupService groupService, UserService userService, Configuration configuration, @Value("${mailer.from}") String emailFrom, ApplicationProperties applicationProperties) {
         this.mailClient = mailClient;
         this.groupService = groupService;
         this.userService = userService;
