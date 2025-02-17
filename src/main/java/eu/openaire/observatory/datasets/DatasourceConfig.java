@@ -43,22 +43,24 @@ import javax.sql.DataSource;
         basePackages = {"eu.openaire.observatory.datasets"})
 public class DatasourceConfig {
 
-    @Bean
-    @ConfigurationProperties("datasets.datasource")
-    public DataSourceProperties datasetsDatasourceProperties() {
-        return new DataSourceProperties();
-    }
-
     @Bean(name = "datasetsJpaProperties")
-    @ConfigurationProperties("datasets.jpa.properties")
+    @ConfigurationProperties("datasets.jpa")
     public JpaProperties datasetsJpaProperties() {
         return new JpaProperties();
     }
 
+    @Bean(name = "datasetsDataSourceProperties")
+    @ConfigurationProperties("datasets.datasource")
+    public DataSourceProperties datasetsDataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
     @Bean(name = "datasetsDataSource")
     @ConditionalOnMissingBean(name = "datasetsDataSource")
-    public DataSource datasetsDataSource() {
-        return datasetsDatasourceProperties().initializeDataSourceBuilder().type(HikariDataSource.class).build();
+    @ConfigurationProperties("datasets.datasource.configuration")
+    public DataSource datasetsDataSource(
+            @Qualifier("datasetsDataSourceProperties") DataSourceProperties datasetsDataSourceProperties) {
+        return datasetsDataSourceProperties.initializeDataSourceBuilder().type(HikariDataSource.class).build();
     }
 
     @Bean(name = "datasetsEntityManagerFactory")
