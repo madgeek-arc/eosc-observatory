@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>eu.openaire</groupId>
 	<artifactId>observatory</artifactId>
-	<version>3.0.1-SNAPSHOT</version>
+	<version>3.1.0</version>
 	<name>observatory</name>
 	<description>EOSC Observatory</description>
 
@@ -261,7 +261,7 @@
 		<connection>scm:git:ssh://git@github.com/madgeek-arc/eosc-observatory.git</connection>
 		<developerConnection>scm:git:ssh://git@github.com/madgeek-arc/eosc-observatory.git</developerConnection>
 		<url>https://github.com/madgeek-arc/eosc-observatory.git</url>
-		<tag>HEAD</tag>
+		<tag>3.1.0</tag>
 	</scm>
 
 	<distributionManagement>
