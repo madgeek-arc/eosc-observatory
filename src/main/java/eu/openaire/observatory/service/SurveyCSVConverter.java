@@ -17,12 +17,11 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.CsvBuilder;
 import eu.openaire.observatory.domain.*;
-import eu.openaire.observatory.domain.*;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.catalogue.ui.domain.Section;
 import gr.uoa.di.madgik.catalogue.ui.domain.StyledString;
 import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
-import gr.uoa.di.madgik.catalogue.ui.service.ModelService;
+import gr.uoa.di.madgik.catalogue.service.ModelService;
 import jakarta.validation.constraints.NotNull;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;

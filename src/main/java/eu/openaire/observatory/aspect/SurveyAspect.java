@@ -27,7 +27,7 @@ import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
-import gr.uoa.di.madgik.catalogue.ui.service.ModelService;
+import gr.uoa.di.madgik.catalogue.service.ModelService;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Around;
@@ -115,7 +115,7 @@ public class SurveyAspect {
      * @throws Throwable
      */
     @Retryable
-    @Around(value = "execution (* gr.uoa.di.madgik.catalogue.ui.service.ModelService.update(String, gr.uoa.di.madgik.catalogue.ui.domain.Model)) && args(id, model)", argNames = "pjp,id,model")
+    @Around(value = "execution (* gr.uoa.di.madgik.catalogue.service.ModelService.update(String, gr.uoa.di.madgik.catalogue.ui.domain.Model)) && args(id, model)", argNames = "pjp,id,model")
     Model managePermissionsWhenActivatingDeactivatingSurvey(ProceedingJoinPoint pjp, String id, Model model) throws Throwable {
         logger.info("Adding/Removing User permissions");
 
@@ -162,7 +162,7 @@ public class SurveyAspect {
 
 
     @Retryable
-    @AfterReturning("execution (* gr.uoa.di.madgik.catalogue.ui.service.ModelService.delete(String)) && args(id)")
+    @AfterReturning("execution (* gr.uoa.di.madgik.catalogue.service.ModelService.delete(String)) && args(id)")
     void purgeSurveyRelatedData(String id) {
         logger.info("Removing all associated Survey Answers and User permissions");
         Set<SurveyAnswer> answerSet = surveyAnswerService.getWithFilter("surveyId", id);

@@ -21,7 +21,7 @@ import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
-import gr.uoa.di.madgik.catalogue.ui.service.ModelService;
+import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.catalogue.utils.ReflectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

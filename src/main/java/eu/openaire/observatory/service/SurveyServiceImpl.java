@@ -42,7 +42,7 @@ import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.catalogue.ui.domain.Section;
 import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
-import gr.uoa.di.madgik.catalogue.ui.service.ModelService;
+import gr.uoa.di.madgik.catalogue.service.ModelService;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +72,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
                              CrudService<SurveyAnswer> surveyAnswerCrudService,
-                             @Qualifier("catalogueGenericResourceService") GenericResourceService genericResourceService,
+                             GenericResourceService genericResourceService,
                              PermissionService permissionService,
                              ModelService modelService,
                              UserService userService,

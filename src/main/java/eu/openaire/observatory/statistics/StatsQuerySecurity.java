@@ -42,7 +42,7 @@ public class StatsQuerySecurity {
     private final ObjectMapper objectMapper;
 
     public StatsQuerySecurity(MethodSecurityExpressions securityExpressions,
-                              @Qualifier(value = "catalogueGenericResourceService") GenericResourceService genericResourceService,
+                              GenericResourceService genericResourceService,
                               StatsToolProperties statsToolProperties) {
         this.securityExpressions = securityExpressions;
         this.genericResourceService = genericResourceService;

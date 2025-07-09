@@ -25,7 +25,7 @@ import eu.openaire.observatory.service.CoordinatorService;
 import eu.openaire.observatory.service.CrudService;
 import eu.openaire.observatory.service.StakeholderService;
 import eu.openaire.observatory.service.SurveyService;
-import gr.uoa.di.madgik.catalogue.ui.controller.FormsController;
+import gr.uoa.di.madgik.catalogue.controller.FormsController;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
