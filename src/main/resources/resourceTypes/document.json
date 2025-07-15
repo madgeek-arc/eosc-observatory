@@ -1,0 +1,110 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "resource_internal_id",
+      "path": "$.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "url",
+      "path": "$.url",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "title",
+      "label": "Title",
+      "path": "$.docInfo.title",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "originalTitles",
+      "label": "Original Title",
+      "path": "$.docInfo.originalTitles",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "country",
+      "label": "Country",
+      "path": "$.docInfo.country",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "language",
+      "label": "Language",
+      "path": "$.docInfo.language",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "createdBy",
+      "label": "Created By",
+      "path": "$.metadata.createdBy",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "creationDate",
+      "label": "Creation Date",
+      "path": "$.metadata.creationDate",
+      "type": "java.util.Date"
+    },
+    {
+      "multivalued": false,
+      "name": "modifiedBy",
+      "label": "Modified By",
+      "path": "$.metadata.modifiedBy",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "modificationDate",
+      "label": "Modification Date",
+      "path": "$.metadata.modificationDate",
+      "type": "java.util.Date"
+    },
+    {
+      "multivalued": true,
+      "name": "sentences",
+      "label": "Sentences",
+      "path": "$.sentences",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "sentencesEn",
+      "label": "Sentences in English",
+      "path": "$.sentencesEn",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "tags",
+      "label": "Tags",
+      "path": "$.docInfo['tags'][*]",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "otherTags",
+      "label": "Other Tags",
+      "path": "$.docInfo['otherTags'][*]",
+      "type": "java.lang.String"
+    }
+  ],
+  "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
+  "name": "document",
+  "aliases": [],
+  "payloadType": "json",
+  "properties": {
+    "class": "java.lang.Object"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+}
