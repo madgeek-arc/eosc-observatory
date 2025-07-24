@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import eu.openaire.documentanalyzer.analyze.service.DocumentAnalyzerService;
+import eu.openaire.documentanalyzer.common.model.Content;
+import eu.openaire.documentanalyzer.enrich.service.DocumentContentProcessor;
 import eu.openaire.observatory.analyzer.model.Reference;
 import eu.openaire.observatory.analyzer.model.SurveyAnswerReference;
 import eu.openaire.observatory.analyzer.model.UrlReferences;
@@ -17,42 +20,44 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.ClientResponse;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class SurveyAnswerDocumentAnalyzer {
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyAnswerDocumentAnalyzer.class);
 
-    private static final String SERVICE_URL = "http://localhost:8666/api/v1/documents/enrich?url=";
     private final SurveyAnswerCrudService surveyAnswerCrudService;
     private final GenericResourceService genericResourceService;
     private final ObjectMapper mapper = new ObjectMapper();
-    private final WebClient webClient;
     private final UrlExtractor<SurveyAnswer> surveyAnswerUrlExtractor;
+    private final DocumentTemplateLoader templateLoader;
+    private final DocumentContentProcessor documentContentProcessor;
+    private final DocumentAnalyzerService documentAnalyzerService;
 
     public SurveyAnswerDocumentAnalyzer(SurveyAnswerCrudService surveyAnswerCrudService,
                                         GenericResourceManager genericResourceManager,
-                                        UrlExtractor<SurveyAnswer> surveyAnswerUrlExtractor) {
+                                        UrlExtractor<SurveyAnswer> surveyAnswerUrlExtractor,
+                                        DocumentTemplateLoader templateLoader,
+                                        DocumentContentProcessor documentContentProcessor,
+                                        DocumentAnalyzerService documentAnalyzerService) {
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericResourceService = genericResourceManager;
         this.surveyAnswerUrlExtractor = surveyAnswerUrlExtractor;
-        this.webClient = WebClient.builder()
-                .codecs(configurer -> configurer
-                        .defaultCodecs()
-                        .maxInMemorySize(10 * 1024 * 1024)) // 10MB
-                .build();
+        this.templateLoader = templateLoader;
+        this.documentContentProcessor = documentContentProcessor;
+        this.documentAnalyzerService = documentAnalyzerService;
     }
 
     public List<UrlReferences> extractUrlsFromSurveyAnswer(String surveyAnswerId) {
         SurveyAnswer answer = surveyAnswerCrudService.get(surveyAnswerId);
-        List<UrlReferences> documentUrls = surveyAnswerUrlExtractor.extract(answer);
-        return documentUrls;
+        return surveyAnswerUrlExtractor.extract(answer);
     }
 
     public JsonNode generateDocuments(String surveyAnswerId) {
@@ -74,7 +79,7 @@ public class SurveyAnswerDocumentAnalyzer {
                     documents.add(document);
                 }
             } catch (ResourceNotFoundException e) {
-                document = (ObjectNode) generateDocument(urlReference.getUrl());
+                document = (ObjectNode) generateDocument(templateLoader.load(), urlReference.getUrl());
                 if (document != null) {
                     document.put("id", DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
                     document.put("url", urlReference.getUrl());
@@ -92,12 +97,22 @@ public class SurveyAnswerDocumentAnalyzer {
         return documents;
     }
 
-    public JsonNode generateDocument(String url) {
-        ClientResponse response = webClient.get().uri(SERVICE_URL + url).exchange().block();
-        if (!response.statusCode().is2xxSuccessful()) {
-            return null;
+    public JsonNode generateDocument(JsonNode template, String url) {
+        Content content = documentAnalyzerService.read(URI.create(url));
+        JsonNode json = documentContentProcessor.generate(template, content);
+        ArrayNode sentences = getSentences(content.getText());
+        if (json.isObject()) {
+            ObjectNode obj = (ObjectNode) json;
+            obj.put("text", content.getText());
+            obj.set("sentences", sentences);
+            if (obj.get("docInfo").get("language").asText().startsWith("en")) {
+                obj.set("sentencesEn", sentences);
+            } else {
+                ArrayNode translatedSentences = documentContentProcessor.translate(sentences, "English");
+                obj.set("sentencesEn", translatedSentences);
+            }
         }
-        JsonNode json = response.bodyToMono(JsonNode.class).block();
+
         return json;
     }
 
@@ -125,6 +140,22 @@ public class SurveyAnswerDocumentAnalyzer {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private ArrayNode getSentences(String text) {
+        // Pattern to match sentences ending in ., ! or ?
+        Pattern pattern = Pattern.compile("([^.!?\\n]*[.!?]?\\n?)");
+        Matcher matcher = pattern.matcher(text);
+
+        ArrayNode arrayNode = mapper.createArrayNode();
+
+        while (matcher.find()) {
+            String sentence = matcher.group(1).trim();
+            if (!sentence.isEmpty()) {
+                arrayNode.add(sentence);
+            }
+        }
+        return arrayNode;
     }
 
 }
