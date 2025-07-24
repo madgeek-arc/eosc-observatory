@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.MultiValueMap;
@@ -35,7 +36,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Set;
 
 @RestController
-@RequestMapping("administrators")
+@RequestMapping(path = "administrators", produces = MediaType.APPLICATION_JSON_VALUE)
 public class AdministratorController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdministratorController.class);
