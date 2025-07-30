@@ -12,6 +12,8 @@ public class Document {
     JsonNode docInfo;
     Metadata metadata;
     String text;
+    List<String> paragraphs;
+    List<String> paragraphsEn;
     List<String> sentences;
     List<String> sentencesEn;
     LinkedHashSet<SurveyAnswerReference> references;
@@ -57,6 +59,22 @@ public class Document {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public List<String> getParagraphs() {
+        return paragraphs;
+    }
+
+    public void setParagraphs(List<String> paragraphs) {
+        this.paragraphs = paragraphs;
+    }
+
+    public List<String> getParagraphsEn() {
+        return paragraphsEn;
+    }
+
+    public void setParagraphsEn(List<String> paragraphsEn) {
+        this.paragraphsEn = paragraphsEn;
     }
 
     public List<String> getSentences() {

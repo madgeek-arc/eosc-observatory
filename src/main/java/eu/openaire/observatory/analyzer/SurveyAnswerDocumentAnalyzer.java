@@ -137,17 +137,20 @@ public class SurveyAnswerDocumentAnalyzer {
     private Document generateDocument(JsonNode template, String url) {
         Content content = documentAnalyzerService.read(URI.create(url));
         JsonNode json = documentContentProcessor.generate(template, content);
+        ArrayNode paragraphs = documentContentProcessor.extractInformation(content);
         ArrayNode sentences = getSentences(content.getText());
         if (json.isObject()) {
             ObjectNode obj = (ObjectNode) json;
             obj.put("text", content.getText());
             obj.set("sentences", sentences);
+            obj.set("paragraphs", paragraphs);
             if (obj.get("docInfo").get("language").asText().startsWith("en")) {
                 obj.set("sentencesEn", sentences);
             } else {
-                ArrayNode translatedSentences = documentContentProcessor.translate(sentences, "English");
-                obj.set("sentencesEn", translatedSentences);
+                obj.set("paragraphsEn", documentContentProcessor.translate(paragraphs, "English"));
+                obj.set("sentencesEn", documentContentProcessor.translate(sentences, "English"));
             }
+            obj.set("paragraphs", documentContentProcessor.extractInformation(content));
         }
 
         return mapper.convertValue(json, Document.class);
@@ -171,16 +174,19 @@ public class SurveyAnswerDocumentAnalyzer {
     }
 
     private ArrayNode getSentences(String text) {
-        // Pattern to match sentences ending in ., ! or ?
-        Pattern pattern = Pattern.compile("([^.!?\\n]*[.!?]?\\n?)");
-        Matcher matcher = pattern.matcher(text);
+        String[] texts = text.split("[.?!]?\n+");
 
+        // Pattern to match sentences ending in ., ! or ?
+        Pattern pattern = Pattern.compile("((\\.{2,})?[^.!?\\n]*[.!?]?\\n?)");
         ArrayNode arrayNode = mapper.createArrayNode();
 
-        while (matcher.find()) {
-            String sentence = matcher.group(1).trim();
-            if (!sentence.isEmpty()) {
-                arrayNode.add(sentence);
+        for (String txt : texts) {
+            Matcher matcher = pattern.matcher(txt);
+            while (matcher.find()) {
+                String sentence = matcher.group(1).trim();
+                if (!sentence.isEmpty()) {
+                    arrayNode.add(sentence);
+                }
             }
         }
         return arrayNode;
