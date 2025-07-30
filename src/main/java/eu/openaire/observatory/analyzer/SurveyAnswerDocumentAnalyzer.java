@@ -35,6 +35,7 @@ import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -48,6 +49,7 @@ import java.util.regex.Pattern;
 public class SurveyAnswerDocumentAnalyzer {
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyAnswerDocumentAnalyzer.class);
+    private static final String USER = "system";
 
     private final SurveyAnswerCrudService surveyAnswerCrudService;
     private final GenericResourceService genericResourceService;
@@ -83,14 +85,14 @@ public class SurveyAnswerDocumentAnalyzer {
             Document document;
             try {
                 LinkedHashSet<SurveyAnswerReference> set = new LinkedHashSet<>();
-                document = mapper.convertValue(mapper.writeValueAsBytes(genericResourceService.get("document", DigestUtils.sha256Hex(urlReference.getUrl().getBytes()))), Document.class);
+                document = genericResourceService.get("document", DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
                 set.addAll(document.getReferences());
                 set.addAll(urlReference.getReferences());
 
                 if (!urlReference.getReferences().containsAll(set)) {
                     set.addAll(urlReference.getReferences());
                     document.setReferences(set);
-                    document.setMetadata(updateMetadata("USER_NAME", document.getMetadata()));
+                    document.setMetadata(updateMetadata(USER, document.getMetadata()));
                     genericResourceService.update("document", document.getId(), document);
                     documents.add(document);
                 }
@@ -99,14 +101,15 @@ public class SurveyAnswerDocumentAnalyzer {
                 if (document != null) {
                     document.setId(DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
                     document.setUrl(urlReference.getUrl());
-                    document.setMetadata(createMetadata("USER_NAME"));
+                    document.setStatus("generated");
+                    document.setMetadata(createMetadata(USER));
                     document.setReferences(urlReference.getReferences());
                     genericResourceService.add("document", document);
                     documents.add(document);
                 } else {
                     logger.warn("Problem with url: {}", urlReference.getUrl());
                 }
-            } catch (InvocationTargetException | NoSuchMethodException | NoSuchFieldException | IOException e) {
+            } catch (InvocationTargetException | NoSuchMethodException | NoSuchFieldException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -116,20 +119,18 @@ public class SurveyAnswerDocumentAnalyzer {
     public Document generateDocument(String url) {
         Document document;
         try {
-            LinkedHashMap jsonNode = genericResourceService.get("document", DigestUtils.sha256Hex(url.getBytes()));
-            document = mapper.readValue(mapper.writeValueAsString(jsonNode), Document.class);
+            document = genericResourceService.get("document", DigestUtils.sha256Hex(url.getBytes()));
         } catch (ResourceNotFoundException e) {
             document = generateDocument(templateLoader.load(), url);
             if (document != null) {
                 document.setId(DigestUtils.sha256Hex(url.getBytes()));
                 document.setUrl(url);
-                document.setMetadata(createMetadata("USER_NAME"));
+                document.setStatus("pending");
+                document.setMetadata(new Metadata(SecurityContextHolder.getContext().getAuthentication()));
                 genericResourceService.add("document", document);
             } else {
                 logger.warn("Problem with url: {}", url);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
         return document;
     }
