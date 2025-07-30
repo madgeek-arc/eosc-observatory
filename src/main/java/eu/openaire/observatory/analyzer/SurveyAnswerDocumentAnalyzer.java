@@ -136,16 +136,23 @@ public class SurveyAnswerDocumentAnalyzer {
     }
 
     private Document generateDocument(JsonNode template, String url) {
-        Content content = documentAnalyzerService.read(URI.create(url));
+        Content content;
+        try {
+            content = documentAnalyzerService.read(URI.create(url));
+        } catch (RuntimeException e) {
+            logger.error(e.getMessage(), e);
+            return null;
+        }
         JsonNode json = documentContentProcessor.generate(template, content);
         ArrayNode paragraphs = documentContentProcessor.extractInformation(content);
         ArrayNode sentences = getSentences(content.getText());
-        if (json.isObject()) {
+        if (json != null && json.isObject() && !json.isEmpty()) {
             ObjectNode obj = (ObjectNode) json;
             obj.put("text", content.getText());
             obj.set("sentences", sentences);
             obj.set("paragraphs", paragraphs);
             if (obj.get("docInfo").get("language").asText().startsWith("en")) {
+                obj.set("paragraphsEn", paragraphs);
                 obj.set("sentencesEn", sentences);
             } else {
                 obj.set("paragraphsEn", documentContentProcessor.translate(paragraphs, "English"));
