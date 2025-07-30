@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import eu.openaire.documentanalyzer.analyze.service.DocumentAnalyzerService;
 import eu.openaire.documentanalyzer.common.model.Content;
 import eu.openaire.documentanalyzer.enrich.service.DocumentContentProcessor;
+import eu.openaire.observatory.analyzer.model.Document;
 import eu.openaire.observatory.analyzer.model.Reference;
 import eu.openaire.observatory.analyzer.model.SurveyAnswerReference;
 import eu.openaire.observatory.analyzer.model.UrlReferences;
@@ -75,31 +76,31 @@ public class SurveyAnswerDocumentAnalyzer {
         return surveyAnswerUrlExtractor.extract(answer);
     }
 
-    public JsonNode generateDocuments(String surveyAnswerId) {
-        ArrayNode documents = mapper.createArrayNode();
+    public List<Document> generateDocuments(String surveyAnswerId) {
+        List<Document> documents = new ArrayList<>();
         List<UrlReferences> urlReferences = extractUrlsFromSurveyAnswer(surveyAnswerId);
         for (UrlReferences urlReference : urlReferences) {
-            ObjectNode document;
+            Document document;
             try {
-                document = (ObjectNode) mapper.readTree(mapper.writeValueAsBytes(genericResourceService.get("document", DigestUtils.sha256Hex(urlReference.getUrl().getBytes()))));
-                Set<Reference> set = new LinkedHashSet<>();
-                for (JsonNode node : document.get("references")) {
-                    set.add(mapper.convertValue(node, SurveyAnswerReference.class));
-                }
+                LinkedHashSet<SurveyAnswerReference> set = new LinkedHashSet<>();
+                document = mapper.convertValue(mapper.writeValueAsBytes(genericResourceService.get("document", DigestUtils.sha256Hex(urlReference.getUrl().getBytes()))), Document.class);
+                set.addAll(document.getReferences());
                 set.addAll(urlReference.getReferences());
+
                 if (!urlReference.getReferences().containsAll(set)) {
-                    document.set("references", mapper.convertValue(set, ArrayNode.class));
-                    document.set("metadata", updateMetadata("USER_NAME", (ObjectNode) document.get("metadata")));
-                    genericResourceService.update("document", document.get("id").asText(), document);
+                    set.addAll(urlReference.getReferences());
+                    document.setReferences(set);
+                    document.setMetadata(updateMetadata("USER_NAME", document.getMetadata()));
+                    genericResourceService.update("document", document.getId(), document);
                     documents.add(document);
                 }
             } catch (ResourceNotFoundException e) {
-                document = (ObjectNode) generateDocument(templateLoader.load(), urlReference.getUrl());
+                document = generateDocument(templateLoader.load(), urlReference.getUrl());
                 if (document != null) {
-                    document.put("id", DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
-                    document.put("url", urlReference.getUrl());
-                    document.set("metadata", createMetadata("USER_NAME"));
-                    document.set("references", mapper.convertValue(urlReference.getReferences(), ArrayNode.class));
+                    document.setId(DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
+                    document.setUrl(urlReference.getUrl());
+                    document.setMetadata(createMetadata("USER_NAME"));
+                    document.setReferences(urlReference.getReferences());
                     genericResourceService.add("document", document);
                     documents.add(document);
                 } else {
@@ -112,7 +113,28 @@ public class SurveyAnswerDocumentAnalyzer {
         return documents;
     }
 
-    public JsonNode generateDocument(JsonNode template, String url) {
+    public Document generateDocument(String url) {
+        Document document;
+        try {
+            LinkedHashMap jsonNode = genericResourceService.get("document", DigestUtils.sha256Hex(url.getBytes()));
+            document = mapper.readValue(mapper.writeValueAsString(jsonNode), Document.class);
+        } catch (ResourceNotFoundException e) {
+            document = generateDocument(templateLoader.load(), url);
+            if (document != null) {
+                document.setId(DigestUtils.sha256Hex(url.getBytes()));
+                document.setUrl(url);
+                document.setMetadata(createMetadata("USER_NAME"));
+                genericResourceService.add("document", document);
+            } else {
+                logger.warn("Problem with url: {}", url);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return document;
+    }
+
+    private Document generateDocument(JsonNode template, String url) {
         Content content = documentAnalyzerService.read(URI.create(url));
         JsonNode json = documentContentProcessor.generate(template, content);
         ArrayNode sentences = getSentences(content.getText());
@@ -128,33 +150,24 @@ public class SurveyAnswerDocumentAnalyzer {
             }
         }
 
-        return json;
+        return mapper.convertValue(json, Document.class);
     }
 
-    private JsonNode createMetadata(String user) {
+    private Metadata createMetadata(String user) {
         Date now = new Date();
         Metadata metadata = new Metadata();
         metadata.setCreatedBy(user);
         metadata.setCreationDate(now);
         metadata.setModifiedBy(user);
         metadata.setModificationDate(now);
-        try {
-            return mapper.readTree(mapper.writeValueAsBytes(metadata));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return metadata;
     }
 
-    private JsonNode updateMetadata(String user, ObjectNode metadata) {
-        Metadata metadataObject = mapper.convertValue(metadata, Metadata.class);
+    private Metadata updateMetadata(String user, Metadata metadata) {
         Date now = new Date();
-        metadataObject.setModifiedBy(user);
-        metadataObject.setModificationDate(now);
-        try {
-            return mapper.readTree(mapper.writeValueAsBytes(metadataObject));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        metadata.setModifiedBy(user);
+        metadata.setModificationDate(now);
+        return metadata;
     }
 
     private ArrayNode getSentences(String text) {
