@@ -15,10 +15,10 @@
  */
 package eu.openaire.observatory.analyzer;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import eu.openaire.observatory.analyzer.model.Document;
 import eu.openaire.observatory.analyzer.model.UrlReferences;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,11 +34,13 @@ public class DocumentAnalyzerController {
     }
 
     @PostMapping
+    @PreAuthorize("isFullyAuthenticated()")
     public Document generateFromUrl(@RequestParam String url) {
         return registryService.generateDocument(url);
     }
 
     @PostMapping("survey-answer/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public List<Document> generateDocumentsFromSurveyAnswerId(@PathVariable String id) {
         return registryService.generateDocuments(id);
     }
