@@ -11,6 +11,7 @@ public class Document {
     String url;
     JsonNode docInfo;
     Metadata metadata;
+    String status; // pending / generated / curated / rejected
     String text;
     List<String> paragraphs;
     List<String> paragraphsEn;
@@ -51,6 +52,14 @@ public class Document {
 
     public void setMetadata(Metadata metadata) {
         this.metadata = metadata;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getText() {

@@ -97,6 +97,13 @@
       "label": "Other Tags",
       "path": "$.docInfo['otherTags'][*]",
       "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "status",
+      "label": "Status",
+      "path": "$.status",
+      "type": "java.lang.String"
     }
   ],
   "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
@@ -104,7 +111,7 @@
   "aliases": [],
   "payloadType": "json",
   "properties": {
-    "class": "java.lang.Object"
+    "class": "eu.openaire.observatory.analyzer.model.Document"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
 }
