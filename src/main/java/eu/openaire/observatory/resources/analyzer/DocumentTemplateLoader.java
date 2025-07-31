@@ -1,4 +1,4 @@
-package eu.openaire.observatory.analyzer;
+package eu.openaire.observatory.resources.analyzer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

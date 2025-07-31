@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.openaire.observatory.analyzer;
+package eu.openaire.observatory.resources.analyzer;
 
-import eu.openaire.observatory.analyzer.model.Document;
-import eu.openaire.observatory.analyzer.model.UrlReferences;
+import eu.openaire.observatory.resources.model.Document;
+import eu.openaire.observatory.resources.analyzer.model.UrlReferences;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package eu.openaire.observatory.analyzer;
+package eu.openaire.observatory.resources.analyzer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,10 +22,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import eu.openaire.documentanalyzer.analyze.service.DocumentAnalyzerService;
 import eu.openaire.documentanalyzer.common.model.Content;
 import eu.openaire.documentanalyzer.enrich.service.DocumentContentProcessor;
-import eu.openaire.observatory.analyzer.model.Document;
-import eu.openaire.observatory.analyzer.model.Reference;
-import eu.openaire.observatory.analyzer.model.SurveyAnswerReference;
-import eu.openaire.observatory.analyzer.model.UrlReferences;
+import eu.openaire.observatory.resources.model.Document;
+import eu.openaire.observatory.resources.analyzer.model.SurveyAnswerReference;
+import eu.openaire.observatory.resources.analyzer.model.UrlReferences;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
@@ -38,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.*;

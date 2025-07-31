@@ -1,4 +1,4 @@
-package eu.openaire.observatory.analyzer.model;
+package eu.openaire.observatory.resources.analyzer.model;
 
 import java.util.List;
 

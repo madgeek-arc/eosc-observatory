@@ -1,7 +1,7 @@
-package eu.openaire.observatory.analyzer;
+package eu.openaire.observatory.resources.analyzer;
 
-import eu.openaire.observatory.analyzer.model.SurveyAnswerReference;
-import eu.openaire.observatory.analyzer.model.UrlReferences;
+import eu.openaire.observatory.resources.analyzer.model.SurveyAnswerReference;
+import eu.openaire.observatory.resources.analyzer.model.UrlReferences;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import org.springframework.stereotype.Service;
 

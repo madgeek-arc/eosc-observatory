@@ -104,6 +104,27 @@
       "label": "Status",
       "path": "$.status",
       "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "source",
+      "label": "Source",
+      "path": "$.source",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "curated",
+      "label": "Curated",
+      "path": "$.curated",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "multivalued": true,
+      "name": "refs",
+      "label": "References",
+      "path": "$['references'][*].surveyAnswerId",
+      "type": "java.lang.String"
     }
   ],
   "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
@@ -111,7 +132,7 @@
   "aliases": [],
   "payloadType": "json",
   "properties": {
-    "class": "eu.openaire.observatory.analyzer.model.Document"
+    "class": "eu.openaire.observatory.resources.model.Document"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
 }

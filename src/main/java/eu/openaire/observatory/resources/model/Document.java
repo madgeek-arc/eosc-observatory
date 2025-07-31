@@ -1,7 +1,8 @@
-package eu.openaire.observatory.analyzer.model;
+package eu.openaire.observatory.resources.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import eu.openaire.observatory.domain.Metadata;
+import eu.openaire.observatory.resources.analyzer.model.SurveyAnswerReference;
 
 import java.util.*;
 
@@ -11,13 +12,27 @@ public class Document {
     String url;
     JsonNode docInfo;
     Metadata metadata;
-    String status; // pending / generated / curated / rejected
+    String status;
+    String source;
+    boolean curated = false;
     String text;
     List<String> paragraphs;
     List<String> paragraphsEn;
     List<String> sentences;
     List<String> sentencesEn;
     LinkedHashSet<SurveyAnswerReference> references;
+
+    public enum Status {
+        PENDING,
+        APPROVED,
+        REJECTED
+    }
+
+    public enum Source {
+        INSERTED,
+        EXTRACTED,
+        HARVESTED
+    }
 
     public Document() {
     }
@@ -60,6 +75,22 @@ public class Document {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public boolean isCurated() {
+        return curated;
+    }
+
+    public void setCurated(boolean curated) {
+        this.curated = curated;
     }
 
     public String getText() {
