@@ -99,7 +99,8 @@ public class SurveyAnswerDocumentAnalyzer {
                 if (document != null) {
                     document.setId(DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
                     document.setUrl(urlReference.getUrl());
-                    document.setStatus("generated");
+                    document.setStatus(Document.Status.PENDING.name());
+                    document.setSource(Document.Source.SURVEY.name());
                     document.setMetadata(createMetadata(USER));
                     document.setReferences(urlReference.getReferences());
                     genericResourceService.add("document", document);
@@ -123,7 +124,8 @@ public class SurveyAnswerDocumentAnalyzer {
             if (document != null) {
                 document.setId(DigestUtils.sha256Hex(url.getBytes()));
                 document.setUrl(url);
-                document.setStatus("pending");
+                document.setStatus(Document.Status.PENDING.name());
+                document.setSource(Document.Source.EXTERNAL.name());
                 document.setMetadata(new Metadata(SecurityContextHolder.getContext().getAuthentication()));
                 genericResourceService.add("document", document);
             } else {

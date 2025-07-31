@@ -29,8 +29,8 @@ public class Document {
     }
 
     public enum Source {
-        INSERTED,
-        EXTRACTED,
+        EXTERNAL,
+        SURVEY,
         HARVESTED
     }
 
