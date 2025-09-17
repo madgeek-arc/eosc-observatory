@@ -67,7 +67,7 @@ public class SurveyServiceImpl implements SurveyService {
     private final PermissionService permissionService;
     private final ModelService modelService;
     private final UserService userService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final CacheService<String, SurveyAnswerRevisionsAggregation> cacheService;
 
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
@@ -76,6 +76,7 @@ public class SurveyServiceImpl implements SurveyService {
                              PermissionService permissionService,
                              ModelService modelService,
                              UserService userService,
+                             ObjectMapper objectMapper,
                              CacheService<String, SurveyAnswerRevisionsAggregation> cacheService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
@@ -83,6 +84,7 @@ public class SurveyServiceImpl implements SurveyService {
         this.permissionService = permissionService;
         this.modelService = modelService;
         this.userService = userService;
+        this.objectMapper = objectMapper;
         this.cacheService = cacheService;
     }
 

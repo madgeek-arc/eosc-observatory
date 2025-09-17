@@ -43,11 +43,12 @@ public class StatsQuerySecurity {
 
     public StatsQuerySecurity(MethodSecurityExpressions securityExpressions,
                               GenericResourceService genericResourceService,
-                              StatsToolProperties statsToolProperties) {
+                              StatsToolProperties statsToolProperties,
+                              ObjectMapper objectMapper) {
         this.securityExpressions = securityExpressions;
         this.genericResourceService = genericResourceService;
         this.statsToolProperties = statsToolProperties;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     public boolean authorize(String json, Authentication authentication) {

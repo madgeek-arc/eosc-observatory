@@ -16,14 +16,14 @@ public class DocumentTemplateLoader {
     private static final Logger logger = LoggerFactory.getLogger(DocumentTemplateLoader.class);
 
     private JsonNode template;
+    private final ObjectMapper mapper;
 
-    public DocumentTemplateLoader() {
-        // no-arg constructor
+    public DocumentTemplateLoader(ObjectMapper mapper) {
+        this.mapper = mapper;
     }
 
     public JsonNode load() {
         if (template == null) {
-            ObjectMapper mapper = new ObjectMapper();
             try (InputStream is = DocumentTemplateLoader.class.getClassLoader().getResourceAsStream("template.json")) {
 
                 if (is != null) {

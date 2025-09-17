@@ -51,7 +51,7 @@ public class SurveyAnswerDocumentAnalyzer {
 
     private final SurveyAnswerCrudService surveyAnswerCrudService;
     private final GenericResourceService genericResourceService;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
     private final UrlExtractor<SurveyAnswer> surveyAnswerUrlExtractor;
     private final DocumentTemplateLoader templateLoader;
     private final DocumentContentProcessor documentContentProcessor;
@@ -59,12 +59,14 @@ public class SurveyAnswerDocumentAnalyzer {
 
     public SurveyAnswerDocumentAnalyzer(SurveyAnswerCrudService surveyAnswerCrudService,
                                         GenericResourceManager genericResourceManager,
+                                        ObjectMapper mapper,
                                         UrlExtractor<SurveyAnswer> surveyAnswerUrlExtractor,
                                         DocumentTemplateLoader templateLoader,
                                         DocumentContentProcessor documentContentProcessor,
                                         DocumentAnalyzerService documentAnalyzerService) {
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericResourceService = genericResourceManager;
+        this.mapper = mapper;
         this.surveyAnswerUrlExtractor = surveyAnswerUrlExtractor;
         this.templateLoader = templateLoader;
         this.documentContentProcessor = documentContentProcessor;
@@ -158,7 +160,7 @@ public class SurveyAnswerDocumentAnalyzer {
                 obj.set("paragraphsEn", documentContentProcessor.translate(paragraphs, "English"));
                 obj.set("sentencesEn", documentContentProcessor.translate(sentences, "English"));
             }
-            obj.set("paragraphs", documentContentProcessor.extractInformation(content));
+//            obj.set("paragraphs", documentContentProcessor.extractInformation(content));
         }
 
         return mapper.convertValue(json, Document.class);
