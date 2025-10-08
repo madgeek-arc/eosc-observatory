@@ -11,13 +11,17 @@ import gr.uoa.di.madgik.registry.service.ResourceService;
 import gr.uoa.di.madgik.registry.service.ResourceTypeService;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
 @RestController
@@ -25,6 +29,7 @@ import java.util.List;
 public class ResourcesController {
 
     private final GenericResourceService genericResourceService;
+    private final ResourcesService resourcesService;
     private final DocumentsCsvConverter documentsCsvConverter;
 
     @Autowired
@@ -34,20 +39,33 @@ public class ResourcesController {
     ResourceTypeService resourceTypeService;
 
     public ResourcesController(GenericResourceService genericResourceService,
+                               ResourcesService resourcesService,
                                DocumentsCsvConverter documentsCsvConverter) {
         this.genericResourceService = genericResourceService;
+        this.resourcesService = resourcesService;
         this.documentsCsvConverter = documentsCsvConverter;
     }
 
+    public record StatusChange(@NotNull Document.Status status) {}
+
     @GetMapping
     @BrowseParameters
+//    @PreAuthorize("canReadDocuments(#allRequestParams.get('status'))")
     public ResponseEntity<Paging<Document>> getDocuments(@Parameter(hidden = true)
-                                                       @RequestParam MultiValueMap<String, Object> allRequestParams) {
+                                                         @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         filter.setResourceType("document");
-        filter.addFilter("status", "generated");
+        filter.addFilter("status", Document.Status.APPROVED);
         Paging<Document> docs = genericResourceService.getResults(filter);
         return new ResponseEntity<>(docs, HttpStatus.OK);
+    }
+
+    @PutMapping("{id}/status")
+    @PreAuthorize("isAdministratorOfType('eosc-sb')")
+    public ResponseEntity<Document> approve(@PathVariable String id,
+                                            @RequestBody @Valid StatusChange body)
+            throws NoSuchFieldException, InvocationTargetException, NoSuchMethodException {
+        return new ResponseEntity<>(resourcesService.setStatus(id, body.status()), HttpStatus.OK);
     }
 
     @GetMapping("convert/csv")
