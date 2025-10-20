@@ -3,10 +3,7 @@ package eu.openaire.observatory.resources;
 import eu.openaire.observatory.resources.model.Document;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
-import gr.uoa.di.madgik.registry.domain.FacetFilter;
-import gr.uoa.di.madgik.registry.domain.Paging;
-import gr.uoa.di.madgik.registry.domain.Resource;
-import gr.uoa.di.madgik.registry.domain.ResourceType;
+import gr.uoa.di.madgik.registry.domain.*;
 import gr.uoa.di.madgik.registry.service.ResourceService;
 import gr.uoa.di.madgik.registry.service.ResourceTypeService;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -51,12 +48,12 @@ public class ResourcesController {
     @GetMapping
     @BrowseParameters
 //    @PreAuthorize("canReadDocuments(#allRequestParams.get('status'))")
-    public ResponseEntity<Paging<Document>> getDocuments(@Parameter(hidden = true)
+    public ResponseEntity<Paging<HighlightedResult<Document>>> getDocuments(@Parameter(hidden = true)
                                                          @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         filter.setResourceType("document");
         filter.addFilter("status", Document.Status.APPROVED);
-        Paging<Document> docs = genericResourceService.getResults(filter);
+        Paging<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
         return new ResponseEntity<>(docs, HttpStatus.OK);
     }
 
