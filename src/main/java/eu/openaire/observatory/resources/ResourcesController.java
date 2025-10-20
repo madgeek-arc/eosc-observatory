@@ -48,12 +48,12 @@ public class ResourcesController {
     @GetMapping
     @BrowseParameters
 //    @PreAuthorize("canReadDocuments(#allRequestParams.get('status'))")
-    public ResponseEntity<Paging<HighlightedResult<Document>>> getDocuments(@Parameter(hidden = true)
+    public ResponseEntity<Browsing<HighlightedResult<Document>>> getDocuments(@Parameter(hidden = true)
                                                          @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         filter.setResourceType("document");
         filter.addFilter("status", Document.Status.APPROVED);
-        Paging<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
+        Browsing<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
         return new ResponseEntity<>(docs, HttpStatus.OK);
     }
 
