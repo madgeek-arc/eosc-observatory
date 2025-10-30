@@ -80,7 +80,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         T ret = null;
         Class<?> clazz = unwrapResponseClass(returnType);
-        if (body != null && classNames.contains(clazz.getCanonicalName())) {
+        if (body != null && clazz != null && classNames.contains(clazz.getCanonicalName())) {
 
             try {
                 String id = getId(body);
