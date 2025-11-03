@@ -1,5 +1,6 @@
 package eu.openaire.observatory.resources;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import eu.openaire.observatory.resources.model.Document;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
@@ -55,6 +56,14 @@ public class ResourcesController {
         filter.addFilter("status", Document.Status.APPROVED);
         Browsing<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
         return new ResponseEntity<>(docs, HttpStatus.OK);
+    }
+
+    @PutMapping("{id}/docInfo")
+    @PreAuthorize("isAdministratorOfType('eosc-sb')")
+    public ResponseEntity<Document> update(@PathVariable String id,
+                                           @RequestBody JsonNode body)
+            throws NoSuchFieldException, InvocationTargetException, NoSuchMethodException {
+        return new ResponseEntity<>(resourcesService.update(id, body), HttpStatus.OK);
     }
 
     @PutMapping("{id}/status")
