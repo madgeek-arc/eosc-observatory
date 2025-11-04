@@ -21,7 +21,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-@Entity(name = "dataset_entry")
+@Entity
+@Table(name = "dataset_entry", schema = "external_datasets")
 public class DatasetEntry {
 
     @Id
