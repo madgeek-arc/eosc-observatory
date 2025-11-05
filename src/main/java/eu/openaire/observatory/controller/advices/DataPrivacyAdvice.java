@@ -27,8 +27,10 @@ import org.apache.commons.beanutils.PropertyUtilsBean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.ResolvableType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -39,6 +41,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @ControllerAdvice
@@ -75,7 +79,8 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
     public T beforeBodyWrite(T body, MethodParameter returnType, MediaType selectedContentType, Class<? extends HttpMessageConverter<?>> selectedConverterType, ServerHttpRequest request, ServerHttpResponse response) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         T ret = null;
-        if (body != null && classNames.contains(body.getClass().getCanonicalName())) {
+        Class<?> clazz = unwrapResponseClass(returnType);
+        if (body != null && clazz != null && classNames.contains(clazz.getCanonicalName())) {
 
             try {
                 String id = getId(body);
@@ -87,7 +92,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
                     ret = (T) mapper.readValue(json, body.getClass());
 
                     // apply content transformations
-                    modifyContent(ret);
+                    modifyContent(ret, clazz, returnType);
 
                     logger.trace("Final Object: {}", json);
                 }
@@ -100,20 +105,90 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
     }
 
     /**
-     * Uses {@link PrivacyProperties} to filter out sensitive information in the provided object.
+     * Unwraps the response class from known 'wrapper' classes.
      *
-     * @param obj
+     * @param returnType
+     * @return
      */
-    public void modifyContent(T obj) {
-        if (obj != null) {
-            Class<?> clazz = obj.getClass();
+    public Class<?> unwrapResponseClass(MethodParameter returnType) {
+        ResolvableType rt = ResolvableType.forMethodParameter(returnType);
 
+        boolean escape = false;
+        while (true) {
+            if (ResponseEntity.class.isAssignableFrom(rt.toClass())) {
+                rt = rt.getGeneric(0);
+            } else if (Collection.class.isAssignableFrom(rt.toClass())) {
+                rt = rt.getGeneric(0);
+            } else {
+                for (PrivacyProperties.WrapperClass wrapper : privacyProperties.getWrapperClasses()) {
+                    if (wrapper.getClazz().isAssignableFrom(rt.toClass())) {
+                        escape = false;
+                        rt = rt.getGeneric(0);
+                        break;
+                    } else {
+                        escape = true;
+                    }
+                }
+            }
+            if (escape) {
+                break;
+            }
+        }
+        return rt.resolve();
+    }
+
+    /**
+     * Retrieves the full path to the field.
+     *
+     * @param field
+     * @param returnType
+     * @return
+     */
+    public String getPath(String field, MethodParameter returnType) {
+        List<String> paths = new ArrayList<>();
+        ResolvableType rt = ResolvableType.forMethodParameter(returnType);
+
+        boolean escape = false;
+        while (true) {
+            if (ResponseEntity.class.isAssignableFrom(rt.toClass())) {
+                rt = rt.getGeneric(0);
+                // Object is already unwrapped from ResponseEntity, skip
+            } else if (Collection.class.isAssignableFrom(rt.toClass())) {
+                rt = rt.getGeneric(0);
+            } else {
+                for (PrivacyProperties.WrapperClass wrapper : privacyProperties.getWrapperClasses()) {
+                    if (wrapper.getClazz().isAssignableFrom(rt.toClass())) {
+                        escape = false;
+                        paths.add(wrapper.getField());
+                        rt = rt.getGeneric(0);
+                        break;
+                    } else {
+                        escape = true;
+                    }
+                }
+            }
+            if (escape) {
+                break;
+            }
+        }
+        paths.add(field);
+        return String.join(".", paths);
+    }
+
+    /**
+     *  Uses {@link PrivacyProperties} to filter out sensitive information in the provided data.
+     *
+     * @param obj the data
+     * @param clazz the Class of the data
+     * @param returnType the response type.
+     */
+    public void modifyContent(T obj, Class<?> clazz, MethodParameter returnType) {
+        if (obj != null) {
             for (PrivacyProperties.FieldPrivacy fieldPrivacy : privacyProperties.getEntries()) {
                 if (clazz.getCanonicalName().equals(fieldPrivacy.getClassName())) {
-
                     try {
                         logger.debug("Removing non-public Data");
-                        replaceData(obj, fieldPrivacy.getField(), null);
+                        replaceData(obj, getPath(fieldPrivacy.getField(), returnType), null);
                     } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
                         throw new ResourceException(e, HttpStatus.INTERNAL_SERVER_ERROR);
                     }

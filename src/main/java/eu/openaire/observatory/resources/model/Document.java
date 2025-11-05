@@ -23,8 +23,8 @@ public class Document {
     LinkedHashSet<SurveyAnswerReference> references;
 
     public enum Status {
-        PENDING,
         APPROVED,
+        PENDING,
         REJECTED
     }
 

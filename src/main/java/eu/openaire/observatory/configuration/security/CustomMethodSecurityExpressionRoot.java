@@ -15,6 +15,7 @@
  */
 package eu.openaire.observatory.configuration.security;
 
+import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.service.Identifiable;
 import eu.openaire.observatory.service.SecurityService;
 import gr.uoa.di.madgik.catalogue.utils.ReflectUtils;
@@ -221,6 +222,21 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     @Override
     public boolean isAdmin(Authentication authentication) {
         return securityExpressions.isAdmin(authentication);
+    }
+
+    @Override
+    public boolean canReadDocuments(Document.Status status) {
+        return securityExpressions.canReadDocuments(status);
+    }
+
+    @Override
+    public boolean canReadDocument(String documentId) {
+        return securityExpressions.canReadDocument(documentId);
+    }
+
+    @Override
+    public boolean canWriteDocument(String documentId) {
+        return securityExpressions.canWriteDocument(documentId);
     }
 
 

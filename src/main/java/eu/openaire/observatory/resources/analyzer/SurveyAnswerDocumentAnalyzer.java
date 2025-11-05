@@ -83,9 +83,10 @@ public class SurveyAnswerDocumentAnalyzer {
         List<UrlReferences> urlReferences = extractUrlsFromSurveyAnswer(surveyAnswerId);
         for (UrlReferences urlReference : urlReferences) {
             Document document;
+            String id = DigestUtils.sha256Hex(urlReference.getUrl().getBytes());
             try {
                 LinkedHashSet<SurveyAnswerReference> set = new LinkedHashSet<>();
-                document = genericResourceService.get("document", DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
+                document = genericResourceService.get("document", id);
                 set.addAll(document.getReferences());
                 set.addAll(urlReference.getReferences());
 
