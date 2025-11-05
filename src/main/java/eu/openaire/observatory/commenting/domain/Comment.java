@@ -16,6 +16,7 @@
 package eu.openaire.observatory.commenting.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -41,6 +42,7 @@ public class Comment {
     @Column(length = 32, nullable = false)
     private CommentStatus status;
 
+    @JsonManagedReference
     @OneToMany(
             mappedBy = "comment",
             cascade = CascadeType.ALL,

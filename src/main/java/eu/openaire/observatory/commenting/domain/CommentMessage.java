@@ -15,6 +15,7 @@
  */
 package eu.openaire.observatory.commenting.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -51,7 +52,7 @@ public class CommentMessage {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @JsonIgnore
+    @JsonBackReference
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "comment_id", nullable = false)
     private Comment comment;
