@@ -20,7 +20,7 @@ import eu.openaire.observatory.IntegrationTestConfig;
 import eu.openaire.observatory.commenting.domain.Comment;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
-import eu.openaire.observatory.commenting.domain.CommentType;
+import eu.openaire.observatory.commenting.domain.CommentTarget;
 import eu.openaire.observatory.commenting.repository.CommentMessageRepository;
 import eu.openaire.observatory.commenting.repository.CommentRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -30,6 +30,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -52,11 +54,15 @@ class CommentingTests extends IntegrationTestConfig {
         return UUID.fromString("00000000-0000-0000-0000-000000000000");
     }
 
+    static CommentTarget createTarget() {
+        return new CommentTarget("survey_answer", "sa-000000");
+    }
+
     static Comment createComment() {
         Comment comment = new Comment(getCommentId());
-        comment.setPath("this.is.a.test.path");
+        comment.setFieldId("28");
+        comment.setTarget(createTarget());
         comment.setStatus(CommentStatus.ACTIVE);
-        comment.setType(CommentType.COMMENT);
         return comment;
     }
 
@@ -71,8 +77,9 @@ class CommentingTests extends IntegrationTestConfig {
 
         // insert empty comment with random id
         Comment comment2 = new Comment();
+        comment2.setFieldId("1");
         comment2.setStatus(CommentStatus.ACTIVE);
-        comment2.setType(CommentType.NOTE);
+        comment2.setTarget(createTarget());
         commentRepository.save(comment2);
     }
 

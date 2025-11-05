@@ -18,5 +18,6 @@ package eu.openaire.observatory.commenting.domain;
 public enum CommentStatus {
     ACTIVE,
     RESOLVED,
-    DELETED
+    DELETED,
+    HIDDEN
 }

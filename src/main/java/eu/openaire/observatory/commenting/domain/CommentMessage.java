@@ -15,6 +15,8 @@
  */
 package eu.openaire.observatory.commenting.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -22,6 +24,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -47,6 +51,7 @@ public class CommentMessage {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "comment_id", nullable = false)
     private Comment comment;
@@ -55,6 +60,11 @@ public class CommentMessage {
     @JoinColumn(name = "parent_id")
     private CommentMessage parent;
 
+    @JsonManagedReference
+    @OneToMany(mappedBy = "commentMessage", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<MessageMention> mentions = new ArrayList<>();
+
+    @JsonIgnore
     @Version
     private Long version;
 
@@ -69,13 +79,9 @@ public class CommentMessage {
     // region Helper Methods
     // TODO: move this to service
     public void attachReply(CommentMessage reply) {
-        if (this.comment.getType().equals(CommentType.COMMENT)) {
-            reply.setParent(this);
-            reply.setComment(this.comment);
-            this.getComment().getMessages().add(reply);
-        } else {
-            throw new UnsupportedOperationException("Cannot reply to Comment with type: " + this.comment.getType());
-        }
+        reply.setParent(this);
+        reply.setComment(this.comment);
+        this.getComment().getMessages().add(reply);
     }
     // endregion
 
@@ -119,6 +125,14 @@ public class CommentMessage {
 
     public void setParent(CommentMessage parent) {
         this.parent = parent;
+    }
+
+    public List<MessageMention> getMentions() {
+        return mentions;
+    }
+
+    public void setMentions(List<MessageMention> mentions) {
+        this.mentions = mentions;
     }
 
     public Long getVersion() {

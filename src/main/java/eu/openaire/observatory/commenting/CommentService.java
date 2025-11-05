@@ -17,10 +17,30 @@ package eu.openaire.observatory.commenting;
 
 import eu.openaire.observatory.commenting.domain.Comment;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
+import eu.openaire.observatory.commenting.domain.CommentStatus;
+import eu.openaire.observatory.commenting.domain.CommentTarget;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface CommentService {
+
+    /**
+     * Retrieves all comment threads of the specified target.
+     *
+     * @param target
+     * @return
+     */
+    List<Comment> get(CommentTarget target);
+
+    /**
+     * Retrieves all comment threads of the specified target and status.
+     *
+     * @param target the comment target
+     * @param status the comment status
+     * @return
+     */
+    List<Comment> get(CommentTarget target, CommentStatus status);
 
     /**
      * Adds a comment thread.

@@ -15,6 +15,7 @@
  */
 package eu.openaire.observatory.commenting.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -30,11 +31,11 @@ public class Comment {
     @Id
     private UUID id = UUID.randomUUID();
 
-    private String path;
+    @Embedded
+    private CommentTarget target;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 32, nullable = false)
-    private CommentType type;
+    @Column(name = "field_id", nullable = false)
+    private String fieldId;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 32, nullable = false)
@@ -49,6 +50,7 @@ public class Comment {
     @OrderBy("createdAt ASC")
     private List<CommentMessage> messages = new ArrayList<>();
 
+    @JsonIgnore
     @Version
     private Long version;
 
@@ -77,20 +79,20 @@ public class Comment {
         return id;
     }
 
-    public String getPath() {
-        return path;
+    public CommentTarget getTarget() {
+        return target;
     }
 
-    public void setPath(String path) {
-        this.path = path;
+    public void setTarget(CommentTarget target) {
+        this.target = target;
     }
 
-    public CommentType getType() {
-        return type;
+    public String getFieldId() {
+        return fieldId;
     }
 
-    public void setType(CommentType type) {
-        this.type = type;
+    public void setFieldId(String path) {
+        this.fieldId = path;
     }
 
     public CommentStatus getStatus() {
