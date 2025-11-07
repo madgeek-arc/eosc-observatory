@@ -52,6 +52,24 @@ public class MessageMention {
         return id.userId;
     }
 
+    public void setUserId(String userId) {
+        if (id == null) {
+            id = new MessageMentionId();
+        }
+        this.id.userId = userId;
+    }
+
+    public UUID getMessageId() {
+        return id.messageId;
+    }
+
+    public void setMessageId(UUID messageId) {
+        if (id == null) {
+            id = new MessageMentionId();
+        }
+        this.id.messageId = messageId;
+    }
+
     public CommentMessage getCommentMessage() {
         return commentMessage;
     }

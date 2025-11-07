@@ -20,7 +20,11 @@ import eu.openaire.observatory.commenting.domain.Comment;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
 import eu.openaire.observatory.commenting.domain.CommentTarget;
+import eu.openaire.observatory.commenting.dto.CommentDto;
+import eu.openaire.observatory.commenting.dto.CreateComment;
+import eu.openaire.observatory.commenting.dto.CreateMessage;
 import eu.openaire.observatory.commenting.repository.CommentRepository;
+import eu.openaire.observatory.mappers.CommentMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,53 +34,60 @@ import java.util.UUID;
 public class SurveyAnswerCommentService implements CommentService {
 
     private final CommentRepository repository;
+    private final CommentMapper mapper;
 
-    public SurveyAnswerCommentService(CommentRepository repository) {
+    private static final String TARGET_TYPE = "survey_answer";
+
+    public SurveyAnswerCommentService(CommentRepository repository,
+                                      CommentMapper mapper) {
         this.repository = repository;
+        this.mapper = mapper;
     }
 
     @Override
-    public List<Comment> get(CommentTarget target) {
+    public List<CommentDto> get(String targetId) {
         return List.of();
     }
 
     @Override
-    public List<Comment> get(CommentTarget target, CommentStatus status) {
-        return repository.findAllByTargetAndStatus(target, status);
+    public List<CommentDto> get(String targetId, CommentStatus status) {
+        CommentTarget target = new CommentTarget(TARGET_TYPE, targetId);
+        return repository.findAllByTargetAndStatus(target, status).stream().map(mapper::toDto).toList();
     }
 
     @Override
-    public Comment add(Comment comment) {
-        return repository.save(comment);
+    public CommentDto add(CreateComment comment) {
+        Comment c = mapper.toComment(comment);
+        return mapper.toDto(repository.save(c));
     }
 
     @Override
-    public Comment update(UUID id, Comment comment) {
+    public CommentDto update(UUID id, CommentDto comment) {
         return null;
     }
 
     @Override
-    public Comment updateMessage(UUID id, CommentMessage message) {
+    public CommentDto updateMessage(UUID id, CreateMessage message) {
         return null;
     }
 
     @Override
-    public Comment reply(CommentMessage parentMessage, CommentMessage replyMessage) {
+    public CommentDto reply(UUID replyToId, CreateMessage replyMessage) {
         return null;
     }
 
     @Override
-    public Comment resolve(UUID id) {
+    public CommentDto resolve(UUID id) {
         return null;
     }
 
     @Override
-    public void delete(Comment comment) {
+    public void delete(UUID commentId) {
 
     }
 
     @Override
-    public void delete(CommentMessage message) {
+    public void deleteMessage(UUID messageId) {
 
     }
 }

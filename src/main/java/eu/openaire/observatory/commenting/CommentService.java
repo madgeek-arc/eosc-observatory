@@ -15,10 +15,11 @@
  */
 package eu.openaire.observatory.commenting;
 
-import eu.openaire.observatory.commenting.domain.Comment;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
-import eu.openaire.observatory.commenting.domain.CommentTarget;
+import eu.openaire.observatory.commenting.dto.CommentDto;
+import eu.openaire.observatory.commenting.dto.CreateComment;
+import eu.openaire.observatory.commenting.dto.CreateMessage;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,19 +29,19 @@ public interface CommentService {
     /**
      * Retrieves all comment threads of the specified target.
      *
-     * @param target
+     * @param targetId the comment target id.
      * @return
      */
-    List<Comment> get(CommentTarget target);
+    List<CommentDto> get(String targetId);
 
     /**
      * Retrieves all comment threads of the specified target and status.
      *
-     * @param target the comment target
+     * @param targetId the comment target id.
      * @param status the comment status
      * @return
      */
-    List<Comment> get(CommentTarget target, CommentStatus status);
+    List<CommentDto> get(String targetId, CommentStatus status);
 
     /**
      * Adds a comment thread.
@@ -48,7 +49,7 @@ public interface CommentService {
      * @param comment
      * @return
      */
-    Comment add(Comment comment);
+    CommentDto add(CreateComment comment);
 
     /**
      * Updates a comment thread.
@@ -57,7 +58,7 @@ public interface CommentService {
      * @param comment the comment to save
      * @return
      */
-    Comment update(UUID id, Comment comment);
+    CommentDto update(UUID id, CommentDto comment);
 
     /**
      * Updates a comment message.
@@ -66,16 +67,16 @@ public interface CommentService {
      * @param message the new message
      * @return
      */
-    Comment updateMessage(UUID id, CommentMessage message);
+    CommentDto updateMessage(UUID id, CreateMessage message);
 
     /**
      * Creates a reply to a comment message.
      *
-     * @param parentMessage the message to reply to
+     * @param replyToId the message to reply to
      * @param replyMessage  the reply message
      * @return
      */
-    Comment reply(CommentMessage parentMessage, CommentMessage replyMessage);
+    CommentDto reply(UUID replyToId, CreateMessage replyMessage);
 
     /**
      * Resolves a comment thread.
@@ -83,21 +84,21 @@ public interface CommentService {
      * @param id the comment id
      * @return
      */
-    Comment resolve(UUID id);
+    CommentDto resolve(UUID id);
 
     /**
      * Deletes a comment thread.
      *
-     * @param comment the comment to delete
+     * @param commentId the id of the comment to delete
      */
-    void delete(Comment comment);
+    void delete(UUID commentId);
 
     /**
      * Deletes a comment message.
      *
-     * @param message the message to delete
+     * @param messageId the id of the message to delete
      */
-    void delete(CommentMessage message);
+    void deleteMessage(UUID messageId);
 
 
 }

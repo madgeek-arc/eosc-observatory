@@ -15,13 +15,11 @@
  */
 package eu.openaire.observatory.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openaire.observatory.commenting.CommentService;
-import eu.openaire.observatory.commenting.domain.Comment;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
 import eu.openaire.observatory.commenting.domain.CommentTarget;
+import eu.openaire.observatory.commenting.dto.CommentDto;
+import eu.openaire.observatory.commenting.dto.CreateComment;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,22 +29,18 @@ import java.util.List;
 public class SurveyAnswerCommentController {
 
     private final CommentService commentService;
-    private final ObjectMapper objectMapper;
 
-    public SurveyAnswerCommentController(CommentService commentService,
-                                         ObjectMapper objectMapper) {
+    public SurveyAnswerCommentController(CommentService commentService) {
         this.commentService = commentService;
-        this.objectMapper = objectMapper;
     }
 
     @PostMapping
-    public Comment add(@RequestBody JsonNode comment) throws JsonProcessingException {
-        Comment c = objectMapper.readValue(comment.toPrettyString(), Comment.class);
-        return commentService.add(c);
+    public CommentDto add(@RequestBody CreateComment comment) {
+        return commentService.add(comment);
     }
 
     @GetMapping()
-    public List<Comment> get(CommentTarget target,  CommentStatus status) {
-        return commentService.get(target, status);
+    public List<CommentDto> get(@RequestParam String targetId, @RequestParam CommentStatus status) {
+        return commentService.get(targetId, status);
     }
 }
