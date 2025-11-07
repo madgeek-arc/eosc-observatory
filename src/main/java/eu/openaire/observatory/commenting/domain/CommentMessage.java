@@ -17,7 +17,6 @@ package eu.openaire.observatory.commenting.domain;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -55,13 +54,12 @@ public class CommentMessage {
     @JsonBackReference
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "comment_id", nullable = false)
-    private Comment comment;
+    private CommentThread comment;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private CommentMessage parent;
 
-    @JsonManagedReference
     @OneToMany(mappedBy = "commentMessage", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<MessageMention> mentions = new ArrayList<>();
 
@@ -83,6 +81,20 @@ public class CommentMessage {
         reply.setParent(this);
         reply.setComment(this.comment);
         this.getComment().getMessages().add(reply);
+    }
+
+    /**
+     * Helper method to fill-out message mentions.
+     *
+     * @param mentionedUsers the user ids mentioned in the message
+     */
+    public void addMentions(List<String> mentionedUsers) {
+        List<MessageMention> mentions = new ArrayList<>();
+        for (String mentionedUser : mentionedUsers) {
+            MessageMention mention = new MessageMention(this, mentionedUser);
+            mentions.add(mention);
+        }
+        this.mentions = mentions;
     }
     // endregion
 
@@ -112,11 +124,11 @@ public class CommentMessage {
         return updatedAt;
     }
 
-    public Comment getComment() {
+    public CommentThread getComment() {
         return comment;
     }
 
-    public void setComment(Comment comment) {
+    public void setComment(CommentThread comment) {
         this.comment = comment;
     }
 
@@ -132,7 +144,7 @@ public class CommentMessage {
         return mentions;
     }
 
-    public void setMentions(List<MessageMention> mentions) {
+    private void setMentions(List<MessageMention> mentions) {
         this.mentions = mentions;
     }
 

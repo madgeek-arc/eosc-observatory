@@ -25,9 +25,9 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "comment", schema = "commenting")
+@Table(name = "comment_thread", schema = "commenting")
 @EntityListeners(AuditingEntityListener.class)
-public class Comment {
+public class CommentThread {
 
     @Id
     private UUID id = UUID.randomUUID();
@@ -56,11 +56,11 @@ public class Comment {
     @Version
     private Long version;
 
-    public Comment() {
+    public CommentThread() {
         // no-arg constructor
     }
 
-    public Comment(UUID id) {
+    public CommentThread(UUID id) {
         this.id = id;
     }
 

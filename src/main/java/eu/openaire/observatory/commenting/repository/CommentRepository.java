@@ -15,21 +15,20 @@
  */
 package eu.openaire.observatory.commenting.repository;
 
-import eu.openaire.observatory.commenting.domain.Comment;
+import eu.openaire.observatory.commenting.domain.CommentThread;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
 import eu.openaire.observatory.commenting.domain.CommentTarget;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface CommentRepository extends CrudRepository<Comment, UUID> {
+public interface CommentRepository extends CrudRepository<CommentThread, UUID> {
 
-    List<Comment> findAllByTarget(CommentTarget target);
+    List<CommentThread> findAllByTarget(CommentTarget target);
 
-    List<Comment> findAllByTargetAndStatus(CommentTarget target, CommentStatus status);
+    List<CommentThread> findAllByTargetAndStatus(CommentTarget target, CommentStatus status);
 
 }

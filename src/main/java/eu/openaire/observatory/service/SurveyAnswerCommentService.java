@@ -16,78 +16,121 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.commenting.CommentService;
-import eu.openaire.observatory.commenting.domain.Comment;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
+import eu.openaire.observatory.commenting.domain.CommentThread;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
 import eu.openaire.observatory.commenting.domain.CommentTarget;
 import eu.openaire.observatory.commenting.dto.CommentDto;
 import eu.openaire.observatory.commenting.dto.CreateComment;
 import eu.openaire.observatory.commenting.dto.CreateMessage;
+import eu.openaire.observatory.commenting.repository.CommentMessageRepository;
 import eu.openaire.observatory.commenting.repository.CommentRepository;
 import eu.openaire.observatory.mappers.CommentMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional
 public class SurveyAnswerCommentService implements CommentService {
 
-    private final CommentRepository repository;
+    private final CommentRepository commentRepository;
+    private final CommentMessageRepository messageRepository;
     private final CommentMapper mapper;
 
     private static final String TARGET_TYPE = "survey_answer";
 
-    public SurveyAnswerCommentService(CommentRepository repository,
+    public SurveyAnswerCommentService(CommentRepository commentRepository,
+                                      CommentMessageRepository messageRepository,
                                       CommentMapper mapper) {
-        this.repository = repository;
+        this.commentRepository = commentRepository;
+        this.messageRepository = messageRepository;
         this.mapper = mapper;
+    }
+
+
+    @Override
+    public CommentDto get(UUID id) {
+        return commentRepository.findById(id).map(mapper::toDto).orElseThrow();
     }
 
     @Override
     public List<CommentDto> get(String targetId) {
-        return List.of();
+        CommentTarget target = new CommentTarget(TARGET_TYPE, targetId);
+        return commentRepository.findAllByTarget(target).stream().map(mapper::toDto).toList();
     }
 
     @Override
     public List<CommentDto> get(String targetId, CommentStatus status) {
         CommentTarget target = new CommentTarget(TARGET_TYPE, targetId);
-        return repository.findAllByTargetAndStatus(target, status).stream().map(mapper::toDto).toList();
+        return commentRepository.findAllByTargetAndStatus(target, status).stream().map(mapper::toDto).toList();
     }
 
     @Override
     public CommentDto add(CreateComment comment) {
-        Comment c = mapper.toComment(comment);
-        return mapper.toDto(repository.save(c));
+        CommentThread c = new CommentThread();
+        CommentTarget target = new CommentTarget(TARGET_TYPE, comment.targetId());
+        c.setTarget(target);
+        c.setFieldId(comment.fieldId());
+        c.setStatus(CommentStatus.ACTIVE);
+        CommentMessage message = new CommentMessage();
+        message.setComment(c);
+        message.setBody(comment.message().body());
+        message.addMentions(comment.message().mentions());
+        c.setMessages(List.of(message));
+        return mapper.toDto(commentRepository.save(c));
     }
 
     @Override
     public CommentDto update(UUID id, CommentDto comment) {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public CommentDto updateMessage(UUID id, CreateMessage message) {
-        return null;
+    public CommentDto addMessage(UUID threadId, CreateMessage message) {
+        CommentThread c = commentRepository.findById(threadId).orElseThrow();
+        CommentMessage m = new CommentMessage();
+        m.setBody(message.body());
+        m.addMentions(message.mentions());
+        c.addMessage(m);
+        messageRepository.save(m);
+        return mapper.toDto(c);
+    }
+
+    @Override
+    public CommentDto updateMessage(UUID messageId, CreateMessage message) {
+        CommentMessage m = messageRepository.findById(messageId).orElseThrow();
+        m.setBody(message.body());
+        m.addMentions(message.mentions());
+        messageRepository.save(m);
+        return mapper.toDto(m.getComment());
     }
 
     @Override
     public CommentDto reply(UUID replyToId, CreateMessage replyMessage) {
-        return null;
+        // TODO: create method when replies are supported
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public CommentDto resolve(UUID id) {
-        return null;
+        CommentThread thread = commentRepository.findById(id).orElseThrow();
+        thread.setStatus(CommentStatus.RESOLVED);
+        return mapper.toDto(commentRepository.save(thread));
     }
 
     @Override
-    public void delete(UUID commentId) {
-
+    public void delete(UUID id) {
+        CommentThread thread = commentRepository.findById(id).orElseThrow();
+        thread.setStatus(CommentStatus.DELETED);
+        commentRepository.save(thread);
     }
 
     @Override
     public void deleteMessage(UUID messageId) {
-
+        CommentMessage m = messageRepository.findById(messageId).orElseThrow();
+        messageRepository.delete(m);
     }
 }

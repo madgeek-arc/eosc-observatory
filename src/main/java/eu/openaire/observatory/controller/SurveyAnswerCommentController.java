@@ -17,15 +17,18 @@ package eu.openaire.observatory.controller;
 
 import eu.openaire.observatory.commenting.CommentService;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
-import eu.openaire.observatory.commenting.domain.CommentTarget;
 import eu.openaire.observatory.commenting.dto.CommentDto;
 import eu.openaire.observatory.commenting.dto.CreateComment;
+import eu.openaire.observatory.commenting.dto.CreateMessage;
+import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("survey-answer-comment")
+@RequestMapping("survey-answer-comments")
 public class SurveyAnswerCommentController {
 
     private final CommentService commentService;
@@ -35,12 +38,43 @@ public class SurveyAnswerCommentController {
     }
 
     @PostMapping
-    public CommentDto add(@RequestBody CreateComment comment) {
+    public CommentDto add(@RequestBody @Valid CreateComment comment) {
         return commentService.add(comment);
+    }
+
+    @PostMapping("{threadId}")
+    public CommentDto addMessage(@PathVariable UUID threadId, @RequestBody @Valid CreateMessage comment) {
+        return commentService.addMessage(threadId, comment);
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PutMapping("{threadId}")
+    public CommentDto update(@PathVariable UUID threadId, @RequestBody CommentDto comment) {
+        return commentService.update(threadId, comment);
+    }
+
+    @PutMapping("{threadId}/messages/{messageId}")
+    public CommentDto updateMessage(@PathVariable UUID threadId, @PathVariable UUID messageId, @RequestBody @Valid CreateMessage message) {
+        return commentService.updateMessage(messageId, message);
     }
 
     @GetMapping()
     public List<CommentDto> get(@RequestParam String targetId, @RequestParam CommentStatus status) {
         return commentService.get(targetId, status);
+    }
+
+    @PutMapping("{threadId}/resolve")
+    public CommentDto resolve(@PathVariable UUID threadId) {
+        return commentService.resolve(threadId);
+    }
+
+    @DeleteMapping("{threadId}")
+    public void delete(@PathVariable UUID threadId) {
+        commentService.delete(threadId);
+    }
+
+    @DeleteMapping("{threadId}/messages/{messageId}")
+    public void deleteMessage(@PathVariable UUID threadId, @PathVariable UUID messageId) {
+        commentService.deleteMessage(messageId);
     }
 }

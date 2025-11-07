@@ -17,7 +17,7 @@ package eu.openaire.observatory.commenting;
 
 
 import eu.openaire.observatory.IntegrationTestConfig;
-import eu.openaire.observatory.commenting.domain.Comment;
+import eu.openaire.observatory.commenting.domain.CommentThread;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
 import eu.openaire.observatory.commenting.domain.CommentTarget;
@@ -30,8 +30,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -58,8 +56,8 @@ class CommentingTests extends IntegrationTestConfig {
         return new CommentTarget("survey_answer", "sa-000000");
     }
 
-    static Comment createComment() {
-        Comment comment = new Comment(getCommentId());
+    static CommentThread createComment() {
+        CommentThread comment = new CommentThread(getCommentId());
         comment.setFieldId("28");
         comment.setTarget(createTarget());
         comment.setStatus(CommentStatus.ACTIVE);
@@ -69,14 +67,14 @@ class CommentingTests extends IntegrationTestConfig {
     @BeforeEach
     void addComments() {
         // insert comment with specific id and a message
-        Comment comment = createComment();
+        CommentThread comment = createComment();
         CommentMessage message = new CommentMessage();
         message.setBody("My comment message");
         comment.addMessage(message);
         commentRepository.save(comment);
 
         // insert empty comment with random id
-        Comment comment2 = new Comment();
+        CommentThread comment2 = new CommentThread();
         comment2.setFieldId("1");
         comment2.setStatus(CommentStatus.ACTIVE);
         comment2.setTarget(createTarget());
@@ -90,7 +88,7 @@ class CommentingTests extends IntegrationTestConfig {
 
     @Test
     void findComment() {
-        Optional<Comment> comment = commentRepository.findById(getCommentId());
+        Optional<CommentThread> comment = commentRepository.findById(getCommentId());
         assertTrue(comment.isPresent());
     }
 
@@ -101,13 +99,13 @@ class CommentingTests extends IntegrationTestConfig {
         message.setComment(commentRepository.findById(getCommentId()).get());
         commentMessageRepository.save(message);
 
-        Comment comment = commentRepository.findById(getCommentId()).orElseThrow();
+        CommentThread comment = commentRepository.findById(getCommentId()).orElseThrow();
         assertEquals(comment.getMessages().size(), 2);
     }
 
     @Test
     void addMessageReply() {
-        Comment comment = commentRepository.findById(getCommentId()).orElseThrow();
+        CommentThread comment = commentRepository.findById(getCommentId()).orElseThrow();
         int size = comment.getMessages().size();
 
         CommentMessage message = comment.getMessages().getLast();
@@ -126,7 +124,7 @@ class CommentingTests extends IntegrationTestConfig {
 
     @Test
     void editMessage() {
-        Comment comment = commentRepository.findById(getCommentId()).orElseThrow();
+        CommentThread comment = commentRepository.findById(getCommentId()).orElseThrow();
         CommentMessage message = comment.getMessages().getLast();
         String body = "This is the correct message!";
         message.setBody(body);
@@ -137,7 +135,7 @@ class CommentingTests extends IntegrationTestConfig {
 
     @Test
     void deleteMessage() {
-        Comment comment = commentRepository.findById(getCommentId()).orElseThrow();
+        CommentThread comment = commentRepository.findById(getCommentId()).orElseThrow();
         int size = comment.getMessages().size();
         CommentMessage message = comment.getMessages().getLast();
         commentMessageRepository.deleteById(message.getId());

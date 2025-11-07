@@ -35,13 +35,18 @@ public class MessageMention {
     @JoinColumn(name = "comment_message_id", nullable = false)
     private CommentMessage commentMessage;
 
-    protected MessageMention() {
+    public MessageMention() {
         // no-arg constructor
     }
 
     public MessageMention(MessageMentionId id, CommentMessage commentMessage) {
         this.id = id;
         this.commentMessage = commentMessage;
+    }
+
+    public MessageMention(CommentMessage message, String userId) {
+        this.id = new MessageMentionId(message.getId(), userId);
+        this.commentMessage = message;
     }
 
     public MessageMentionId getId() {
