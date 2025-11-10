@@ -30,6 +30,27 @@
     },
     {
       "multivalued": false,
+      "name": "shortDescription",
+      "label": "Short Description",
+      "path": "$.docInfo.shortDescription.text",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "abstract",
+      "label": "Abstract",
+      "path": "$.docInfo.abstract.text",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "summary",
+      "label": "Summary",
+      "path": "$.docInfo.summary.text",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
       "name": "country",
       "label": "Country",
       "path": "$.docInfo.country",
@@ -69,6 +90,20 @@
       "label": "Modification Date",
       "path": "$.metadata.modificationDate",
       "type": "java.util.Date"
+    },
+    {
+      "multivalued": true,
+      "name": "paragraphs",
+      "label": "Paragraphs",
+      "path": "$.paragraphs",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "paragraphsEn",
+      "label": "Paragraphs in English",
+      "path": "$.paragraphsEn",
+      "type": "java.lang.String"
     },
     {
       "multivalued": true,
