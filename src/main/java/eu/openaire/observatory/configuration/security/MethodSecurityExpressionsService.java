@@ -335,7 +335,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
     @Override
     public boolean canReadDocuments(Document.Status status) {
-        return status.equals(Document.Status.APPROVED) || isAdministratorOfType("eosc-sb");
+        return (status != null && status.equals(Document.Status.APPROVED)) || isAdministratorOfType("eosc-sb");
     }
 
     @Override

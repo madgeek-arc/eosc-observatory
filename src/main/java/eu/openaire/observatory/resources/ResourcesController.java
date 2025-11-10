@@ -8,6 +8,9 @@ import gr.uoa.di.madgik.registry.domain.*;
 import gr.uoa.di.madgik.registry.service.ResourceService;
 import gr.uoa.di.madgik.registry.service.ResourceTypeService;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -48,12 +51,12 @@ public class ResourcesController {
 
     @GetMapping
     @BrowseParameters
-//    @PreAuthorize("canReadDocuments(#allRequestParams.get('status'))")
-    public ResponseEntity<Browsing<HighlightedResult<Document>>> getDocuments(@Parameter(hidden = true)
-                                                         @RequestParam MultiValueMap<String, Object> allRequestParams) {
+    @PreAuthorize("canReadDocuments(#allRequestParams.get('status'))")
+    public ResponseEntity<Browsing<HighlightedResult<Document>>> getDocuments(
+            @RequestParam(required = false, defaultValue = "APPROVED") Document.Status status,
+            @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         filter.setResourceType("document");
-        filter.addFilter("status", Document.Status.APPROVED);
         Browsing<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
         return new ResponseEntity<>(docs, HttpStatus.OK);
     }
