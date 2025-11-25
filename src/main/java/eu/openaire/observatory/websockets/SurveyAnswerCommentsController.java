@@ -44,14 +44,14 @@ public class SurveyAnswerCommentsController {
 
     @MessageMapping(BASE_PATH)
     @SendTo(BASE_TOPIC)
-    public CommentDto add(@DestinationVariable("targetId") UUID targetId,
+    public CommentDto add(@DestinationVariable("targetId") String targetId,
                           @Valid CreateComment comment) {
         return commentService.add(comment);
     }
 
     @MessageMapping(BASE_PATH + "/{threadId}/messages")
     @SendTo(BASE_TOPIC)
-    public CommentDto addMessage(@DestinationVariable("targetId") UUID targetId,
+    public CommentDto addMessage(@DestinationVariable("targetId") String targetId,
                                  @DestinationVariable("threadId") UUID threadId,
                                  @Valid CreateMessage message) {
         return commentService.addMessage(threadId, message);
@@ -59,7 +59,7 @@ public class SurveyAnswerCommentsController {
 
     @MessageMapping(BASE_PATH + "/{threadId}")
     @SendTo(BASE_TOPIC)
-    public CommentDto update(@DestinationVariable("targetId") UUID targetId,
+    public CommentDto update(@DestinationVariable("targetId") String targetId,
                              @DestinationVariable("threadId") UUID threadId,
                              CommentDto comment) {
         return commentService.update(threadId, comment);
@@ -67,7 +67,7 @@ public class SurveyAnswerCommentsController {
 
     @MessageMapping(BASE_PATH + "/{threadId}/messages/{messageId}")
     @SendTo(BASE_TOPIC)
-    public CommentDto updateMessage(@DestinationVariable("targetId") UUID targetId,
+    public CommentDto updateMessage(@DestinationVariable("targetId") String targetId,
                                     @DestinationVariable("threadId") UUID threadId,
                                     @DestinationVariable("messageId") UUID messageId,
                                     @Valid CreateMessage message) {
@@ -76,14 +76,14 @@ public class SurveyAnswerCommentsController {
 
     @MessageMapping(BASE_PATH + "/{threadId}/resolve")
     @SendTo(BASE_TOPIC)
-    public CommentDto resolve(@DestinationVariable("targetId") UUID targetId,
+    public CommentDto resolve(@DestinationVariable("targetId") String targetId,
                               @DestinationVariable("threadId") UUID threadId) {
         return commentService.resolve(threadId);
     }
 
     @MessageMapping(BASE_PATH + "/{threadId}/messages/{messageId}/delete")
     @SendTo(BASE_TOPIC)
-    public CommentDto deleteMessage(@DestinationVariable("targetId") UUID targetId,
+    public CommentDto deleteMessage(@DestinationVariable("targetId") String targetId,
                                     @DestinationVariable("threadId") UUID threadId,
                                     @DestinationVariable("messageId") UUID messageId) {
         commentService.deleteMessage(messageId);
@@ -92,7 +92,7 @@ public class SurveyAnswerCommentsController {
 
     @MessageMapping(BASE_PATH + "/{threadId}/delete")
     @SendTo(BASE_TOPIC + "/delete/{threadId}")
-    public void delete(@DestinationVariable("targetId") UUID targetId,
+    public void delete(@DestinationVariable("targetId") String targetId,
                        @DestinationVariable("threadId") UUID threadId) {
     }
 }
