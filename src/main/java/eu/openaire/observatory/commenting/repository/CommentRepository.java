@@ -27,8 +27,8 @@ import java.util.UUID;
 @Repository
 public interface CommentRepository extends CrudRepository<CommentThread, UUID> {
 
-    List<CommentThread> findAllByTarget(CommentTarget target);
+    List<CommentThread> findAllByTargetOrderByCreatedAtAsc(CommentTarget target);
 
-    List<CommentThread> findAllByTargetAndStatus(CommentTarget target, CommentStatus status);
+    List<CommentThread> findAllByTargetAndStatusOrderByCreatedAtAsc(CommentTarget target, CommentStatus status);
 
 }

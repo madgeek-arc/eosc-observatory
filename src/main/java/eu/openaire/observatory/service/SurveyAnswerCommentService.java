@@ -59,13 +59,13 @@ public class SurveyAnswerCommentService implements CommentService {
     @Override
     public List<CommentDto> get(String targetId) {
         CommentTarget target = new CommentTarget(TARGET_TYPE, targetId);
-        return commentRepository.findAllByTarget(target).stream().map(mapper::toDto).toList();
+        return commentRepository.findAllByTargetOrderByCreatedAtAsc(target).stream().map(mapper::toDto).toList();
     }
 
     @Override
     public List<CommentDto> get(String targetId, CommentStatus status) {
         CommentTarget target = new CommentTarget(TARGET_TYPE, targetId);
-        return commentRepository.findAllByTargetAndStatus(target, status).stream().map(mapper::toDto).toList();
+        return commentRepository.findAllByTargetAndStatusOrderByCreatedAtAsc(target, status).stream().map(mapper::toDto).toList();
     }
 
     @Override

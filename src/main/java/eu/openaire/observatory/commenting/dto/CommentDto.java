@@ -17,6 +17,7 @@ package eu.openaire.observatory.commenting.dto;
 
 import eu.openaire.observatory.commenting.domain.CommentStatus;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ public record CommentDto(
         UUID id,
         String fieldId,
         CommentStatus status,
-        List<CommentMessageDto> messages
+        List<CommentMessageDto> messages,
+        Instant createdAt
 ) {
 }
