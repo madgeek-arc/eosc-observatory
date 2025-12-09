@@ -21,6 +21,7 @@ import eu.openaire.observatory.commenting.dto.CommentDto;
 import eu.openaire.observatory.commenting.dto.CreateComment;
 import eu.openaire.observatory.commenting.dto.CreateMessage;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,7 +29,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("survey-answer-comments")
+@RequestMapping(value = "survey-answer-comments", produces = MediaType.APPLICATION_JSON_VALUE)
 public class SurveyAnswerCommentController {
 
     private final CommentService commentService;
