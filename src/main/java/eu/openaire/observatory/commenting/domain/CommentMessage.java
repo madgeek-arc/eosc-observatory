@@ -90,9 +90,11 @@ public class CommentMessage {
      */
     public void addMentions(List<String> mentionedUsers) {
         List<MessageMention> mentions = new ArrayList<>();
-        for (String mentionedUser : mentionedUsers) {
-            MessageMention mention = new MessageMention(this, mentionedUser);
-            mentions.add(mention);
+        if (mentionedUsers != null) {
+            for (String mentionedUser : mentionedUsers) {
+                MessageMention mention = new MessageMention(this, mentionedUser);
+                mentions.add(mention);
+            }
         }
         this.mentions = mentions;
     }
