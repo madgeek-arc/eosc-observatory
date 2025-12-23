@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("datasets")
+@RequestMapping(path = "datasets", produces = MediaType.APPLICATION_JSON_VALUE)
 public class DatasetController {
 
     private final DefaultDatasetService datasetService;

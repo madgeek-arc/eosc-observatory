@@ -19,20 +19,21 @@ import eu.openaire.observatory.domain.PrivacyPolicy;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.dto.UserPrivacyPolicyInfo;
 import eu.openaire.observatory.service.PrivacyPolicyService;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.Parameter;
 
 @RestController
-@RequestMapping("privacy/policies")
+@RequestMapping(path = "privacy/policies", produces = MediaType.APPLICATION_JSON_VALUE)
 public class PrivacyPolicyController extends AbstractCrudController<PrivacyPolicy> {
 
     private static final Logger logger = LoggerFactory.getLogger(PrivacyPolicyController.class);

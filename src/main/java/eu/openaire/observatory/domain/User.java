@@ -42,7 +42,6 @@ public class User implements Identifiable<String> {
     }
 
     public static User of(Authentication auth) {
-        logger.trace(String.format("Creating UserService from Authentication: %n%s", auth));
         User user = new User();
         if (auth == null) {
             throw new InsufficientAuthenticationException("You are not authenticated, please log in.");
@@ -61,9 +60,8 @@ public class User implements Identifiable<String> {
             user.surname = principal.getAttribute("familyName");
             user.fullname = principal.getAttribute("fullName");
         } else {
-            throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
+            throw new InsufficientAuthenticationException("Insufficient user authentication");
         }
-        logger.debug(String.format("UserService from Authentication: %s", user));
         return user;
     }
 
@@ -136,7 +134,6 @@ public class User implements Identifiable<String> {
     }
 
     public static String getId(Authentication auth) {
-        logger.trace(String.format("Retrieving id from Authentication: %n%s", auth));
         String id = null;
         if (auth == null) {
             throw new InsufficientAuthenticationException("You are not authenticated, please log in.");
@@ -147,7 +144,7 @@ public class User implements Identifiable<String> {
             OAuth2User principal = ((OAuth2AuthenticationToken) auth).getPrincipal();
             id = principal.getAttribute("email");
         } else {
-            throw new InsufficientAuthenticationException("Could not create user. Insufficient user authentication");
+            throw new InsufficientAuthenticationException("Insufficient user authentication");
         }
         if (id == null || "".equals(id)) {
             logger.error("Problem getting user id. Authentication: {}", auth);

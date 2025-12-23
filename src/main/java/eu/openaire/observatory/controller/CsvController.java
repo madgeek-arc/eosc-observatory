@@ -16,6 +16,7 @@
 package eu.openaire.observatory.controller;
 
 import eu.openaire.observatory.service.CSVConverter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,14 +25,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
 @RestController
-@RequestMapping("csv")
+@RequestMapping(path = "csv", produces = MediaType.APPLICATION_JSON_VALUE)
 public class CsvController {
 
     private static final Logger logger = LoggerFactory.getLogger(CsvController.class);

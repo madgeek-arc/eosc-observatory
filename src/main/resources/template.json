@@ -1,0 +1,52 @@
+{
+  "docInfo": {
+    "title": "<document title in english>",
+    "originalTitles": [ "<document title>" ],
+    "acronym": "<acronym of the organization/institution/owner of the document>",
+    "shortDescription": {
+      "text": "<description of the document - if not found generate one (up to 100 words) using the most informative paragraphs of the document>",
+      "generated": "<boolean field: true if generated (or synthesized by data of the document), false if found exactly as is in the document>"
+    },
+    "abstract": {
+      "text": "<document abstract - if not found generate one using the most informative paragraphs of the document",
+      "generated": "<boolean field: true if generated (or synthesized by data of the document), false if found exactly as is in the document>"
+    },
+    "summary": {
+      "text": "<document summary - if not found generate one using the most informative paragraphs of the document",
+      "generated": "<boolean field: true if text was generated, false if text was found in the document>"
+    },
+    "startDate": "<policy start date in year format - if document refers to a policy>",
+    "endDate": "<policy end date in year format - if document refers to a policy>",
+    "publicationDate": "<document publication date in year format>",
+    "organisations": [ "<name of responsible organisation>" ],
+    "country": "<ISO 3166 country code>",
+    "language": "<ISO 639 language of the most prevalent text - use language detection to set this value>",
+    "authors": [
+      {
+        "name": "<author full name>",
+        "orcid": "<ORCID of the author - if an ORCID exists (ORCID format: https://orcid.org/XXXX-XXXX-XXXX-XXXX)>"
+      }
+    ],
+    "version": "<version number of the document>",
+    "modificationDate": "<latest modification date>",
+    "links": [
+      {
+        "name": "<linked document/dataset/resource name>",
+        "pid": "<persistent identifier of linked document - if a persistent identifier can be found>",
+        "type": "<link type: e.g. 'doi'/'handle'/'ark'/'purl'/'urn'/'swhid'(when pid found), 'link', 'repository', 'terms' - if link is pointing to a dataset, fill this with the type of the provided data>",
+        "url": "<url>",
+        "description": "<short description of linked document>"
+      }
+    ],
+    "otherLinks": [
+      {
+        "name": "<link name>",
+        "type": "<link type: 'feed', 'social', 'news', etc>",
+        "url": "<url>",
+        "description": "<short description of link>"
+      }
+    ],
+    "tags": [ "<tags of document: values among ['national policy', 'university policy', 'use cases', 'strategy', 'RPO policy', 'RFO policy', 'survey', 'survey results'] | (RPO=Research Performing Organization policy, RFO=Research Funding Organization)>" ],
+    "otherTags": [ "<list of 3-7 relevant tags based on document content>" ]
+  }
+}

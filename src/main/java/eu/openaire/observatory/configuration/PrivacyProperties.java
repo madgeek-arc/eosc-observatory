@@ -25,6 +25,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "privacy")
 public class PrivacyProperties {
 
+    private final List<WrapperClass> wrapperClasses = new ArrayList<>();
     private final List<FieldPrivacy> entries = new ArrayList<>();
 
 
@@ -32,6 +33,9 @@ public class PrivacyProperties {
         // no-arg constructor
     }
 
+    public List<WrapperClass> getWrapperClasses() {
+        return wrapperClasses;
+    }
 
     public List<FieldPrivacy> getEntries() {
         return entries;
@@ -46,6 +50,31 @@ public class PrivacyProperties {
 
         public Map<String, List<FieldPrivacy>> getClazz() {
             return clazz;
+        }
+    }
+
+    public static class WrapperClass {
+
+        private Class<?> clazz;
+        private String field;
+
+        public WrapperClass() {
+        }
+
+        public Class<?> getClazz() {
+            return clazz;
+        }
+
+        public void setClazz(Class<?> clazz) {
+            this.clazz = clazz;
+        }
+
+        public String getField() {
+            return field;
+        }
+
+        public void setField(String field) {
+            this.field = field;
         }
     }
 

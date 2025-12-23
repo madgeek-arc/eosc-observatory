@@ -16,6 +16,7 @@
 package eu.openaire.observatory.configuration.security;
 
 import eu.openaire.observatory.domain.*;
+import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.service.*;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
@@ -330,6 +331,21 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean canReadDocuments(Document.Status status) {
+        return (status != null && status.equals(Document.Status.APPROVED)) || isAdministratorOfType("eosc-sb");
+    }
+
+    @Override
+    public boolean canReadDocument(String documentId) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean canWriteDocument(String documentId) {
+        throw new UnsupportedOperationException();
     }
 
 

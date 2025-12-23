@@ -15,6 +15,7 @@
  */
 package eu.openaire.observatory.configuration.security;
 
+import eu.openaire.observatory.resources.model.Document;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
@@ -77,5 +78,11 @@ public interface MethodSecurityExpressions {
     boolean hasAccess(Object resource, Object permission);
 
     boolean isAdmin(Authentication authentication);
+
+    // Resources Registry Methods
+
+    boolean canReadDocuments(Document.Status status);
+    boolean canReadDocument(String documentId);
+    boolean canWriteDocument(String documentId);
 
 }

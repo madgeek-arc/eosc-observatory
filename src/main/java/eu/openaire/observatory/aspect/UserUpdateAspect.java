@@ -55,13 +55,13 @@ public class UserUpdateAspect {
     @Before("execution(* eu.openaire.observatory.configuration.security.AuthSuccessHandler.onAuthenticationSuccess(..))")
     public void updateUser(JoinPoint joinPoint) {
         Authentication authentication = (Authentication) joinPoint.getArgs()[joinPoint.getArgs().length - 1];
-        logger.info(String.format("Successful Login [authentication: %s]", authentication.toString()));
-        // update user info
         try {
+            // update user info
             User user = User.of(authentication);
             if (!stakeholderService.getWithFilter("users", user.getId()).isEmpty()
                     || !coordinatorService.getWithFilter("users", user.getId()).isEmpty()
                     || !administratorService.getWithFilter("users", user.getId()).isEmpty()) {
+                logger.debug("Updating user information");
                 userService.updateUserDetails(authentication);
             }
         } catch (RuntimeException e) {
