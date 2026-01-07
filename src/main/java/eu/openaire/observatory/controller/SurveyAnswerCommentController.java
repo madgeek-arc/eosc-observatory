@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,7 +56,7 @@ public class SurveyAnswerCommentController {
     }
 
     @PutMapping("{threadId}/messages/{messageId}")
-    public CommentDto updateMessage(@PathVariable UUID threadId, @PathVariable UUID messageId, @RequestBody @Valid CreateMessage message) {
+    public CommentDto updateMessage(@PathVariable UUID threadId, @PathVariable UUID messageId, @RequestBody @Valid CreateMessage message) throws AccessDeniedException {
         return commentService.updateMessage(messageId, message);
     }
 

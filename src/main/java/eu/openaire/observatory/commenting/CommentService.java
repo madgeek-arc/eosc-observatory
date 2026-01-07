@@ -20,6 +20,7 @@ import eu.openaire.observatory.commenting.dto.CommentDto;
 import eu.openaire.observatory.commenting.dto.CreateComment;
 import eu.openaire.observatory.commenting.dto.CreateMessage;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.UUID;
 
@@ -83,7 +84,7 @@ public interface CommentService {
      * @param message   the updated message
      * @return
      */
-    CommentDto updateMessage(UUID messageId, CreateMessage message);
+    CommentDto updateMessage(UUID messageId, CreateMessage message) throws AccessDeniedException;
 
     /**
      * Creates a reply to a comment message.

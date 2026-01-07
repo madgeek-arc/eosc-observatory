@@ -27,6 +27,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 
+import java.nio.file.AccessDeniedException;
 import java.util.UUID;
 
 @Controller
@@ -70,7 +71,7 @@ public class SurveyAnswerCommentsController {
     public CommentDto updateMessage(@DestinationVariable("targetId") String targetId,
                                     @DestinationVariable("threadId") UUID threadId,
                                     @DestinationVariable("messageId") UUID messageId,
-                                    @Valid CreateMessage message) {
+                                    @Valid CreateMessage message) throws AccessDeniedException {
         return commentService.updateMessage(messageId, message);
     }
 
