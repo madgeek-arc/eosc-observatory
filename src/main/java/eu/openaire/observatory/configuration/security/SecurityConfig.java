@@ -21,10 +21,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.socket.EnableWebSocketSecurity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
@@ -35,16 +34,18 @@ import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 @Configuration
+@EnableWebSocketSecurity
 public class SecurityConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
@@ -78,17 +79,24 @@ public class SecurityConfig {
                         .requestMatchers("/websocket").authenticated()
                         .anyRequest().permitAll()
                 )
-                .oauth2Login((oauth2login) -> oauth2login
+                .oauth2Login(oauth2login -> oauth2login
                         .successHandler(authSuccessHandler)
                 )
-                .logout((logout) -> logout
+                .logout(logout -> logout
                         .logoutSuccessHandler(oidcLogoutSuccessHandler())
                         .deleteCookies()
                         .clearAuthentication(true)
                         .invalidateHttpSession(true)
                 )
                 .cors(AbstractHttpConfigurer::disable)
-                .csrf(AbstractHttpConfigurer::disable);
+                .csrf(csrf -> {
+                            HttpSessionCsrfTokenRepository repository = new HttpSessionCsrfTokenRepository();
+                            repository.setHeaderName("X-XSRF-TOKEN"); // Use X-XSRF-TOKEN instead of X-CSRF-TOKEN
+                            csrf
+                                    .csrfTokenRepository(repository)
+                                    .csrfTokenRequestHandler(new XorCsrfTokenRequestAttributeHandler());
+                        }
+                );
 
         return http.build();
     }
