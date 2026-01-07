@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.5</version>
+		<version>3.5.6</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>eu.openaire</groupId>
@@ -22,7 +22,7 @@
 
 	<properties>
 		<java.version>21</java.version>
-		<registry-core.version>4.1.0-SNAPSHOT</registry-core.version>
+		<registry-core.version>4.1.0</registry-core.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 	</properties>
 
@@ -120,7 +120,7 @@
 		<dependency>
 			<groupId>io.sentry</groupId>
 			<artifactId>sentry-spring-boot-starter-jakarta</artifactId>
-			<version>8.2.0</version>
+			<version>8.29.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -129,18 +129,18 @@
 		<dependency>
 			<groupId>io.sentry</groupId>
 			<artifactId>sentry-log4j2</artifactId>
-			<version>8.2.0</version>
+			<version>8.29.0</version>
 		</dependency>
 
 		<dependency>
 			<groupId>gr.uoa.di.madgik</groupId>
 			<artifactId>catalogue</artifactId>
-			<version>9.0.0-SNAPSHOT</version>
+			<version>9.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>eu.openaire</groupId>
 			<artifactId>document-analyzer</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>1.0.0</version>
 		</dependency>
 
 		<dependency>
