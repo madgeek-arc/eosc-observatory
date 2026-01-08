@@ -17,9 +17,9 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.commenting.CommentService;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
-import eu.openaire.observatory.commenting.domain.CommentThread;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
 import eu.openaire.observatory.commenting.domain.CommentTarget;
+import eu.openaire.observatory.commenting.domain.CommentThread;
 import eu.openaire.observatory.commenting.dto.CommentDto;
 import eu.openaire.observatory.commenting.dto.CreateComment;
 import eu.openaire.observatory.commenting.dto.CreateMessage;
@@ -27,11 +27,11 @@ import eu.openaire.observatory.commenting.repository.CommentMessageRepository;
 import eu.openaire.observatory.commenting.repository.CommentRepository;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.mappers.CommentMapper;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.UUID;
 
@@ -103,11 +103,11 @@ public class SurveyAnswerCommentService implements CommentService {
     }
 
     @Override
-    public CommentDto updateMessage(UUID messageId, CreateMessage message) throws AccessDeniedException {
+    public CommentDto updateMessage(UUID messageId, CreateMessage message) {
         CommentMessage m = messageRepository.findById(messageId).orElseThrow();
         String authorId = User.getId(SecurityContextHolder.getContext().getAuthentication());
         if (!authorId.equals(m.getAuthorId())) {
-            throw new AccessDeniedException("Forbidden");
+            throw new AccessDeniedException("You are not allowed to update this comment.");
         }
         m.setBody(message.body());
         m.addMentions(message.mentions());
@@ -131,6 +131,10 @@ public class SurveyAnswerCommentService implements CommentService {
     @Override
     public void delete(UUID id) {
         CommentThread thread = commentRepository.findById(id).orElseThrow();
+        String authorId = User.getId(SecurityContextHolder.getContext().getAuthentication());
+        if (!thread.getMessages().isEmpty() && !authorId.equals(thread.getMessages().getFirst().getAuthorId())) {
+            throw new AccessDeniedException("You are not allowed to delete this comment thread.");
+        }
         thread.setStatus(CommentStatus.DELETED);
         commentRepository.save(thread);
     }
@@ -138,6 +142,10 @@ public class SurveyAnswerCommentService implements CommentService {
     @Override
     public void deleteMessage(UUID messageId) {
         CommentMessage m = messageRepository.findById(messageId).orElseThrow();
+        String authorId = User.getId(SecurityContextHolder.getContext().getAuthentication());
+        if (!authorId.equals(m.getAuthorId())) {
+            throw new AccessDeniedException("You are not allowed to delete this comment.");
+        }
         messageRepository.delete(m);
     }
 }
