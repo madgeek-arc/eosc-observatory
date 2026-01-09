@@ -91,7 +91,7 @@ public class SurveyAnswerCommentsController {
     }
 
     @MessageMapping(BASE_PATH + "/{threadId}/delete")
-    @SendTo(BASE_TOPIC + "/delete/{threadId}")
+    @SendTo(BASE_TOPIC)
     public void delete(@DestinationVariable("targetId") String targetId,
                        @DestinationVariable("threadId") UUID threadId) {
     }
