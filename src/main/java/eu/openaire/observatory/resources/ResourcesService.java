@@ -31,7 +31,7 @@ import java.util.Date;
 @Service
 public class ResourcesService {
 
-    public GenericResourceService genericResourceService;
+    public final GenericResourceService genericResourceService;
 
     public ResourcesService(GenericResourceService genericResourceService) {
         this.genericResourceService = genericResourceService;
@@ -43,6 +43,7 @@ public class ResourcesService {
         }
         Document doc = genericResourceService.get("document", id);
         doc.setDocInfo(docInfo);
+        doc.setCurated(true);
         doc.getMetadata().setModificationDate(new Date());
         doc.getMetadata().setModifiedBy(User.getId(SecurityContextHolder.getContext().getAuthentication()));
         return genericResourceService.update("document", id, doc);
