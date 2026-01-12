@@ -16,11 +16,16 @@
 package eu.openaire.observatory.commenting.repository;
 
 import eu.openaire.observatory.commenting.domain.CommentMessage;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface CommentMessageRepository extends CrudRepository<CommentMessage, UUID> {
+
+    @EntityGraph(attributePaths = "comment")
+    Optional<CommentMessage> findWithCommentById(UUID id);
 }
