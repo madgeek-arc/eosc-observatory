@@ -19,6 +19,7 @@ import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.dto.GroupMembers;
 import eu.openaire.observatory.dto.StakeholderDTO;
+import eu.openaire.observatory.dto.UserDTO;
 import eu.openaire.observatory.mappers.StakeholderMapper;
 import eu.openaire.observatory.service.StakeholderService;
 import eu.openaire.observatory.service.UserService;
@@ -137,6 +138,11 @@ public class StakeholderController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Stakeholder> updateManagers(@PathVariable("id") String stakeholderId, @RequestBody Set<String> emails) {
         return new ResponseEntity<>(stakeholderService.updateManagers(stakeholderId, emails), HttpStatus.OK);
+    }
+
+    @GetMapping("{id}/managers/public")
+    public ResponseEntity<List<UserDTO>> getManagers(@PathVariable("id") String stakeholderId) {
+        return new ResponseEntity<>(stakeholderService.getManagers(stakeholderId), HttpStatus.OK);
     }
 
 

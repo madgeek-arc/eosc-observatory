@@ -18,12 +18,13 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.UserGroup;
+import eu.openaire.observatory.dto.UserDTO;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
-import gr.uoa.di.madgik.registry.service.*;
 import gr.uoa.di.madgik.authorization.domain.Permission;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
+import gr.uoa.di.madgik.registry.service.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -183,6 +184,16 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
         addManagerFullPermissions(userIds, resourceIds);
 
         return update(stakeholderId, stakeholder);
+    }
+
+    @Override
+    public List<UserDTO> getManagers(String stakeholderId) {
+        return this.get(stakeholderId)
+                .getAdmins()
+                .stream()
+                .map(userService::getUser)
+                .map(UserDTO::new)
+                .toList();
     }
 
     @Override
