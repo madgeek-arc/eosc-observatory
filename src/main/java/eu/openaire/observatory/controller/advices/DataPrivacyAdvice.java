@@ -114,7 +114,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
         ResolvableType rt = ResolvableType.forMethodParameter(returnType);
 
         boolean escape = false;
-        while (true) {
+        for (int i = 0; i < 100; i++) { // 100 is an arbitrary number, it exists only to avoid while(true)
             if (ResponseEntity.class.isAssignableFrom(rt.toClass())) {
                 rt = rt.getGeneric(0);
             } else if (Collection.class.isAssignableFrom(rt.toClass())) {
