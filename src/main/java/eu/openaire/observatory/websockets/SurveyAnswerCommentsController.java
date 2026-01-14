@@ -91,8 +91,11 @@ public class SurveyAnswerCommentsController {
     }
 
     @MessageMapping(BASE_PATH + "/{threadId}/delete")
-    @SendTo(BASE_TOPIC)
-    public void delete(@DestinationVariable("targetId") String targetId,
-                       @DestinationVariable("threadId") UUID threadId) {
+    @SendTo(BASE_TOPIC + "/delete")
+    public CommentDto delete(@DestinationVariable("targetId") String targetId,
+                             @DestinationVariable("threadId") UUID threadId) {
+        CommentDto comment = commentService.get(threadId);
+        commentService.delete(threadId);
+        return comment;
     }
 }
