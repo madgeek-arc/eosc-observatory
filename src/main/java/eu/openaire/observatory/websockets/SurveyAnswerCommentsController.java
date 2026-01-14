@@ -23,8 +23,11 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.annotation.SendToUser;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 
 import java.util.UUID;
@@ -97,5 +100,11 @@ public class SurveyAnswerCommentsController {
         CommentDto comment = commentService.get(threadId);
         commentService.delete(threadId);
         return comment;
+    }
+
+    @MessageExceptionHandler(AccessDeniedException.class)
+    @SendToUser(BASE_TOPIC + "/delete")
+    public String handleException(Exception e) {
+        return e.getMessage();
     }
 }
