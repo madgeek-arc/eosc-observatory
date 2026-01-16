@@ -15,45 +15,47 @@
  */
 package eu.openaire.observatory.dto;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class GroupMembers<T> {
 
-    Set<T> members;
-    Set<T> admins;
+    List<T> members;
+    List<T> admins;
 
     public GroupMembers() {
     }
 
-    public GroupMembers(Set<T> members, Set<T> admins) {
+    public GroupMembers(List<T> members, List<T> admins) {
         this.members = members;
         this.admins = admins;
     }
 
     public <U> GroupMembers<U> map(Function<? super T, ? extends U> converter) {
         return new GroupMembers<>(this.getMembers() == null ? null :
-                this.getMembers().stream().filter(Objects::nonNull).map(converter).collect(Collectors.toSet()),
+                this.getMembers().stream().filter(Objects::nonNull).map(converter).collect(Collectors.toList()),
                 this.getAdmins() == null ? null :
-                        this.getAdmins().stream().filter(Objects::nonNull).map(converter).collect(Collectors.toSet())
+                        this.getAdmins().stream().filter(Objects::nonNull).map(converter).collect(Collectors.toList())
         );
     }
 
-    public Set<T> getMembers() {
+    public List<T> getMembers() {
         return members;
     }
 
-    public void setMembers(Set<T> members) {
+    public void setMembers(List<T> members) {
         this.members = members;
     }
 
-    public Set<T> getAdmins() {
+    public List<T> getAdmins() {
         return admins;
     }
 
-    public void setAdmins(Set<T> admins) {
+    public void setAdmins(List<T> admins) {
         this.admins = admins;
     }
 }

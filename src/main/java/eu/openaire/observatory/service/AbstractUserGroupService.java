@@ -22,6 +22,8 @@ import gr.uoa.di.madgik.registry.service.*;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -45,62 +47,62 @@ public abstract class AbstractUserGroupService<T extends UserGroup> extends Abst
     }
 
     @Override
-    public Set<String> getMembers(String groupId) {
+    public SortedSet<String> getMembers(String groupId) {
         return ((UserGroup) super.get(getResourceType(), groupId)).getMembers();
     }
 
     @Override
-    public Set<String> updateMembers(String groupId, Set<String> memberIds) {
+    public SortedSet<String> updateMembers(String groupId, Set<String> memberIds) {
         T group = get(groupId);
-        group.setMembers(memberIds);
+        group.setMembers(new TreeSet<>(memberIds));
         return update(groupId, group).getMembers();
     }
 
-    protected Set<String> updateMembers(String groupId, Set<String> memberIds, Consumer<UserGroup> setPermissions) {
+    protected SortedSet<String> updateMembers(String groupId, Set<String> memberIds, Consumer<UserGroup> setPermissions) {
         T group = get(groupId);
         setPermissions.accept(group);
-        group.setMembers(memberIds);
+        group.setMembers(new TreeSet<>(memberIds));
         return update(groupId, group).getMembers();
     }
 
     @Override
-    public Set<String> addMember(String groupId, String memberId) {
+    public SortedSet<String> addMember(String groupId, String memberId) {
         T group = get(groupId);
         if (group.getMembers() == null) {
-            group.setMembers(new HashSet<>());
+            group.setMembers(new TreeSet<>());
         }
         group.getMembers().add(memberId.toLowerCase());
         return super.update(groupId, group).getMembers();
     }
 
     @Override
-    public Set<String> removeMember(String groupId, String memberId) {
+    public SortedSet<String> removeMember(String groupId, String memberId) {
         T group = get(groupId);
         group.getMembers().remove(memberId.toLowerCase());
         return super.update(groupId, group).getMembers();
     }
 
     @Override
-    public Set<String> getAdmins(String groupId) {
+    public SortedSet<String> getAdmins(String groupId) {
         return ((UserGroup) super.get(getResourceType(), groupId)).getAdmins();
     }
 
     @Override
-    public Set<String> updateAdmins(String groupId, Set<String> memberIds) {
+    public SortedSet<String> updateAdmins(String groupId, Set<String> memberIds) {
         T group = get(groupId);
-        group.setAdmins(memberIds);
+        group.setAdmins(new TreeSet<>(memberIds));
         return update(groupId, group).getAdmins();
     }
 
-    protected Set<String> updateAdmins(String groupId, Set<String> memberIds, Consumer<UserGroup> setPermissions) {
+    protected SortedSet<String> updateAdmins(String groupId, Set<String> memberIds, Consumer<UserGroup> setPermissions) {
         T group = get(groupId);
         setPermissions.accept(group);
-        group.setAdmins(memberIds);
+        group.setAdmins(new TreeSet<>(memberIds));
         return update(groupId, group).getAdmins();
     }
 
     @Override
-    public Set<String> addAdmin(String groupId, String adminId) {
+    public SortedSet<String> addAdmin(String groupId, String adminId) {
         T group = get(groupId);
         if (group.getAdmins() == null) {
             group.setAdmins(new HashSet<>());
@@ -110,13 +112,13 @@ public abstract class AbstractUserGroupService<T extends UserGroup> extends Abst
     }
 
     @Override
-    public Set<String> removeAdmin(String groupId, String adminId) {
+    public SortedSet<String> removeAdmin(String groupId, String adminId) {
         T group = get(groupId);
         group.getAdmins().remove(adminId.toLowerCase());
         return super.update(groupId, group).getAdmins();
     }
 
-    protected Set<User> getUsers(Set<String> userIds) {
-        return userIds.stream().map(userService::get).collect(Collectors.toSet());
+    protected SortedSet<User> getUsers(Set<String> userIds) {
+        return userIds.stream().map(userService::get).collect(Collectors.toCollection(TreeSet::new));
     }
 }

@@ -30,10 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static eu.openaire.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
@@ -132,7 +129,7 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> addMember(String stakeholderId, String userId) {
+    public SortedSet<String> addMember(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getMembers() == null) {
             stakeholder.setMembers(new HashSet<>());
@@ -154,7 +151,7 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> removeMember(String stakeholderId, String memberId) {
+    public SortedSet<String> removeMember(String stakeholderId, String memberId) {
         permissionService.removeAll(memberId, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
         return super.removeMember(stakeholderId, memberId);
     }
@@ -198,7 +195,7 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> addAdmin(String stakeholderId, String userId) {
+    public SortedSet<String> addAdmin(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getAdmins() == null) {
             stakeholder.setAdmins(new HashSet<>());
@@ -220,7 +217,7 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> removeAdmin(String stakeholderId, String adminId) {
+    public SortedSet<String> removeAdmin(String stakeholderId, String adminId) {
         permissionService.removeAll(adminId, Groups.STAKEHOLDER_MANAGER.getKey());
         return super.removeAdmin(stakeholderId, adminId);
     }
@@ -253,12 +250,12 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> updateMembers(String groupId, Set<String> memberIds) {
+    public SortedSet<String> updateMembers(String groupId, Set<String> memberIds) {
         return updateContributors(groupId, memberIds).getMembers();
     }
 
     @Override
-    public Set<String> updateAdmins(String groupId, Set<String> adminIds) {
+    public SortedSet<String> updateAdmins(String groupId, Set<String> adminIds) {
         return updateManagers(groupId, adminIds).getAdmins();
     }
 }

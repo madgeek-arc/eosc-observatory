@@ -38,10 +38,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -124,13 +121,13 @@ public class StakeholderController {
 
     @PostMapping("{id}/contributors")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<String>> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String userId, @Parameter(hidden = true) Authentication authentication) {
+    public ResponseEntity<SortedSet<String>> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String userId, @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(stakeholderService.addMember(stakeholderId, userId), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/contributors/{userId}")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId) or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<Set<String>> removeContributor(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
+    public ResponseEntity<SortedSet<String>> removeContributor(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeMember(stakeholderId, userId), HttpStatus.OK);
     }
 
@@ -148,13 +145,13 @@ public class StakeholderController {
 
     @PostMapping("{id}/managers")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<String>> addManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
+    public ResponseEntity<SortedSet<String>> addManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
         return new ResponseEntity<>(stakeholderService.addAdmin(stakeholderId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/managers/{userId}")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId)")
-    public ResponseEntity<Set<String>> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
+    public ResponseEntity<SortedSet<String>> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeAdmin(stakeholderId, userId), HttpStatus.OK);
     }
 
@@ -172,6 +169,6 @@ public class StakeholderController {
                 .collect(Collectors.toSet())
                 .stream()
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
     }
 }

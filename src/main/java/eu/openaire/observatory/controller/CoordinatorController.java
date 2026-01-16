@@ -34,6 +34,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
+import java.util.SortedSet;
 
 @RestController
 @RequestMapping(path = "coordinators", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -104,20 +105,20 @@ public class CoordinatorController {
 
     @PatchMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<?>> updateMembers(@PathVariable("id") String coordinatorId, @RequestBody Set<String> emails) {
+    public ResponseEntity<SortedSet<?>> updateMembers(@PathVariable("id") String coordinatorId, @RequestBody Set<String> emails) {
         return new ResponseEntity<>(coordinatorService.updateMembers(coordinatorId, emails), HttpStatus.OK);
     }
 
 
     @PostMapping("{id}/members")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<String>> addMember(@PathVariable("id") String coordinatorId, @RequestBody String email) {
+    public ResponseEntity<SortedSet<String>> addMember(@PathVariable("id") String coordinatorId, @RequestBody String email) {
         return new ResponseEntity<>(coordinatorService.addMember(coordinatorId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/members/{memberId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Set<String>> removeMember(@PathVariable("id") String coordinatorId, @PathVariable("memberId") String memberId) {
+    public ResponseEntity<SortedSet<String>> removeMember(@PathVariable("id") String coordinatorId, @PathVariable("memberId") String memberId) {
         return new ResponseEntity<>(coordinatorService.removeMember(coordinatorId, memberId), HttpStatus.OK);
     }
 
