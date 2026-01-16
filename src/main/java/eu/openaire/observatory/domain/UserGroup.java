@@ -26,8 +26,8 @@ public class UserGroup implements Identifiable<String> {
     protected String id;
     protected String name;
     protected String type;
-    protected Set<String> admins;
-    protected Set<String> members;
+    protected SortedSet<String> admins;
+    protected SortedSet<String> members;
 
     public UserGroup() {
 
@@ -59,33 +59,33 @@ public class UserGroup implements Identifiable<String> {
         this.type = type;
     }
 
-    public Set<String> getAdmins() {
-        return Optional.ofNullable(this.admins).orElse(new HashSet<>());
+    public SortedSet<String> getAdmins() {
+        return Optional.ofNullable(this.admins).orElse(new TreeSet<>());
     }
 
     public void setAdmins(Set<String> admins) {
         this.admins = admins == null ? null : admins
                 .stream()
                 .map(String::toLowerCase)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(TreeSet::new));
     }
 
-    public Set<String> getMembers() {
-        return Optional.ofNullable(this.members).orElse(new HashSet<>());
+    public SortedSet<String> getMembers() {
+        return Optional.ofNullable(this.members).orElse(new TreeSet<>());
     }
 
     public void setMembers(Set<String> members) {
         this.members = members == null ? null : members
                 .stream()
                 .map(String::toLowerCase)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(TreeSet::new));
     }
 
     @JsonIgnore
     public final Set<String> getUsers() {
         Set<String> users = new TreeSet<>();
-        users.addAll(Optional.ofNullable(this.admins).orElse(new HashSet<>()));
-        users.addAll(Optional.ofNullable(this.members).orElse(new HashSet<>()));
+        users.addAll(Optional.ofNullable(this.admins).orElse(new TreeSet<>()));
+        users.addAll(Optional.ofNullable(this.members).orElse(new TreeSet<>()));
         return users;
     }
 
