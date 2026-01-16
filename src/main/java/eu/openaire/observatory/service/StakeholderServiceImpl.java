@@ -192,6 +192,7 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
                 .getAdmins()
                 .stream()
                 .map(userService::getUser)
+                .filter(u -> u.getName() != null && u.getSurname() != null)
                 .map(UserDTO::new)
                 .toList();
     }
