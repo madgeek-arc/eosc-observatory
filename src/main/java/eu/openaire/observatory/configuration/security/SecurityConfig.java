@@ -16,6 +16,11 @@
 package eu.openaire.observatory.configuration.security;
 
 import eu.openaire.observatory.configuration.ApplicationProperties;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -36,10 +41,12 @@ import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -96,9 +103,29 @@ public class SecurityConfig {
                                     .csrfTokenRepository(repository)
                                     .csrfTokenRequestHandler(new XorCsrfTokenRequestAttributeHandler());
                         }
-                );
+                )
+                .addFilterAfter(csrfCookieFilter(), org.springframework.security.web.csrf.CsrfFilter.class);
 
         return http.build();
+    }
+
+    private OncePerRequestFilter csrfCookieFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+                    throws ServletException, IOException {
+
+                CsrfToken token = (CsrfToken) request.getAttribute("_csrf");
+                if (token != null) {
+                    Cookie cookie = new Cookie("XSRF-TOKEN", token.getToken());
+                    cookie.setPath(String.join("/", request.getContextPath()));
+                    cookie.setHttpOnly(false);
+                    cookie.setSecure(request.isSecure());
+                    response.addCookie(cookie);
+                }
+                chain.doFilter(request, response);
+            }
+        };
     }
 
     private LogoutSuccessHandler oidcLogoutSuccessHandler() {
