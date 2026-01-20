@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,27 +52,6 @@ public class AuthSuccessHandler implements AuthenticationSuccessHandler {
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        Cookie cookie = new Cookie("AccessToken", ((OidcUser) authentication.getPrincipal()).getIdToken().getTokenValue());
-        cookie.setMaxAge(createCookieMaxAge(authentication));
-        cookie.setPath("/");
-//        cookie.setSecure(true);
-
-        response.addCookie(cookie);
         response.sendRedirect(applicationProperties.getLoginRedirect());
-    }
-
-    private int createCookieMaxAge(Authentication authentication) {
-        Integer age = getExp(authentication);
-        return age != null ? age : 3600;
-    }
-
-    private Integer getExp(Authentication authentication) {
-        OidcUser user = ((OidcUser) authentication.getPrincipal());
-        if (user.getAttribute("exp") instanceof Instant) {
-            Instant exp = user.getAttribute("exp");
-            int age = (int) (exp.getEpochSecond() - (new Date().getTime() / 1000));
-            return age;
-        }
-        return null;
     }
 }

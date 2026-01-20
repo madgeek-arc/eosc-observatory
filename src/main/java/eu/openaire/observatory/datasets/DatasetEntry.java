@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +21,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-@Entity(name = "dataset_entry")
+@Entity
+@Table(name = "dataset_entry", schema = "external_datasets")
 public class DatasetEntry {
 
     @Id
