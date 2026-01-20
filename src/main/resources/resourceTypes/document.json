@@ -30,6 +30,13 @@
     },
     {
       "multivalued": false,
+      "name": "acronym",
+      "label": "Acronym",
+      "path": "$.docInfo.acronym",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
       "name": "shortDescription",
       "label": "Short Description",
       "path": "$.docInfo.shortDescription.text",
@@ -40,6 +47,20 @@
       "name": "abstract",
       "label": "Abstract",
       "path": "$.docInfo.abstract.text",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "authorNames",
+      "label": "Author Names",
+      "path": "$.docInfo.authors.name",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "authorOrcid",
+      "label": "Author Orcid",
+      "path": "$.docInfo.authors.orcid",
       "type": "java.lang.String"
     },
     {
@@ -61,6 +82,13 @@
       "name": "language",
       "label": "Language",
       "path": "$.docInfo.language",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "organisations",
+      "label": "Organisations",
+      "path": "$.docInfo.organisations",
       "type": "java.lang.String"
     },
     {
