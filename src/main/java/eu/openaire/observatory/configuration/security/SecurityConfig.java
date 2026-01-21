@@ -118,7 +118,7 @@ public class SecurityConfig {
                 CsrfToken token = (CsrfToken) request.getAttribute("_csrf");
                 if (token != null) {
                     Cookie cookie = new Cookie("XSRF-TOKEN", token.getToken());
-                    cookie.setPath(String.join("/", request.getContextPath()));
+                    cookie.setPath("/");
                     cookie.setHttpOnly(false);
                     cookie.setSecure(request.isSecure());
                     response.addCookie(cookie);
