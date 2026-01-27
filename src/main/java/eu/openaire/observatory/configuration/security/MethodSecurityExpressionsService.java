@@ -316,6 +316,20 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     }
 
     @Override
+    public boolean isAdministratorOfCoordinator(String coordinatorId) {
+        Coordinator coordinator =  coordinatorService.get(coordinatorId);
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsAdministratorOfType(user.getId(), coordinator.getType());
+    }
+
+    @Override
+    public boolean isAdministratorOfStakeholder(String stakehodlerId) {
+        Stakeholder stakeholder = stakeholderService.get(stakehodlerId);
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsAdministratorOfType(user.getId(), stakeholder.getType());
+    }
+
+    @Override
     public boolean isAdministratorOfType(String type) {
         User user = userService.get(User.getId(getAuthentication()));
         return userIsAdministratorOfType(user.getId(), type);

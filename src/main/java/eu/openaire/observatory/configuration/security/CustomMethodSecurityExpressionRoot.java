@@ -165,6 +165,16 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     }
 
     @Override
+    public boolean isAdministratorOfCoordinator(String coordinatorId) {
+        return securityExpressions.isAdministratorOfCoordinator(coordinatorId);
+    }
+
+    @Override
+    public boolean isAdministratorOfStakeholder(String stakehodlerId) {
+        return securityExpressions.isAdministratorOfStakeholder(stakehodlerId);
+    }
+
+    @Override
     public boolean isAdministratorOfType(String type) {
         return securityExpressions.isAdministratorOfType(type);
     }

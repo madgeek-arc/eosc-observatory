@@ -56,31 +56,31 @@ public class CoordinatorController {
     /*---------------------------*/
 
     @GetMapping("{id}")
-    @PreAuthorize("isCoordinator(#id)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfCoordinator(#id) or isCoordinator(#id)")
     public ResponseEntity<Coordinator> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(coordinatorService.get(id), HttpStatus.OK);
     }
 
     @PostMapping()
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfType(#coordinator.getType())")
     public ResponseEntity<Coordinator> create(@RequestBody Coordinator coordinator) {
         return new ResponseEntity<>(coordinatorService.add(coordinator), HttpStatus.CREATED);
     }
 
     @PutMapping("{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")// or isCoordinatorManager(#coordinatorId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfCoordinator(#id)")// or isCoordinatorManager(#coordinatorId)")
     public ResponseEntity<Coordinator> update(@PathVariable("id") String id, @RequestBody Coordinator coordinator) throws ResourceNotFoundException {
         return new ResponseEntity<>(coordinatorService.update(id, coordinator), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfCoordinator(#id)")
     public ResponseEntity<Coordinator> delete(@PathVariable("id") String id) throws ResourceNotFoundException {
         return new ResponseEntity<>(coordinatorService.delete(id), HttpStatus.OK);
     }
 
     @GetMapping()
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfType(#allRequestParams.get('type'))")
     public ResponseEntity<Browsing<Coordinator>> getCoordinators(@Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<Coordinator> coordinators = coordinatorService.getAll(filter);
@@ -92,32 +92,32 @@ public class CoordinatorController {
     /*---------------------------*/
 
     @GetMapping("{id}/users")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorMember(#coordinatorId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfCoordinator(#coordinatorId) or isCoordinator(#coordinatorId)")
     public ResponseEntity<GroupMembers<User>> getUsers(@PathVariable("id") String coordinatorId) {
         return new ResponseEntity<>(coordinatorService.getGroupMembers(coordinatorId).map(userService::getUser), HttpStatus.OK);
     }
 
     @GetMapping("{id}/members")
-    @PreAuthorize("hasAuthority('ADMIN')")// or isCoordinatorMember(#coordinatorId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfCoordinator(#coordinatorId)") // or isCoordinatorMember(#coordinatorId)")
     public ResponseEntity<GroupMembers<User>> getMembers(@PathVariable("id") String coordinatorId) {
         return new ResponseEntity<>(coordinatorService.getGroupMembers(coordinatorId).map(userService::getUser), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/members")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfCoordinator(#coordinatorId)")
     public ResponseEntity<SortedSet<?>> updateMembers(@PathVariable("id") String coordinatorId, @RequestBody Set<String> emails) {
         return new ResponseEntity<>(coordinatorService.updateMembers(coordinatorId, emails), HttpStatus.OK);
     }
 
 
     @PostMapping("{id}/members")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfCoordinator(#coordinatorId)")
     public ResponseEntity<SortedSet<String>> addMember(@PathVariable("id") String coordinatorId, @RequestBody String email) {
         return new ResponseEntity<>(coordinatorService.addMember(coordinatorId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/members/{memberId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfCoordinator(#coordinatorId)")
     public ResponseEntity<SortedSet<String>> removeMember(@PathVariable("id") String coordinatorId, @PathVariable("memberId") String memberId) {
         return new ResponseEntity<>(coordinatorService.removeMember(coordinatorId, memberId), HttpStatus.OK);
     }

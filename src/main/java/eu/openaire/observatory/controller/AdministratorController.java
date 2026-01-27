@@ -92,7 +92,7 @@ public class AdministratorController {
 
 
     @GetMapping("{id}/users")
-    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorMember(#administratorId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministrator(#administratorId)")
     public ResponseEntity<GroupMembers<User>> getUsers(@PathVariable("id") String administratorId) {
         return new ResponseEntity<>(administratorService.getGroupMembers(administratorId).map(userService::getUser), HttpStatus.OK);
     }

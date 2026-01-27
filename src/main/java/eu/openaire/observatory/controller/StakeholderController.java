@@ -64,19 +64,20 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#id) or isCoordinatorOfStakeholder(#id)")
+    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#id) " +
+            "or isCoordinatorOfStakeholder(#id) or isAdministratorOfStakeholder(#id)")
     public ResponseEntity<Stakeholder> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(stakeholderService.get(id), HttpStatus.OK);
     }
 
     @PostMapping()
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#dto.getType())")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#dto.getType()) or isAdministratorOfType(#dto.getType())")
     public ResponseEntity<Stakeholder> create(@RequestBody StakeholderDTO dto) {
         return new ResponseEntity<>(stakeholderService.add(stakeholderMapper.toStakeholder(dto)), HttpStatus.CREATED);
     }
 
     @PutMapping("{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#id)")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#id) or isAdministratorOfStakeholder(#id)")
     public ResponseEntity<Stakeholder> update(@PathVariable("id") String id, @RequestBody StakeholderDTO dto) {
         Stakeholder existing = stakeholderService.get(id);
         Stakeholder toUpdate = stakeholderMapper.toStakeholder(dto);
@@ -86,14 +87,14 @@ public class StakeholderController {
     }
 
     @DeleteMapping("{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#id)")
     public ResponseEntity<Stakeholder> delete(@PathVariable("id") String id) throws ResourceNotFoundException {
         return new ResponseEntity<>(stakeholderService.delete(id), HttpStatus.OK);
     }
 
     @GetMapping()
     @BrowseParameters
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfType(#dto.getType()) or isCoordinatorOfType(#type)")
     public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@RequestParam(value = "type", required = false)
                                                                  String type,
                                                                  @Parameter(hidden = true) @RequestParam
@@ -108,31 +109,33 @@ public class StakeholderController {
     /*---------------------------*/
 
     @GetMapping("{id}/users")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId)" +
+            "or isStakeholderMember(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
     public ResponseEntity<GroupMembers<User>> getUsers(@PathVariable("id") String stakeholderId) {
         return new ResponseEntity<>(stakeholderService.getGroupMembers(stakeholderId).map(userService::getUser), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/contributors")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId)")
     public ResponseEntity<Stakeholder> updateContributors(@PathVariable("id") String stakeholderId, @RequestBody Set<String> userIds) {
         return new ResponseEntity<>(stakeholderService.updateContributors(stakeholderId, userIds), HttpStatus.OK);
     }
 
     @PostMapping("{id}/contributors")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId)")
     public ResponseEntity<SortedSet<String>> addContributor(@PathVariable("id") String stakeholderId, @RequestBody String userId, @Parameter(hidden = true) Authentication authentication) {
         return new ResponseEntity<>(stakeholderService.addMember(stakeholderId, userId), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/contributors/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId) or isStakeholderManager(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId)" +
+            "or isCoordinatorOfStakeholder(#stakeholderId) or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<SortedSet<String>> removeContributor(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeMember(stakeholderId, userId), HttpStatus.OK);
     }
 
     @PatchMapping("{id}/managers")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId)")
     public ResponseEntity<Stakeholder> updateManagers(@PathVariable("id") String stakeholderId, @RequestBody Set<String> emails) {
         return new ResponseEntity<>(stakeholderService.updateManagers(stakeholderId, emails), HttpStatus.OK);
     }
@@ -144,13 +147,13 @@ public class StakeholderController {
 
 
     @PostMapping("{id}/managers")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId)")
     public ResponseEntity<SortedSet<String>> addManager(@PathVariable("id") String stakeholderId, @RequestBody String email) {
         return new ResponseEntity<>(stakeholderService.addAdmin(stakeholderId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/managers/{userId}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
     public ResponseEntity<SortedSet<String>> removeManager(@PathVariable("id") String stakeholderId, @PathVariable("userId") String userId) {
         return new ResponseEntity<>(stakeholderService.removeAdmin(stakeholderId, userId), HttpStatus.OK);
     }
