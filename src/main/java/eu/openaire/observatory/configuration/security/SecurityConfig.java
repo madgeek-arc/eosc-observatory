@@ -82,7 +82,8 @@ public class SecurityConfig {
                                 "/restore/",
                                 "/resources/**",
                                 "/resourceType/**",
-                                "/search/**").hasAuthority("ADMIN")
+                                "/search/**",
+                                "/items/**").hasAuthority("ADMIN")
                         .requestMatchers("/websocket").authenticated()
                         .anyRequest().permitAll()
                 )
