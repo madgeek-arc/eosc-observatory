@@ -18,6 +18,7 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.domain.UserGroup;
 import eu.openaire.observatory.dto.GroupMembers;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.service.*;
 
 import java.util.HashSet;
@@ -36,8 +37,9 @@ public abstract class AbstractUserGroupService<T extends UserGroup> extends Abst
                                        ResourceService resourceService,
                                        SearchService searchService,
                                        VersionService versionService,
-                                       ParserService parserService) {
-        super(resourceTypeService, resourceService, searchService, versionService, parserService);
+                                       ParserService parserService,
+                                       ModelResponseValidator validator) {
+        super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.userService = userService;
     }
 

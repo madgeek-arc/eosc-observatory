@@ -18,6 +18,7 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.domain.*;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.service.*;
@@ -52,8 +53,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy CrudService<Stakeholder> stakeholderCrudService,
                               @Lazy CrudService<Coordinator> coordinatorCrudService,
                               @Lazy CrudService<Administrator> administratorCrudService,
-                              ApplicationProperties applicationProperties) {
-        super(resourceTypeService, resourceService, searchService, versionService, parserService);
+                              ApplicationProperties applicationProperties,
+                              ModelResponseValidator validator) {
+        super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.privacyPolicyService = privacyPolicyService;
         this.stakeholderCrudService = stakeholderCrudService;
         this.coordinatorCrudService = coordinatorCrudService;

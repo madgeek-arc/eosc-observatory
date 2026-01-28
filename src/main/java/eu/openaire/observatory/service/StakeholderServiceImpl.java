@@ -23,6 +23,7 @@ import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
 import gr.uoa.di.madgik.authorization.domain.Permission;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.registry.service.*;
 import org.slf4j.Logger;
@@ -51,8 +52,9 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
                                   ParserService parserService,
                                   UserService userService,
                                   @Lazy SurveyService surveyService,
-                                  PermissionService permissionService) {
-        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService);
+                                  PermissionService permissionService,
+                                  ModelResponseValidator validator) {
+        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.permissionService = permissionService;
         this.surveyService = surveyService;
     }

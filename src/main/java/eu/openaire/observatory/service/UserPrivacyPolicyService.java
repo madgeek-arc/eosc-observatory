@@ -17,6 +17,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.domain.PrivacyPolicy;
 import eu.openaire.observatory.domain.User;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.service.*;
@@ -38,8 +39,9 @@ public class UserPrivacyPolicyService extends AbstractCrudService<PrivacyPolicy>
                                     SearchService searchService,
                                     VersionService versionService,
                                     ParserService parserService,
-                                    @Lazy UserService userService) {
-        super(resourceTypeService, resourceService, searchService, versionService, parserService);
+                                    @Lazy UserService userService,
+                                    ModelResponseValidator validator) {
+        super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.userService = userService;
     }
 

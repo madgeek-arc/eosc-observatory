@@ -20,6 +20,7 @@ import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.service.*;
 import org.slf4j.Logger;
@@ -51,8 +52,9 @@ public class CoordinatorServiceImpl extends AbstractUserGroupService<Coordinator
                                   ParserService parserService,
                                   UserService userService,
                                   @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
-                                  PermissionService permissionService) {
-        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService);
+                                  PermissionService permissionService,
+                                  ModelResponseValidator validator) {
+        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.permissionService = permissionService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
     }

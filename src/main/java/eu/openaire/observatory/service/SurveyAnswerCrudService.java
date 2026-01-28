@@ -17,6 +17,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Resource;
@@ -46,8 +47,9 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
                                    VersionService versionService,
                                    ParserService parserService,
                                    IdGenerator<String> idGenerator,
-                                   CacheService<String, SurveyAnswerRevisionsAggregation> cacheService) {
-        super(resourceTypeService, resourceService, searchService, versionService, parserService);
+                                   CacheService<String, SurveyAnswerRevisionsAggregation> cacheService,
+                                   ModelResponseValidator validator) {
+        super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.idGenerator = idGenerator;
         this.cacheService = cacheService;
     }
