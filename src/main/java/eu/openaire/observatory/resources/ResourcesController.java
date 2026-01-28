@@ -33,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
@@ -107,12 +108,14 @@ public class ResourcesController {
     }
 
     @GetMapping("{id}")
+    @PostAuthorize("isAdministratorOfType('eosc-sb') or canReadDocuments(returnObject.getStatus())")
     public ResponseEntity<Document> getDocument(@PathVariable("id") String id) {
         Document doc = genericResourceService.get("document", id);
         return new ResponseEntity<>(doc, HttpStatus.OK);
     }
 
     @PostMapping("migrate")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Void> migrate(String resourceTypeFrom, String resourceTypeTo) {
         ResourceType rtFrom = resourceTypeService.getResourceType(resourceTypeFrom);
         ResourceType rtTo = resourceTypeService.getResourceType(resourceTypeTo);

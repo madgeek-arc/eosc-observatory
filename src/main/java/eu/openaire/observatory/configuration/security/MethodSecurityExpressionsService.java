@@ -331,8 +331,12 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
     @Override
     public boolean isAdministratorOfType(String type) {
-        User user = userService.get(User.getId(getAuthentication()));
-        return userIsAdministratorOfType(user.getId(), type);
+        try {
+            User user = userService.get(User.getId(getAuthentication()));
+            return userIsAdministratorOfType(user.getId(), type);
+        } catch (Exception ignore) {
+            return false;
+        }
     }
 
     @Override
