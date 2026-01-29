@@ -114,6 +114,7 @@ public class SurveyAnswerCommentService implements CommentService {
         }
         m.setBody(message.body());
         m.addMentions(message.mentions());
+        messageRepository.save(m);
 
         return mapper.toDto(m.getComment());
     }
