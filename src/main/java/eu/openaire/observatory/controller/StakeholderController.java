@@ -94,7 +94,7 @@ public class StakeholderController {
 
     @GetMapping()
     @BrowseParameters
-    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfType(#dto.getType()) or isCoordinatorOfType(#type)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfType(#type) or isCoordinatorOfType(#type)")
     public ResponseEntity<Browsing<Stakeholder>> getStakeholders(@RequestParam(value = "type", required = false)
                                                                  String type,
                                                                  @Parameter(hidden = true) @RequestParam
