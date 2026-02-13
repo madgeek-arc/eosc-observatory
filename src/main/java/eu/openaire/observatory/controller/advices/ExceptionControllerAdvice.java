@@ -18,16 +18,18 @@ package eu.openaire.observatory.controller.advices;
 import gr.uoa.di.madgik.catalogue.controller.GenericExceptionController;
 import gr.uoa.di.madgik.catalogue.exception.ServerError;
 import io.sentry.Sentry;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@ControllerAdvice
+@RestControllerAdvice
 public class ExceptionControllerAdvice extends GenericExceptionController {
 
-    @ExceptionHandler(Exception.class)
+    @ExceptionHandler(exception = Exception.class, produces = MediaType.APPLICATION_JSON_VALUE)
     protected ResponseEntity<ServerError> handleException(HttpServletRequest req, Exception ex) {
         // Forwards exception to Sentry
         Sentry.captureException(ex);
