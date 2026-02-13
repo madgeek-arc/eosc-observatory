@@ -232,7 +232,7 @@ public class SurveyController {
     }
 
     @PostMapping("answers/generate/{surveyId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfType(@formsController.getModel(#surveyId).body.getType())")
     public ResponseEntity<List<SurveyAnswer>> generateAnswers(@PathVariable("surveyId") String surveyId,
                                                               @RequestParam(value = "stakeholderId", required = false, defaultValue = "") String stakeholderId,
                                                               @Parameter(hidden = true) Authentication authentication) {
