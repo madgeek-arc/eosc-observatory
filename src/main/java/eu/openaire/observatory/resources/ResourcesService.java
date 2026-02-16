@@ -20,6 +20,7 @@ import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.resources.model.Document;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class ResourcesService {
@@ -35,6 +37,10 @@ public class ResourcesService {
 
     public ResourcesService(GenericResourceService genericResourceService) {
         this.genericResourceService = genericResourceService;
+    }
+
+    public List<Document> getRecommendations(FacetFilter filter, String id) {
+        return genericResourceService.recommend(filter, id);
     }
 
     public Document update(String id, JsonNode docInfo) throws NoSuchFieldException, InvocationTargetException, NoSuchMethodException {

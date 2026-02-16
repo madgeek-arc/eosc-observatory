@@ -63,7 +63,8 @@ public class ResourcesController {
         this.documentsCsvConverter = documentsCsvConverter;
     }
 
-    public record StatusChange(@NotNull Document.Status status) {}
+    public record StatusChange(@NotNull Document.Status status) {
+    }
 
     @GetMapping
     @BrowseParameters
@@ -75,6 +76,18 @@ public class ResourcesController {
         filter.setResourceType("document");
         Browsing<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
         return new ResponseEntity<>(docs, HttpStatus.OK);
+    }
+
+    @GetMapping("{id}/recommendations")
+    @BrowseParameters
+//    @PreAuthorize("isAdministratorOfType('eosc-sb')")
+    public ResponseEntity<List<Document>> recommendations(
+            @PathVariable String id,
+            @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter filter = FacetFilter.from(allRequestParams);
+        filter.setResourceType("document");
+        filter.addFilter("status", Document.Status.APPROVED);
+        return new ResponseEntity<>(resourcesService.getRecommendations(filter, id), HttpStatus.OK);
     }
 
     @PutMapping("{id}/docInfo")
