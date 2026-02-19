@@ -22,6 +22,7 @@ import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
 import gr.uoa.di.madgik.registry.domain.*;
 import gr.uoa.di.madgik.registry.service.ResourceService;
 import gr.uoa.di.madgik.registry.service.ResourceTypeService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -80,13 +81,13 @@ public class ResourcesController {
 
     @GetMapping("{id}/recommendations")
     @BrowseParameters
-//    @PreAuthorize("isAdministratorOfType('eosc-sb')")
+    @PreAuthorize("canReadDocuments(#allRequestParams.get('status'))")
     public ResponseEntity<List<Document>> recommendations(
             @PathVariable String id,
+            @Parameter(hidden = false) @RequestParam(required = false, defaultValue = "APPROVED") Document.Status status,
             @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         filter.setResourceType("document");
-        filter.addFilter("status", Document.Status.APPROVED);
         return new ResponseEntity<>(resourcesService.getRecommendations(filter, id), HttpStatus.OK);
     }
 
