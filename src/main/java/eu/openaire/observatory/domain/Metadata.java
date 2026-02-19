@@ -22,6 +22,7 @@ import java.util.Date;
 
 public class Metadata implements Serializable {
 
+    private String model;
     private Date creationDate;
     private String createdBy;
     private Date modificationDate;
@@ -37,6 +38,14 @@ public class Metadata implements Serializable {
         this.modificationDate = date;
         this.createdBy = authentication != null ? User.getId(authentication) : "unknown";
         this.modifiedBy = this.createdBy;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
     }
 
     public Date getCreationDate() {

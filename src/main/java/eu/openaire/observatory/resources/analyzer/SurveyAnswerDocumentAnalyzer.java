@@ -34,6 +34,7 @@ import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -56,6 +57,9 @@ public class SurveyAnswerDocumentAnalyzer {
     private final DocumentTemplateLoader templateLoader;
     private final DocumentContentProcessor documentContentProcessor;
     private final DocumentAnalyzerService documentAnalyzerService;
+
+    @Value("${spring.ai.openai.chat.options.model}")
+    private String model;
 
     public SurveyAnswerDocumentAnalyzer(SurveyAnswerCrudService surveyAnswerCrudService,
                                         GenericResourceManager genericResourceManager,
@@ -90,21 +94,34 @@ public class SurveyAnswerDocumentAnalyzer {
                 set.addAll(document.getReferences());
                 set.addAll(urlReference.getReferences());
 
-                if (!urlReference.getReferences().containsAll(set)) {
+                if (!model.equals(document.getMetadata().getModel())) {
+                    Document updated = generateDocument(templateLoader.load(), urlReference.getUrl());
+                    if (updated != null) {
+                        updated.setId(document.getId());
+                        updated.setUrl(urlReference.getUrl());
+                        updated.setStatus(Document.Status.PENDING.name());
+                        updated.setSource(Document.Source.SURVEY.name());
+
+                        updated.setMetadata(updateMetadata(USER, document.getMetadata(), model));
+                        updated.setReferences(set);
+                        genericResourceService.update("document", document.getId(), updated);
+                        documents.add(updated);
+                    }
+                } else if (!urlReference.getReferences().containsAll(set)) {
                     set.addAll(urlReference.getReferences());
                     document.setReferences(set);
-                    document.setMetadata(updateMetadata(USER, document.getMetadata()));
+                    document.setMetadata(updateMetadata(USER, document.getMetadata(), model));
                     genericResourceService.update("document", document.getId(), document);
                     documents.add(document);
                 }
             } catch (ResourceNotFoundException e) {
                 document = generateDocument(templateLoader.load(), urlReference.getUrl());
                 if (document != null) {
-                    document.setId(DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
+                    document.setId(id);
                     document.setUrl(urlReference.getUrl());
                     document.setStatus(Document.Status.PENDING.name());
                     document.setSource(Document.Source.SURVEY.name());
-                    document.setMetadata(createMetadata(USER));
+                    document.setMetadata(createMetadata(USER, model));
                     document.setReferences(urlReference.getReferences());
                     genericResourceService.add("document", document);
                     documents.add(document);
@@ -167,20 +184,22 @@ public class SurveyAnswerDocumentAnalyzer {
         return mapper.convertValue(json, Document.class);
     }
 
-    private Metadata createMetadata(String user) {
+    private Metadata createMetadata(String user, String model) {
         Date now = new Date();
         Metadata metadata = new Metadata();
         metadata.setCreatedBy(user);
         metadata.setCreationDate(now);
         metadata.setModifiedBy(user);
         metadata.setModificationDate(now);
+        metadata.setModel(model);
         return metadata;
     }
 
-    private Metadata updateMetadata(String user, Metadata metadata) {
+    private Metadata updateMetadata(String user, Metadata metadata, String model) {
         Date now = new Date();
         metadata.setModifiedBy(user);
         metadata.setModificationDate(now);
+        metadata.setModel(model);
         return metadata;
     }
 
