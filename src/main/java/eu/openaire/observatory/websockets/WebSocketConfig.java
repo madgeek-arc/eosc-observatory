@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2025 OpenAIRE AMKE
+ * Copyright 2021-2026 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package eu.openaire.observatory.websockets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.security.messaging.web.socket.server.CsrfTokenHandshakeInterceptor;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -46,6 +48,23 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .addInterceptors(new CsrfTokenHandshakeInterceptor())
                 .setAllowedOriginPatterns(webSocketProperties.getAllowedOriginPattern())
                 .withSockJS();
+    }
+
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.taskExecutor()
+                .corePoolSize(4)
+                .maxPoolSize(16)
+                .queueCapacity(1000)
+                .keepAliveSeconds(60);
+    }
+
+    @Override
+    public void configureClientOutboundChannel(ChannelRegistration registration) {
+        registration.taskExecutor()
+                .corePoolSize(4)
+                .maxPoolSize(16)
+                .queueCapacity(1000);
     }
 
 }
