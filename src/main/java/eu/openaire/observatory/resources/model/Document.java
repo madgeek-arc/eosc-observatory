@@ -26,7 +26,7 @@ public class Document {
     String id;
     String url;
     JsonNode docInfo;
-    Metadata metadata;
+    DocumentMetadata metadata;
     String status;
     String source;
     boolean curated = false;
@@ -76,11 +76,11 @@ public class Document {
         this.docInfo = docInfo;
     }
 
-    public Metadata getMetadata() {
+    public DocumentMetadata getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(Metadata metadata) {
+    public void setMetadata(DocumentMetadata metadata) {
         this.metadata = metadata;
     }
 

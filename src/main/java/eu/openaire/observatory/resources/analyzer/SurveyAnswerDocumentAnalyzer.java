@@ -28,6 +28,7 @@ import eu.openaire.observatory.resources.analyzer.model.SurveyAnswerReference;
 import eu.openaire.observatory.resources.analyzer.model.UrlReferences;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.SurveyAnswer;
+import eu.openaire.observatory.resources.model.DocumentMetadata;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceManager;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
@@ -164,7 +165,7 @@ public class SurveyAnswerDocumentAnalyzer {
                 document.setUrl(url);
                 document.setStatus(Document.Status.PENDING.name());
                 document.setSource(Document.Source.EXTERNAL.name());
-                document.setMetadata(new Metadata(SecurityContextHolder.getContext().getAuthentication()));
+                document.setMetadata(new DocumentMetadata(SecurityContextHolder.getContext().getAuthentication()));
                 genericResourceService.add("document", document);
             } else {
                 logger.warn("Problem with url: {}", url);
@@ -202,9 +203,9 @@ public class SurveyAnswerDocumentAnalyzer {
         return mapper.convertValue(json, Document.class);
     }
 
-    private Metadata createMetadata(String user, String model) {
+    private DocumentMetadata createMetadata(String user, String model) {
         Date now = new Date();
-        Metadata metadata = new Metadata();
+        DocumentMetadata metadata = new DocumentMetadata();
         metadata.setCreatedBy(user);
         metadata.setCreationDate(now);
         metadata.setModifiedBy(user);
@@ -213,7 +214,7 @@ public class SurveyAnswerDocumentAnalyzer {
         return metadata;
     }
 
-    private Metadata updateMetadata(String user, Metadata metadata, String model) {
+    private DocumentMetadata updateMetadata(String user, DocumentMetadata metadata, String model) {
         Date now = new Date();
         metadata.setModifiedBy(user);
         metadata.setModificationDate(now);
