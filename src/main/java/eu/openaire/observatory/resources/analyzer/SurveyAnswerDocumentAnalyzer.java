@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import eu.openaire.documentanalyzer.analyze.service.DocumentAnalyzerService;
 import eu.openaire.documentanalyzer.common.model.Content;
 import eu.openaire.documentanalyzer.enrich.service.DocumentContentProcessor;
+import eu.openaire.observatory.resources.analyzer.model.GenerateDocumentsRequest;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.resources.analyzer.model.SurveyAnswerReference;
 import eu.openaire.observatory.resources.analyzer.model.UrlReferences;
@@ -30,11 +31,13 @@ import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceManager;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -80,6 +83,21 @@ public class SurveyAnswerDocumentAnalyzer {
     public List<UrlReferences> extractUrlsFromSurveyAnswer(String surveyAnswerId) {
         SurveyAnswer answer = surveyAnswerCrudService.get(surveyAnswerId);
         return surveyAnswerUrlExtractor.extract(answer);
+    }
+
+    @Async
+    public void generate(GenerateDocumentsRequest request) {
+        List<String> answerIds = request.surveyAnswerIds();
+        if (request.surveyAnswerIds().isEmpty()) {
+            FacetFilter filter = new FacetFilter();
+            filter.setQuantity(1000);
+            filter.addFilter("surveyId", request.surveyId());
+            answerIds = surveyAnswerCrudService.getAll(filter).getResults().stream().map(SurveyAnswer::getId).toList();
+        }
+        for (String answerId : answerIds) {
+            logger.info("Generating documents for survey answer with id={}", answerId);
+            generateDocuments(answerId);
+        }
     }
 
     public List<Document> generateDocuments(String surveyAnswerId) {
