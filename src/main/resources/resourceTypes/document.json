@@ -40,56 +40,64 @@
       "name": "shortDescription",
       "label": "Short Description",
       "path": "$.docInfo.shortDescription.text",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 10
     },
     {
       "multivalued": false,
       "name": "abstract",
       "label": "Abstract",
       "path": "$.docInfo.abstract.text",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 10
     },
     {
       "multivalued": true,
       "name": "authorNames",
       "label": "Author Names",
       "path": "$.docInfo.authors.name",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 0.5
     },
     {
       "multivalued": true,
       "name": "authorOrcid",
       "label": "Author Orcid",
       "path": "$.docInfo.authors.orcid",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 0.5
     },
     {
       "multivalued": false,
       "name": "summary",
       "label": "Summary",
       "path": "$.docInfo.summary.text",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 10
     },
     {
       "multivalued": false,
       "name": "country",
       "label": "Country",
       "path": "$.docInfo.country",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 0.5
     },
     {
       "multivalued": false,
       "name": "language",
       "label": "Language",
       "path": "$.docInfo.language",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 0.5
     },
     {
       "multivalued": true,
       "name": "organisations",
       "label": "Organisations",
       "path": "$.docInfo.organisations",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 1
     },
     {
       "multivalued": false,
@@ -131,7 +139,8 @@
       "name": "paragraphsEn",
       "label": "Paragraphs in English",
       "path": "$.paragraphsEn",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 7.0
     },
     {
       "multivalued": true,
@@ -149,17 +158,27 @@
     },
     {
       "multivalued": true,
+      "name": "links",
+      "label": "Links",
+      "path": "$.docInfo['links']['url'][*]",
+      "type": "java.lang.String",
+      "embeddingWeight": 8.0
+    },
+    {
+      "multivalued": true,
       "name": "tags",
       "label": "Tags",
       "path": "$.docInfo['tags'][*]",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 5.0
     },
     {
       "multivalued": true,
       "name": "otherTags",
       "label": "Other Tags",
       "path": "$.docInfo['otherTags'][*]",
-      "type": "java.lang.String"
+      "type": "java.lang.String",
+      "embeddingWeight": 2.0
     },
     {
       "multivalued": false,
