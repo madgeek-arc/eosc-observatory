@@ -1,52 +1,60 @@
 {
   "docInfo": {
-    "title": "<document title in english>",
-    "originalTitles": [ "<document title>" ],
-    "acronym": "<acronym of the organization/institution/owner of the document>",
+    "title": "<STRICT EXTRACTION MODE: Extract the exact document title TRANSLATED in English. If there is no clear title, generate a short one based on the content.>",
+    "originalTitles": [
+      "<Extract all unique titles exactly as written (cover/header/metadata). Keep original language/script. If none found, use empty array.>"
+    ],
+    "acronym": "<Extract the acronym of the publishing/responsible organization/institution/owner ONLY if explicitly written (e.g., 'OECD', 'ERC'). Otherwise null.>",
     "shortDescription": {
-      "text": "<description of the document - if not found generate one (up to 100 words) using the most informative paragraphs of the document>",
-      "generated": "<boolean field: true if generated (or synthesized by data of the document), false if found exactly as is in the document>"
+      "text": "<STRICT: Use only text that appears verbatim in the document describing purpose/scope/audience - always translate in English. If no such text exists, generate one (50–120 words) from the document’s scope and purpose, without adding new facts: what the document is, who it is for, and why it matters. Emphasize decision/use value for researchers, policy makers, and research managers.>",
+      "generated": "<boolean: false if the text is found verbatim in the document; true if synthesized>"
     },
     "abstract": {
-      "text": "<document abstract - if not found generate one using the most informative paragraphs of the document",
-      "generated": "<boolean field: true if generated (or synthesized by data of the document), false if found exactly as is in the document>"
+      "text": "<STRICT: Extract the abstract verbatim if an 'Abstract' (or equivalent section) exists - always translate in English. If not present, generate one (150–300 words), using only the information available in the text: scope/problem, approach/method (if any), key points/findings, and implications. Write in a neutral, evidence-aware style suitable for policy and research audiences.>",
+      "generated": "<boolean: false if the text is found verbatim in the document; true if synthesized>"
     },
     "summary": {
-      "text": "<document summary - if not found generate one using the most informative paragraphs of the document",
-      "generated": "<boolean field: true if text was generated, false if text was found in the document>"
+      "text": "<STRICT: Extract an executive summary/summary/conclusions section verbatim ONLY if explicitly present and clearly labeled - always translate in English. If not present, synthesize an executive-style summary of up to 300 words using document information only. Include: purpose, main conclusions, recommended actions or policy/management implications (if present), and any notable constraints/risks/limitations mentioned.>",
+      "generated": "<boolean: false if the text is found verbatim in the document; true if synthesized>"
     },
-    "startDate": "<policy start date in year format - if document refers to a policy>",
-    "endDate": "<policy end date in year format - if document refers to a policy>",
-    "publicationDate": "<document publication date in year format>",
-    "organisations": [ "<name of responsible organisation>" ],
-    "country": "<ISO 3166 country code>",
-    "language": "<ISO 639 language of the most prevalent text - use language detection to set this value>",
+    "startDate": "<STRICT: If the document explicitly states a policy/program start year, extract YYYY. Otherwise null. Do not infer.>",
+    "endDate": "<STRICT: If the document explicitly states a policy/program end year, extract YYYY. Otherwise null. Do not infer.>",
+    "publicationDate": "<STRICT: Extract the publication year YYYY ONLY if explicitly stated (e.g., 'Published: 2023' or in citation block). If multiple years appear, choose the one explicitly labeled as publication/release. Otherwise null.>",
+    "organisations": [
+      "<STRICT: List organizations explicitly named as responsible/publisher/authoring body. Use exact official names as written. If none, empty array.>"
+    ],
+    "country": "<STRICT: Extract an explicit country or jurisdiction reference ONLY if clearly stated (e.g., 'Greece', 'Hellenic Republic') and convert to ISO 3166-1 alpha-2. If not, infer it from domain, language, or address unless the country name is written.>",
+    "language": "<STRICT: Detect language from the text and output ISO 639 code. If detection is uncertain, choose the closest and do not guess additional languages.>",
     "authors": [
       {
-        "name": "<author full name>",
-        "orcid": "<ORCID of the author - if an ORCID exists (ORCID format: https://orcid.org/XXXX-XXXX-XXXX-XXXX)>"
+        "name": "<STRICT: Extract author full names ONLY if explicitly listed. Otherwise leave authors as an empty array. Do not add editors/committees unless named individuals are listed.>",
+        "orcid": "<STRICT: Extract ORCID URL ONLY if explicitly present, exact format https://orcid.org/XXXX-XXXX-XXXX-XXXX. Otherwise null.>"
       }
     ],
-    "version": "<version number of the document>",
-    "modificationDate": "<latest modification date>",
+    "version": "<STRICT: Extract version/edition ONLY if explicitly stated. Otherwise null.>",
+    "modificationDate": "<STRICT: Extract latest revision/modification date ONLY if explicitly stated (e.g., 'Last updated'). Preserve the exact string if formatting is unclear. Otherwise null.>",
     "links": [
       {
-        "name": "<linked document/dataset/resource name>",
-        "pid": "<persistent identifier of linked document - if a persistent identifier can be found>",
-        "type": "<link type: e.g. 'doi'/'handle'/'ark'/'purl'/'urn'/'swhid'(when pid found), 'link', 'repository', 'terms' - if link is pointing to a dataset, fill this with the type of the provided data>",
-        "url": "<url>",
-        "description": "<short description of linked document>"
+        "name": "<STRICT: The link should be a page/document/dataset/resource - otherwise add it to 'otherLinks' section Extract the human-readable label associated with the link if present. If the link has no label, try to infer a relative name from the URL.>",
+        "pid": "<STRICT: Extract a persistent identifier ONLY if explicitly written (DOI/Handle/ARK/URN/PURL/SWHID). Otherwise null.>",
+        "type": "<STRICT: If pid exists, set type to one of: 'doi'/'handle'/'ark'/'purl'/'urn'/'swhid'. If pid is null and only a URL exists, set type to 'link' (do not classify as dataset/repository unless explicitly labeled as such in the document).>",
+        "url": "<STRICT: Extract the URL exactly as written.>",
+        "description": "<STRICT: Extract an accompanying description if it appears verbatim near the link. If none exists, generate a short description of linked document.>"
       }
     ],
     "otherLinks": [
       {
-        "name": "<link name>",
-        "type": "<link type: 'feed', 'social', 'news', etc>",
-        "url": "<url>",
-        "description": "<short description of link>"
+        "name": "<STRICT: Other links are links to social/news/feeds etc. Do not create links for emails. Extract the visible label of the link if present; If the link has no label, try to infer a relative name from the URL.>",
+        "type": "<Use only if the document explicitly categorizes it (e.g., 'RSS', 'Twitter'). If not explicit, set 'other'.>",
+        "url": "<STRICT: Extract the URL exactly as written.>",
+        "description": "<Extract an accompanying description if it appears verbatim near the link. If none exists, generate a short description of linked document.>"
       }
     ],
-    "tags": [ "<tags of document: values among ['national policy', 'university policy', 'use cases', 'strategy', 'RPO policy', 'RFO policy', 'survey', 'survey results'] | (RPO=Research Performing Organization policy, RFO=Research Funding Organization)>" ],
-    "otherTags": [ "<list of 3-7 relevant tags based on document content>" ]
+    "tags": [
+      "<STRICT: Choose ONLY from: ['national policy', 'university policy', 'use cases', 'strategy', 'RPO policy', 'RFO policy', 'survey', 'survey results'] AND ONLY if the document explicitly indicates the category (e.g., says 'strategy', 'survey results', 'policy'). If not explicit, leave empty array. | (RPO=Research Performing Organization, RFO=Research Funding Organization)>"
+    ],
+    "otherTags": [
+      "<STRICT: (1) include tags (translated in English) that are explicit keywords/headings/subject terms present in the document. (2) Generate a list of relevant tags based on document content. Combine (1),(2) and keep the 3-7 most relevant ones.>"
+    ]
   }
 }
