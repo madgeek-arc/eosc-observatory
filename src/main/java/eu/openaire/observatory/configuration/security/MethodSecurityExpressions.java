@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,11 +67,13 @@ public interface MethodSecurityExpressions {
 
     boolean userIsAdministratorOfType(String userId, String type);
 
+    boolean isAdministratorOfCoordinator(String coordinatorId);
+
+    boolean isAdministratorOfStakeholder(String stakehodlerId);
+
     boolean isAdministratorOfType(String type);
 
 //    boolean userIsAdministratorOfStakeholder(String userId, String stakehodlerId);
-
-//    boolean isAdministratorOfStakeholder(String stakehodlerId);
 
     // Extra Methods
 

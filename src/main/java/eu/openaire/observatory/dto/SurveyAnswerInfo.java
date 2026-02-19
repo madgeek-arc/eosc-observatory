@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,8 @@ public class SurveyAnswerInfo {
     String surveyAnswerId;
     String surveyId;
     String surveyName;
+    Date submissionStartAt;
+    Date submissionCloseAt;
     boolean validated;
     boolean published;
     Date lastUpdate;
@@ -44,6 +46,8 @@ public class SurveyAnswerInfo {
         info.setSurveyAnswerId(answer.getId());
         info.setSurveyId(survey.getId());
         info.setSurveyName(survey.getName());
+        info.setSubmissionStartAt(survey.getSubmissionStartAt());
+        info.setSubmissionCloseAt(survey.getSubmissionCloseAt());
         info.setValidated(answer.isValidated());
         info.setPublished(answer.isPublished());
         info.setStakeholder(stakeholderInfo);
@@ -83,6 +87,22 @@ public class SurveyAnswerInfo {
 
     public void setSurveyName(String surveyName) {
         this.surveyName = surveyName;
+    }
+
+    public Date getSubmissionStartAt() {
+        return submissionStartAt;
+    }
+
+    public void setSubmissionStartAt(Date submissionStartAt) {
+        this.submissionStartAt = submissionStartAt;
+    }
+
+    public Date getSubmissionCloseAt() {
+        return submissionCloseAt;
+    }
+
+    public void setSubmissionCloseAt(Date submissionCloseAt) {
+        this.submissionCloseAt = submissionCloseAt;
     }
 
     public boolean isValidated() {

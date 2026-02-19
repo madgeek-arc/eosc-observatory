@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,18 +22,23 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import eu.openaire.documentanalyzer.analyze.service.DocumentAnalyzerService;
 import eu.openaire.documentanalyzer.common.model.Content;
 import eu.openaire.documentanalyzer.enrich.service.DocumentContentProcessor;
+import eu.openaire.observatory.resources.analyzer.model.GenerateDocumentsRequest;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.resources.analyzer.model.SurveyAnswerReference;
 import eu.openaire.observatory.resources.analyzer.model.UrlReferences;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.SurveyAnswer;
+import eu.openaire.observatory.resources.model.DocumentMetadata;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceManager;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -57,6 +62,9 @@ public class SurveyAnswerDocumentAnalyzer {
     private final DocumentContentProcessor documentContentProcessor;
     private final DocumentAnalyzerService documentAnalyzerService;
 
+    @Value("${spring.ai.openai.chat.options.model}")
+    private String model;
+
     public SurveyAnswerDocumentAnalyzer(SurveyAnswerCrudService surveyAnswerCrudService,
                                         GenericResourceManager genericResourceManager,
                                         ObjectMapper mapper,
@@ -78,6 +86,21 @@ public class SurveyAnswerDocumentAnalyzer {
         return surveyAnswerUrlExtractor.extract(answer);
     }
 
+    @Async
+    public void generate(GenerateDocumentsRequest request) {
+        List<String> answerIds = request.surveyAnswerIds();
+        if (request.surveyAnswerIds().isEmpty()) {
+            FacetFilter filter = new FacetFilter();
+            filter.setQuantity(1000);
+            filter.addFilter("surveyId", request.surveyId());
+            answerIds = surveyAnswerCrudService.getAll(filter).getResults().stream().map(SurveyAnswer::getId).toList();
+        }
+        for (String answerId : answerIds) {
+            logger.info("Generating documents for survey answer with id={}", answerId);
+            generateDocuments(answerId);
+        }
+    }
+
     public List<Document> generateDocuments(String surveyAnswerId) {
         List<Document> documents = new ArrayList<>();
         List<UrlReferences> urlReferences = extractUrlsFromSurveyAnswer(surveyAnswerId);
@@ -90,21 +113,34 @@ public class SurveyAnswerDocumentAnalyzer {
                 set.addAll(document.getReferences());
                 set.addAll(urlReference.getReferences());
 
-                if (!urlReference.getReferences().containsAll(set)) {
+                if (!model.equals(document.getMetadata().getModel())) {
+                    Document updated = generateDocument(templateLoader.load(), urlReference.getUrl());
+                    if (updated != null) {
+                        updated.setId(document.getId());
+                        updated.setUrl(urlReference.getUrl());
+                        updated.setStatus(Document.Status.PENDING.name());
+                        updated.setSource(Document.Source.SURVEY.name());
+
+                        updated.setMetadata(updateMetadata(USER, document.getMetadata(), model));
+                        updated.setReferences(set);
+                        genericResourceService.update("document", document.getId(), updated);
+                        documents.add(updated);
+                    }
+                } else if (!urlReference.getReferences().containsAll(set)) {
                     set.addAll(urlReference.getReferences());
                     document.setReferences(set);
-                    document.setMetadata(updateMetadata(USER, document.getMetadata()));
+                    document.setMetadata(updateMetadata(USER, document.getMetadata(), model));
                     genericResourceService.update("document", document.getId(), document);
                     documents.add(document);
                 }
             } catch (ResourceNotFoundException e) {
                 document = generateDocument(templateLoader.load(), urlReference.getUrl());
                 if (document != null) {
-                    document.setId(DigestUtils.sha256Hex(urlReference.getUrl().getBytes()));
+                    document.setId(id);
                     document.setUrl(urlReference.getUrl());
                     document.setStatus(Document.Status.PENDING.name());
                     document.setSource(Document.Source.SURVEY.name());
-                    document.setMetadata(createMetadata(USER));
+                    document.setMetadata(createMetadata(USER, model));
                     document.setReferences(urlReference.getReferences());
                     genericResourceService.add("document", document);
                     documents.add(document);
@@ -129,7 +165,7 @@ public class SurveyAnswerDocumentAnalyzer {
                 document.setUrl(url);
                 document.setStatus(Document.Status.PENDING.name());
                 document.setSource(Document.Source.EXTERNAL.name());
-                document.setMetadata(new Metadata(SecurityContextHolder.getContext().getAuthentication()));
+                document.setMetadata(new DocumentMetadata(SecurityContextHolder.getContext().getAuthentication()));
                 genericResourceService.add("document", document);
             } else {
                 logger.warn("Problem with url: {}", url);
@@ -167,20 +203,22 @@ public class SurveyAnswerDocumentAnalyzer {
         return mapper.convertValue(json, Document.class);
     }
 
-    private Metadata createMetadata(String user) {
+    private DocumentMetadata createMetadata(String user, String model) {
         Date now = new Date();
-        Metadata metadata = new Metadata();
+        DocumentMetadata metadata = new DocumentMetadata();
         metadata.setCreatedBy(user);
         metadata.setCreationDate(now);
         metadata.setModifiedBy(user);
         metadata.setModificationDate(now);
+        metadata.setModel(model);
         return metadata;
     }
 
-    private Metadata updateMetadata(String user, Metadata metadata) {
+    private DocumentMetadata updateMetadata(String user, DocumentMetadata metadata, String model) {
         Date now = new Date();
         metadata.setModifiedBy(user);
         metadata.setModificationDate(now);
+        metadata.setModel(model);
         return metadata;
     }
 

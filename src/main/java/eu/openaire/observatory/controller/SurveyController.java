@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +21,7 @@ import eu.openaire.observatory.dto.Diff;
 import eu.openaire.observatory.dto.HistoryDTO;
 import eu.openaire.observatory.dto.SurveyAnswerInfo;
 import eu.openaire.observatory.dto.SurveyAnswerMetadataDTO;
-import eu.openaire.observatory.service.CoordinatorService;
-import eu.openaire.observatory.service.CrudService;
-import eu.openaire.observatory.service.StakeholderService;
-import eu.openaire.observatory.service.SurveyService;
+import eu.openaire.observatory.service.*;
 import gr.uoa.di.madgik.catalogue.controller.FormsController;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.registry.domain.Browsing;
@@ -49,7 +46,7 @@ import java.util.Date;
 import java.util.List;
 
 @RestController
-@RequestMapping
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
 public class SurveyController {
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyController.class);
@@ -59,17 +56,20 @@ public class SurveyController {
     private final SurveyService surveyService;
     private final StakeholderService stakeholderService;
     private final CoordinatorService coordinatorService;
+    private final AdministratorService administratorService;
 
     public SurveyController(FormsController formsController,
                             CrudService<SurveyAnswer> surveyAnswerService,
                             SurveyService surveyService,
                             StakeholderService stakeholderService,
-                            CoordinatorService coordinatorService) {
+                            CoordinatorService coordinatorService,
+                            AdministratorService administratorService) {
         this.formsController = formsController;
         this.surveyAnswerService = surveyAnswerService;
         this.surveyService = surveyService;
         this.stakeholderService = stakeholderService;
         this.coordinatorService = coordinatorService;
+        this.administratorService = administratorService;
     }
 
     /*-------------------------------------*/
@@ -232,7 +232,7 @@ public class SurveyController {
     }
 
     @PostMapping("answers/generate/{surveyId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfType(@formsController.getModel(#surveyId).body.getType())")
     public ResponseEntity<List<SurveyAnswer>> generateAnswers(@PathVariable("surveyId") String surveyId,
                                                               @RequestParam(value = "stakeholderId", required = false, defaultValue = "") String stakeholderId,
                                                               @Parameter(hidden = true) Authentication authentication) {
@@ -250,7 +250,7 @@ public class SurveyController {
     /*---------------------------*/
 
     @GetMapping("answers/info")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinator(#groupId) or isStakeholderManager(#groupId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministrator(#groupId) or isCoordinator(#groupId) or isStakeholderManager(#groupId)")
     public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(name = "groupId", required = false)
                                                                     String groupId,
                                                                     @Parameter(hidden = true) @RequestParam
@@ -264,6 +264,8 @@ public class SurveyController {
                 type = coordinatorService.get(groupId).getType();
             } else if (groupId.startsWith("sh-")) {
                 type = stakeholderService.get(groupId).getType();
+            } else if (groupId.startsWith("admin-")) {
+                type = administratorService.get(groupId).getType();
             } else {
                 throw new UnsupportedOperationException("unrecognized group id");
             }

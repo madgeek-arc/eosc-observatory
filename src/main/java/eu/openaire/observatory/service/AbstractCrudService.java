@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +17,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.dto.HistoryDTO;
 import eu.openaire.observatory.dto.HistoryEntryDTO;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.*;
 import gr.uoa.di.madgik.registry.service.*;
 import gr.uoa.di.madgik.catalogue.utils.LoggingUtils;
@@ -43,8 +44,9 @@ public abstract class AbstractCrudService<T extends Identifiable> extends Generi
                                   ResourceService resourceService,
                                   SearchService searchService,
                                   VersionService versionService,
-                                  ParserService parserService) {
-        super(searchService, resourceService, resourceTypeService, versionService, parserService);
+                                  ParserService parserService,
+                                  ModelResponseValidator validator) {
+        super(searchService, resourceService, resourceTypeService, versionService, parserService, validator);
     }
 
     public abstract String createId(T resource);

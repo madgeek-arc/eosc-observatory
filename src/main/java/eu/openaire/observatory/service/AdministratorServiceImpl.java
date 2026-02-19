@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@ import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.service.*;
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 
 import static eu.openaire.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
@@ -50,8 +52,9 @@ public class AdministratorServiceImpl extends AbstractUserGroupService<Administr
                                     ParserService parserService,
                                     UserService userService,
                                     @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
-                                    PermissionService permissionService) {
-        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService);
+                                    PermissionService permissionService,
+                                    ModelResponseValidator validator) {
+        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.permissionService = permissionService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
     }
@@ -85,21 +88,21 @@ public class AdministratorServiceImpl extends AbstractUserGroupService<Administr
     }
 
     @Override
-    public Set<String> updateMembers(String administratorId, Set<String> userIds) {
+    public SortedSet<String> updateMembers(String administratorId, Set<String> userIds) {
         return super.updateMembers(administratorId, userIds, existing -> {
             updatePermissions((Administrator) existing, existing.getMembers(), userIds);
         });
     }
 
     @Override
-    public Set<String> addMember(String administratorId, String userId) {
+    public SortedSet<String> addMember(String administratorId, String userId) {
         // read access for all resources
         permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(administratorId), administratorId);
         return super.addMember(administratorId, userId);
     }
 
     @Override
-    public Set<String> removeMember(String administratorId, String adminId) {
+    public SortedSet<String> removeMember(String administratorId, String adminId) {
         // remove Administrator permissions from user
         permissionService.removeAll(adminId, Groups.ADMINISTRATOR.getKey());
         permissionService.removeAll(adminId, administratorId);
@@ -107,21 +110,21 @@ public class AdministratorServiceImpl extends AbstractUserGroupService<Administr
     }
 
     @Override
-    public Set<String> updateAdmins(String administratorId, Set<String> adminIds) {
+    public SortedSet<String> updateAdmins(String administratorId, Set<String> adminIds) {
         return super.updateAdmins(administratorId, adminIds, existing -> {
             updatePermissions((Administrator) existing, existing.getAdmins(), adminIds);
         });
     }
 
     @Override
-    public Set<String> addAdmin(String administratorId, String adminId) {
+    public SortedSet<String> addAdmin(String administratorId, String adminId) {
         // read access for all resources
         permissionService.addPermissions(Collections.singletonList(adminId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(administratorId), administratorId);
         return super.addAdmin(administratorId, adminId);
     }
 
     @Override
-    public Set<String> removeAdmin(String administratorId, String adminId) {
+    public SortedSet<String> removeAdmin(String administratorId, String adminId) {
         // remove Administrator permissions from user
         permissionService.removeAll(adminId, Groups.ADMINISTRATOR.getKey());
         permissionService.removeAll(adminId, administratorId);

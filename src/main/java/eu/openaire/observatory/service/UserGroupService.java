@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,28 +19,29 @@ import eu.openaire.observatory.domain.UserGroup;
 import eu.openaire.observatory.dto.GroupMembers;
 
 import java.util.Set;
+import java.util.SortedSet;
 
 public interface UserGroupService {
 
     GroupMembers<String> getGroupMembers(String groupId);
 
     default GroupMembers<String> getGroupMembers(UserGroup group) {
-        return new GroupMembers<>(group.getMembers(), group.getAdmins());
+        return new GroupMembers<>(group.getMembers().stream().toList(), group.getAdmins().stream().toList());
     }
 
-    Set<String> getMembers(String groupId);
+    SortedSet<String> getMembers(String groupId);
 
-    Set<String> updateMembers(String groupId, Set<String> memberIds);
+    SortedSet<String> updateMembers(String groupId, Set<String> memberIds);
 
-    Set<String> addMember(String groupId, String memberId);
+    SortedSet<String> addMember(String groupId, String memberId);
 
-    Set<String> removeMember(String groupId, String memberId);
+    SortedSet<String> removeMember(String groupId, String memberId);
 
-    Set<String> getAdmins(String groupId);
+    SortedSet<String> getAdmins(String groupId);
 
-    Set<String> updateAdmins(String groupId, Set<String> adminIds);
+    SortedSet<String> updateAdmins(String groupId, Set<String> adminIds);
 
-    Set<String> addAdmin(String groupId, String adminId);
+    SortedSet<String> addAdmin(String groupId, String adminId);
 
-    Set<String> removeAdmin(String groupId, String adminId);
+    SortedSet<String> removeAdmin(String groupId, String adminId);
 }

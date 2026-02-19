@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@ import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.service.*;
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 
 import static eu.openaire.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
@@ -50,8 +52,9 @@ public class CoordinatorServiceImpl extends AbstractUserGroupService<Coordinator
                                   ParserService parserService,
                                   UserService userService,
                                   @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
-                                  PermissionService permissionService) {
-        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService);
+                                  PermissionService permissionService,
+                                  ModelResponseValidator validator) {
+        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.permissionService = permissionService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
     }
@@ -85,21 +88,21 @@ public class CoordinatorServiceImpl extends AbstractUserGroupService<Coordinator
     }
 
     @Override
-    public Set<String> updateMembers(String coordinatorId, Set<String> userIds) {
+    public SortedSet<String> updateMembers(String coordinatorId, Set<String> userIds) {
         return super.updateMembers(coordinatorId, userIds, existing -> {
             updatePermissions((Coordinator) existing, existing.getMembers(), userIds);
         });
     }
 
     @Override
-    public Set<String> addMember(String coordinatorId, String userId) {
+    public SortedSet<String> addMember(String coordinatorId, String userId) {
         // read access for all resources
         permissionService.addPermissions(Collections.singletonList(userId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinatorId), coordinatorId);
         return super.addMember(coordinatorId, userId);
     }
 
     @Override
-    public Set<String> removeMember(String coordinatorId, String adminId) {
+    public SortedSet<String> removeMember(String coordinatorId, String adminId) {
         // remove Coordinator permissions from user
         permissionService.removeAll(adminId, Groups.COORDINATOR.getKey());
         permissionService.removeAll(adminId, coordinatorId);
@@ -107,21 +110,21 @@ public class CoordinatorServiceImpl extends AbstractUserGroupService<Coordinator
     }
 
     @Override
-    public Set<String> updateAdmins(String coordinatorId, Set<String> adminIds) {
+    public SortedSet<String> updateAdmins(String coordinatorId, Set<String> adminIds) {
         return super.updateAdmins(coordinatorId, adminIds, existing -> {
             updatePermissions((Coordinator) existing, existing.getAdmins(), adminIds);
         });
     }
 
     @Override
-    public Set<String> addAdmin(String coordinatorId, String adminId) {
+    public SortedSet<String> addAdmin(String coordinatorId, String adminId) {
         // read access for all resources
         permissionService.addPermissions(Collections.singletonList(adminId), Collections.singletonList(Permissions.READ.getKey()), getAccessibleResourceIds(coordinatorId), coordinatorId);
         return super.addAdmin(coordinatorId, adminId);
     }
 
     @Override
-    public Set<String> removeAdmin(String coordinatorId, String adminId) {
+    public SortedSet<String> removeAdmin(String coordinatorId, String adminId) {
         // remove Coordinator permissions from user
         permissionService.removeAll(adminId, Groups.COORDINATOR.getKey());
         permissionService.removeAll(adminId, coordinatorId);

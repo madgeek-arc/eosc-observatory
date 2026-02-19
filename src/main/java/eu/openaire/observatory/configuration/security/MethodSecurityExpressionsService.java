@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -316,9 +316,27 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     }
 
     @Override
-    public boolean isAdministratorOfType(String type) {
+    public boolean isAdministratorOfCoordinator(String coordinatorId) {
+        Coordinator coordinator =  coordinatorService.get(coordinatorId);
         User user = userService.get(User.getId(getAuthentication()));
-        return userIsAdministratorOfType(user.getId(), type);
+        return userIsAdministratorOfType(user.getId(), coordinator.getType());
+    }
+
+    @Override
+    public boolean isAdministratorOfStakeholder(String stakehodlerId) {
+        Stakeholder stakeholder = stakeholderService.get(stakehodlerId);
+        User user = userService.get(User.getId(getAuthentication()));
+        return userIsAdministratorOfType(user.getId(), stakeholder.getType());
+    }
+
+    @Override
+    public boolean isAdministratorOfType(String type) {
+        try {
+            User user = userService.get(User.getId(getAuthentication()));
+            return userIsAdministratorOfType(user.getId(), type);
+        } catch (Exception ignore) {
+            return false;
+        }
     }
 
     @Override

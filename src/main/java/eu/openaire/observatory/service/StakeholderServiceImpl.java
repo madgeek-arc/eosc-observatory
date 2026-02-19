@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,21 +18,20 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.UserGroup;
+import eu.openaire.observatory.dto.UserDTO;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
-import gr.uoa.di.madgik.registry.service.*;
 import gr.uoa.di.madgik.authorization.domain.Permission;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
+import gr.uoa.di.madgik.registry.service.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static eu.openaire.observatory.utils.SurveyAnswerUtils.getSurveyAnswerIds;
 
@@ -53,8 +52,9 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
                                   ParserService parserService,
                                   UserService userService,
                                   @Lazy SurveyService surveyService,
-                                  PermissionService permissionService) {
-        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService);
+                                  PermissionService permissionService,
+                                  ModelResponseValidator validator) {
+        super(userService, resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.permissionService = permissionService;
         this.surveyService = surveyService;
     }
@@ -131,7 +131,7 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> addMember(String stakeholderId, String userId) {
+    public SortedSet<String> addMember(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getMembers() == null) {
             stakeholder.setMembers(new HashSet<>());
@@ -153,7 +153,7 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> removeMember(String stakeholderId, String memberId) {
+    public SortedSet<String> removeMember(String stakeholderId, String memberId) {
         permissionService.removeAll(memberId, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
         return super.removeMember(stakeholderId, memberId);
     }
@@ -186,7 +186,18 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> addAdmin(String stakeholderId, String userId) {
+    public List<UserDTO> getManagers(String stakeholderId) {
+        return this.get(stakeholderId)
+                .getAdmins()
+                .stream()
+                .map(userService::getUser)
+                .filter(u -> u.getName() != null && u.getSurname() != null)
+                .map(UserDTO::new)
+                .toList();
+    }
+
+    @Override
+    public SortedSet<String> addAdmin(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
         if (stakeholder.getAdmins() == null) {
             stakeholder.setAdmins(new HashSet<>());
@@ -208,7 +219,7 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> removeAdmin(String stakeholderId, String adminId) {
+    public SortedSet<String> removeAdmin(String stakeholderId, String adminId) {
         permissionService.removeAll(adminId, Groups.STAKEHOLDER_MANAGER.getKey());
         return super.removeAdmin(stakeholderId, adminId);
     }
@@ -241,12 +252,12 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     }
 
     @Override
-    public Set<String> updateMembers(String groupId, Set<String> memberIds) {
+    public SortedSet<String> updateMembers(String groupId, Set<String> memberIds) {
         return updateContributors(groupId, memberIds).getMembers();
     }
 
     @Override
-    public Set<String> updateAdmins(String groupId, Set<String> adminIds) {
+    public SortedSet<String> updateAdmins(String groupId, Set<String> adminIds) {
         return updateManagers(groupId, adminIds).getAdmins();
     }
 }

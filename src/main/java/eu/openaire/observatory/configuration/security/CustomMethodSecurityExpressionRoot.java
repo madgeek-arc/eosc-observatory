@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -162,6 +162,16 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     @Override
     public boolean userIsAdministratorOfType(String userId, String type) {
         return securityExpressions.userIsAdministratorOfType(userId, type);
+    }
+
+    @Override
+    public boolean isAdministratorOfCoordinator(String coordinatorId) {
+        return securityExpressions.isAdministratorOfCoordinator(coordinatorId);
+    }
+
+    @Override
+    public boolean isAdministratorOfStakeholder(String stakehodlerId) {
+        return securityExpressions.isAdministratorOfStakeholder(stakehodlerId);
     }
 
     @Override

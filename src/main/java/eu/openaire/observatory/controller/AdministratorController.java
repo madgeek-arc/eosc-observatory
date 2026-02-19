@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,7 +92,7 @@ public class AdministratorController {
 
 
     @GetMapping("{id}/users")
-    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorMember(#administratorId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministrator(#administratorId)")
     public ResponseEntity<GroupMembers<User>> getUsers(@PathVariable("id") String administratorId) {
         return new ResponseEntity<>(administratorService.getGroupMembers(administratorId).map(userService::getUser), HttpStatus.OK);
     }

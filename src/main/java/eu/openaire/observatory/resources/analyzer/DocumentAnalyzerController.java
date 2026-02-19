@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +15,9 @@
  */
 package eu.openaire.observatory.resources.analyzer;
 
-import eu.openaire.observatory.resources.model.Document;
+import eu.openaire.observatory.resources.analyzer.model.GenerateDocumentsRequest;
 import eu.openaire.observatory.resources.analyzer.model.UrlReferences;
+import eu.openaire.observatory.resources.model.Document;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -39,13 +40,13 @@ public class DocumentAnalyzerController {
         return registryService.generateDocument(url);
     }
 
-    @PostMapping("survey-answer/{id}")
+    @PostMapping("generate")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public List<Document> generateDocumentsFromSurveyAnswerId(@PathVariable String id) {
-        return registryService.generateDocuments(id);
+    public void generateDocuments(@RequestBody GenerateDocumentsRequest generateDocumentsRequest) {
+        registryService.generate(generateDocumentsRequest);
     }
 
-    @GetMapping("survey-answer/{id}")
+    @GetMapping("survey-answers/{id}/extract-urls")
     public List<UrlReferences> extractUrlsFromAnswer(@PathVariable String id) {
         return registryService.extractUrlsFromSurveyAnswer(id);
     }

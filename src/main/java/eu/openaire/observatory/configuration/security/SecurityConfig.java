@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,15 +16,19 @@
 package eu.openaire.observatory.configuration.security;
 
 import eu.openaire.observatory.configuration.ApplicationProperties;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.socket.EnableWebSocketSecurity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
@@ -35,16 +39,20 @@ import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 @Configuration
+@EnableWebSocketSecurity
 public class SecurityConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
@@ -74,23 +82,51 @@ public class SecurityConfig {
                                 "/restore/",
                                 "/resources/**",
                                 "/resourceType/**",
-                                "/search/**").hasAuthority("ADMIN")
+                                "/search/**",
+                                "/items/**").hasAuthority("ADMIN")
                         .requestMatchers("/websocket").authenticated()
                         .anyRequest().permitAll()
                 )
-                .oauth2Login((oauth2login) -> oauth2login
+                .oauth2Login(oauth2login -> oauth2login
                         .successHandler(authSuccessHandler)
                 )
-                .logout((logout) -> logout
+                .logout(logout -> logout
                         .logoutSuccessHandler(oidcLogoutSuccessHandler())
                         .deleteCookies()
                         .clearAuthentication(true)
                         .invalidateHttpSession(true)
                 )
                 .cors(AbstractHttpConfigurer::disable)
-                .csrf(AbstractHttpConfigurer::disable);
+                .csrf(csrf -> {
+                            HttpSessionCsrfTokenRepository repository = new HttpSessionCsrfTokenRepository();
+                            repository.setHeaderName("X-XSRF-TOKEN"); // Use X-XSRF-TOKEN instead of X-CSRF-TOKEN
+                            csrf
+                                    .csrfTokenRepository(repository)
+                                    .csrfTokenRequestHandler(new XorCsrfTokenRequestAttributeHandler());
+                        }
+                )
+                .addFilterAfter(csrfCookieFilter(), org.springframework.security.web.csrf.CsrfFilter.class);
 
         return http.build();
+    }
+
+    private OncePerRequestFilter csrfCookieFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+                    throws ServletException, IOException {
+
+                CsrfToken token = (CsrfToken) request.getAttribute("_csrf");
+                if (token != null) {
+                    Cookie cookie = new Cookie("XSRF-TOKEN", token.getToken());
+                    cookie.setPath("/");
+                    cookie.setHttpOnly(false);
+                    cookie.setSecure(request.isSecure());
+                    response.addCookie(cookie);
+                }
+                chain.doFilter(request, response);
+            }
+        };
     }
 
     private LogoutSuccessHandler oidcLogoutSuccessHandler() {

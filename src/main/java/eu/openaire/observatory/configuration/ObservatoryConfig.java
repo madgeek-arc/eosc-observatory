@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,13 +15,21 @@
  */
 package eu.openaire.observatory.configuration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.athenarc.recaptcha.annotation.EnableReCaptcha;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 @Configuration
 @EnableReCaptcha
 @EnableConfigurationProperties(value = {ApplicationProperties.class, PrivacyProperties.class})
 public class ObservatoryConfig {
+
+    @Bean
+    ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
+        return builder.build();
+    }
 
 }

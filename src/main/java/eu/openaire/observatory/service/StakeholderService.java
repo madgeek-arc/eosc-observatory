@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2021-2025 OpenAIRE AMKE
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +16,10 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.domain.Stakeholder;
+import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.dto.UserDTO;
 
+import java.util.List;
 import java.util.Set;
 
 public interface StakeholderService extends CrudService<Stakeholder>, UserGroupService {
@@ -26,5 +29,7 @@ public interface StakeholderService extends CrudService<Stakeholder>, UserGroupS
     Stakeholder updateContributors(String stakeholderId, Set<String> emails);
 
     Stakeholder updateManagers(String stakeholderId, Set<String> emails);
+
+    List<UserDTO> getManagers(String stakeholderId);
 
 }
