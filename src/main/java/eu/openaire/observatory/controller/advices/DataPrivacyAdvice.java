@@ -16,6 +16,7 @@
 package eu.openaire.observatory.controller.advices;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openaire.observatory.configuration.PrivacyProperties;
@@ -43,6 +44,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 @ControllerAdvice
@@ -83,6 +85,20 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
         if (body != null && clazz != null && classNames.contains(clazz.getCanonicalName())) {
 
             try {
+                // --> TODO: need to fix this
+                if (Collection.class.isAssignableFrom(body.getClass())) {
+                    logger.warn("Privacy Advice always runs for Array responses");
+                    // transform body to json and convert back to T (deep copy)
+                    String json = mapper.writeValueAsString(body);
+                    ret = (T) mapper.readValue(json, body.getClass());
+                    for (LinkedHashMap<String, Object> item : ((Collection<LinkedHashMap<String, Object>>) ret)) {
+                        // apply content transformations
+                        modifyContent((T) item, clazz, returnType);
+                    }
+                    return ret;
+                }
+                // <--
+
                 String id = getId(body);
                 if (auth instanceof AnonymousAuthenticationToken || (!securityExpressions.isAdmin(auth) && !securityService.canRead(auth, id))) {
                     logger.trace("User lacks read permission : removing sensitive information");
@@ -182,7 +198,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
      * @param clazz the Class of the data
      * @param returnType the response type.
      */
-    public void modifyContent(T obj, Class<?> clazz, MethodParameter returnType) {
+    public <G> void modifyContent(G obj, Class<?> clazz, MethodParameter returnType) {
         if (obj != null) {
             for (PrivacyProperties.FieldPrivacy fieldPrivacy : privacyProperties.getEntries()) {
                 if (clazz.getCanonicalName().equals(fieldPrivacy.getClassName())) {
