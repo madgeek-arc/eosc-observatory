@@ -21,10 +21,11 @@ import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
-public record GenerateDocumentsRequest(String surveyId, List<String> surveyAnswerIds){
+public record GenerateDocumentsRequest(String surveyId, List<String> surveyAnswerIds, String fileType) {
 
     public GenerateDocumentsRequest {
         surveyAnswerIds = (surveyAnswerIds == null) ? List.of() : List.copyOf(surveyAnswerIds);
+        fileType = fileType.toLowerCase();
 
         boolean hasSurveyId = surveyId != null && !surveyId.isBlank();
         boolean hasAnswers = !surveyAnswerIds.isEmpty();

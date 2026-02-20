@@ -98,58 +98,60 @@ public class SurveyAnswerDocumentAnalyzer {
         }
         for (String answerId : answerIds) {
             logger.info("Generating documents for survey answer with id={}", answerId);
-            generateDocuments(answerId);
+            generateDocuments(answerId, request.fileType());
         }
     }
 
-    public List<Document> generateDocuments(String surveyAnswerId) {
+    public List<Document> generateDocuments(String surveyAnswerId, String fileType) {
         List<Document> documents = new ArrayList<>();
         List<UrlReferences> urlReferences = extractUrlsFromSurveyAnswer(surveyAnswerId);
         for (UrlReferences urlReference : urlReferences) {
-            Document document;
-            String id = DigestUtils.sha256Hex(urlReference.getUrl().getBytes());
-            try {
-                LinkedHashSet<SurveyAnswerReference> set = new LinkedHashSet<>();
-                document = genericResourceService.get("document", id);
-                set.addAll(document.getReferences());
-                set.addAll(urlReference.getReferences());
-
-                if (!model.equals(document.getMetadata().getModel())) {
-                    Document updated = generateDocument(templateLoader.load(), urlReference.getUrl());
-                    if (updated != null) {
-                        updated.setId(document.getId());
-                        updated.setUrl(urlReference.getUrl());
-                        updated.setStatus(Document.Status.PENDING.name());
-                        updated.setSource(Document.Source.SURVEY.name());
-
-                        updated.setMetadata(updateMetadata(USER, document.getMetadata(), model));
-                        updated.setReferences(set);
-                        genericResourceService.update("document", document.getId(), updated);
-                        documents.add(updated);
-                    }
-                } else if (!urlReference.getReferences().containsAll(set)) {
+            if (fileType != null && urlReference.getUrl().toLowerCase().endsWith(fileType)) {
+                Document document;
+                String id = DigestUtils.sha256Hex(urlReference.getUrl().getBytes());
+                try {
+                    LinkedHashSet<SurveyAnswerReference> set = new LinkedHashSet<>();
+                    document = genericResourceService.get("document", id);
+                    set.addAll(document.getReferences());
                     set.addAll(urlReference.getReferences());
-                    document.setReferences(set);
-                    document.setMetadata(updateMetadata(USER, document.getMetadata(), model));
-                    genericResourceService.update("document", document.getId(), document);
-                    documents.add(document);
+
+                    if (!model.equals(document.getMetadata().getModel())) {
+                        Document updated = generateDocument(templateLoader.load(), urlReference.getUrl());
+                        if (updated != null) {
+                            updated.setId(document.getId());
+                            updated.setUrl(urlReference.getUrl());
+                            updated.setStatus(Document.Status.PENDING.name());
+                            updated.setSource(Document.Source.SURVEY.name());
+
+                            updated.setMetadata(updateMetadata(USER, document.getMetadata(), model));
+                            updated.setReferences(set);
+                            genericResourceService.update("document", document.getId(), updated);
+                            documents.add(updated);
+                        }
+                    } else if (!urlReference.getReferences().containsAll(set)) {
+                        set.addAll(urlReference.getReferences());
+                        document.setReferences(set);
+                        document.setMetadata(updateMetadata(USER, document.getMetadata(), model));
+                        genericResourceService.update("document", document.getId(), document);
+                        documents.add(document);
+                    }
+                } catch (ResourceNotFoundException e) {
+                    document = generateDocument(templateLoader.load(), urlReference.getUrl());
+                    if (document != null) {
+                        document.setId(id);
+                        document.setUrl(urlReference.getUrl());
+                        document.setStatus(Document.Status.PENDING.name());
+                        document.setSource(Document.Source.SURVEY.name());
+                        document.setMetadata(createMetadata(USER, model));
+                        document.setReferences(urlReference.getReferences());
+                        genericResourceService.add("document", document);
+                        documents.add(document);
+                    } else {
+                        logger.warn("Problem with url: {}", urlReference.getUrl());
+                    }
+                } catch (InvocationTargetException | NoSuchMethodException | NoSuchFieldException e) {
+                    throw new RuntimeException(e);
                 }
-            } catch (ResourceNotFoundException e) {
-                document = generateDocument(templateLoader.load(), urlReference.getUrl());
-                if (document != null) {
-                    document.setId(id);
-                    document.setUrl(urlReference.getUrl());
-                    document.setStatus(Document.Status.PENDING.name());
-                    document.setSource(Document.Source.SURVEY.name());
-                    document.setMetadata(createMetadata(USER, model));
-                    document.setReferences(urlReference.getReferences());
-                    genericResourceService.add("document", document);
-                    documents.add(document);
-                } else {
-                    logger.warn("Problem with url: {}", urlReference.getUrl());
-                }
-            } catch (InvocationTargetException | NoSuchMethodException | NoSuchFieldException e) {
-                throw new RuntimeException(e);
             }
         }
         return documents;
