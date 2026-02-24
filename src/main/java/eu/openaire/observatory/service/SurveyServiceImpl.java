@@ -438,7 +438,7 @@ public class SurveyServiceImpl implements SurveyService {
         return surveyAnswer;
     }
 
-    @Override // TODO: optimize
+    @Override
     public Browsing<SurveyAnswerInfo> browseSurveyAnswersInfo(FacetFilter filter) {
         filter.setResourceType("survey_answer");
         Browsing<SurveyAnswer> surveyAnswerBrowsing = genericResourceService.getResults(filter);
@@ -447,12 +447,37 @@ public class SurveyServiceImpl implements SurveyService {
         surveyAnswerInfoBrowsing.setTo(surveyAnswerBrowsing.getTo());
         surveyAnswerInfoBrowsing.setTotal(surveyAnswerBrowsing.getTotal());
         surveyAnswerInfoBrowsing.setFacets(surveyAnswerBrowsing.getFacets());
+
+        // Pre-fetch all stakeholders to reduce db calls for every survey answer
+        FacetFilter stakeholdersFilter = new FacetFilter();
+        stakeholdersFilter.setResourceType("stakeholder");
+        stakeholdersFilter.setQuantity(10000);
+        Browsing<Stakeholder> stakeholders = genericResourceService.getResults(stakeholdersFilter);
+        Map<String, StakeholderInfo> stakeholdersMap = stakeholders.getResults()
+                .stream()
+                .map(StakeholderInfo::of)
+                .collect(Collectors.toMap(StakeholderInfo::getId, Function.identity()));
+
+        // Pre-fetch models to Map to reduce db calls for every survey answer
+        Set<String> models = surveyAnswerBrowsing.getResults()
+                .stream()
+                .map(SurveyAnswer::getSurveyId)
+                .collect(Collectors.toSet());
+        Map<String, Model> modelsMap = models
+                .stream()
+                .map(mId -> (Model) genericResourceService.get("model", mId))
+                .collect(Collectors.toMap(Model::getId, Function.identity()));
+
         List<SurveyAnswerInfo> results = new ArrayList<>();
         for (SurveyAnswer answer : surveyAnswerBrowsing.getResults()) {
             logger.debug("SurveyAnswer [id={}]", answer.getId());
-            Model survey = genericResourceService.get("model", answer.getSurveyId());
-            Stakeholder stakeholder = genericResourceService.get("stakeholder", answer.getStakeholderId());
-            SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, StakeholderInfo.of(stakeholder));
+
+            // Replaced db call with map.get() to speedup execution.
+            Model survey = modelsMap.get(answer.getSurveyId());
+            // Replaced db call with map.get() to speedup execution.
+            StakeholderInfo stakeholderInfo = stakeholdersMap.get(answer.getStakeholderId());
+
+            SurveyAnswerInfo info = SurveyAnswerInfo.composeFrom(answer, survey, stakeholderInfo);
             setProgress(info, answer, survey);
             results.add(info);
         }
