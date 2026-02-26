@@ -17,17 +17,15 @@
 package eu.openaire.observatory.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import eu.openaire.observatory.resources.dto.DocumentResponse;
 import eu.openaire.observatory.resources.model.Document;
+import eu.openaire.observatory.resources.dto.DocumentSummaryResponse;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
 import gr.uoa.di.madgik.registry.domain.*;
 import gr.uoa.di.madgik.registry.service.ResourceService;
 import gr.uoa.di.madgik.registry.service.ResourceTypeService;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -68,16 +66,27 @@ public class ResourcesController {
     public record StatusChange(@NotNull Document.Status status) {
     }
 
+    public enum View {
+        FULL, DETAIL, SUMMARY
+    }
+
     @GetMapping
     @BrowseParameters
     @PreAuthorize("canReadDocuments(#allRequestParams.get('status'))")
-    public ResponseEntity<Browsing<HighlightedResult<Document>>> getDocuments(
+    public ResponseEntity<Paging<HighlightedResult<?>>> getDocuments(
             @RequestParam(required = false, defaultValue = "APPROVED") Document.Status status,
-            @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+            @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams,
+            @RequestParam(required = false, defaultValue = "SUMMARY") View view) {
+        allRequestParams.remove("view");
         FacetFilter filter = FacetFilter.from(allRequestParams);
         filter.setResourceType("document");
-        Browsing<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
-        return new ResponseEntity<>(docs, HttpStatus.OK);
+        Paging<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
+        Paging<HighlightedResult<?>> response = switch (view) {
+            case FULL -> docs.map(i -> i); // no-op, just a trick for casting
+            case DETAIL -> docs.map(i -> i.map(DocumentResponse::new));
+            default -> docs.map(i -> i.map(DocumentSummaryResponse::new));
+        };
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @GetMapping("{id}/recommendations")
