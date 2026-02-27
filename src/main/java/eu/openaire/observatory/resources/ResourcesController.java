@@ -92,13 +92,21 @@ public class ResourcesController {
     @GetMapping("{id}/recommendations")
     @BrowseParameters
     @PreAuthorize("canReadDocuments(#allRequestParams.get('status'))")
-    public ResponseEntity<List<Document>> recommendations(
+    public ResponseEntity<List<?>> recommendations(
             @PathVariable String id,
             @Parameter(hidden = false) @RequestParam(required = false, defaultValue = "APPROVED") Document.Status status,
-            @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
+            @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams,
+            @RequestParam(required = false, defaultValue = "SUMMARY") View view) {
+        allRequestParams.remove("view");
         FacetFilter filter = FacetFilter.from(allRequestParams);
         filter.setResourceType("document");
-        return new ResponseEntity<>(resourcesService.getRecommendations(filter, id), HttpStatus.OK);
+        List<Document> recommendations = resourcesService.getRecommendations(filter, id);
+        List<?> response = switch (view) {
+            case FULL -> recommendations;
+            case DETAIL -> recommendations.stream().map(DocumentResponse::new).toList();
+            default -> recommendations.stream().map(DocumentSummaryResponse::new).toList();
+        };
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @PutMapping("{id}/docInfo")
