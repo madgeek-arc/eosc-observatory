@@ -39,6 +39,8 @@ public class DocumentSummaryResponse {
             String title,
             Text shortDescription,
             List<String> organisations,
+            String country,
+            String language,
             List<String> tags,
             List<String> otherTags) {
     }
