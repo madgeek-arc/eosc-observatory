@@ -25,7 +25,7 @@ public record GenerateDocumentsRequest(String surveyId, List<String> surveyAnswe
 
     public GenerateDocumentsRequest {
         surveyAnswerIds = (surveyAnswerIds == null) ? List.of() : List.copyOf(surveyAnswerIds);
-        fileType = fileType.toLowerCase();
+        fileType = (fileType == null) ? "" : fileType.toLowerCase();
 
         boolean hasSurveyId = surveyId != null && !surveyId.isBlank();
         boolean hasAnswers = !surveyAnswerIds.isEmpty();
