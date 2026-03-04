@@ -36,6 +36,11 @@ public class DocumentMetadata extends Metadata {
         this.model = model;
     }
 
+    public DocumentMetadata(DocumentMetadata metadata) {
+        super(metadata);
+        this.model = metadata.getModel();
+    }
+
     public String getModel() {
         return model;
     }
