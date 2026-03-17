@@ -17,7 +17,6 @@
 package eu.openaire.observatory.resources.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.resources.analyzer.model.SurveyAnswerReference;
 
 import java.util.*;
@@ -149,7 +148,7 @@ public class Document {
         this.sentencesEn = sentencesEn;
     }
 
-    public Set<SurveyAnswerReference> getReferences() {
+    public LinkedHashSet<SurveyAnswerReference> getReferences() {
         return references;
     }
 

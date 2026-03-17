@@ -161,6 +161,17 @@ public class SurveyAnswerDocumentAnalyzer {
         Document document;
         try {
             document = genericResourceService.get("document", DigestUtils.sha256Hex(url.getBytes()));
+            Document updated = generateDocument(templateLoader.load(), url);
+            if (updated != null) {
+                updated.setId(document.getId());
+                updated.setUrl(url);
+                updated.setStatus(document.getStatus());
+                updated.setSource(document.getSource());
+
+                updated.setMetadata(updateMetadata(USER, document.getMetadata(), model));
+                updated.setReferences(document.getReferences());
+                genericResourceService.update("document", document.getId(), updated);
+            }
         } catch (ResourceNotFoundException e) {
             document = generateDocument(templateLoader.load(), url);
             if (document != null) {
@@ -173,6 +184,12 @@ public class SurveyAnswerDocumentAnalyzer {
             } else {
                 logger.warn("Problem with url: {}", url);
             }
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
         }
         return document;
     }
