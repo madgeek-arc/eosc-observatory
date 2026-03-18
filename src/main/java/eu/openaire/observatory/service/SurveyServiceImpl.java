@@ -631,8 +631,12 @@ public class SurveyServiceImpl implements SurveyService {
         // Enrich Editors
         for (HistoryEntryDTO entryDTO : history.getEntries()) {
             for (EditorDTO editorDTO : entryDTO.getEditors()) {
-                User user = userService.get(editorDTO.getEmail());
-                editorDTO.setFullname(user.getFullname());
+                try {
+                    User user = userService.get(editorDTO.getEmail());
+                    editorDTO.setFullname(user.getFullname());
+                } catch (ResourceNotFoundException e) {
+                    editorDTO.setFullname("unknown");
+                }
             }
         }
         return history;
