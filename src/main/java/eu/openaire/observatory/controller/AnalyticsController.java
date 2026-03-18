@@ -54,10 +54,9 @@ public class AnalyticsController {
 
     @GetMapping("/pageviews")
     public ResponseEntity<CountryPageviewsResponse> getCountryPageviews(@RequestParam(required = false) String country,
-                                                                        @RequestParam int months,
-                                                                        @Parameter(hidden = true) Authentication authentication) throws Exception {
+                                                                        @RequestParam int months) throws Exception {
 
-        LocalDate endDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now(); 
         LocalDate startDate = endDate.minusMonths(months);
         Map<YearMonth, Integer> monthHits = new LinkedHashMap<>();
         for (int i = 0; i <= months; i++) {
