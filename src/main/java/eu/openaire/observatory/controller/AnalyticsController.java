@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -41,16 +42,18 @@ public class AnalyticsController {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-    private final String tokenAuth = "token"; //TODO: Get token from Authentication
+    private final String tokenAuth;
 
-    public AnalyticsController(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
-        this.webClient = webClientBuilder.baseUrl("https://eosc-analytics.openaire.eu").build();
+    public AnalyticsController(WebClient.Builder webClientBuilder, ObjectMapper objectMapper,
+                               @Value("${analytics.url}") String url,
+                               @Value("${analytics.token}") String token) {
+        this.webClient = webClientBuilder.baseUrl(url).build();
+        this.tokenAuth = token;
         this.objectMapper = objectMapper;
     }
 
-    //TODO: Get token from Authentication
-    @GetMapping("/country-pageviews")
-    public ResponseEntity<CountryPageviewsResponse> getCountryPageviews(@RequestParam String country,
+    @GetMapping("/pageviews")
+    public ResponseEntity<CountryPageviewsResponse> getCountryPageviews(@RequestParam(required = false) String country,
                                                                         @RequestParam int months,
                                                                         @Parameter(hidden = true) Authentication authentication) throws Exception {
 
@@ -112,7 +115,7 @@ public class AnalyticsController {
 
                 LocalDate finalDate = date;
                 countries.stream()
-                        .filter(c -> country.equalsIgnoreCase(c.getLabel()))
+                        .filter(c -> country == null || country.equalsIgnoreCase(c.getLabel()))
                         .forEach(c -> {
                             YearMonth ym = YearMonth.from(finalDate);
                             monthHits.computeIfPresent(ym, (k, v) -> v + c.getNbHits());
