@@ -19,18 +19,15 @@ package eu.openaire.observatory.controller;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.*;
@@ -56,23 +53,22 @@ public class AnalyticsController {
     public ResponseEntity<CountryPageviewsResponse> getCountryPageviews(@RequestParam(required = false) String country,
                                                                         @RequestParam int months) throws Exception {
 
-        LocalDate endDate = LocalDate.now(); 
-        LocalDate startDate = endDate.minusMonths(months);
+        YearMonth endMonth = YearMonth.now();
+        YearMonth startMonth = endMonth.minusMonths(months);
         Map<YearMonth, Integer> monthHits = new LinkedHashMap<>();
         for (int i = 0; i <= months; i++) {
-            YearMonth ym = YearMonth.from(startDate.plusMonths(i));
-            monthHits.put(ym, 0);
+            monthHits.put(startMonth.plusMonths(i), 0);
         }
 
-        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            String dateStr = date.toString();
+        for (YearMonth ym : monthHits.keySet()) {
+            String dateStr = ym.toString();
             String topPagesJson = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/index.php")
                             .queryParam("module", "API")
                             .queryParam("method", "Actions.getPageUrls")
                             .queryParam("idSite", 1)
-                            .queryParam("period", "day")
+                            .queryParam("period", "month")
                             .queryParam("date", dateStr)
                             .queryParam("format", "JSON")
                             .queryParam("filter_limit", -1)
@@ -97,7 +93,7 @@ public class AnalyticsController {
                                 .queryParam("module", "API")
                                 .queryParam("method", "Actions.getPageUrls")
                                 .queryParam("idSite", 1)
-                                .queryParam("period", "day")
+                                .queryParam("period", "month")
                                 .queryParam("date", dateStr)
                                 .queryParam("idSubtable", idSubtable)
                                 .queryParam("format", "JSON")
@@ -112,13 +108,9 @@ public class AnalyticsController {
                         objectMapper.readValue(countryJson, new TypeReference<>() {
                         });
 
-                LocalDate finalDate = date;
                 countries.stream()
                         .filter(c -> country == null || country.equalsIgnoreCase(c.getLabel()))
-                        .forEach(c -> {
-                            YearMonth ym = YearMonth.from(finalDate);
-                            monthHits.computeIfPresent(ym, (k, v) -> v + c.getNbHits());
-                        });
+                        .forEach(c -> monthHits.computeIfPresent(ym, (k, v) -> v + c.getNbHits()));
             }
         }
 
