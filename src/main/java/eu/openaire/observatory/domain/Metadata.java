@@ -43,7 +43,7 @@ public class Metadata implements Serializable {
     public Metadata(Metadata metadata) {
         this.creationDate = new Date(metadata.getCreationDate().getTime());
         this.createdBy = metadata.getCreatedBy();
-        this.modificationDate = new Date(metadata.getModificationDate().getTime());;
+        this.modificationDate = new Date(metadata.getModificationDate().getTime());
         this.modifiedBy = metadata.getModifiedBy();
     }
 
