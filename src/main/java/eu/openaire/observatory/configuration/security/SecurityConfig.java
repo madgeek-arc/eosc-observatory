@@ -45,6 +45,8 @@ import org.springframework.security.web.authentication.logout.LogoutSuccessHandl
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -92,6 +94,10 @@ public class SecurityConfig {
                         .successHandler(authSuccessHandler)
                 )
                 .logout(logout -> logout
+                        .logoutRequestMatcher(new OrRequestMatcher(
+                                PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/logout"),
+                                PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/logout")
+                        ))
                         .logoutSuccessHandler(oidcLogoutSuccessHandler())
                         .deleteCookies()
                         .clearAuthentication(true)
