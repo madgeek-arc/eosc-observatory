@@ -87,6 +87,18 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
 
     @Override // DO NOT REMOVE: needed to get caught from permissions aspect
     public SurveyAnswer add(SurveyAnswer surveyAnswer) {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(1);
+        filter.addFilter("surveyId", surveyAnswer.getSurveyId());
+        filter.addFilter("stakeholderId", surveyAnswer.getStakeholderId());
+
+        if (!super.getAll(filter).getResults().isEmpty()) {
+            throw new ServiceException(String.format(
+                    "SurveyAnswer already exists for surveyId='%s' and stakeholderId='%s'.",
+                    surveyAnswer.getSurveyId(),
+                    surveyAnswer.getStakeholderId()
+            ));
+        }
         return super.add(surveyAnswer);
     }
 
