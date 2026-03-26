@@ -416,8 +416,7 @@ public class SurveyServiceImpl implements SurveyService {
         List<Stakeholder> stakeholders = this.stakeholderCrudService.getAll(filter).getResults();
 
         for (Stakeholder stakeholder : stakeholders) {
-            // create answer for every stakeholder
-            SurveyAnswer answer = generateAnswer(stakeholder, survey, authentication);
+            SurveyAnswer answer = getOrGenerateAnswer(stakeholder, survey, authentication);
             surveyAnswers.add(answer);
         }
         return surveyAnswers;
@@ -427,6 +426,16 @@ public class SurveyServiceImpl implements SurveyService {
     public SurveyAnswer generateStakeholderAnswer(String stakeholderId, String surveyId, Authentication authentication) {
         Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
         Model survey = genericResourceService.get("model", surveyId);
+        return getOrGenerateAnswer(stakeholder, survey, authentication);
+    }
+
+    private SurveyAnswer getOrGenerateAnswer(Stakeholder stakeholder, Model survey, Authentication authentication) {
+        SurveyAnswer existing = getLatest(survey.getId(), stakeholder.getId());
+        if (existing != null) {
+            logger.debug("Reusing existing SurveyAnswer: [surveyId={}] [stakeholderId={}] [answerId={}]",
+                    survey.getId(), stakeholder.getId(), existing.getId());
+            return existing;
+        }
         return generateAnswer(stakeholder, survey, authentication);
     }
 
