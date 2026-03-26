@@ -54,6 +54,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -70,6 +73,7 @@ public class SurveyServiceImpl implements SurveyService {
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final CacheService<String, SurveyAnswerRevisionsAggregation> cacheService;
+    private final ConcurrentMap<String, ReentrantLock> surveyAnswerLocks = new ConcurrentHashMap<>();
 
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
                              CrudService<SurveyAnswer> surveyAnswerCrudService,
@@ -173,15 +177,24 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public synchronized void edit(String id, Revision revision, Authentication authentication) {
-        // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
-        SurveyAnswerRevisionsAggregation sara = getMostRecent(id);
-        User user = User.of(authentication);
-        Editor editor = new Editor();
-        editor.setUser(user.getId());
-        editor.setRole(getUserRole(authentication, sara.getSurveyAnswer().getStakeholderId()));
-        sara.applyRevision(revision, editor);
-        cacheService.save(sara.getSurveyAnswer().getId(), sara);
+    public void edit(String id, Revision revision, Authentication authentication) {
+        ReentrantLock lock = surveyAnswerLocks.computeIfAbsent(id, ignored -> new ReentrantLock());
+        lock.lock();
+        try {
+            // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
+            SurveyAnswerRevisionsAggregation sara = getMostRecent(id);
+            User user = User.of(authentication);
+            Editor editor = new Editor();
+            editor.setUser(user.getId());
+            editor.setRole(getUserRole(authentication, sara.getSurveyAnswer().getStakeholderId()));
+            sara.applyRevision(revision, editor);
+            cacheService.save(sara.getSurveyAnswer().getId(), sara);
+        } finally {
+            lock.unlock();
+            if (!lock.hasQueuedThreads()) {
+                surveyAnswerLocks.remove(id, lock);
+            }
+        }
     }
 
     private SurveyAnswerRevisionsAggregation getMostRecent(String surveyAnswerId) {
