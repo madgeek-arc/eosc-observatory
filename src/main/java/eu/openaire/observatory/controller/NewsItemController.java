@@ -45,8 +45,9 @@ public class NewsItemController {
     @GetMapping(path = "news")
     @BrowseParameters
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Browsing<HighlightedResult<NewsItem>>> getNewsItems(@Parameter(hidden = true) @RequestParam
-                                                                              MultiValueMap<String, Object> allRequestParams) {
+    public ResponseEntity<Browsing<HighlightedResult<NewsItem>>> getNewsItems(
+            @Parameter(hidden = true) @RequestParam
+            MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<HighlightedResult<NewsItem>> news = newsItemService.getHighlightedResults(filter);
         return new ResponseEntity<>(news, HttpStatus.OK);
@@ -55,6 +56,13 @@ public class NewsItemController {
     @DeleteMapping("news/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<NewsItem> delete(@PathVariable("id") String id) throws ResourceNotFoundException {
+        return new ResponseEntity<>(newsItemService.delete(id), HttpStatus.OK);
+    }
+
+    @DeleteMapping("stakeholders/{stakeholderId}/news/{id}")
+    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId)")
+    public ResponseEntity<NewsItem> delete(@PathVariable("stakeholderId") String stakeholderId,
+                                           @PathVariable("id") String id) throws ResourceNotFoundException {
         return new ResponseEntity<>(newsItemService.delete(id), HttpStatus.OK);
     }
 
@@ -79,9 +87,10 @@ public class NewsItemController {
     @GetMapping(path = "stakeholders/{stakeholderId}/news")
     @BrowseParameters
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId)")
-    public ResponseEntity<Browsing<HighlightedResult<NewsItem>>> getStakeholderNewsItems(@PathVariable("stakeholderId") String stakeholderId,
-                                                           @Parameter(hidden = true) @RequestParam
-                                                           MultiValueMap<String, Object> allRequestParams) {
+    public ResponseEntity<Browsing<HighlightedResult<NewsItem>>> getStakeholderNewsItems(
+            @PathVariable("stakeholderId") String stakeholderId,
+            @Parameter(hidden = true) @RequestParam
+            MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
 
         filter.addFilter("stakeholderId", stakeholderId);
