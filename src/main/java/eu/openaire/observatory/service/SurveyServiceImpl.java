@@ -740,9 +740,13 @@ public class SurveyServiceImpl implements SurveyService {
 
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
-        Set<String> members = stakeholder.getAdmins();
+        Set<String> members = new HashSet<>(stakeholder.getAdmins());
         members.addAll(stakeholder.getMembers());
-        permissionService.removePermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()));
+        permissionService.removePermissions(
+                members,
+                Collections.singletonList(Permissions.WRITE.getKey()),
+                Collections.singletonList(surveyAnswer.getId())
+        );
         surveyAnswer.setValidated(true);
         return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
     }
