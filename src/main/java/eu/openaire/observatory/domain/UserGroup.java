@@ -118,4 +118,16 @@ public class UserGroup implements Identifiable<String> {
                     .orElseThrow(() -> new IllegalArgumentException("unknown value: " + s));
         }
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        UserGroup userGroup = (UserGroup) o;
+        return Objects.equals(id, userGroup.id) && Objects.equals(name, userGroup.name) && Objects.equals(type, userGroup.type) && Objects.equals(admins, userGroup.admins) && Objects.equals(members, userGroup.members);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name, type, admins, members);
+    }
 }
