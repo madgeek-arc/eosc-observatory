@@ -60,13 +60,16 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
     void autoSaveCache() throws ResourceNotFoundException {
         Set<String> keys = cacheService.fetchKeys("sa-*");
         for (String key : keys) {
-            SurveyAnswerRevisionsAggregation sara = cacheService.fetch(key);
-            if (sara != null) {
-                long active = System.currentTimeMillis() - sara.getCreated().getTime();
-                if (active > 600_000) {
-                    cacheService.remove(key);
-                    update(sara.getSurveyAnswer().getId(), sara.getSurveyAnswer());
+            try {
+                SurveyAnswerRevisionsAggregation sara = cacheService.fetch(key);
+                if (sara != null) {
+                    long active = System.currentTimeMillis() - sara.getCreated().getTime();
+                    if (active > 600_000) {
+                        update(sara.getSurveyAnswer().getId(), sara.getSurveyAnswer());
+                    }
                 }
+            } catch (RuntimeException e) {
+                logger.warn("Failed to flush cached survey answer '{}'. Skipping entry for this run.", key, e);
             }
         }
     }
@@ -100,13 +103,11 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
 
     @Override
     public SurveyAnswer get(String id) {
-        SurveyAnswer answer;
-        if (cacheService.containsKey(id)) {
-            answer = cacheService.fetch(id).getSurveyAnswer();
-        } else {
-            answer = super.get(id);
+        SurveyAnswerRevisionsAggregation cached = cacheService.fetch(id);
+        if (cached != null) {
+            return cached.getSurveyAnswer();
         }
-        return answer;
+        return super.get(id);
     }
 
     @Override
@@ -114,12 +115,7 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
         Browsing<SurveyAnswer> browsing = super.getAll(filter);
         browsing.setResults(browsing.getResults()
                 .stream()
-                .map(a -> {
-                    if (cacheService.containsKey(a.getId())) {
-                        return cacheService.fetch(a.getId()).getSurveyAnswer();
-                    }
-                    return a;
-                })
+                .map(this::resolveMostRecent)
                 .toList());
         return browsing;
     }
@@ -129,12 +125,7 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
         Browsing<SurveyAnswer> browsing = super.getMy(filter);
         browsing.setResults(browsing.getResults()
                 .stream()
-                .map(a -> {
-                    if (cacheService.containsKey(a.getId())) {
-                        return cacheService.fetch(a.getId()).getSurveyAnswer();
-                    }
-                    return a;
-                })
+                .map(this::resolveMostRecent)
                 .toList());
         return browsing;
     }
@@ -143,21 +134,26 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
     public Set<SurveyAnswer> getWithFilter(String key, String value) {
         return super.getWithFilter(key, value)
                 .stream()
-                .map(a -> {
-                    if (cacheService.containsKey(a.getId())) {
-                        return cacheService.fetch(a.getId()).getSurveyAnswer();
-                    }
-                    return a;
-                })
+                .map(this::resolveMostRecent)
                 .collect(Collectors.toSet());
     }
 
     @Override
     public SurveyAnswer update(String id, SurveyAnswer resource) throws ResourceNotFoundException {
-        if (cacheService.containsKey(id)) {
-            super.update(id, cacheService.remove(id).getSurveyAnswer());
+        SurveyAnswerRevisionsAggregation cached = cacheService.fetch(id);
+        if (cached != null) {
+            super.update(id, cached.getSurveyAnswer());
+            cacheService.remove(id);
         }
         return super.update(id, resource);
+    }
+
+    private SurveyAnswer resolveMostRecent(SurveyAnswer surveyAnswer) {
+        SurveyAnswerRevisionsAggregation cached = cacheService.fetch(surveyAnswer.getId());
+        if (cached != null) {
+            return cached.getSurveyAnswer();
+        }
+        return surveyAnswer;
     }
 
     @Override

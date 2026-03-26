@@ -47,51 +47,55 @@ public class RedisCacheService<K, V> implements CacheService<K, V> {
     @SuppressWarnings("unchecked")
     public Set<K> fetchKeys(K pattern) {
         String p = getKey(pattern);
-        synchronized (this) {
-            logger.trace("Fetching all keys matching '{}'", p);
-            return (Set<K>) redisTemplate.keys(p);
-        }
+        logger.trace("Fetching all keys matching '{}'", p);
+        return (Set<K>) redisTemplate.keys(p);
     }
 
     @Override
     public boolean containsKey(K key) {
         String k = getKey(key);
-        synchronized (this) {
-            Boolean exists = redisTemplate.hasKey(k);
-            return exists != null && exists;
-        }
+        Boolean exists = redisTemplate.hasKey(k);
+        return exists != null && exists;
     }
 
     @Override
     public V fetch(K key) {
         String k = getKey(key);
-        synchronized (this) {
-            try {
-                logger.debug("Fetching value of key: '{}' from cache.", k);
-                return valueOps.get(k);
-            } catch (SerializationException e) {
-                redisTemplate.delete(k);
-                throw new ServiceException("Error while reading key '" + k + "' from cache.", e);
-            }
+        try {
+            logger.debug("Fetching value of key: '{}' from cache.", k);
+            return valueOps.get(k);
+        } catch (SerializationException e) {
+            redisTemplate.delete(k);
+            throw new ServiceException("Error while reading key '" + k + "' from cache.", e);
         }
     }
 
     @Override
     public V remove(K key) {
         String k = getKey(key);
-        synchronized (this) {
-            logger.debug("Removing value of key: '{}' from cache.", k);
-            return valueOps.getAndDelete(k);
+        logger.debug("Removing value of key: '{}' from cache.", k);
+        V existing = null;
+        try {
+            existing = valueOps.get(k);
+        } catch (SerializationException e) {
+            logger.warn("Could not deserialize cached value for key '{}' during removal. Deleting entry.", k, e);
         }
+        redisTemplate.delete(k);
+        return existing;
     }
 
     @Override
     public V save(K key, V value) {
         String k = getKey(key);
-        synchronized (this) {
-            logger.debug("Updating value of key: '{}' from cache.", k);
-            return valueOps.getAndSet(k, value);
+        logger.debug("Updating value of key: '{}' from cache.", k);
+        V previous = null;
+        try {
+            previous = valueOps.get(k);
+        } catch (SerializationException e) {
+            logger.warn("Could not deserialize cached value for key '{}' before overwrite. Replacing entry.", k, e);
         }
+        valueOps.set(k, value);
+        return previous;
     }
 
 }
