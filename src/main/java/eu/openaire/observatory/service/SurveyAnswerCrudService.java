@@ -56,13 +56,13 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
     }
 
 
-    @Scheduled(fixedDelay = 60_000)
-    void autoSaveCache() throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException {
+    @Scheduled(fixedDelay = 20_000)
+    void autoSaveCache() throws ResourceNotFoundException {
         Set<String> keys = cacheService.fetchKeys("sa-*");
         for (String key : keys) {
             SurveyAnswerRevisionsAggregation sara = cacheService.fetch(key);
             if (sara != null) {
-                long active = new Date().getTime() - sara.getCreated().getTime();
+                long active = System.currentTimeMillis() - sara.getCreated().getTime();
                 if (active > 600_000) {
                     cacheService.remove(key);
                     update(sara.getSurveyAnswer().getId(), sara.getSurveyAnswer());

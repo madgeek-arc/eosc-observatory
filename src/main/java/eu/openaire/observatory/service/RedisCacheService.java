@@ -16,10 +16,12 @@
 
 package eu.openaire.observatory.service;
 
+import gr.uoa.di.madgik.registry.service.ServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.serializer.SerializationException;
 import org.springframework.stereotype.Service;
 
 import java.util.Set;
@@ -64,8 +66,13 @@ public class RedisCacheService<K, V> implements CacheService<K, V> {
     public V fetch(K key) {
         String k = getKey(key);
         synchronized (this) {
-            logger.debug("Fetching value of key: '{}' from cache.", k);
-            return valueOps.get(k);
+            try {
+                logger.debug("Fetching value of key: '{}' from cache.", k);
+                return valueOps.get(k);
+            } catch (SerializationException e) {
+                redisTemplate.delete(k);
+                throw new ServiceException("Error while reading key '" + k + "' from cache.", e);
+            }
         }
     }
 
