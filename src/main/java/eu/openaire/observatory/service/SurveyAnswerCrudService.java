@@ -56,7 +56,7 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
     }
 
 
-    @Scheduled(fixedDelay = 20_000)
+    @Scheduled(fixedDelay = 120_000)
     void autoSaveCache() throws ResourceNotFoundException {
         Set<String> keys = cacheService.fetchKeys("sa-*");
         for (String key : keys) {
