@@ -11,6 +11,7 @@ import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.HighlightedResult;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -73,7 +74,7 @@ public class NewsItemController {
     @PostMapping(path = "stakeholders/{stakeholderId}/news")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<NewsItem> create(@PathVariable("stakeholderId") String stakeholderId,
-                                           @RequestBody NewsItemDTO dto) {
+                                           @Valid @RequestBody NewsItemDTO dto) {
         NewsItem newsItem = newsItemMapper.toNewsItem(dto);
         newsItem.setStakeholderId(stakeholderId);
         return new ResponseEntity<>(newsItemService.add(newsItem), HttpStatus.CREATED);
@@ -83,7 +84,7 @@ public class NewsItemController {
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<NewsItem> update(@PathVariable("id") String id,
                                            @PathVariable("stakeholderId") String stakeholderId,
-                                           @RequestBody NewsItemDTO dto) {
+                                           @Valid @RequestBody NewsItemDTO dto) {
         NewsItem toUpdate = newsItemMapper.toNewsItem(dto);
         return new ResponseEntity<>(newsItemService.update(id, toUpdate), HttpStatus.OK);
     }

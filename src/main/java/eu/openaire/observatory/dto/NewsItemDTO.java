@@ -1,14 +1,23 @@
 package eu.openaire.observatory.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 import java.util.Date;
 
 public class NewsItemDTO {
 
+    @NotBlank
     private String title;
+    @NotBlank
     private String description;
+    @NotBlank
     private String url;
+    @NotBlank
     private String image;
+    @NotNull
     private Date publishDate;
+    @NotNull
     private Date expiryDate;
 
     public NewsItemDTO() {
