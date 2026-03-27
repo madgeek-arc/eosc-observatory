@@ -3,6 +3,7 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.NewsItem;
 import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.dto.NewsItemPatchRequest;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.catalogue.service.id.IdGenerator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
@@ -45,7 +46,7 @@ public class NewsItemService extends AbstractCrudService<NewsItem> implements Cr
     public NewsItem add(NewsItem resource) {
         resource.setMetadata(new Metadata(SecurityContextHolder.getContext().getAuthentication()));
         resource.setActive(true);
-        resource.setStatus(NewsItem.Status.APPROVED);
+        resource.setStatus(NewsItem.Status.APPROVED); // intentional - may change at some point
         return super.add(resource);
     }
 
@@ -54,6 +55,7 @@ public class NewsItemService extends AbstractCrudService<NewsItem> implements Cr
         NewsItem existing = get(id);
 
         // fill from existing
+        resource.setId(id);
         resource.setMetadata(existing.getMetadata());
         resource.setStakeholderId(existing.getStakeholderId());
         resource.setStatus(existing.getStatus());
@@ -64,6 +66,15 @@ public class NewsItemService extends AbstractCrudService<NewsItem> implements Cr
         resource.getMetadata().setModifiedBy(User.getId(SecurityContextHolder.getContext().getAuthentication()));
 
         return super.update(id, resource);
+    }
+
+    public NewsItem patch(String id, NewsItemPatchRequest request) throws ResourceNotFoundException {
+        NewsItem newsItem = get(id);
+
+        if (request.active() != null) newsItem.setActive(request.active());
+        if (request.status() != null) newsItem.setStatus(request.status());
+
+        return super.update(id, newsItem);
     }
 
     @Override

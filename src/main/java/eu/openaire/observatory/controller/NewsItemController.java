@@ -2,6 +2,7 @@ package eu.openaire.observatory.controller;
 
 import eu.openaire.observatory.domain.NewsItem;
 import eu.openaire.observatory.dto.NewsItemDTO;
+import eu.openaire.observatory.dto.NewsItemPatchRequest;
 import eu.openaire.observatory.mappers.NewsItemMapper;
 import eu.openaire.observatory.service.NewsItemService;
 import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
@@ -36,8 +38,10 @@ public class NewsItemController {
     /*---------------------------*/
 
     @GetMapping(path = "news/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#id) " +
-            "or isCoordinatorOfStakeholder(#id) or isAdministratorOfStakeholder(#id)")
+    @PostAuthorize("hasAuthority('ADMIN') " +
+            "or isStakeholderMember(returnObject.getBody().stakeholderId) " +
+            "or isCoordinatorOfStakeholder(returnObject.getBody().stakeholderId) " +
+            "or isAdministratorOfStakeholder(returnObject.getBody().stakeholderId)")
     public ResponseEntity<NewsItem> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(newsItemService.get(id), HttpStatus.OK);
     }
@@ -82,6 +86,14 @@ public class NewsItemController {
                                            @RequestBody NewsItemDTO dto) {
         NewsItem toUpdate = newsItemMapper.toNewsItem(dto);
         return new ResponseEntity<>(newsItemService.update(id, toUpdate), HttpStatus.OK);
+    }
+
+    @PatchMapping("stakeholders/{stakeholderId}/news/{id}")
+    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
+    public ResponseEntity<NewsItem> patch(@PathVariable("id") String id,
+                                           @PathVariable("stakeholderId") String stakeholderId,
+                                           @RequestBody NewsItemPatchRequest request) {
+        return new ResponseEntity<>(newsItemService.patch(id, request), HttpStatus.OK);
     }
 
     @GetMapping(path = "stakeholders/{stakeholderId}/news")
