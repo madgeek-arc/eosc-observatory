@@ -44,6 +44,39 @@
 * Updating a document sets 'curated' flag to true ([7059b69](https://github.com/madgeek-arc/eosc-observatory/commit/7059b69426a7c1fb7097a4d94ea8a26b2a942bc4))
 * Updating a message method uses findWithCommentById() method which initializes the comment thread - fixes lazy initialization outside of session when mapping to dto ([ba39258](https://github.com/madgeek-arc/eosc-observatory/commit/ba39258da2ccaceb1096d6d629d364aff20ad48f))
 
+## [4.3.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.2.1...4.3.0) (2026-04-01)
+
+
+### Features
+
+* Adds validation in news API request bodies ([e7ce60c](https://github.com/madgeek-arc/eosc-observatory/commit/e7ce60c3ed3aa46858bacccfc82f8a031845b586))
+* Creates API method to update NewsItem status and active fields. ([a0abb02](https://github.com/madgeek-arc/eosc-observatory/commit/a0abb0240678dc06dc4f70e1aa013196fbd0ddc1))
+* Creates news item delete method for stakeholder members ([4e73c8b](https://github.com/madgeek-arc/eosc-observatory/commit/4e73c8b8c5fc2ab22043e77270a8f19c8e05f479))
+* **news:** Adds NewsItem class and crud methods accessible by admins and stakeholder members. ([48489ed](https://github.com/madgeek-arc/eosc-observatory/commit/48489eda3c76cdadf39d29b9dc9d653a0b7bf9cd))
+
+
+### Bug Fixes
+
+* Adds missing @EnableScheduling annotation ([c9c2cec](https://github.com/madgeek-arc/eosc-observatory/commit/c9c2cec546c764ff2e1a77f5012cd4ac37c2fdb0))
+* Allow both GET and POST logout endpoints ([e38b328](https://github.com/madgeek-arc/eosc-observatory/commit/e38b32883bcc136914fd968490e86d7c71131805))
+* Corrects canWrite() method ([05e6b4c](https://github.com/madgeek-arc/eosc-observatory/commit/05e6b4cef60e77ea9eb3840dcba0926248431a41))
+* Corrects security expression in News controller ([5b75b63](https://github.com/madgeek-arc/eosc-observatory/commit/5b75b6324ca53984fa0f22026673344d21dcc8d4))
+* Ensures that only one answer may be created per survey ([da8675f](https://github.com/madgeek-arc/eosc-observatory/commit/da8675f068d7ddce54e0e6bcff6fa9c079b29266))
+* Override equals and hashCode methods ([8913d3b](https://github.com/madgeek-arc/eosc-observatory/commit/8913d3b25f20ce77b73ed63a207fd90706b10416))
+* Reuse existing survey answers when generate method finds them ([27c2731](https://github.com/madgeek-arc/eosc-observatory/commit/27c2731baf90123b357cc08d23819d9f45fa4da8))
+* When user is missing from db assigns 'unknown' to the fullname ([e439d38](https://github.com/madgeek-arc/eosc-observatory/commit/e439d380e433c1b79ee3276b012783b355f2e7c2))
+
+
+### Performance Improvements
+
+* **analytics,pageviews:** Changes method to request pageviews per month instead of per day ([57c42ad](https://github.com/madgeek-arc/eosc-observatory/commit/57c42ad69dca84842e674d0c5aa75b4948ea132a))
+* Replaces synchronized method with more fine-grained resource locking. ([78d34e4](https://github.com/madgeek-arc/eosc-observatory/commit/78d34e4dff164b0a53b9fbc74118b414d688f2ee))
+
+
+### Miscellaneous Chores
+
+* release 4.3.0 ([9bac44e](https://github.com/madgeek-arc/eosc-observatory/commit/9bac44e3114a2a98c8fddb7a64b5e046e827480c))
+
 ## [4.0.0](https://github.com/madgeek-arc/eosc-observatory/compare/3.2.0...4.0.0) (2025-12-23)
 
 ### ⚠ BREAKING CHANGES
