@@ -9,8 +9,8 @@ pipeline {
 
   environment {
     IMAGE_NAME = "observatory"
-    REGISTRY = "docker.madgik.di.uoa.gr"
-    REGISTRY_CRED = 'docker-registry'
+    REGISTRY = "http://docker-registry.openaire.eu/eoscobservatory"
+    REGISTRY_CRED = 'openaire-docker-registry-eoscobservatory'
     DOCKER_IMAGE = ''
     DOCKER_TAG = ''
     DOCKER_BUILDKIT = '1'
@@ -21,17 +21,17 @@ pipeline {
         script {
           def POM_VERSION = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed 's/-SNAPSHOT//'", returnStdout: true).trim()
           if (env.BRANCH_NAME == 'develop') {
-            env.DOCKER_TAG = 'dev'
+            DOCKER_TAG = 'dev'
             echo "Detected development branch."
           } else if (env.BRANCH_NAME == 'master') {
-            env.DOCKER_TAG = POM_VERSION
+            DOCKER_TAG = POM_VERSION
             echo "Detected master branch: ${POM_VERSION}"
           } else {
             def branch = env.BRANCH_NAME.replace('/', '-')
-            env.DOCKER_TAG = "${POM_VERSION}-${branch}"
+            DOCKER_TAG = "${POM_VERSION}-${branch}"
           }
 
-          currentBuild.displayName = "${currentBuild.displayName}-${env.DOCKER_TAG}"
+          currentBuild.displayName = "${currentBuild.displayName}-${DOCKER_TAG}"
         }
       }
     }
@@ -48,8 +48,8 @@ pipeline {
     stage('Build Image') {
       steps{
         script {
-          // Requires a Dockerfile.slim with only the runtime stage (no Maven build)
-          DOCKER_IMAGE = docker.build("${REGISTRY}/${IMAGE_NAME}:${env.DOCKER_TAG}", "--label job=${env.JOB_NAME} -f Dockerfile.slim .")
+          // Requires a Dockerfile with only the runtime stage (no Maven build)
+          DOCKER_IMAGE = docker.build("${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG}", "--label job=${env.JOB_NAME} -f Dockerfile .")
         }
       }
     }
