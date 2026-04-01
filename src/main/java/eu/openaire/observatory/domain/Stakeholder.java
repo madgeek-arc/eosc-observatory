@@ -62,14 +62,14 @@ public class Stakeholder extends UserGroup {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Stakeholder)) return false;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
         Stakeholder that = (Stakeholder) o;
-        return id.equals(that.id) && Objects.equals(name, that.name) && Objects.equals(type, that.type) && Objects.equals(subType, that.subType) && Objects.equals(country, that.country) && Objects.equals(associationMember, that.associationMember) && Objects.equals(admins, that.admins) && Objects.equals(members, that.members);
+        return mandated == that.mandated && Objects.equals(subType, that.subType) && Objects.equals(country, that.country) && Objects.equals(associationMember, that.associationMember);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, type, subType, country, associationMember, admins, members);
+        return Objects.hash(super.hashCode(), subType, country, associationMember, mandated);
     }
 }

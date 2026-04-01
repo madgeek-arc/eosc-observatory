@@ -46,7 +46,7 @@ public class SecurityService {
     public boolean canWrite(Authentication authentication, String resourceId) {
         User user = getUserOrNull(authentication);
         // TODO: modify "!user.getPoliciesAccepted().isEmpty()" below according to specifications
-        return user != null && hasAcceptedPolicy(user) && permissionService.canRead(user.getId(), resourceId);
+        return user != null && hasAcceptedPolicy(user) && permissionService.canWrite(user.getId(), resourceId);
     }
 
     public boolean canManage(Authentication authentication, String resourceId) {

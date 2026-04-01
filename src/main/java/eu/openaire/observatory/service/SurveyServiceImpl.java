@@ -54,6 +54,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -70,6 +73,7 @@ public class SurveyServiceImpl implements SurveyService {
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final CacheService<String, SurveyAnswerRevisionsAggregation> cacheService;
+    private final ConcurrentMap<String, ReentrantLock> surveyAnswerLocks = new ConcurrentHashMap<>();
 
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
                              CrudService<SurveyAnswer> surveyAnswerCrudService,
@@ -173,15 +177,24 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
-    public synchronized void edit(String id, Revision revision, Authentication authentication) {
-        // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
-        SurveyAnswerRevisionsAggregation sara = getMostRecent(id);
-        User user = User.of(authentication);
-        Editor editor = new Editor();
-        editor.setUser(user.getId());
-        editor.setRole(getUserRole(authentication, sara.getSurveyAnswer().getStakeholderId()));
-        sara.applyRevision(revision, editor);
-        cacheService.save(sara.getSurveyAnswer().getId(), sara);
+    public void edit(String id, Revision revision, Authentication authentication) {
+        ReentrantLock lock = surveyAnswerLocks.computeIfAbsent(id, ignored -> new ReentrantLock());
+        lock.lock();
+        try {
+            // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
+            SurveyAnswerRevisionsAggregation sara = getMostRecent(id);
+            User user = User.of(authentication);
+            Editor editor = new Editor();
+            editor.setUser(user.getId());
+            editor.setRole(getUserRole(authentication, sara.getSurveyAnswer().getStakeholderId()));
+            sara.applyRevision(revision, editor);
+            cacheService.save(sara.getSurveyAnswer().getId(), sara);
+        } finally {
+            lock.unlock();
+            if (!lock.hasQueuedThreads()) {
+                surveyAnswerLocks.remove(id, lock);
+            }
+        }
     }
 
     private SurveyAnswerRevisionsAggregation getMostRecent(String surveyAnswerId) {
@@ -403,8 +416,7 @@ public class SurveyServiceImpl implements SurveyService {
         List<Stakeholder> stakeholders = this.stakeholderCrudService.getAll(filter).getResults();
 
         for (Stakeholder stakeholder : stakeholders) {
-            // create answer for every stakeholder
-            SurveyAnswer answer = generateAnswer(stakeholder, survey, authentication);
+            SurveyAnswer answer = getOrGenerateAnswer(stakeholder, survey, authentication);
             surveyAnswers.add(answer);
         }
         return surveyAnswers;
@@ -414,6 +426,16 @@ public class SurveyServiceImpl implements SurveyService {
     public SurveyAnswer generateStakeholderAnswer(String stakeholderId, String surveyId, Authentication authentication) {
         Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
         Model survey = genericResourceService.get("model", surveyId);
+        return getOrGenerateAnswer(stakeholder, survey, authentication);
+    }
+
+    private SurveyAnswer getOrGenerateAnswer(Stakeholder stakeholder, Model survey, Authentication authentication) {
+        SurveyAnswer existing = getLatest(survey.getId(), stakeholder.getId());
+        if (existing != null) {
+            logger.debug("Reusing existing SurveyAnswer: [surveyId={}] [stakeholderId={}] [answerId={}]",
+                    survey.getId(), stakeholder.getId(), existing.getId());
+            return existing;
+        }
         return generateAnswer(stakeholder, survey, authentication);
     }
 
@@ -718,9 +740,13 @@ public class SurveyServiceImpl implements SurveyService {
 
     private SurveyAnswer validateAnswer(SurveyAnswer surveyAnswer) throws ResourceNotFoundException {
         Stakeholder stakeholder = stakeholderCrudService.get(surveyAnswer.getStakeholderId());
-        Set<String> members = stakeholder.getAdmins();
+        Set<String> members = new HashSet<>(stakeholder.getAdmins());
         members.addAll(stakeholder.getMembers());
-        permissionService.removePermissions(members, Collections.singletonList(Permissions.WRITE.getKey()), Collections.singletonList(surveyAnswer.getId()));
+        permissionService.removePermissions(
+                members,
+                Collections.singletonList(Permissions.WRITE.getKey()),
+                Collections.singletonList(surveyAnswer.getId())
+        );
         surveyAnswer.setValidated(true);
         return surveyAnswerCrudService.update(surveyAnswer.getId(), surveyAnswer);
     }

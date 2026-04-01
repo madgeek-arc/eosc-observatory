@@ -1,0 +1,105 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "resource_internal_id",
+      "path": "$.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "url",
+      "path": "$.url",
+      "type": "java.lang.String",
+      "primaryKey": false
+    },
+    {
+      "multivalued": false,
+      "name": "title",
+      "label": "Title",
+      "path": "$.title",
+      "type": "java.lang.String",
+      "embeddingWeight": 10
+    },
+    {
+      "multivalued": false,
+      "name": "description",
+      "label": "Description",
+      "path": "$.description",
+      "type": "java.lang.String",
+      "embeddingWeight": 10
+    },
+    {
+      "multivalued": false,
+      "name": "publishDate",
+      "label": "Publish Date",
+      "path": "$.publishDate",
+      "type": "java.util.Date"
+    },
+    {
+      "multivalued": false,
+      "name": "expiryDate",
+      "label": "Expiry Date",
+      "path": "$.expiryDate",
+      "type": "java.util.Date"
+    },
+    {
+      "multivalued": false,
+      "name": "createdBy",
+      "label": "Created By",
+      "path": "$.metadata.createdBy",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "creationDate",
+      "label": "Creation Date",
+      "path": "$.metadata.creationDate",
+      "type": "java.util.Date"
+    },
+    {
+      "multivalued": false,
+      "name": "modifiedBy",
+      "label": "Modified By",
+      "path": "$.metadata.modifiedBy",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "modificationDate",
+      "label": "Modification Date",
+      "path": "$.metadata.modificationDate",
+      "type": "java.util.Date"
+    },
+    {
+      "multivalued": false,
+      "name": "status",
+      "label": "Status",
+      "path": "$.status",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "active",
+      "label": "Active",
+      "path": "$.active",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "multivalued": false,
+      "name": "stakeholderId",
+      "label": "Stakeholder",
+      "path": "$.stakeholderId",
+      "type": "java.lang.String"
+    }
+  ],
+  "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
+  "name": "news_item",
+  "aliases": [],
+  "payloadType": "json",
+  "properties": {
+    "class": "eu.openaire.observatory.domain.NewsItem"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+}
