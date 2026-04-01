@@ -1,3 +1,6 @@
+def DOCKER_IMAGE = null
+def DOCKER_TAG = ''
+
 pipeline {
   agent any
 
@@ -11,8 +14,6 @@ pipeline {
     IMAGE_NAME = "observatory"
     REGISTRY = "docker-registry.openaire.eu/eoscobservatory"
     REGISTRY_CRED = 'openaire-docker-registry-eoscobservatory'
-    DOCKER_IMAGE = ''
-    DOCKER_TAG = ''
     DOCKER_BUILDKIT = '1'
   }
   stages {
@@ -70,10 +71,8 @@ pipeline {
       steps{
         script {
           withCredentials([usernamePassword(credentialsId: "${REGISTRY_CRED}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-              sh """
-                  echo "Pushing image: ${DOCKER_IMAGE.id}"
-                  echo "$DOCKER_PASS" | docker login ${REGISTRY} -u "$DOCKER_USER" --password-stdin
-              """
+              echo "Pushing image: ${DOCKER_IMAGE.id}"
+              sh 'echo "$DOCKER_PASS" | docker login $REGISTRY -u "$DOCKER_USER" --password-stdin'
               DOCKER_IMAGE.push()
               if (env.TAG_NAME) {
                 def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
@@ -84,7 +83,7 @@ pipeline {
       }
     }
     stage('Remove Image') {
-      when { expression { return DOCKER_IMAGE != '' } }
+      when { expression { return DOCKER_IMAGE != null } }
       steps{
         script {
           sh "docker rmi ${DOCKER_IMAGE.id}"
