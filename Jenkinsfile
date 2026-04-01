@@ -9,7 +9,7 @@ pipeline {
 
   environment {
     IMAGE_NAME = "observatory"
-    REGISTRY = "http://docker-registry.openaire.eu/eoscobservatory"
+    REGISTRY = "docker-registry.openaire.eu/eoscobservatory"
     REGISTRY_CRED = 'openaire-docker-registry-eoscobservatory'
     DOCKER_IMAGE = ''
     DOCKER_TAG = ''
