@@ -16,6 +16,7 @@
 
 package eu.openaire.observatory;
 
+import org.elasticsearch.client.RestHighLevelClient;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -30,6 +31,9 @@ public class IntegrationTestConfig {
 
     @MockBean
     ClientRegistrationRepository clientRegistrationRepository;
+
+    @MockBean
+    RestHighLevelClient restHighLevelClient;
 
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
