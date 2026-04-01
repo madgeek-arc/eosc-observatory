@@ -26,6 +26,8 @@ import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Duration;
+
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IntegrationTestConfig {
 
@@ -44,7 +46,8 @@ public class IntegrationTestConfig {
                     .withPassword("password")
                     // disable SSL
                     .withEnv("xpack.security.transport.ssl.enabled", "false")
-                    .withEnv("xpack.security.http.ssl.enabled", "false");
+                    .withEnv("xpack.security.http.ssl.enabled", "false")
+                    .withStartupTimeout(Duration.ofMinutes(5));
 
     static {
         postgres.start();
