@@ -51,18 +51,22 @@ public class IntegrationTestConfig {
         registry.add("registry.datasource.url", postgres::getJdbcUrl);
         registry.add("registry.datasource.username", postgres::getUsername);
         registry.add("registry.datasource.password", postgres::getPassword);
+        registry.add("registry.datasource.driver-class-name", () -> "org.postgresql.Driver");
 
         registry.add("authorization.datasource.url", postgres::getJdbcUrl);
         registry.add("authorization.datasource.username", postgres::getUsername);
         registry.add("authorization.datasource.password", postgres::getPassword);
+        registry.add("authorization.datasource.driverClassName", () -> "org.postgresql.Driver");
 
         registry.add("commenting.datasource.url", postgres::getJdbcUrl);
         registry.add("commenting.datasource.username", postgres::getUsername);
         registry.add("commenting.datasource.password", postgres::getPassword);
+        registry.add("commenting.datasource.driverClassName", () -> "org.postgresql.Driver");
 
         registry.add("datasets.datasource.url", postgres::getJdbcUrl);
         registry.add("datasets.datasource.username", postgres::getUsername);
         registry.add("datasets.datasource.password", postgres::getPassword);
+        registry.add("datasets.datasource.driverClassName", () -> "org.postgresql.Driver");
 
         registry.add("registry.elasticsearch.uris", elastic::getHttpHostAddress);
         registry.add("registry.elasticsearch.username", () -> "elastic");
