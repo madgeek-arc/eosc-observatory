@@ -67,6 +67,10 @@ pipeline {
                   echo "$DOCKER_PASS" | docker login ${REGISTRY} -u "$DOCKER_USER" --password-stdin
               """
               DOCKER_IMAGE.push()
+              if (env.BRANCH_NAME == 'master') {
+                def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
+                DOCKER_IMAGE.push(minorTag)
+              }
           }
         }
       }
