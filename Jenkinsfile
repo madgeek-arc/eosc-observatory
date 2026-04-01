@@ -20,12 +20,15 @@ pipeline {
       steps {
         script {
           def POM_VERSION = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed 's/-SNAPSHOT//'", returnStdout: true).trim()
-          if (env.BRANCH_NAME == 'develop') {
+          if (env.TAG_NAME) {
+            DOCKER_TAG = env.TAG_NAME.replaceFirst('^v', '')
+            echo "Detected tag: ${env.TAG_NAME}"
+          } else if (env.BRANCH_NAME == 'develop') {
             DOCKER_TAG = 'dev'
             echo "Detected development branch."
           } else if (env.BRANCH_NAME == 'main') {
-            DOCKER_TAG = POM_VERSION
-            echo "Detected main branch: ${POM_VERSION}"
+            DOCKER_TAG = 'latest'
+            echo "Detected main branch."
           } else {
             def branch = env.BRANCH_NAME.replace('/', '-')
             DOCKER_TAG = "${POM_VERSION}-${branch}"
@@ -54,9 +57,9 @@ pipeline {
       }
     }
     stage('Upload Image') {
-      when { // upload images only from 'develop' or 'main' branches
+      when { // upload images only from 'develop', 'main' or tags
         expression {
-          return env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
+          return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
         }
       }
       steps{
@@ -67,7 +70,7 @@ pipeline {
                   echo "$DOCKER_PASS" | docker login ${REGISTRY} -u "$DOCKER_USER" --password-stdin
               """
               DOCKER_IMAGE.push()
-              if (env.BRANCH_NAME == 'main') {
+              if (env.TAG_NAME) {
                 def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
                 DOCKER_IMAGE.push(minorTag)
               }
