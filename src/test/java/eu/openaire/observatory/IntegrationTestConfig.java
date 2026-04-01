@@ -17,6 +17,8 @@
 package eu.openaire.observatory;
 
 import org.junit.jupiter.api.TestInstance;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -26,6 +28,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IntegrationTestConfig {
+
+    @MockBean
+    ClientRegistrationRepository clientRegistrationRepository;
 
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
