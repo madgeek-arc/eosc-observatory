@@ -40,9 +40,9 @@ public class NewsItemController {
 
     @GetMapping(path = "news/{id}")
     @PostAuthorize("hasAuthority('ADMIN') " +
-            "or isStakeholderMember(returnObject.getBody().stakeholderId) " +
-            "or isCoordinatorOfStakeholder(returnObject.getBody().stakeholderId) " +
-            "or isAdministratorOfStakeholder(returnObject.getBody().stakeholderId)")
+            "or isStakeholderMember(returnObject.stakeholderId) " +
+            "or isCoordinatorOfStakeholder(returnObject.stakeholderId) " +
+            "or isAdministratorOfStakeholder(returnObject.stakeholderId)")
     public ResponseEntity<NewsItem> get(@PathVariable("id") String id) {
         return new ResponseEntity<>(newsItemService.get(id), HttpStatus.OK);
     }
