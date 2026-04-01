@@ -5,11 +5,11 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.10</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>eu.openaire</groupId>
 	<artifactId>observatory</artifactId>
-	<version>4.2.2-SNAPSHOT</version>
+	<version>4.3.0</version>
 	<name>observatory</name>
 	<description>EOSC Observatory</description>
 
