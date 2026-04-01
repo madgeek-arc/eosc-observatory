@@ -49,6 +49,11 @@ pipeline {
       }
     }
     stage('Build Image') {
+      when {
+        expression {
+          return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
+        }
+      }
       steps{
         script {
           // Requires a Dockerfile with only the runtime stage (no Maven build)
