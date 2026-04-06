@@ -9,6 +9,7 @@ import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.HighlightedResult;
+import gr.uoa.di.madgik.registry.domain.Paging;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
@@ -44,7 +45,7 @@ public class NewsItemController {
             "or isCoordinatorOfStakeholder(returnObject.stakeholderId) " +
             "or isAdministratorOfStakeholder(returnObject.stakeholderId)")
     public ResponseEntity<NewsItem> get(@PathVariable("id") String id) {
-        return new ResponseEntity<>(newsItemService.get(id), HttpStatus.OK);
+        return ResponseEntity.ok(newsItemService.get(id));
     }
 
     @GetMapping(path = "news")
@@ -55,20 +56,20 @@ public class NewsItemController {
             MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         Browsing<HighlightedResult<NewsItem>> news = newsItemService.getHighlightedResults(filter);
-        return new ResponseEntity<>(news, HttpStatus.OK);
+        return ResponseEntity.ok(news);
     }
 
     @DeleteMapping("news/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<NewsItem> delete(@PathVariable("id") String id) throws ResourceNotFoundException {
-        return new ResponseEntity<>(newsItemService.delete(id), HttpStatus.OK);
+        return ResponseEntity.ok(newsItemService.delete(id));
     }
 
     @DeleteMapping("stakeholders/{stakeholderId}/news/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<NewsItem> delete(@PathVariable("stakeholderId") String stakeholderId,
                                            @PathVariable("id") String id) throws ResourceNotFoundException {
-        return new ResponseEntity<>(newsItemService.delete(id), HttpStatus.OK);
+        return ResponseEntity.ok(newsItemService.delete(id));
     }
 
     @PostMapping(path = "stakeholders/{stakeholderId}/news")
@@ -86,7 +87,7 @@ public class NewsItemController {
                                            @PathVariable("stakeholderId") String stakeholderId,
                                            @Valid @RequestBody NewsItemDTO dto) {
         NewsItem toUpdate = newsItemMapper.toNewsItem(dto);
-        return new ResponseEntity<>(newsItemService.update(id, toUpdate), HttpStatus.OK);
+        return ResponseEntity.ok(newsItemService.update(id, toUpdate));
     }
 
     @PatchMapping("stakeholders/{stakeholderId}/news/{id}")
@@ -94,7 +95,7 @@ public class NewsItemController {
     public ResponseEntity<NewsItem> patch(@PathVariable("id") String id,
                                            @PathVariable("stakeholderId") String stakeholderId,
                                            @RequestBody NewsItemPatchRequest request) {
-        return new ResponseEntity<>(newsItemService.patch(id, request), HttpStatus.OK);
+        return ResponseEntity.ok(newsItemService.patch(id, request));
     }
 
     @GetMapping(path = "stakeholders/{stakeholderId}/news")
@@ -108,7 +109,13 @@ public class NewsItemController {
 
         filter.addFilter("stakeholderId", stakeholderId);
         Browsing<HighlightedResult<NewsItem>> news = newsItemService.getHighlightedResults(filter);
-        return new ResponseEntity<>(news, HttpStatus.OK);
+        return ResponseEntity.ok(news);
+    }
+
+    @GetMapping(path = "stakeholders/{stakeholderId}/news/public")
+    public ResponseEntity<List<NewsItemDTO>> getStakeholderPublicNews(
+            @PathVariable("stakeholderId") String stakeholderId) {
+        return ResponseEntity.ok(newsItemService.getPublic(stakeholderId).stream().map(newsItemMapper::toDTO).toList());
     }
 
 }
