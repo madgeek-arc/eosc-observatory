@@ -56,7 +56,7 @@ public class AnalyticsController {
         YearMonth endMonth = YearMonth.now();
         YearMonth startMonth = endMonth.minusMonths(months);
         Map<YearMonth, Integer> monthHits = new LinkedHashMap<>();
-        for (int i = 0; i <= months; i++) {
+        for (int i = 1; i <= months; i++) {
             monthHits.put(startMonth.plusMonths(i), 0);
         }
 
