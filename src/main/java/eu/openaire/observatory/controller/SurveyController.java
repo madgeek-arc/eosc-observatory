@@ -108,7 +108,7 @@ public class SurveyController {
     }
 
     @PutMapping("surveys/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#survey.type)")
     public ResponseEntity<Model> updateSurvey(@PathVariable("id") String id, @RequestBody Model survey, @Parameter(hidden = true) Authentication authentication) {
         survey.setModifiedBy(User.getId(authentication));
         survey.setModificationDate(new Date());
