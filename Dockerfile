@@ -1,4 +1,15 @@
-FROM openjdk:21-ea-jdk-slim
+FROM maven:3.9-eclipse-temurin-21-jammy AS playwright
+WORKDIR /tmp/pw
+
+COPY pom.xml .
+RUN mvn -q -DskipTests dependency:go-offline
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN mvn -q exec:java \
+  -Dexec.mainClass=com.microsoft.playwright.CLI \
+  -Dexec.args="install --with-deps chromium"
+
+FROM eclipse-temurin:21-jre-jammy
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
     curl \
     libglib2.0-0 \
@@ -27,4 +38,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 ARG JAR_FILE=target/*.jar
 COPY ${JAR_FILE} observatory.jar
+
+# Store Playwright browsers in a fixed path inside the image
+COPY --from=playwright /ms-playwright /ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Prevent runtime downloads
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
 ENTRYPOINT ["java","-jar","/observatory.jar"]
