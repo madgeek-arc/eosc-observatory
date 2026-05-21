@@ -3,18 +3,21 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.NewsItem;
 import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.dto.NewsItemDTO;
 import eu.openaire.observatory.dto.NewsItemPatchRequest;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.catalogue.service.id.IdGenerator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.HighlightedResult;
+import gr.uoa.di.madgik.registry.domain.Paging;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.registry.service.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class NewsItemService extends AbstractCrudService<NewsItem> implements CrudService<NewsItem> {
@@ -81,5 +84,21 @@ public class NewsItemService extends AbstractCrudService<NewsItem> implements Cr
     public <T> Browsing<HighlightedResult<T>> getHighlightedResults(FacetFilter filter) {
         filter.setResourceType(this.getResourceType());
         return super.getHighlightedResults(filter);
+    }
+
+    public List<NewsItem> getPublic(String stakeholderId) {
+        FacetFilter filter = new FacetFilter();
+        filter.setResourceType(this.getResourceType());
+        filter.addFilter("stakeholderId", stakeholderId);
+        filter.addFilter("active", "true");
+        filter.addFilter("status", "APPROVED");
+        filter.addOrderBy("publishDate", "desc");
+        Paging<NewsItem> results = this.getResults(filter);
+        Date now = new Date();
+        return results
+                .getResults()
+                .stream()
+                .filter(r -> r.getPublishDate().before(now) && r.getExpiryDate().after(now))
+                .toList();
     }
 }

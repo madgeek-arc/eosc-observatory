@@ -7,13 +7,13 @@ import java.util.Date;
 
 public class NewsItemDTO {
 
+    String id;
     @NotBlank
     private String title;
     @NotBlank
     private String description;
     @NotBlank
     private String url;
-    @NotBlank
     private String image;
     @NotNull
     private Date publishDate;
@@ -21,6 +21,14 @@ public class NewsItemDTO {
     private Date expiryDate;
 
     public NewsItemDTO() {
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getTitle() {
