@@ -47,7 +47,7 @@
 
 <!-- PREHEADER -->
 <div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: 'Lato', Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
-    Stefania Martziou mentioned you in a comment on EOSC Observatory.
+    ${from.fullname} mentioned you in a comment on EOSC Observatory.
 </div>
 
 <table border="0" cellpadding="0" cellspacing="0" width="100%"
@@ -135,7 +135,7 @@
                                 <td width="4" bgcolor="#008792"
                                     style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-radius: 4px 0 0 4px;">&nbsp;</td>
                                 <td style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 16px 20px; font-family: 'Lato', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 400; color: #333333; line-height: 24px;">
-                                    Hi <span style="color: #008792; font-weight: 700;">${to.name}</span>, ${body}
+                                    ${body}
                                 </td>
                             </tr>
                         </table>
@@ -172,7 +172,7 @@
                             <tr>
                                 <td align="center" bgcolor="#008792"
                                     style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-radius: 3px;">
-                                    <a href=""
+                                    <a href="${baseUrl}/contributions/${stakeholderId}/mySurveys/${surveyId}/answer/view"
                                        target="_blank" class="cta-button"
                                        style="font-size: 16px; font-family: 'Lato', Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 3px; border: 1px solid #008792; display: inline-block; font-weight: 700;">
                                         Go to survey &rarr;
