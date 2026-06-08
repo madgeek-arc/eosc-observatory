@@ -46,6 +46,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 
 @ControllerAdvice
@@ -248,14 +249,16 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
      * @return the id
      */
     public String getId(Object obj) {
-        // TODO:
-        //  1. check what happens in nested objects with multiple id fields.
-        //  2. replace functionality with cast to Map (if possible) and access through 'get("id")'.
-        //  3. replace return type from String to Object ?
-        IdField id = mapper.convertValue(obj, IdField.class);
-        if (id == null || id.getId() == null) {
+        String id;
+        if (obj instanceof Map) {
+            id = (String) ((Map<?, ?>) obj).get("id");
+        } else {
+            IdField idField = mapper.convertValue(obj, IdField.class);
+            id = idField != null ? idField.getId() : null;
+        }
+        if (id == null) {
             throw new RuntimeException("ID field is null : class = " + obj.getClass().getCanonicalName());
         }
-        return id.getId();
+        return id;
     }
 }
