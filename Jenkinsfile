@@ -1,11 +1,13 @@
 def DOCKER_IMAGE = null
 def DOCKER_TAG = ''
+def DOCKER_IMAGE_SHA = ''
 
 pipeline {
   agent any
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '20'))
+    disableConcurrentBuilds(abortPrevious: true)
     timeout(time: 30, unit: 'MINUTES')
     timestamps()
   }
@@ -28,29 +30,69 @@ pipeline {
       }
     }
 
-    stage('Build & Test') {
+    stage('Package') {
       steps {
-        sh 'mvn -B clean package'
-      }
-      post {
-        always {
-          junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml, **/target/failsafe-reports/TEST-*.xml'
-        }
+        sh 'mvn -B package -DskipTests'
       }
     }
-    stage('Build Image') {
-      when {
-        expression {
-          return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
+
+    stage('Test and Build Image') {
+      parallel {
+
+        stage('Run Tests') {
+          when { expression { return env.TAG_NAME == null } }
+          stages {
+
+            stage('Unit Tests') {
+              steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                  sh 'mvn -B jacoco:prepare-agent surefire:test'
+                }
+                sh 'mvn -B jacoco:report'
+              }
+              post {
+                always {
+                  junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml'
+                }
+              }
+            }
+            stage('Integration Tests') {
+              steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                  sh 'mvn -B jacoco:prepare-agent-integration failsafe:integration-test failsafe:verify'
+                }
+                sh 'mvn -B jacoco:report-integration'
+              }
+              post {
+                always {
+                  junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml'
+                }
+              }
+            }
+
+          }
+          post {
+            always {
+              recordCoverage(
+                tools: [[parser: 'JACOCO', pattern: '**/target/site/jacoco/jacoco.xml, **/target/site/jacoco-it/jacoco.xml']],
+                sourceDirectories: [[path: 'src/main/java']]
+              )
+            }
+          }
         }
-      }
-      steps{
-        script {
-          // Requires a Dockerfile with only the runtime stage (no Maven build)
-          DOCKER_IMAGE = docker.build("${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG}", "--label job=${env.JOB_NAME} -f Dockerfile .")
+
+        stage('Build Image') {
+          steps {
+            script {
+              DOCKER_IMAGE = docker.build("${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG}", "--label job=${env.JOB_NAME} -f Dockerfile .")
+              DOCKER_IMAGE_SHA = sh(script: "docker inspect --format='{{.Id}}' ${DOCKER_IMAGE.id}", returnStdout: true).trim()
+            }
+          }
         }
+
       }
     }
+
     stage('Upload Image') {
       when { // upload images only from 'develop', 'main' or tags
         expression {
@@ -74,6 +116,7 @@ pipeline {
         }
       }
     }
+
     stage('Handle Releases') {
       when {
         allOf {
@@ -110,9 +153,8 @@ pipeline {
   post {
     always {
       script {
-        if (DOCKER_IMAGE) {
-          sh "docker rmi -f ${DOCKER_IMAGE.id}"
-          sh "docker image prune -f --filter label=job=${env.JOB_NAME}"
+        if (DOCKER_IMAGE_SHA) {
+          sh "docker rmi -f ${DOCKER_IMAGE_SHA} || true"
         }
       }
     }
