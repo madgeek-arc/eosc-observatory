@@ -86,22 +86,23 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
         if (body != null && clazz != null && classNames.contains(clazz.getCanonicalName())) {
 
             try {
-                // --> TODO: need to fix this
                 if (Collection.class.isAssignableFrom(body.getClass())) {
-                    logger.warn("Privacy Advice always runs for Array responses");
-                    // transform body to json and convert back to T (deep copy)
+                    if (securityExpressions.isAdmin(auth)) {
+                        return body;
+                    }
                     String json = mapper.writeValueAsString(body);
                     ret = (T) mapper.readValue(json, body.getClass());
                     for (LinkedHashMap<String, Object> item : ((Collection<LinkedHashMap<String, Object>>) ret)) {
-                        // apply content transformations
-                        modifyContent((T) item, clazz, returnType);
+                        if (auth == null || auth instanceof AnonymousAuthenticationToken
+                                || !securityService.canRead(auth, (String) item.get("id"))) {
+                            modifyContent((T) item, clazz, returnType);
+                        }
                     }
                     return ret;
                 }
-                // <--
 
                 String id = getId(body);
-                if (auth instanceof AnonymousAuthenticationToken || (!securityExpressions.isAdmin(auth) && !securityService.canRead(auth, id))) {
+                if (auth == null || auth instanceof AnonymousAuthenticationToken || (!securityExpressions.isAdmin(auth) && !securityService.canRead(auth, id))) {
                     logger.trace("User lacks read permission : removing sensitive information");
 
                     // transform body to json and convert back to T (deep copy)
@@ -115,6 +116,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
                 }
             } catch (JsonProcessingException e) {
                 logger.error(e.getMessage(), e);
+                throw new ResourceException(e, HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }
 
@@ -166,7 +168,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
         ResolvableType rt = ResolvableType.forMethodParameter(returnType);
 
         boolean escape = false;
-        while (true) {
+        for (int i = 0; i < 100; i++) { // 100 is arbitrary, mirrors unwrapResponseClass
             if (ResponseEntity.class.isAssignableFrom(rt.toClass())) {
                 rt = rt.getGeneric(0);
                 // Object is already unwrapped from ResponseEntity, skip
@@ -251,7 +253,7 @@ public class DataPrivacyAdvice<T> implements ResponseBodyAdvice<T> {
         //  2. replace functionality with cast to Map (if possible) and access through 'get("id")'.
         //  3. replace return type from String to Object ?
         IdField id = mapper.convertValue(obj, IdField.class);
-        if (id == null) {
+        if (id == null || id.getId() == null) {
             throw new RuntimeException("ID field is null : class = " + obj.getClass().getCanonicalName());
         }
         return id.getId();
