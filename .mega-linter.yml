@@ -1,0 +1,4 @@
+REPORTERS:
+  - HTML
+
+YAML_V8R_FILTER_REGEX_EXCLUDE: (\.mega-linter\.yml)
