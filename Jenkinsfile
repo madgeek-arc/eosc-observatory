@@ -81,6 +81,33 @@ pipeline {
           }
         }
 
+        // Lint with MegaLinter: https://megalinter.io/
+        stage('MegaLinter') {
+            agent {
+                docker {
+                    image 'oxsecurity/megalinter:latest'
+                    args "-u root -e VALIDATE_ALL_CODEBASE=true -v ${WORKSPACE}:/tmp/lint --entrypoint=''"
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '/entrypoint.sh'
+            }
+            post {
+                always {
+                    archiveArtifacts allowEmptyArchive: true, artifacts: 'mega-linter.log,megalinter-reports/**/*', defaultExcludes: false, followSymlinks: false
+                    publishHTML(target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'megalinter-reports',
+                        reportFiles: 'megalinter-report.html',
+                        reportName: 'MegaLinter Report'
+                    ])
+                }
+            }
+        }
+
         stage('Build Image') {
           steps {
             script {
