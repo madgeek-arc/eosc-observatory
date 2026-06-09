@@ -21,6 +21,7 @@ import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
+import eu.openaire.observatory.service.EmailSurveyService;
 import eu.openaire.observatory.service.StakeholderService;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
 import eu.openaire.observatory.service.SurveyService;
@@ -53,18 +54,21 @@ public class SurveyAspect {
     private final PermissionService permissionService;
     private final StakeholderService stakeholderService;
     private final SurveyAnswerCrudService surveyAnswerService;
+    private final EmailSurveyService emailSurveyService;
 
 
     public SurveyAspect(ModelService modelService,
                         SurveyService surveyService,
                         PermissionService permissionService,
                         StakeholderService stakeholderService,
-                        SurveyAnswerCrudService surveyAnswerService) {
+                        SurveyAnswerCrudService surveyAnswerService,
+                        EmailSurveyService emailSurveyService) {
         this.modelService = modelService;
         this.surveyService = surveyService;
         this.permissionService = permissionService;
         this.stakeholderService = stakeholderService;
         this.surveyAnswerService = surveyAnswerService;
+        this.emailSurveyService = emailSurveyService;
     }
 
 
@@ -158,7 +162,22 @@ public class SurveyAspect {
                 }
             }
         }
-        return (Model) pjp.proceed();
+        Model updated = (Model) pjp.proceed();
+
+        boolean deadlineChanged = !java.util.Objects.equals(existing.getSubmissionCloseAt(), model.getSubmissionCloseAt());
+        boolean surveyHasStarted = model.getSubmissionStartAt() != null
+                && !java.time.LocalDate.now().isBefore(
+                        model.getSubmissionStartAt().toInstant()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate());
+        if (deadlineChanged && model.getSubmissionCloseAt() != null && surveyHasStarted) {
+            try {
+                emailSurveyService.notifyDeadlineChange(id, model.getSubmissionCloseAt());
+            } catch (Exception e) {
+                logger.warn("Failed to send deadline change email [surveyId={}]", id, e);
+            }
+        }
+
+        return updated;
     }
 
 

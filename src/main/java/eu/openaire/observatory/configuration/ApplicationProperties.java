@@ -31,6 +31,13 @@ public class ApplicationProperties {
 
     private String jwsSigningSecret;
 
+    /**
+     * Cron expression for the daily survey lifecycle email notification scheduler
+     * (survey start, end, deadline approaching). Set to '-' to disable.
+     * Example: 0 0 10 * * * (daily at 10:00)
+     */
+    private String surveySchedulerCron;
+
     public Set<Object> getAdmins() {
         return admins;
     }
@@ -61,5 +68,13 @@ public class ApplicationProperties {
 
     public void setJwsSigningSecret(String jwsSigningSecret) {
         this.jwsSigningSecret = jwsSigningSecret;
+    }
+
+    public String getSurveySchedulerCron() {
+        return surveySchedulerCron;
+    }
+
+    public void setSurveySchedulerCron(String surveySchedulerCron) {
+        this.surveySchedulerCron = surveySchedulerCron;
     }
 }
