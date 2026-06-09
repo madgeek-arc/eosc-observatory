@@ -47,8 +47,8 @@ pipeline {
               steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                   sh 'mvn -B jacoco:prepare-agent surefire:test'
+                  sh 'mvn -B jacoco:report'
                 }
-                sh 'mvn -B jacoco:report'
               }
               post {
                 always {
@@ -60,8 +60,8 @@ pipeline {
               steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                   sh 'mvn -B jacoco:prepare-agent-integration failsafe:integration-test failsafe:verify'
+                  sh 'mvn -B jacoco:report-integration'
                 }
-                sh 'mvn -B jacoco:report-integration'
               }
               post {
                 always {
