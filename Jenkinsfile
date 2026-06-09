@@ -85,7 +85,7 @@ pipeline {
         stage('MegaLinter') {
           agent {
             docker {
-              image 'oxsecurity/megalinter:latest'
+              image 'oxsecurity/megalinter-java:latest'
               args "-u root -e VALIDATE_ALL_CODEBASE=true -v ${WORKSPACE}:/tmp/lint --entrypoint=''"
               reuseNode true
             }
@@ -98,14 +98,10 @@ pipeline {
           post {
             always {
               archiveArtifacts allowEmptyArchive: true, artifacts: 'mega-linter.log,megalinter-reports/**/*', defaultExcludes: false, followSymlinks: false
-              publishHTML(target: [
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: 'megalinter-reports',
-                reportFiles: 'megalinter-report.html',
-                reportName: 'MegaLinter Report'
-              ])
+              recordIssues(
+                tools: [sarif(pattern: 'megalinter-reports/megalinter-report.sarif')],
+                qualityGates: [[threshold: 1, type: 'NEW', unstable: true]]
+              )
             }
           }
         }

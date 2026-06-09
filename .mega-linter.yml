@@ -1,4 +1,14 @@
-REPORTERS:
-  - HTML
+FILTER_REGEX_INCLUDE: (src/|Dockerfile|Jenkinsfile|pom\.xml|\.mega-linter\.yml)
+
+ADDITIONAL_EXCLUDED_DIRECTORIES:
+  - .idea
+  - .mvn
+  - logs
+  - target
+  - megalinter-reports
 
 YAML_V8R_FILTER_REGEX_EXCLUDE: (\.mega-linter\.yml)
+
+MARKDOWN_SUMMARY_REPORTER: true
+TEXT_REPORTER: true
+SARIF_REPORTER: true
