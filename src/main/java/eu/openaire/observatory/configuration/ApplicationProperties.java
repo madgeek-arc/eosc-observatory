@@ -25,6 +25,8 @@ public class ApplicationProperties {
 
     private Set<Object> admins;
 
+    private String baseUrl;
+
     private String loginRedirect;
 
     private String logoutRedirect;
@@ -39,9 +41,11 @@ public class ApplicationProperties {
         this.admins = admins;
     }
 
-    public String getLoginRedirect() {
-        return loginRedirect;
-    }
+    public String getBaseUrl() { return baseUrl; }
+
+    public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
+
+    public String getLoginRedirect() { return loginRedirect; }
 
     public void setLoginRedirect(String loginRedirect) {
         this.loginRedirect = loginRedirect;
