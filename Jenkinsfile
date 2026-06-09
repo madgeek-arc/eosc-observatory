@@ -98,6 +98,7 @@ pipeline {
           post {
             always {
               archiveArtifacts allowEmptyArchive: true, artifacts: 'mega-linter.log,megalinter-reports/**/*', defaultExcludes: false, followSymlinks: false
+              sh "sed -i 's|file:///tmp/lint|file://${WORKSPACE}|g' megalinter-reports/megalinter-report.sarif || true"
               recordIssues(
                 tools: [sarif(pattern: 'megalinter-reports/megalinter-report.sarif')],
                 qualityGates: [[threshold: 1, type: 'NEW', unstable: true]]

@@ -7,6 +7,8 @@ ADDITIONAL_EXCLUDED_DIRECTORIES:
   - target
   - megalinter-reports
 
+JAVA_CHECKSTYLE_CONFIG_FILE: google_checks.xml
+
 YAML_V8R_FILTER_REGEX_EXCLUDE: (\.mega-linter\.yml)
 
 MARKDOWN_SUMMARY_REPORTER: true
