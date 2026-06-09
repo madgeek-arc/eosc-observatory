@@ -46,9 +46,9 @@
 <body style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #f4f4f4; height: 100%; width: 100%; margin: 0; padding: 0;">
 
 <!-- PREHEADER -->
-<div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: 'Lato', Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
-    ${from.fullname} mentioned you in a comment on EOSC Observatory.
-</div>
+<#--<div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: 'Lato', Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">-->
+<#--    ${from.fullname} mentioned you in a comment on EOSC Observatory.-->
+<#--</div>-->
 
 <table border="0" cellpadding="0" cellspacing="0" width="100%"
        style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-collapse: collapse;">
