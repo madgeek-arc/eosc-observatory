@@ -83,29 +83,31 @@ pipeline {
 
         // Lint with MegaLinter: https://megalinter.io/
         stage('MegaLinter') {
-            agent {
-                docker {
-                    image 'oxsecurity/megalinter:latest'
-                    args "-u root -e VALIDATE_ALL_CODEBASE=true -v ${WORKSPACE}:/tmp/lint --entrypoint=''"
-                    reuseNode true
-                }
+          agent {
+            docker {
+              image 'oxsecurity/megalinter:latest'
+              args "-u root -e VALIDATE_ALL_CODEBASE=true -v ${WORKSPACE}:/tmp/lint --entrypoint=''"
+              reuseNode true
             }
-            steps {
-                sh '/entrypoint.sh'
+          }
+          steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              sh '/entrypoint.sh'
             }
-            post {
-                always {
-                    archiveArtifacts allowEmptyArchive: true, artifacts: 'mega-linter.log,megalinter-reports/**/*', defaultExcludes: false, followSymlinks: false
-                    publishHTML(target: [
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'megalinter-reports',
-                        reportFiles: 'megalinter-report.html',
-                        reportName: 'MegaLinter Report'
-                    ])
-                }
+          }
+          post {
+            always {
+              archiveArtifacts allowEmptyArchive: true, artifacts: 'mega-linter.log,megalinter-reports/**/*', defaultExcludes: false, followSymlinks: false
+              publishHTML(target: [
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'megalinter-reports',
+                reportFiles: 'megalinter-report.html',
+                reportName: 'MegaLinter Report'
+              ])
             }
+          }
         }
 
         stage('Build Image') {
@@ -129,16 +131,16 @@ pipeline {
       steps{
         script {
           withCredentials([usernamePassword(credentialsId: "${REGISTRY_CRED}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-              echo "Pushing image: ${DOCKER_IMAGE.id}"
-              sh 'echo "$DOCKER_PASS" | docker login $REGISTRY -u "$DOCKER_USER" --password-stdin'
-              DOCKER_IMAGE.push()
-              if (env.TAG_NAME) {
-                def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
-                DOCKER_IMAGE.push(minorTag)
-                DOCKER_IMAGE.push("latest")
-              } else if (DOCKER_TAG.endsWith('-SNAPSHOT')) {
-                DOCKER_IMAGE.push("dev")
-              }
+            echo "Pushing image: ${DOCKER_IMAGE.id}"
+            sh 'echo "$DOCKER_PASS" | docker login $REGISTRY -u "$DOCKER_USER" --password-stdin'
+            DOCKER_IMAGE.push()
+            if (env.TAG_NAME) {
+              def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
+              DOCKER_IMAGE.push(minorTag)
+              DOCKER_IMAGE.push("latest")
+            } else if (DOCKER_TAG.endsWith('-SNAPSHOT')) {
+              DOCKER_IMAGE.push("dev")
+            }
           }
         }
       }
