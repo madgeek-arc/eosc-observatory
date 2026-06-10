@@ -8,6 +8,7 @@ ADDITIONAL_EXCLUDED_DIRECTORIES:
   - megalinter-reports
 
 JAVA_CHECKSTYLE_CONFIG_FILE: google_checks.xml
+JAVA_PMD_CONFIG_FILE: pmd-rules.xml
 
 YAML_V8R_FILTER_REGEX_EXCLUDE: (\.mega-linter\.yml)
 
