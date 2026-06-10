@@ -10,7 +10,7 @@ RUN mvn -q exec:java \
   -Dexec.args="install --with-deps chromium"
 
 FROM eclipse-temurin:21-jre-jammy
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libglib2.0-0 \
     libnss3 \
