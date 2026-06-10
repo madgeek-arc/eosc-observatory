@@ -15,7 +15,16 @@
     <rule ref="category/java/codestyle.xml/FieldNamingConventions">
         <properties>
             <property name="publicConstantPattern" value="[A-Z][A-Z_0-9]*" />
-            <property name="constantPattern" value="[A-Z][A-Z_0-9]*|logger" />
+            <property name="constantPattern" value="[A-Z][A-Z_0-9]*|logger|mapper|postgres" />
+        </properties>
+    </rule>
+
+    <!-- Custom MethodNamingConventions to allow underscores in test methods -->
+    <rule ref="category/java/codestyle.xml/MethodNamingConventions">
+        <properties>
+            <property name="methodPattern" value="[a-z][a-zA-Z0-9]*(_[a-z0-9][a-zA-Z0-9]*)*" />
+            <property name="staticMethodPattern" value="[a-z][a-zA-Z0-9]*(_[a-z0-9][a-zA-Z0-9]*)*" />
+            <property name="nativeMethodPattern" value="[a-z][a-zA-Z0-9]*(_[a-z0-9][a-zA-Z0-9]*)*" />
         </properties>
     </rule>
 

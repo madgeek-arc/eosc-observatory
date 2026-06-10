@@ -1,7 +1,6 @@
 FILTER_REGEX_INCLUDE: (src/|Dockerfile|Jenkinsfile|pom\.xml|\.mega-linter\.yml)
 
 ADDITIONAL_EXCLUDED_DIRECTORIES:
-  - .idea
   - .mvn
   - logs
   - target
