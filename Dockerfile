@@ -36,6 +36,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libcairo2 \
     && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
 ARG JAR_FILE=target/*.jar
 COPY ${JAR_FILE} observatory.jar
 
@@ -46,4 +48,9 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 # Prevent runtime downloads
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
-ENTRYPOINT ["java","-jar","/observatory.jar"]
+RUN groupadd -r observatory && useradd -r -g observatory observatory \
+    && chown -R observatory:observatory /app /ms-playwright
+
+USER observatory
+
+ENTRYPOINT ["java","-jar","/app/observatory.jar"]
