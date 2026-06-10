@@ -1,17 +1,14 @@
 package eu.openaire.observatory.domain;
 
+import eu.openaire.observatory.utils.OidcTestUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.authentication.InsufficientAuthenticationException;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -62,16 +59,7 @@ class UserTest {
     }
 
     private static Authentication oidcAuthentication(String email) {
-        Map<String, Object> claims = Map.of(
-                "sub", "sub-1",
-                "email", email,
-                "given_name", "User",
-                "family_name", "Example",
-                "name", "User Example"
-        );
-        OidcIdToken idToken = new OidcIdToken("token", Instant.now(), Instant.now().plusSeconds(60), claims);
-        DefaultOidcUser principal = new DefaultOidcUser(List.of(new OidcUserAuthority(idToken)), idToken);
-        return UsernamePasswordAuthenticationToken.authenticated(principal, "n/a", principal.getAuthorities());
+        return OidcTestUtils.oidcAuthentication(email);
     }
 
     private static Authentication oauth2Authentication(String email) {

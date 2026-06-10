@@ -6,6 +6,7 @@ import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
 import eu.openaire.observatory.permissions.PermissionService;
+import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
@@ -16,13 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -122,27 +116,6 @@ class SurveyServiceImplTest {
     }
 
     private Authentication oidcAuthentication() {
-        OidcIdToken idToken = new OidcIdToken(
-                "token",
-                Instant.now(),
-                Instant.now().plusSeconds(300),
-                Map.of(
-                        "sub", "sub-1",
-                        "email", "user@example.org",
-                        "given_name", "User",
-                        "family_name", "Example",
-                        "name", "User Example"
-                )
-        );
-        DefaultOidcUser principal = new DefaultOidcUser(
-                List.of(new OidcUserAuthority(idToken)),
-                idToken,
-                "email"
-        );
-        return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                principal,
-                "token",
-                principal.getAuthorities()
-        );
+        return OidcTestUtils.oidcAuthentication("user@example.org");
     }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.resources.model.DocumentMetadata;
+import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.registry.exception.ResourceException;
 import org.junit.jupiter.api.AfterEach;
@@ -14,13 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -56,7 +52,7 @@ class ResourcesServiceTest {
 
     @Test
     void updateMarksDocumentCuratedAndUpdatesMetadata() throws Exception {
-        SecurityContextHolder.getContext().setAuthentication(oidcAuthentication());
+        SecurityContextHolder.getContext().setAuthentication(OidcTestUtils.oidcAuthentication("user@example.org"));
         Document existing = new Document();
         existing.setId("doc-1");
         existing.setMetadata(new DocumentMetadata());
@@ -89,28 +85,4 @@ class ResourcesServiceTest {
         verify(genericResourceService).recommend(null, "doc-1");
     }
 
-    private Authentication oidcAuthentication() {
-        OidcIdToken idToken = new OidcIdToken(
-                "token",
-                Instant.now(),
-                Instant.now().plusSeconds(300),
-                Map.of(
-                        "sub", "sub-1",
-                        "email", "user@example.org",
-                        "given_name", "User",
-                        "family_name", "Example",
-                        "name", "User Example"
-                )
-        );
-        DefaultOidcUser principal = new DefaultOidcUser(
-                List.of(new OidcUserAuthority(idToken)),
-                idToken,
-                "email"
-        );
-        return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                principal,
-                "token",
-                principal.getAuthorities()
-        );
-    }
 }
