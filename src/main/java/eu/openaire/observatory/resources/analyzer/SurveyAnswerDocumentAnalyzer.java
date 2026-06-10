@@ -150,7 +150,7 @@ public class SurveyAnswerDocumentAnalyzer {
                         logger.warn("Problem with url: {}", urlReference.getUrl());
                     }
                 } catch (InvocationTargetException | NoSuchMethodException | NoSuchFieldException e) {
-                    throw new RuntimeException(e);
+                    throw new IllegalStateException(e);
                 }
             }
         }
@@ -184,12 +184,8 @@ public class SurveyAnswerDocumentAnalyzer {
             } else {
                 logger.warn("Problem with url: {}", url);
             }
-        } catch (NoSuchFieldException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
+        } catch (NoSuchFieldException | InvocationTargetException | NoSuchMethodException e) {
+            throw new IllegalStateException(e);
         }
         return document;
     }
