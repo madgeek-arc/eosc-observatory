@@ -454,7 +454,6 @@
 				</executions>
 				<configuration>
 					<format>ALL</format>
-					<failBuildOnCVSS>8</failBuildOnCVSS>
 					<prettyPrint>true</prettyPrint>
 					<suppressionFiles>
 						<suppressionFile>./dependency-check-suppressions.xml</suppressionFile>

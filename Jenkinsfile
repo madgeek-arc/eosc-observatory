@@ -86,7 +86,7 @@ pipeline {
           steps {
             catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
               withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-                sh './mvnw -B verify -DskipTests -DskipITs -DnvdApiKey=$NVD_API_KEY -DfailBuildOnCVSS=11'
+                sh './mvnw -B dependency-check:check -DnvdApiKey=$NVD_API_KEY'
               }
             }
           }
