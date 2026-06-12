@@ -74,7 +74,7 @@ public interface MethodSecurityExpressions {
 
     boolean isAdministratorOfType(String type);
 
-//    boolean userIsAdministratorOfStakeholder(String userId, String stakehodlerId);
+//    boolean userIsAdministratorOfStakeholder(String userId, String stakeholderId);
 
     // Extra Methods
 
