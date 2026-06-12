@@ -19,6 +19,7 @@ REPOSITORY_TRIVY_ARGUMENTS: --scanners misconfig
 JAVA_CHECKSTYLE_CONFIG_FILE: google_checks.xml
 JAVA_PMD_CONFIG_FILE: .megalinter/pmd-rules.xml
 SPELL_CSPELL_CONFIG_FILE: .megalinter/cspell.json
+SPELL_CSPELL_FILTER_REGEX_EXCLUDE: (pom\.xml|Jenkinsfile|.mega-linter\.yml)
 
 YAML_V8R_FILTER_REGEX_EXCLUDE: (\.mega-linter\.yml)
 

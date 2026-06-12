@@ -119,8 +119,6 @@
   "ignorePaths": [
     "target/**",
     ".mvn/**",
-    "pom.xml",
-    "Jenkinsfile",
     "**/*.properties",
     "src/**/*.xml",
     "src/main/resources/**/*.json",
