@@ -70,6 +70,26 @@ pipeline {
               }
             }
 
+            stage('Dependency Check') {
+              steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                  withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                    sh './mvnw -B dependency-check:check -DnvdApiKey=$NVD_API_KEY -DfailBuildOnCVSS=11'
+                  }
+                }
+              }
+              post {
+                always {
+                  archiveArtifacts allowEmptyArchive: true, artifacts: '**/dependency-check-report.*'
+                  dependencyCheckPublisher(
+                    pattern: '**/dependency-check-report.xml',
+                    failedTotalCritical: 1,
+                    unstableTotalHigh: 3
+                  )
+                }
+              }
+            }
+
           }
           post {
             always {

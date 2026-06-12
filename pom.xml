@@ -25,6 +25,7 @@
 		<registry-core.version>4.2.0-SNAPSHOT</registry-core.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<log4j2.version>2.25.4</log4j2.version>
+		<dependency-check.version>12.2.2</dependency-check.version>
 		<tomcat.version>10.1.55</tomcat.version>
 		<postgresql.version>42.7.11</postgresql.version>
 		<argLine></argLine>
@@ -441,11 +442,23 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-release-plugin</artifactId>
+				<groupId>org.owasp</groupId>
+				<artifactId>dependency-check-maven</artifactId>
+				<version>${dependency-check.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
 				<configuration>
-					<tagNameFormat>v@{project.version}</tagNameFormat>
-					<scmCommentPrefix>chore(release): </scmCommentPrefix>
+					<format>ALL</format>
+					<failBuildOnCVSS>8</failBuildOnCVSS>
+					<prettyPrint>true</prettyPrint>
+					<suppressionFiles>
+						<suppressionFile>./dependency-check-suppressions.xml</suppressionFile>
+					</suppressionFiles>
 				</configuration>
 			</plugin>
 		</plugins>
