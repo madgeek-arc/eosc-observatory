@@ -174,9 +174,9 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     }
 
     @Override
-    public boolean isCoordinatorOfStakeholder(String stakehodlerId) {
+    public boolean isCoordinatorOfStakeholder(String stakeholderId) {
         User user = userService.get(User.getId(getAuthentication()));
-        Stakeholder stakeholder = stakeholderService.get(stakehodlerId);
+        Stakeholder stakeholder = stakeholderService.get(stakeholderId);
         return userIsCoordinatorOfType(user.getId(), stakeholder.getType());
     }
 
@@ -324,8 +324,8 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     }
 
     @Override
-    public boolean isAdministratorOfStakeholder(String stakehodlerId) {
-        Stakeholder stakeholder = stakeholderService.get(stakehodlerId);
+    public boolean isAdministratorOfStakeholder(String stakeholderId) {
+        Stakeholder stakeholder = stakeholderService.get(stakeholderId);
         User user = userService.get(User.getId(getAuthentication()));
         return userIsAdministratorOfType(user.getId(), stakeholder.getType());
     }

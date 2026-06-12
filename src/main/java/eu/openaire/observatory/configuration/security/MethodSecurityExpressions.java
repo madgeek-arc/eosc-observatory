@@ -49,9 +49,9 @@ public interface MethodSecurityExpressions {
 
     boolean isCoordinatorOfType(String type);
 
-    boolean userIsCoordinatorOfStakeholder(String userId, String stakehodlerId);
+    boolean userIsCoordinatorOfStakeholder(String userId, String stakeholderId);
 
-    boolean isCoordinatorOfStakeholder(String stakehodlerId);
+    boolean isCoordinatorOfStakeholder(String stakeholderId);
 
     boolean hasStakeholderManagerAccessOnSurvey(String surveyId);
 
@@ -70,7 +70,7 @@ public interface MethodSecurityExpressions {
 
     boolean isAdministratorOfCoordinator(String coordinatorId);
 
-    boolean isAdministratorOfStakeholder(String stakehodlerId);
+    boolean isAdministratorOfStakeholder(String stakeholderId);
 
     boolean isAdministratorOfType(String type);
 
