@@ -70,32 +70,33 @@ pipeline {
               }
             }
 
-            stage('Dependency Check') {
-              steps {
-                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                  withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-                    sh './mvnw -B dependency-check:check -DnvdApiKey=$NVD_API_KEY -DfailBuildOnCVSS=11'
-                  }
-                }
-              }
-              post {
-                always {
-                  archiveArtifacts allowEmptyArchive: true, artifacts: '**/dependency-check-report.*'
-                  dependencyCheckPublisher(
-                    pattern: '**/dependency-check-report.xml',
-                    failedTotalCritical: 1,
-                    unstableTotalHigh: 3
-                  )
-                }
-              }
-            }
-
           }
           post {
             always {
               recordCoverage(
                 tools: [[parser: 'JACOCO', pattern: '**/target/site/jacoco/jacoco.xml, **/target/site/jacoco-it/jacoco.xml']],
                 sourceDirectories: [[path: 'src/main/java']]
+              )
+            }
+          }
+        }
+
+        // Check dependency vulnerabilities using OWASP
+        stage('Dependency Check') {
+          steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                sh './mvnw -B verify -DskipTests -DskipITs -DnvdApiKey=$NVD_API_KEY -DfailBuildOnCVSS=11'
+              }
+            }
+          }
+          post {
+            always {
+              archiveArtifacts allowEmptyArchive: true, artifacts: '**/dependency-check-report.*'
+              dependencyCheckPublisher(
+                pattern: '**/dependency-check-report.xml',
+                failedTotalCritical: 1,
+                unstableTotalHigh: 3
               )
             }
           }
