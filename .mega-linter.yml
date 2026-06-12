@@ -1,0 +1,28 @@
+FILTER_REGEX_INCLUDE: (src/|Dockerfile|Jenkinsfile|pom\.xml|\.mega-linter\.yml)
+
+ADDITIONAL_EXCLUDED_DIRECTORIES:
+  - .mvn
+  - logs
+  - target
+  - megalinter-reports
+
+# Dependency vulnerability scanning is handled by OWASP Dependency Check,
+# which resolves the Maven dependency tree accurately via the local build.
+DISABLE_LINTERS:
+  - REPOSITORY_GRYPE
+  - REPOSITORY_OSV_SCANNER
+
+# DL3008: Pinning apt package versions is brittle — versions disappear from repos and miss security patches
+DOCKERFILE_HADOLINT_ARGUMENTS: --ignore DL3008
+
+REPOSITORY_TRIVY_ARGUMENTS: --scanners misconfig
+JAVA_CHECKSTYLE_CONFIG_FILE: google_checks.xml
+JAVA_PMD_CONFIG_FILE: .megalinter/pmd-rules.xml
+SPELL_CSPELL_CONFIG_FILE: .megalinter/cspell.json
+SPELL_CSPELL_FILTER_REGEX_EXCLUDE: (pom\.xml|Jenkinsfile|.mega-linter\.yml)
+
+YAML_V8R_FILTER_REGEX_EXCLUDE: (\.mega-linter\.yml)
+
+MARKDOWN_SUMMARY_REPORTER: true
+TEXT_REPORTER: true
+SARIF_REPORTER: true

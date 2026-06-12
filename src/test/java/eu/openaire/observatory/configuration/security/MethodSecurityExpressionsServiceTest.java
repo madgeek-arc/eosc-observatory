@@ -10,6 +10,7 @@ import eu.openaire.observatory.service.SecurityService;
 import eu.openaire.observatory.service.StakeholderService;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
 import eu.openaire.observatory.service.UserService;
+import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.AfterEach;
@@ -22,13 +23,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -129,28 +125,7 @@ class MethodSecurityExpressionsServiceTest {
     }
 
     private UsernamePasswordAuthenticationToken oidcAuthentication(String email) {
-        OidcIdToken idToken = new OidcIdToken(
-                "token",
-                Instant.now(),
-                Instant.now().plusSeconds(300),
-                Map.of(
-                        "sub", "sub-1",
-                        "email", email,
-                        "given_name", "User",
-                        "family_name", "Example",
-                        "name", "User Example"
-                )
-        );
-        DefaultOidcUser principal = new DefaultOidcUser(
-                List.of(new OidcUserAuthority(idToken)),
-                idToken,
-                "email"
-        );
-        return UsernamePasswordAuthenticationToken.authenticated(
-                principal,
-                "token",
-                principal.getAuthorities()
-        );
+        return OidcTestUtils.oidcAuthentication(email);
     }
 
     private record TestIdentifiable(String id) implements eu.openaire.observatory.service.Identifiable<String> {

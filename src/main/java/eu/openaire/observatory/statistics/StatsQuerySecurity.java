@@ -93,7 +93,7 @@ public class StatsQuerySecurity {
         try {
             return objectMapper.readValue(json, QueryRequest.class);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 

@@ -6,9 +6,9 @@ pipeline {
   agent any
 
   options {
-    buildDiscarder(logRotator(numToKeepStr: '20'))
+    buildDiscarder(logRotator(numToKeepStr: '10'))
     disableConcurrentBuilds(abortPrevious: true)
-    timeout(time: 30, unit: 'MINUTES')
+    timeout(time: 60, unit: 'MINUTES')
     timestamps()
   }
 
@@ -23,7 +23,7 @@ pipeline {
     stage('Determine Docker Tag') {
       steps {
         script {
-          DOCKER_TAG = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
+          DOCKER_TAG = sh(script: "./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
           echo "Docker tag: ${DOCKER_TAG}"
           currentBuild.displayName = "${currentBuild.displayName}-${DOCKER_TAG}"
         }
@@ -32,7 +32,7 @@ pipeline {
 
     stage('Package') {
       steps {
-        sh 'mvn -B package -DskipTests'
+        sh './mvnw -B package -DskipTests'
       }
     }
 
@@ -46,9 +46,9 @@ pipeline {
             stage('Unit Tests') {
               steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                  sh 'mvn -B jacoco:prepare-agent surefire:test'
+                  sh './mvnw -B jacoco:prepare-agent surefire:test'
+                  sh './mvnw -B jacoco:report'
                 }
-                sh 'mvn -B jacoco:report'
               }
               post {
                 always {
@@ -59,9 +59,9 @@ pipeline {
             stage('Integration Tests') {
               steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                  sh 'mvn -B jacoco:prepare-agent-integration failsafe:integration-test failsafe:verify'
+                  sh './mvnw -B jacoco:prepare-agent-integration failsafe:integration-test failsafe:verify'
+                  sh './mvnw -B jacoco:report-integration'
                 }
-                sh 'mvn -B jacoco:report-integration'
               }
               post {
                 always {
@@ -76,6 +76,53 @@ pipeline {
               recordCoverage(
                 tools: [[parser: 'JACOCO', pattern: '**/target/site/jacoco/jacoco.xml, **/target/site/jacoco-it/jacoco.xml']],
                 sourceDirectories: [[path: 'src/main/java']]
+              )
+            }
+          }
+        }
+
+        // Check dependency vulnerabilities using OWASP
+        stage('Dependency Check') {
+          steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                sh './mvnw -B dependency-check:check -DnvdApiKey=$NVD_API_KEY'
+              }
+            }
+          }
+          post {
+            always {
+              archiveArtifacts allowEmptyArchive: true, artifacts: '**/dependency-check-report.*'
+              dependencyCheckPublisher(
+                pattern: '**/dependency-check-report.xml',
+                unstableTotalCritical: 1,
+                unstableTotalHigh: 3
+              )
+            }
+          }
+        }
+
+        // Lint with MegaLinter: https://megalinter.io/
+        stage('MegaLinter') {
+          agent {
+            docker {
+              image 'oxsecurity/megalinter-java:latest'
+              args "-u root -e VALIDATE_ALL_CODEBASE=true -v ${WORKSPACE}:/tmp/lint --entrypoint=''"
+              reuseNode true
+            }
+          }
+          steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              sh '/entrypoint.sh'
+            }
+          }
+          post {
+            always {
+              archiveArtifacts allowEmptyArchive: true, artifacts: 'mega-linter.log,megalinter-reports/**/*', defaultExcludes: false, followSymlinks: false
+              sh "sed -i 's|file:///tmp/lint|file://${WORKSPACE}|g' megalinter-reports/megalinter-report.sarif || true"
+              recordIssues(
+                tools: [sarif(pattern: 'megalinter-reports/megalinter-report.sarif')],
+                qualityGates: [[threshold: 1, type: 'NEW', unstable: true]]
               )
             }
           }
@@ -102,16 +149,16 @@ pipeline {
       steps{
         script {
           withCredentials([usernamePassword(credentialsId: "${REGISTRY_CRED}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-              echo "Pushing image: ${DOCKER_IMAGE.id}"
-              sh 'echo "$DOCKER_PASS" | docker login $REGISTRY -u "$DOCKER_USER" --password-stdin'
-              DOCKER_IMAGE.push()
-              if (env.TAG_NAME) {
-                def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
-                DOCKER_IMAGE.push(minorTag)
-                DOCKER_IMAGE.push("latest")
-              } else if (DOCKER_TAG.endsWith('-SNAPSHOT')) {
-                DOCKER_IMAGE.push("dev")
-              }
+            echo "Pushing image: ${DOCKER_IMAGE.id}"
+            sh 'echo "$DOCKER_PASS" | docker login $REGISTRY -u "$DOCKER_USER" --password-stdin'
+            DOCKER_IMAGE.push()
+            if (env.TAG_NAME) {
+              def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
+              DOCKER_IMAGE.push(minorTag)
+              DOCKER_IMAGE.push("latest")
+            } else if (DOCKER_TAG.endsWith('-SNAPSHOT')) {
+              DOCKER_IMAGE.push("dev")
+            }
           }
         }
       }

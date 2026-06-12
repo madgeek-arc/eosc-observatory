@@ -171,8 +171,8 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     }
 
     @Override
-    public boolean isAdministratorOfStakeholder(String stakehodlerId) {
-        return securityExpressions.isAdministratorOfStakeholder(stakehodlerId);
+    public boolean isAdministratorOfStakeholder(String stakeholderId) {
+        return securityExpressions.isAdministratorOfStakeholder(stakeholderId);
     }
 
     @Override
@@ -191,13 +191,13 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     }
 
     @Override
-    public boolean userIsCoordinatorOfStakeholder(String userId, String stakehodlerId) {
-        return securityExpressions.userIsCoordinatorOfStakeholder(userId, stakehodlerId);
+    public boolean userIsCoordinatorOfStakeholder(String userId, String stakeholderId) {
+        return securityExpressions.userIsCoordinatorOfStakeholder(userId, stakeholderId);
     }
 
     @Override
-    public boolean isCoordinatorOfStakeholder(String stakehodlerId) {
-        return securityExpressions.isCoordinatorOfStakeholder(stakehodlerId);
+    public boolean isCoordinatorOfStakeholder(String stakeholderId) {
+        return securityExpressions.isCoordinatorOfStakeholder(stakeholderId);
     }
 
     @Override
