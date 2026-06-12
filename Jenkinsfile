@@ -23,7 +23,7 @@ pipeline {
     stage('Determine Docker Tag') {
       steps {
         script {
-          DOCKER_TAG = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
+          DOCKER_TAG = sh(script: "./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
           echo "Docker tag: ${DOCKER_TAG}"
           currentBuild.displayName = "${currentBuild.displayName}-${DOCKER_TAG}"
         }
@@ -32,7 +32,7 @@ pipeline {
 
     stage('Package') {
       steps {
-        sh 'mvn -B package -DskipTests'
+        sh './mvnw -B package -DskipTests'
       }
     }
 
@@ -46,8 +46,8 @@ pipeline {
             stage('Unit Tests') {
               steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                  sh 'mvn -B jacoco:prepare-agent surefire:test'
-                  sh 'mvn -B jacoco:report'
+                  sh './mvnw -B jacoco:prepare-agent surefire:test'
+                  sh './mvnw -B jacoco:report'
                 }
               }
               post {
@@ -59,8 +59,8 @@ pipeline {
             stage('Integration Tests') {
               steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                  sh 'mvn -B jacoco:prepare-agent-integration failsafe:integration-test failsafe:verify'
-                  sh 'mvn -B jacoco:report-integration'
+                  sh './mvnw -B jacoco:prepare-agent-integration failsafe:integration-test failsafe:verify'
+                  sh './mvnw -B jacoco:report-integration'
                 }
               }
               post {
