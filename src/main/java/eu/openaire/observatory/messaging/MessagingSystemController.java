@@ -76,15 +76,7 @@ public class MessagingSystemController extends MessagingController {
     @ReCaptcha("#recaptcha")
     @PostMapping(RestApiPaths.THREADS + "/public")
     public Mono<ThreadDTO> addExternal(@RequestHeader("g-recaptcha-response") String recaptcha, @RequestBody ThreadDTO thread) {
-        return super.add(thread).doOnNext(t ->
-                Mono.fromRunnable(() -> {
-                            messagingService.updateUnread(t);
-                            messagingService.incomingMailNotification(t);
-                            emailOperations.sendEmails(t);
-                        })
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .subscribe()
-        );
+        return withNewMessageEmailNotifications(super.add(thread));
     }
 
     @Override
@@ -97,15 +89,7 @@ public class MessagingSystemController extends MessagingController {
     @Override
     @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
     public Mono<ThreadDTO> add(ThreadDTO thread) {
-        return super.add(thread).doOnNext(t ->
-                Mono.fromRunnable(() -> {
-                            messagingService.updateUnread(t);
-                            messagingService.incomingMailNotification(t);
-                            emailOperations.sendEmails(t);
-                        })
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .subscribe()
-        );
+        return withNewMessageEmailNotifications(super.add(thread));
     }
 
     @Override
@@ -183,15 +167,7 @@ public class MessagingSystemController extends MessagingController {
     @Override
     @PreAuthorize("isAuthenticated() and authentication.principal.getAttribute('email') == #message.from.email")
     public Mono<ThreadDTO> addMessage(String threadId, Message message, boolean anonymous) {
-        return super.addMessage(threadId, message, anonymous).doOnNext(t ->
-                Mono.fromRunnable(() -> {
-                            messagingService.updateUnread(t);
-                            messagingService.incomingMailNotification(t);
-                            emailOperations.sendEmails(t);
-                        })
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .subscribe()
-        );
+        return withNewMessageEmailNotifications(super.addMessage(threadId, message, anonymous));
     }
 
     @Override
@@ -204,6 +180,18 @@ public class MessagingSystemController extends MessagingController {
                         })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe());
+    }
+
+    private Mono<ThreadDTO> withNewMessageEmailNotifications(Mono<ThreadDTO> upstream) {
+        return upstream.doOnNext(t ->
+                Mono.fromRunnable(() -> {
+                            messagingService.updateUnread(t);
+                            messagingService.incomingMailNotification(t);
+                            emailOperations.sendEmails(t);
+                        })
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .subscribe()
+        );
     }
 
     public Mono<UnreadThreads> getUnread(String email) {

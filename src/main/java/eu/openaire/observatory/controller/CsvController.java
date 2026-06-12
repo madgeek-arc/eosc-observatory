@@ -53,16 +53,14 @@ public class CsvController {
                                                      @RequestParam(value = "dateFrom", required = false) String dateFrom,
                                                      @RequestParam(value = "dateTo", required = false) String dateTo,
                                                      HttpServletResponse response) throws ParseException {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-        Date from = dateFrom != null ? formatter.parse(dateFrom) : null;
-        Date to = dateTo != null ? formatter.parse(dateTo) : null;
+        Date[] dates = parseDateRange(dateFrom, dateTo);
 
         StringBuilder filename = new StringBuilder();
         filename.append(modelId);
         filename.append(".tsv");
         response.setHeader("Content-disposition", "attachment; filename=" + filename);
 
-        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, false, from, to).getBytes());
+        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, false, dates[0], dates[1]).getBytes());
     }
 
     @GetMapping(
@@ -75,9 +73,7 @@ public class CsvController {
                                                              @RequestParam(value = "dateFrom", required = false) String dateFrom,
                                                              @RequestParam(value = "dateTo", required = false) String dateTo,
                                                              HttpServletResponse response) throws ParseException {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-        Date from = dateFrom != null ? formatter.parse(dateFrom) : null;
-        Date to = dateTo != null ? formatter.parse(dateTo) : null;
+        Date[] dates = parseDateRange(dateFrom, dateTo);
 
         StringBuilder filename = new StringBuilder();
         filename.append(modelId);
@@ -85,7 +81,15 @@ public class CsvController {
         filename.append(".tsv");
         response.setHeader("Content-disposition", "attachment; filename=" + filename);
 
-        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, includeUsers, from, to).getBytes());
+        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, includeUsers, dates[0], dates[1]).getBytes());
+    }
+
+    private Date[] parseDateRange(String dateFrom, String dateTo) throws ParseException {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        return new Date[]{
+            dateFrom != null ? formatter.parse(dateFrom) : null,
+            dateTo != null ? formatter.parse(dateTo) : null
+        };
     }
 
     @PostMapping(value = "/import/answers/{id}")

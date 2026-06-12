@@ -78,8 +78,7 @@ public class ResourcesController {
             @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams,
             @RequestParam(required = false, defaultValue = "SUMMARY") View view) {
         allRequestParams.remove("view");
-        FacetFilter filter = FacetFilter.from(allRequestParams);
-        filter.setResourceType("document");
+        FacetFilter filter = buildDocumentFilter(allRequestParams);
         Paging<HighlightedResult<Document>> docs = genericResourceService.getHighlightedResults(filter);
         Paging<HighlightedResult<?>> response = switch (view) {
             case FULL -> docs.map(i -> i); // no-op, just a trick for casting
@@ -98,8 +97,7 @@ public class ResourcesController {
             @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams,
             @RequestParam(required = false, defaultValue = "SUMMARY") View view) {
         allRequestParams.remove("view");
-        FacetFilter filter = FacetFilter.from(allRequestParams);
-        filter.setResourceType("document");
+        FacetFilter filter = buildDocumentFilter(allRequestParams);
         List<Document> recommendations = resourcesService.getRecommendations(filter, id);
         List<?> response = switch (view) {
             case FULL -> recommendations;
@@ -160,5 +158,10 @@ public class ResourcesController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    private FacetFilter buildDocumentFilter(MultiValueMap<String, Object> params) {
+        FacetFilter filter = FacetFilter.from(params);
+        filter.setResourceType("document");
+        return filter;
+    }
 
 }

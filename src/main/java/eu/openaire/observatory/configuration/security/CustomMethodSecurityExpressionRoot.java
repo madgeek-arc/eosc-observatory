@@ -17,9 +17,7 @@
 package eu.openaire.observatory.configuration.security;
 
 import eu.openaire.observatory.resources.model.Document;
-import eu.openaire.observatory.service.Identifiable;
 import eu.openaire.observatory.service.SecurityService;
-import gr.uoa.di.madgik.catalogue.utils.ReflectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +27,6 @@ import org.springframework.security.access.expression.method.MethodSecurityExpre
 import org.springframework.security.core.Authentication;
 
 import java.io.Serializable;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
 public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
@@ -256,19 +253,6 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     /* ********************************************** */
 
     private String getResourceId(Object resource) {
-        // get resource id
-        String resourceId = null;
-        if (resource instanceof String) {
-            resourceId = resource.toString();
-        } else if (resource instanceof Identifiable) {
-            resourceId = ((Identifiable<String>) resource).getId();
-        } else {
-            try {
-                resourceId = ReflectUtils.getId(resource.getClass(), resource);
-            } catch (NoSuchFieldException | NoSuchMethodException | InvocationTargetException e) {
-                logger.error(e.getMessage(), e);
-            }
-        }
-        return resourceId;
+        return SecurityUtils.getResourceId(resource, logger);
     }
 }

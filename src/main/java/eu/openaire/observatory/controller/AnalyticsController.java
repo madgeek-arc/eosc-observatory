@@ -25,6 +25,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriBuilder;
+
+import java.util.function.Consumer;
 
 import java.time.YearMonth;
 import java.time.format.TextStyle;
@@ -60,21 +63,7 @@ public class AnalyticsController {
 
         for (YearMonth ym : monthHits.keySet()) {
             String dateStr = ym.toString();
-            String topPagesJson = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/index.php")
-                            .queryParam("module", "API")
-                            .queryParam("method", "Actions.getPageUrls")
-                            .queryParam("idSite", 1)
-                            .queryParam("period", "month")
-                            .queryParam("date", dateStr)
-                            .queryParam("format", "JSON")
-                            .queryParam("filter_limit", -1)
-                            .queryParam("token_auth", tokenAuth)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String topPagesJson = matomoApiCall(dateStr, b -> {});
 
             List<PageEntry> topPages = objectMapper.readValue(topPagesJson, new TypeReference<>() {
             });
@@ -85,22 +74,7 @@ public class AnalyticsController {
 
             if (countryPage.isPresent()) {
                 int idSubtable = countryPage.get().idSubtable();
-                String countryJson = webClient.get()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/index.php")
-                                .queryParam("module", "API")
-                                .queryParam("method", "Actions.getPageUrls")
-                                .queryParam("idSite", 1)
-                                .queryParam("period", "month")
-                                .queryParam("date", dateStr)
-                                .queryParam("idSubtable", idSubtable)
-                                .queryParam("format", "JSON")
-                                .queryParam("filter_limit", -1)
-                                .queryParam("token_auth", tokenAuth)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
+                String countryJson = matomoApiCall(dateStr, b -> b.queryParam("idSubtable", idSubtable));
 
                 List<CountryEntry> countries =
                         objectMapper.readValue(countryJson, new TypeReference<>() {
@@ -112,14 +86,7 @@ public class AnalyticsController {
             }
         }
 
-        LinkedHashMap<String, Integer> result = monthHits.entrySet().stream()
-                .collect(Collectors.toMap(
-                        e -> e.getKey().getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
-                                + " " + e.getKey().getYear(),
-                        Map.Entry::getValue,
-                        (a, b) -> b,
-                        LinkedHashMap::new
-                ));
+        LinkedHashMap<String, Integer> result = toMonthlyResultMap(monthHits);
 
         CountryPageviewsResponse response = new CountryPageviewsResponse(country, result);
         return ResponseEntity.ok(response);
@@ -138,23 +105,7 @@ public class AnalyticsController {
 
         for (YearMonth ym : monthHits.keySet()) {
             String dateStr = ym.toString();
-            String json = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/index.php")
-                            .queryParam("module", "API")
-                            .queryParam("method", "Actions.getPageUrls")
-                            .queryParam("idSite", 1)
-                            .queryParam("period", "month")
-                            .queryParam("date", dateStr)
-                            .queryParam("format", "JSON")
-                            .queryParam("filter_limit", -1)
-                            .queryParam("flat", 1)
-                            .queryParam("filter_pattern", path)
-                            .queryParam("token_auth", tokenAuth)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String json = matomoApiCall(dateStr, b -> b.queryParam("flat", 1).queryParam("filter_pattern", path));
 
             List<PageEntry> pages = objectMapper.readValue(json, new TypeReference<>() {
             });
@@ -165,7 +116,33 @@ public class AnalyticsController {
             monthHits.put(ym, total);
         }
 
-        LinkedHashMap<String, Integer> result = monthHits.entrySet().stream()
+        LinkedHashMap<String, Integer> result = toMonthlyResultMap(monthHits);
+
+        return ResponseEntity.ok(new PageviewsPerMonthResponse(result));
+    }
+
+    private String matomoApiCall(String dateStr, Consumer<UriBuilder> extraParams) {
+        return webClient.get()
+                .uri(uriBuilder -> {
+                    uriBuilder.path("/index.php")
+                            .queryParam("module", "API")
+                            .queryParam("method", "Actions.getPageUrls")
+                            .queryParam("idSite", 1)
+                            .queryParam("period", "month")
+                            .queryParam("date", dateStr)
+                            .queryParam("format", "JSON")
+                            .queryParam("filter_limit", -1)
+                            .queryParam("token_auth", tokenAuth);
+                    extraParams.accept(uriBuilder);
+                    return uriBuilder.build();
+                })
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
+
+    private static LinkedHashMap<String, Integer> toMonthlyResultMap(Map<YearMonth, Integer> monthHits) {
+        return monthHits.entrySet().stream()
                 .collect(Collectors.toMap(
                         e -> e.getKey().getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
                                 + " " + e.getKey().getYear(),
@@ -173,8 +150,6 @@ public class AnalyticsController {
                         (a, b) -> b,
                         LinkedHashMap::new
                 ));
-
-        return ResponseEntity.ok(new PageviewsPerMonthResponse(result));
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

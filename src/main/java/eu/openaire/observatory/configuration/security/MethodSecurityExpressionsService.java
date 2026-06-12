@@ -24,7 +24,6 @@ import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
-import gr.uoa.di.madgik.catalogue.utils.ReflectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -34,7 +33,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -154,10 +152,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         if (type == null || userId == null) {
             return false;
         }
-        FacetFilter ff = new FacetFilter();
-        ff.addFilter("users", userId);
-        ff.addFilter("type", type);
-        List<Coordinator> coordinators = coordinatorService.getAll(ff).getResults();
+        List<Coordinator> coordinators = coordinatorService.getAll(buildUserTypeFilter(userId, type)).getResults();
         return !coordinators.isEmpty();
     }
 
@@ -182,14 +177,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
     @Override
     public boolean hasStakeholderManagerAccess(Object surveyAnswer) {
-        SurveyAnswer answer;
-        if (surveyAnswer instanceof String) {
-            answer = surveyAnswerCrudService.get((String) surveyAnswer);
-        } else if (surveyAnswer instanceof SurveyAnswer) {
-            answer = (SurveyAnswer) surveyAnswer;
-        } else {
-            throw new RuntimeException("Unsupported object");
-        }
+        SurveyAnswer answer = resolveSurveyAnswer(surveyAnswer);
         User user = userService.get(User.getId(getAuthentication()));
         return userIsStakeholderManagerOfType(user, answer.getType());
     }
@@ -227,16 +215,10 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
 
     @Override
     public boolean hasCoordinatorAccess(Object surveyAnswer) {
-        SurveyAnswer answer;
         if (surveyAnswer == null) {
             return false;
-        } else if (surveyAnswer instanceof String) {
-            answer = surveyAnswerCrudService.get((String) surveyAnswer);
-        } else if (surveyAnswer instanceof SurveyAnswer) {
-            answer = (SurveyAnswer) surveyAnswer;
-        } else {
-            throw new RuntimeException("Unsupported object");
         }
+        SurveyAnswer answer = resolveSurveyAnswer(surveyAnswer);
         User user = userService.get(User.getId(getAuthentication()));
         return userIsCoordinatorOfType(user, answer.getType());
     }
@@ -267,19 +249,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
             }
         }
 
-        // get resource id
-        String resourceId = null;
-        if (resource instanceof String) {
-            resourceId = resource.toString();
-        } else if (resource instanceof Identifiable) {
-            resourceId = ((Identifiable<String>) resource).getId();
-        } else {
-            try {
-                resourceId = ReflectUtils.getId(resource.getClass(), resource);
-            } catch (NoSuchFieldException | NoSuchMethodException | InvocationTargetException e) {
-                logger.error(e.getMessage(), e);
-            }
-        }
+        String resourceId = SecurityUtils.getResourceId(resource, logger);
         return isAdmin(authentication) ||
                 securityService.hasPermission(authentication, permission.toString().toLowerCase(), resourceId);
     }
@@ -309,10 +279,7 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         if (type == null || userId == null) {
             return false;
         }
-        FacetFilter ff = new FacetFilter();
-        ff.addFilter("users", userId);
-        ff.addFilter("type", type);
-        List<Administrator> administrators = administratorService.getAll(ff).getResults();
+        List<Administrator> administrators = administratorService.getAll(buildUserTypeFilter(userId, type)).getResults();
         return !administrators.isEmpty();
     }
 
@@ -371,6 +338,23 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
     /* ********************************************** */
     /*              Other Help Methods                */
     /* ********************************************** */
+
+    private SurveyAnswer resolveSurveyAnswer(Object surveyAnswer) {
+        if (surveyAnswer instanceof String saId) {
+            return surveyAnswerCrudService.get(saId);
+        } else if (surveyAnswer instanceof SurveyAnswer sa) {
+            return sa;
+        } else {
+            throw new RuntimeException("Unsupported object");
+        }
+    }
+
+    private static FacetFilter buildUserTypeFilter(String userId, String type) {
+        FacetFilter ff = new FacetFilter();
+        ff.addFilter("users", userId);
+        ff.addFilter("type", type);
+        return ff;
+    }
 
     private Authentication getAuthentication() {
         return SecurityContextHolder.getContext().getAuthentication();

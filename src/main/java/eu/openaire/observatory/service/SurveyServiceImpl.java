@@ -124,11 +124,7 @@ public class SurveyServiceImpl implements SurveyService {
         FacetFilter filter = new FacetFilter();
         filter.addFilter("surveyId", surveyId);
         filter.addFilter("stakeholderId", stakeholderId);
-        Map<String, Object> sortBy = new HashMap<>();
-        Map<String, Object> orderType = new HashMap<>();
-        orderType.put("order", "desc");
-        sortBy.put("creationDate", orderType);
-        filter.setOrderBy(sortBy);
+        applyCreationDateDescOrder(filter);
 
         Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
         SurveyAnswer answer = null;
@@ -144,14 +140,18 @@ public class SurveyServiceImpl implements SurveyService {
         filter.setQuantity(10000);
         filter.addFilter("stakeholderId", stakeholderId);
         filter.addFilter("validated", false);
-        Map<String, Object> sortBy = new HashMap<>();
-        Map<String, Object> orderType = new HashMap<>();
-        orderType.put("order", "desc");
-        sortBy.put("creationDate", orderType);
-        filter.setOrderBy(sortBy);
+        applyCreationDateDescOrder(filter);
 
         Browsing<SurveyAnswer> answersBrowsing = surveyAnswerCrudService.getAll(filter);
         return answersBrowsing.getResults();
+    }
+
+    private static void applyCreationDateDescOrder(FacetFilter filter) {
+        Map<String, Object> orderType = new HashMap<>();
+        orderType.put("order", "desc");
+        Map<String, Object> sortBy = new HashMap<>();
+        sortBy.put("creationDate", orderType);
+        filter.setOrderBy(sortBy);
     }
 
     @Override
