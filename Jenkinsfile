@@ -5,6 +5,10 @@ def DOCKER_IMAGE_SHA = ''
 pipeline {
   agent any
 
+  tools {
+    jdk 'OpenJDK 21'
+  }
+
   options {
     buildDiscarder(logRotator(numToKeepStr: '10'))
     disableConcurrentBuilds(abortPrevious: true)
