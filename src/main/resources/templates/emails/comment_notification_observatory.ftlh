@@ -46,9 +46,9 @@
 <body style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #f4f4f4; height: 100%; width: 100%; margin: 0; padding: 0;">
 
 <!-- PREHEADER -->
-<div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: 'Lato', Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
-    ${from.fullname} mentioned you in a comment on EOSC Observatory.
-</div>
+<#--<div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: 'Lato', Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">-->
+<#--    ${from.name} mentioned you in a comment on EOSC Observatory.-->
+<#--</div>-->
 
 <table border="0" cellpadding="0" cellspacing="0" width="100%"
        style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-collapse: collapse;">
@@ -62,9 +62,11 @@
                 <tr>
                     <td bgcolor="#ffffff" align="center" valign="top"
                         style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 40px 20px 20px 20px; border-radius: 4px 4px 0px 0px; font-family: 'Lato', Helvetica, Arial, sans-serif;">
-                        <img alt="EOSC Observatory"
-                             src="https://eoscobservatory.eosc-portal.eu/assets/logo/png/EOSC OPEN SCIENCE OBSERVATORY LOGO.png"
-                             width="300"  style="display: block; border: 0; margin: 0 auto;"/>
+                        <a href="https://www.eoscobservatory.eu/home" target="_blank" style="border: 0; text-decoration: none;">
+                            <img alt="EOSC Observatory"
+                                 src="https://eoscobservatory.eosc-portal.eu/assets/logo/png/EOSC%20OPEN%20SCIENCE%20OBSERVATORY%20LOGO.png"
+                                 width="300" style="display: block; border: 0; margin: 0 auto;"/>
+                        </a>
                     </td>
                 </tr>
             </table>

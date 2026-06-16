@@ -16,6 +16,7 @@
 
 package eu.openaire.observatory.service;
 
+import eu.openaire.observatory.commenting.CommentNotificationService;
 import eu.openaire.observatory.commenting.CommentService;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
 import eu.openaire.observatory.commenting.domain.CommentStatus;
@@ -45,15 +46,18 @@ public class SurveyAnswerCommentService implements CommentService {
     private final CommentRepository commentRepository;
     private final CommentMessageRepository messageRepository;
     private final CommentMapper mapper;
+    private final CommentNotificationService notificationService;
 
     private static final String TARGET_TYPE = "survey_answer";
 
     public SurveyAnswerCommentService(CommentRepository commentRepository,
                                       CommentMessageRepository messageRepository,
-                                      CommentMapper mapper) {
+                                      CommentMapper mapper,
+                                      CommentNotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.messageRepository = messageRepository;
         this.mapper = mapper;
+        this.notificationService = notificationService;
     }
 
 
@@ -86,7 +90,9 @@ public class SurveyAnswerCommentService implements CommentService {
         message.setBody(comment.message().body());
         message.addMentions(comment.message().mentions());
         c.setMessages(List.of(message));
-        return mapper.toDto(commentRepository.save(c));
+        CommentThread saved = commentRepository.save(c);
+        notificationService.notifyMentions(saved.getMessages().getFirst());
+        return mapper.toDto(saved);
     }
 
     @Override
@@ -102,6 +108,7 @@ public class SurveyAnswerCommentService implements CommentService {
         m.addMentions(message.mentions());
         c.addMessage(m);
         messageRepository.save(m);
+        notificationService.notifyMentions(m);
         return mapper.toDto(c);
     }
 
@@ -116,7 +123,7 @@ public class SurveyAnswerCommentService implements CommentService {
         m.setBody(message.body());
         m.addMentions(message.mentions());
         messageRepository.save(m);
-
+        notificationService.notifyMentions(m);
         return mapper.toDto(m.getComment());
     }
 
