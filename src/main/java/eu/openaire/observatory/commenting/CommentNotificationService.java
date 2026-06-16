@@ -27,6 +27,10 @@ import eu.openaire.observatory.service.UserService;
 import freemarker.template.Configuration;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
 import gr.athenarc.messaging.mailer.service.Mailer;
+import gr.uoa.di.madgik.catalogue.service.ModelService;
+import gr.uoa.di.madgik.catalogue.ui.domain.Model;
+import gr.uoa.di.madgik.catalogue.ui.domain.Section;
+import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,9 +39,12 @@ import org.springframework.stereotype.Service;
 import java.io.StringWriter;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class CommentNotificationService {
@@ -53,19 +60,22 @@ public class CommentNotificationService {
     private final String emailFrom;
     private final SurveyAnswerCrudService surveyAnswerCrudService;
     private final ApplicationProperties applicationProperties;
+    private final ModelService modelService;
 
     public CommentNotificationService(UserService userService,
                                       Configuration freemarkerConfig,
                                       Mailer mailClient,
                                       @Value("${mailer.from}") String emailFrom,
                                       SurveyAnswerCrudService surveyAnswerCrudService,
-                                      ApplicationProperties applicationProperties) {
+                                      ApplicationProperties applicationProperties,
+                                      ModelService modelService) {
         this.userService = userService;
         this.freemarkerConfig = freemarkerConfig;
         this.mailClient = mailClient;
         this.emailFrom = emailFrom;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.applicationProperties = applicationProperties;
+        this.modelService = modelService;
     }
 
     public void notifyMentions(CommentMessage message) {
@@ -93,11 +103,12 @@ public class CommentNotificationService {
         } catch (Exception e) {
             logger.warn("Could not fetch survey answer for mention notification: {}", e.getMessage());
         }
+        String chapterPath = resolveFieldPath(fieldId, surveyId);
 
         for (var mention : message.getMentions()) {
             String mentionedEmail = mention.getId().getUserId();
             try {
-                sendMentionEmail(mentionedEmail, authorName, authorEmail, message.getBody(), fieldId, baseUrl, stakeholderId, surveyId, message);
+                sendMentionEmail(mentionedEmail, authorName, authorEmail, message.getBody(), chapterPath, baseUrl, stakeholderId, surveyId, message);
             } catch (Exception e) {
                 logger.warn("Failed to send mention notification to {}: {}", mentionedEmail, e.getMessage());
             }
@@ -105,7 +116,7 @@ public class CommentNotificationService {
     }
 
     private void sendMentionEmail(String toEmail, String fromName, String fromEmail,
-                                   String body, String fieldId, String baseUrl, String stakeholderId, String surveyId, CommentMessage message) {
+                                   String body, String chapterPath, String baseUrl, String stakeholderId, String surveyId, CommentMessage message) {
         User recipient = null;
         try {
             recipient = userService.getUser(toEmail);
@@ -124,7 +135,7 @@ public class CommentNotificationService {
         data.put("to", Map.of("name", toName));
         data.put("from", Map.of("name", fromName, "email", fromEmail));
         data.put("body", body);
-        data.put("chapter", Map.of("name", fieldId));
+        data.put("chapter", Map.of("name", chapterPath));
         data.put("baseUrl", baseUrl);
         data.put("stakeholderId", stakeholderId);
         data.put("surveyId", surveyId);
@@ -147,6 +158,69 @@ public class CommentNotificationService {
                 .build();
 
         mailClient.sendMail(email);
+    }
+
+    private String resolveFieldPath(String fieldId, String surveyId) {
+        if (fieldId == null || fieldId.isBlank() || surveyId == null || surveyId.isBlank()) {
+            return fieldId != null ? fieldId : "";
+        }
+        try {
+            Model model = modelService.get(surveyId);
+            List<Section> sortedSections = model.getSections().stream()
+                    .sorted(Comparator.comparingInt(Section::getOrder))
+                    .toList();
+            for (Section section : sortedSections) {
+                String path = findFieldInSection(section, fieldId, section.getName());
+                if (path != null) return path;
+            }
+        } catch (Exception e) {
+            logger.warn("Could not resolve fieldId '{}' to section path: {}", fieldId, e.getMessage());
+        }
+        return fieldId;
+    }
+
+    private String findFieldInSection(Section section, String fieldId, String parentPath) {
+        if (section.getSubSections() != null && !section.getSubSections().isEmpty()) {
+            List<Section> sortedSubs = section.getSubSections().stream()
+                    .sorted(Comparator.comparingInt(Section::getOrder))
+                    .toList();
+            for (Section sub : sortedSubs) {
+                String result = findFieldInSection(sub, fieldId, parentPath + " > " + sub.getName());
+                if (result != null) return result;
+            }
+        }
+        if (section.getFields() != null && !section.getFields().isEmpty()) {
+            List<UiField> sortedFields = section.getFields().stream()
+                    .sorted(Comparator.comparingInt(f -> f.getForm().getDisplay().getOrder()))
+                    .toList();
+            for (int i = 0; i < sortedFields.size(); i++) {
+                UiField matched = findFieldInSubtree(sortedFields.get(i), fieldId);
+                if (matched != null) {
+                    String questionLabel = extractQuestionNumber(matched, i + 1);
+                    return parentPath + " > " + questionLabel;
+                }
+            }
+        }
+        return null;
+    }
+
+    private UiField findFieldInSubtree(UiField field, String fieldId) {
+        if (fieldId.equals(field.getId())) return field;
+        if (field.getSubFields() != null) {
+            for (UiField sub : field.getSubFields()) {
+                UiField found = findFieldInSubtree(sub, fieldId);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private String extractQuestionNumber(UiField field, int fallbackIndex) {
+        if (field.getLabel() != null && field.getLabel().getText() != null) {
+            Matcher m = Pattern.compile("^(\\d+(?:\\.\\d+)*)\\.").matcher(field.getLabel().getText().trim());
+            if (m.find()) return "Question " + m.group(1);
+        }
+        return "Question " + fallbackIndex;
     }
 
     private boolean shouldSendEmail(User user) {

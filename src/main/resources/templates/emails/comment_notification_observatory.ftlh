@@ -62,9 +62,11 @@
                 <tr>
                     <td bgcolor="#ffffff" align="center" valign="top"
                         style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 40px 20px 20px 20px; border-radius: 4px 4px 0px 0px; font-family: 'Lato', Helvetica, Arial, sans-serif;">
-                        <img alt="EOSC Observatory"
-                             src="https://eoscobservatory.eosc-portal.eu/assets/logo/png/EOSC OPEN SCIENCE OBSERVATORY LOGO.png"
-                             width="300"  style="display: block; border: 0; margin: 0 auto;"/>
+                        <a href="https://www.eoscobservatory.eu/home" target="_blank" style="border: 0; text-decoration: none;">
+                            <img alt="EOSC Observatory"
+                                 src="https://eoscobservatory.eosc-portal.eu/assets/logo/png/EOSC%20OPEN%20SCIENCE%20OBSERVATORY%20LOGO.png"
+                                 width="300" style="display: block; border: 0; margin: 0 auto;"/>
+                        </a>
                     </td>
                 </tr>
             </table>
