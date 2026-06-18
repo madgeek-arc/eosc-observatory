@@ -207,6 +207,7 @@ public class EmailSurveyService {
             if (user != null && user.getSettings() != null && user.getSettings().getNotificationPreferences() != null) {
                 NotificationPreferences prefs = user.getSettings().getNotificationPreferences();
                 if (!prefs.isEmailNotifications()) continue;
+                if (!prefs.isSurveyEmailNotifications()) continue;
                 if (prefs.getForwardEmails() != null && !prefs.getForwardEmails().isEmpty()) {
                     preferred.addAll(prefs.getForwardEmails());
                 } else {
