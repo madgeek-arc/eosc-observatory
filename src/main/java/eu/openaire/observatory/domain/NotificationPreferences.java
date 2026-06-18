@@ -21,6 +21,9 @@ import java.util.List;
 public class NotificationPreferences {
 
     private boolean emailNotifications = true;
+    private boolean mentionEmailNotifications = true;
+    private boolean surveyEmailNotifications = true;
+    private boolean contactFormEmailNotifications = true;
     private List<String> forwardEmails;
 
     public NotificationPreferences() {
@@ -32,6 +35,33 @@ public class NotificationPreferences {
 
     public NotificationPreferences setEmailNotifications(boolean emailNotifications) {
         this.emailNotifications = emailNotifications;
+        return this;
+    }
+
+    public boolean isMentionEmailNotifications() {
+        return mentionEmailNotifications;
+    }
+
+    public NotificationPreferences setMentionEmailNotifications(boolean mentionEmailNotifications) {
+        this.mentionEmailNotifications = mentionEmailNotifications;
+        return this;
+    }
+
+    public boolean isSurveyEmailNotifications() {
+        return surveyEmailNotifications;
+    }
+
+    public NotificationPreferences setSurveyEmailNotifications(boolean surveyEmailNotifications) {
+        this.surveyEmailNotifications = surveyEmailNotifications;
+        return this;
+    }
+
+    public boolean isContactFormEmailNotifications() {
+        return contactFormEmailNotifications;
+    }
+
+    public NotificationPreferences setContactFormEmailNotifications(boolean contactFormEmailNotifications) {
+        this.contactFormEmailNotifications = contactFormEmailNotifications;
         return this;
     }
 
