@@ -18,6 +18,7 @@ package eu.openaire.observatory.aspect;
 
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
+import eu.openaire.observatory.domain.SurveyTypeSettings;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
@@ -25,6 +26,7 @@ import eu.openaire.observatory.service.EmailSurveyService;
 import eu.openaire.observatory.service.StakeholderService;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
 import eu.openaire.observatory.service.SurveyService;
+import eu.openaire.observatory.service.SurveyTypeSettingsService;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
@@ -55,6 +57,7 @@ public class SurveyAspect {
     private final StakeholderService stakeholderService;
     private final SurveyAnswerCrudService surveyAnswerService;
     private final EmailSurveyService emailSurveyService;
+    private final SurveyTypeSettingsService surveyTypeSettingsService;
 
 
     public SurveyAspect(ModelService modelService,
@@ -62,13 +65,15 @@ public class SurveyAspect {
                         PermissionService permissionService,
                         StakeholderService stakeholderService,
                         SurveyAnswerCrudService surveyAnswerService,
-                        EmailSurveyService emailSurveyService) {
+                        EmailSurveyService emailSurveyService,
+                        SurveyTypeSettingsService surveyTypeSettingsService) {
         this.modelService = modelService;
         this.surveyService = surveyService;
         this.permissionService = permissionService;
         this.stakeholderService = stakeholderService;
         this.surveyAnswerService = surveyAnswerService;
         this.emailSurveyService = emailSurveyService;
+        this.surveyTypeSettingsService = surveyTypeSettingsService;
     }
 
 
@@ -122,62 +127,54 @@ public class SurveyAspect {
     @Retryable
     @Around(value = "execution (* gr.uoa.di.madgik.catalogue.service.ModelService.update(String, gr.uoa.di.madgik.catalogue.ui.domain.Model)) && args(id, model)", argNames = "pjp,id,model")
     Model managePermissionsWhenActivatingDeactivatingSurvey(ProceedingJoinPoint pjp, String id, Model model) throws Throwable {
+        Model existing = modelService.get(id);
+        updateSurveyPermissions(existing, model, id);
+        Model updated = (Model) pjp.proceed();
+        notifyDeadlineChangeIfNeeded(existing, model, id);
+        return updated;
+    }
+
+    private void updateSurveyPermissions(Model existing, Model model, String id) {
+        if (existing.isActive() == model.isActive()) return;
         logger.info("Adding/Removing User permissions");
 
-        Model existing = modelService.get(id);
-        if (existing.isActive() != model.isActive()) {
-
-            Set<SurveyAnswer> answers = surveyAnswerService.getWithFilter("surveyId", id);
-            for (SurveyAnswer answer : answers) {
-                if (!model.isActive()) {
-                    logger.debug("Removing [write/manage/publish] permissions [stakeholder={}]", answer.getStakeholderId());
-                    // model becomes inactive -> remove write permissions
-                    List<String> writePermissions = List.of(Permissions.WRITE.getKey(), Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey());
-
-                    Stakeholder stakeholder = stakeholderService.get(answer.getStakeholderId());
-                    permissionService.removePermissions(stakeholder.getUsers(), writePermissions, List.of(answer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
-                    permissionService.removePermissions(stakeholder.getUsers(), writePermissions, List.of(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
+        Set<SurveyAnswer> answers = surveyAnswerService.getWithFilter("surveyId", id);
+        for (SurveyAnswer answer : answers) {
+            if (!model.isActive()) {
+                logger.debug("Removing [write/manage/publish] permissions [stakeholder={}]", answer.getStakeholderId());
+                List<String> writePermissions = List.of(Permissions.WRITE.getKey(), Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey());
+                Stakeholder stakeholder = stakeholderService.get(answer.getStakeholderId());
+                permissionService.removePermissions(stakeholder.getUsers(), writePermissions, List.of(answer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+                permissionService.removePermissions(stakeholder.getUsers(), writePermissions, List.of(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
+            } else {
+                logger.debug("Restoring [write/manage/publish] permissions [stakeholder={}]", answer.getStakeholderId());
+                Stakeholder stakeholder = stakeholderService.get(answer.getStakeholderId());
+                if (answer.isValidated()) {
+                    permissionService.addPermissions(stakeholder.getAdmins(), List.of(Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey()), List.of(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
                 } else {
-                    logger.debug("Restoring [write/manage/publish] permissions [stakeholder={}]", answer.getStakeholderId());
-                    // model becomes active -> restore write permissions
-                    Stakeholder stakeholder = stakeholderService.get(answer.getStakeholderId());
-
-                    if (answer.isValidated()) {
-                        // add only admin permissions
-                        permissionService.addPermissions(stakeholder.getAdmins(), List.of(Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey()), List.of(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
-                    } else {
-                        // add member permissions
-                        permissionService.addPermissions(
-                                stakeholder.getMembers(),
-                                List.of(Permissions.WRITE.getKey()),
-                                List.of(answer.getId()),
-                                Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
-                        // add admin permissions
-                        permissionService.addPermissions(
-                                stakeholder.getAdmins(),
-                                List.of(Permissions.WRITE.getKey(), Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey()),
-                                List.of(answer.getId()),
-                                Groups.STAKEHOLDER_MANAGER.getKey());
-                    }
+                    permissionService.addPermissions(stakeholder.getMembers(), List.of(Permissions.WRITE.getKey()), List.of(answer.getId()), Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+                    permissionService.addPermissions(stakeholder.getAdmins(), List.of(Permissions.WRITE.getKey(), Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey()), List.of(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
                 }
             }
         }
-        Model updated = (Model) pjp.proceed();
+    }
 
+    private void notifyDeadlineChangeIfNeeded(Model existing, Model model, String id) {
         boolean deadlineChanged = !java.util.Objects.equals(existing.getSubmissionCloseAt(), model.getSubmissionCloseAt());
         boolean surveyHasStarted = model.getSubmissionStartAt() != null
                 && !java.time.LocalDate.now().isBefore(
                         model.getSubmissionStartAt().toInstant()
                                 .atZone(java.time.ZoneId.systemDefault()).toLocalDate());
-        if (deadlineChanged && model.getSubmissionCloseAt() != null && surveyHasStarted) {
-            try {
-                emailSurveyService.notifyDeadlineChange(id, model.getSubmissionCloseAt());
-            } catch (Exception e) {
-                logger.warn("Failed to send deadline change email [surveyId={}]", id, e);
-            }
-        }
+        if (!deadlineChanged || model.getSubmissionCloseAt() == null || !surveyHasStarted) return;
 
-        return updated;
+        SurveyTypeSettings settings = surveyTypeSettingsService.getByType(model.getType());
+        if (settings != null && !settings.isNotifyOnDeadlineChange()) return;
+
+        try {
+            emailSurveyService.notifyDeadlineChange(id, model.getSubmissionCloseAt());
+        } catch (Exception e) {
+            logger.warn("Failed to send deadline change email [surveyId={}]", id, e);
+        }
     }
 
 

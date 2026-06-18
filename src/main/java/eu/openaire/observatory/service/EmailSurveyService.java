@@ -19,6 +19,7 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.NotificationPreferences;
 import eu.openaire.observatory.domain.Stakeholder;
+import eu.openaire.observatory.domain.SurveyTypeSettings;
 import eu.openaire.observatory.domain.User;
 import freemarker.template.Configuration;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
@@ -50,6 +51,7 @@ public class EmailSurveyService {
     private final ModelService modelService;
     private final SurveyService surveyService;
     private final UserService userService;
+    private final SurveyTypeSettingsService surveyTypeSettingsService;
     private final Configuration freemarkerConfig;
     private final String emailFrom;
     private final ApplicationProperties applicationProperties;
@@ -59,6 +61,7 @@ public class EmailSurveyService {
                               ModelService modelService,
                               @Lazy SurveyService surveyService,
                               UserService userService,
+                              SurveyTypeSettingsService surveyTypeSettingsService,
                               Configuration freemarkerConfig,
                               @Value("${mailer.from}") String emailFrom,
                               ApplicationProperties applicationProperties) {
@@ -67,6 +70,7 @@ public class EmailSurveyService {
         this.modelService = modelService;
         this.surveyService = surveyService;
         this.userService = userService;
+        this.surveyTypeSettingsService = surveyTypeSettingsService;
         this.freemarkerConfig = freemarkerConfig;
         this.emailFrom = emailFrom;
         this.applicationProperties = applicationProperties;
@@ -126,7 +130,7 @@ public class EmailSurveyService {
         }
     }
 
-    public void notifyDeadlineApproaching(String surveyId) {
+    public void notifyDeadlineApproaching(String surveyId, int daysLeft) {
         try {
             Model survey = modelService.get(surveyId);
             Set<String> recipients = getStakeholderEmailsForSurvey(survey);
@@ -135,11 +139,11 @@ public class EmailSurveyService {
             Map<String, Object> data = new HashMap<>();
             data.put("surveyName", survey.getName());
             data.put("deadline", survey.getSubmissionCloseAt() != null ? DATE_FORMAT.format(survey.getSubmissionCloseAt()) : "N/A");
-            data.put("daysLeft", 7);
+            data.put("daysLeft", daysLeft);
             data.put("url", buildSurveyUrl(surveyId));
 
             String body = renderTemplate("emails/inlined-css/deadline_approaching.ftlh", data);
-            sendBcc("Reminder: 7 days left — " + survey.getName(), body, recipients);
+            sendBcc("Reminder: " + daysLeft + " days left — " + survey.getName(), body, recipients);
         } catch (Exception e) {
             logger.error("Failed to send deadline approaching notification [surveyId={}]", surveyId, e);
         }
@@ -149,25 +153,35 @@ public class EmailSurveyService {
     public void checkSurveyDates() {
         logger.info("Running daily survey date check");
         LocalDate today = LocalDate.now();
-        LocalDate sevenDaysFromNow = today.plusDays(7);
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(10_000);
         try {
             List<Model> surveys = surveyService.getByType(filter, null).getResults();
             for (Model model : surveys) {
                 try {
+                    SurveyTypeSettings settings = surveyTypeSettingsService.getByType(model.getType());
+
                     if (model.getSubmissionStartAt() != null) {
                         LocalDate startDate = toLocalDate(model.getSubmissionStartAt());
-                        if (today.equals(startDate)) {
+                        if (today.equals(startDate) && (settings == null || settings.isNotifyOnStart())) {
                             notifySurveyStart(model.getId());
                         }
                     }
+
                     if (model.getSubmissionCloseAt() != null) {
                         LocalDate closeDate = toLocalDate(model.getSubmissionCloseAt());
-                        if (today.equals(closeDate)) {
+                        if (today.equals(closeDate) && (settings == null || settings.isNotifyOnEnd())) {
                             notifySurveyEnd(model.getId());
-                        } else if (sevenDaysFromNow.equals(closeDate)) {
-                            notifyDeadlineApproaching(model.getId());
+                        } else {
+                            int daysAhead = settings != null ? settings.getDeadlineApproachingDays() : 7;
+                            LocalDate approachingDate = today.plusDays(daysAhead);
+                            boolean surveyHasStarted = model.getSubmissionStartAt() != null
+                                    && !today.isBefore(toLocalDate(model.getSubmissionStartAt()));
+                            if (approachingDate.equals(closeDate)
+                                    && surveyHasStarted
+                                    && (settings == null || settings.isNotifyOnDeadlineApproaching())) {
+                                notifyDeadlineApproaching(model.getId(), daysAhead);
+                            }
                         }
                     }
                 } catch (Exception e) {

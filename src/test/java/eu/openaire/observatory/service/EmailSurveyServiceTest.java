@@ -40,6 +40,7 @@ class EmailSurveyServiceTest {
     @Mock private ModelService modelService;
     @Mock private SurveyService surveyService;
     @Mock private UserService userService;
+    @Mock private SurveyTypeSettingsService surveyTypeSettingsService;
     @Mock private Configuration freemarkerConfig;
     @Mock private Template template;
     @Mock private ApplicationProperties applicationProperties;
@@ -54,6 +55,7 @@ class EmailSurveyServiceTest {
                 modelService,
                 surveyService,
                 userService,
+                surveyTypeSettingsService,
                 freemarkerConfig,
                 "no-reply@openaire.eu",
                 applicationProperties
@@ -160,7 +162,7 @@ class EmailSurveyServiceTest {
         Model s = survey("s1", "National Survey", "country");
         stubSurveyAndStakeholders(s, stakeholderWith("alice@test.com"));
 
-        service.notifyDeadlineApproaching("s1");
+        service.notifyDeadlineApproaching("s1", 7);
 
         List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
         assertEquals(1, captured.size());
