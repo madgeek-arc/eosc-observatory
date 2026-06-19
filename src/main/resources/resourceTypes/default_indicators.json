@@ -1,0 +1,33 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "resource_internal_id",
+      "path": "$.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "type",
+      "label": "Type",
+      "path": "$.type",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "indicatorIds",
+      "label": "Indicator IDs",
+      "path": "$.indicatorIds[*]",
+      "type": "java.lang.String"
+    }
+  ],
+  "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
+  "name": "default_indicators",
+  "aliases": ["resourceTypes"],
+  "payloadType": "json",
+  "properties": {
+    "class": "eu.openaire.observatory.domain.DefaultIndicators"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/\"\n}"
+}
