@@ -18,7 +18,14 @@
       "multivalued": true,
       "name": "indicatorIds",
       "label": "Indicator IDs",
-      "path": "$.indicatorIds[*]",
+      "path": "$.indicators[*].id",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": true,
+      "name": "indicatorGroups",
+      "label": "Indicator Groups",
+      "path": "$.indicators[*].group",
       "type": "java.lang.String"
     }
   ],

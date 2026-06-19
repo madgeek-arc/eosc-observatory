@@ -1,6 +1,7 @@
 package eu.openaire.observatory.controller;
 
 import eu.openaire.observatory.domain.DefaultIndicators;
+import eu.openaire.observatory.domain.Indicator;
 import eu.openaire.observatory.domain.StakeholderIndicatorsOverride;
 import eu.openaire.observatory.service.DefaultIndicatorsService;
 import eu.openaire.observatory.service.StakeholderIndicatorsService;
@@ -63,7 +64,7 @@ public class IndicatorsController {
 
     @GetMapping("stakeholders/{stakeholderId}/indicators")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId) or isAdministratorOfStakeholder(#stakeholderId) or isStakeholderMember(#stakeholderId)")
-    public ResponseEntity<List<String>> getEffectiveIndicators(@PathVariable("stakeholderId") String stakeholderId) {
+    public ResponseEntity<List<Indicator>> getEffectiveIndicators(@PathVariable("stakeholderId") String stakeholderId) {
         return ResponseEntity.ok(stakeholderIndicatorsService.getEffectiveIndicators(stakeholderId));
     }
 

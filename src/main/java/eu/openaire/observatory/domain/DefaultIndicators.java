@@ -8,7 +8,7 @@ public class DefaultIndicators implements Identifiable<String> {
 
     private String id;
     private String type;
-    private List<String> indicatorIds;
+    private List<Indicator> indicators;
 
     public DefaultIndicators() {
     }
@@ -31,11 +31,11 @@ public class DefaultIndicators implements Identifiable<String> {
         this.type = type;
     }
 
-    public List<String> getIndicatorIds() {
-        return indicatorIds;
+    public List<Indicator> getIndicators() {
+        return indicators;
     }
 
-    public void setIndicatorIds(List<String> indicatorIds) {
-        this.indicatorIds = indicatorIds;
+    public void setIndicators(List<Indicator> indicators) {
+        this.indicators = indicators;
     }
 }

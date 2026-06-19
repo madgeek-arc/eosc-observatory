@@ -1,6 +1,7 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.domain.DefaultIndicators;
+import eu.openaire.observatory.domain.Indicator;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.StakeholderIndicatorsOverride;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
@@ -9,9 +10,10 @@ import gr.uoa.di.madgik.registry.domain.Paging;
 import gr.uoa.di.madgik.registry.service.*;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class StakeholderIndicatorsService extends AbstractCrudService<StakeholderIndicatorsOverride> {
@@ -54,27 +56,33 @@ public class StakeholderIndicatorsService extends AbstractCrudService<Stakeholde
         return results.getResults().stream().findFirst();
     }
 
-    public List<String> getEffectiveIndicators(String stakeholderId) {
+    public List<Indicator> getEffectiveIndicators(String stakeholderId) {
         Stakeholder stakeholder = stakeholderService.get(stakeholderId);
-        List<String> defaults = defaultIndicatorsService.getByType(stakeholder.getType())
-                .map(DefaultIndicators::getIndicatorIds)
+        List<Indicator> defaults = defaultIndicatorsService.getByType(stakeholder.getType())
+                .map(DefaultIndicators::getIndicators)
                 .orElse(List.of());
 
         Optional<StakeholderIndicatorsOverride> override = getByStakeholderId(stakeholderId);
-        if (override.isEmpty()) {
+        if (override.isEmpty() || override.get().getIndicators() == null) {
             return defaults;
         }
 
-        StakeholderIndicatorsOverride delta = override.get();
-        List<String> effective = new ArrayList<>(defaults);
-        if (delta.getAddedIndicatorIds() != null) {
-            delta.getAddedIndicatorIds().stream()
-                    .filter(id -> !effective.contains(id))
-                    .forEach(effective::add);
-        }
-        if (delta.getRemovedIndicatorIds() != null) {
-            effective.removeAll(delta.getRemovedIndicatorIds());
-        }
-        return effective;
+        Map<String, Boolean> visibilityOverrides = override.get().getIndicators().stream()
+                .collect(Collectors.toMap(Indicator::getId, Indicator::isVisible));
+
+        return defaults.stream()
+                .map(indicator -> {
+                    if (!visibilityOverrides.containsKey(indicator.getId())) {
+                        return indicator;
+                    }
+                    Indicator effective = new Indicator();
+                    effective.setId(indicator.getId());
+                    effective.setLabel(indicator.getLabel());
+                    effective.setFormat(indicator.getFormat());
+                    effective.setGroup(indicator.getGroup());
+                    effective.setVisible(visibilityOverrides.get(indicator.getId()));
+                    return effective;
+                })
+                .collect(Collectors.toList());
     }
 }

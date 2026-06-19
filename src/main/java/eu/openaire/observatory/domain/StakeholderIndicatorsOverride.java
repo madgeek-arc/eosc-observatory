@@ -8,8 +8,7 @@ public class StakeholderIndicatorsOverride implements Identifiable<String> {
 
     private String id;
     private String stakeholderId;
-    private List<String> addedIndicatorIds;
-    private List<String> removedIndicatorIds;
+    private List<Indicator> indicators;
 
     public StakeholderIndicatorsOverride() {
     }
@@ -32,19 +31,11 @@ public class StakeholderIndicatorsOverride implements Identifiable<String> {
         this.stakeholderId = stakeholderId;
     }
 
-    public List<String> getAddedIndicatorIds() {
-        return addedIndicatorIds;
+    public List<Indicator> getIndicators() {
+        return indicators;
     }
 
-    public void setAddedIndicatorIds(List<String> addedIndicatorIds) {
-        this.addedIndicatorIds = addedIndicatorIds;
-    }
-
-    public List<String> getRemovedIndicatorIds() {
-        return removedIndicatorIds;
-    }
-
-    public void setRemovedIndicatorIds(List<String> removedIndicatorIds) {
-        this.removedIndicatorIds = removedIndicatorIds;
+    public void setIndicators(List<Indicator> indicators) {
+        this.indicators = indicators;
     }
 }

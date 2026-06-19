@@ -16,16 +16,9 @@
     },
     {
       "multivalued": true,
-      "name": "addedIndicatorIds",
-      "label": "Added Indicator IDs",
-      "path": "$.addedIndicatorIds[*]",
-      "type": "java.lang.String"
-    },
-    {
-      "multivalued": true,
-      "name": "removedIndicatorIds",
-      "label": "Removed Indicator IDs",
-      "path": "$.removedIndicatorIds[*]",
+      "name": "indicatorIds",
+      "label": "Overridden Indicator IDs",
+      "path": "$.indicators[*].id",
       "type": "java.lang.String"
     }
   ],
