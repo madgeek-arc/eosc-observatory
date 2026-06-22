@@ -4,6 +4,7 @@ import eu.openaire.observatory.domain.DefaultIndicators;
 import eu.openaire.observatory.domain.Indicator;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.StakeholderIndicatorsOverride;
+import eu.openaire.observatory.dto.StakeholderIndicatorsSummary;
 import gr.uoa.di.madgik.catalogue.exception.ValidationException;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
@@ -113,6 +114,23 @@ public class StakeholderIndicatorsService extends AbstractCrudService<Stakeholde
                     effective.setVisible(visibilityOverrides.get(indicator.getId()));
                     return effective;
                 })
+                .collect(Collectors.toList());
+    }
+
+    public List<StakeholderIndicatorsSummary> getStakeholdersWithOverrideStatus(String type) {
+        FacetFilter overrideFilter = new FacetFilter();
+        overrideFilter.setResourceType(RESOURCE_TYPE);
+        overrideFilter.setQuantity(10000);
+        Paging<StakeholderIndicatorsOverride> allOverrides = getResults(overrideFilter);
+        Set<String> stakeholderIdsWithOverrides = allOverrides.getResults().stream()
+                .map(StakeholderIndicatorsOverride::getStakeholderId)
+                .collect(Collectors.toSet());
+
+        FacetFilter stakeholderFilter = new FacetFilter();
+        stakeholderFilter.setQuantity(10000);
+        stakeholderFilter.addFilter("type", type);
+        return stakeholderService.getAll(stakeholderFilter).getResults().stream()
+                .map(sh -> new StakeholderIndicatorsSummary(sh.getId(), sh.getCountry(), stakeholderIdsWithOverrides.contains(sh.getId())))
                 .collect(Collectors.toList());
     }
 

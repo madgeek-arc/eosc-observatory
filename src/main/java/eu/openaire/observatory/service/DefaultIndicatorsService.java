@@ -51,6 +51,18 @@ public class DefaultIndicatorsService extends AbstractCrudService<DefaultIndicat
         return super.update(id, resource);
     }
 
+    public DefaultIndicators updateByType(String type, DefaultIndicators resource) throws ResourceNotFoundException {
+        DefaultIndicators existing = getByType(type)
+                .orElseThrow(() -> new ResourceNotFoundException("type", type));
+        return update(existing.getId(), resource);
+    }
+
+    public DefaultIndicators deleteByType(String type) throws ResourceNotFoundException {
+        DefaultIndicators existing = getByType(type)
+                .orElseThrow(() -> new ResourceNotFoundException("type", type));
+        return delete(existing.getId());
+    }
+
     public Optional<DefaultIndicators> getByType(String type) {
         FacetFilter filter = new FacetFilter();
         filter.setResourceType(RESOURCE_TYPE);

@@ -3,6 +3,7 @@ package eu.openaire.observatory.controller;
 import eu.openaire.observatory.domain.DefaultIndicators;
 import eu.openaire.observatory.domain.Indicator;
 import eu.openaire.observatory.domain.StakeholderIndicatorsOverride;
+import eu.openaire.observatory.dto.StakeholderIndicatorsSummary;
 import eu.openaire.observatory.service.DefaultIndicatorsService;
 import eu.openaire.observatory.service.StakeholderIndicatorsService;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
@@ -44,22 +45,27 @@ public class IndicatorsController {
         return new ResponseEntity<>(defaultIndicatorsService.add(defaults), HttpStatus.CREATED);
     }
 
-    @PutMapping("indicators/defaults/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#defaults.getType()) or isAdministratorOfType(#defaults.getType())")
-    public ResponseEntity<DefaultIndicators> updateDefaults(@PathVariable("id") String id,
+    @PutMapping("indicators/defaults/{type}")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type) or isAdministratorOfType(#type)")
+    public ResponseEntity<DefaultIndicators> updateDefaults(@PathVariable("type") String type,
                                                             @RequestBody DefaultIndicators defaults) throws ResourceNotFoundException {
-        return ResponseEntity.ok(defaultIndicatorsService.update(id, defaults));
+        return ResponseEntity.ok(defaultIndicatorsService.updateByType(type, defaults));
     }
 
-    @DeleteMapping("indicators/defaults/{id}")
+    @DeleteMapping("indicators/defaults/{type}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<DefaultIndicators> deleteDefaults(@PathVariable("id") String id) throws ResourceNotFoundException {
-        return ResponseEntity.ok(defaultIndicatorsService.delete(id));
+    public ResponseEntity<DefaultIndicators> deleteDefaults(@PathVariable("type") String type) throws ResourceNotFoundException {
+        return ResponseEntity.ok(defaultIndicatorsService.deleteByType(type));
     }
 
     /*---------------------------*/
     /*   Stakeholder Indicators  */
     /*---------------------------*/
+
+    @GetMapping("stakeholders/types/{type}/indicators/overrides")
+    public ResponseEntity<List<StakeholderIndicatorsSummary>> getStakeholdersOverrideStatus(@PathVariable("type") String type) {
+        return ResponseEntity.ok(stakeholderIndicatorsService.getStakeholdersWithOverrideStatus(type));
+    }
 
     @GetMapping("stakeholders/{stakeholderId}/indicators")
     public ResponseEntity<List<Indicator>> getEffectiveIndicators(@PathVariable("stakeholderId") String stakeholderId) {
@@ -76,7 +82,7 @@ public class IndicatorsController {
     @PutMapping("stakeholders/{stakeholderId}/indicators/overrides")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
     public ResponseEntity<StakeholderIndicatorsOverride> upsertOverrides(@PathVariable("stakeholderId") String stakeholderId,
-                                                                 @RequestBody StakeholderIndicatorsOverride overrides) throws ResourceNotFoundException {
+                                                                         @RequestBody StakeholderIndicatorsOverride overrides) throws ResourceNotFoundException {
         overrides.setStakeholderId(stakeholderId);
         return ResponseEntity.ok(stakeholderIndicatorsService.upsert(overrides));
     }
