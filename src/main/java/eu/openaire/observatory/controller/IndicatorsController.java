@@ -32,7 +32,6 @@ public class IndicatorsController {
     /*---------------------------*/
 
     @GetMapping("indicators/defaults/{type}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type) or isAdministratorOfType(#type)")
     public ResponseEntity<DefaultIndicators> getDefaults(@PathVariable("type") String type) {
         return defaultIndicatorsService.getByType(type)
                 .map(ResponseEntity::ok)
@@ -63,40 +62,28 @@ public class IndicatorsController {
     /*---------------------------*/
 
     @GetMapping("stakeholders/{stakeholderId}/indicators")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId) or isAdministratorOfStakeholder(#stakeholderId) or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<List<Indicator>> getEffectiveIndicators(@PathVariable("stakeholderId") String stakeholderId) {
         return ResponseEntity.ok(stakeholderIndicatorsService.getEffectiveIndicators(stakeholderId));
     }
 
     @GetMapping("stakeholders/{stakeholderId}/indicators/overrides")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfStakeholder(#stakeholderId) or isAdministratorOfStakeholder(#stakeholderId) or isStakeholderMember(#stakeholderId)")
     public ResponseEntity<StakeholderIndicatorsOverride> getOverrides(@PathVariable("stakeholderId") String stakeholderId) {
         return stakeholderIndicatorsService.getByStakeholderId(stakeholderId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("stakeholders/{stakeholderId}/indicators/overrides")
+    @PutMapping("stakeholders/{stakeholderId}/indicators/overrides")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<StakeholderIndicatorsOverride> createOverrides(@PathVariable("stakeholderId") String stakeholderId,
-                                                                 @RequestBody StakeholderIndicatorsOverride overrides) {
-        overrides.setStakeholderId(stakeholderId);
-        return new ResponseEntity<>(stakeholderIndicatorsService.add(overrides), HttpStatus.CREATED);
-    }
-
-    @PutMapping("stakeholders/{stakeholderId}/indicators/overrides/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<StakeholderIndicatorsOverride> updateOverrides(@PathVariable("stakeholderId") String stakeholderId,
-                                                                 @PathVariable("id") String id,
+    public ResponseEntity<StakeholderIndicatorsOverride> upsertOverrides(@PathVariable("stakeholderId") String stakeholderId,
                                                                  @RequestBody StakeholderIndicatorsOverride overrides) throws ResourceNotFoundException {
         overrides.setStakeholderId(stakeholderId);
-        return ResponseEntity.ok(stakeholderIndicatorsService.update(id, overrides));
+        return ResponseEntity.ok(stakeholderIndicatorsService.upsert(overrides));
     }
 
-    @DeleteMapping("stakeholders/{stakeholderId}/indicators/overrides/{id}")
+    @DeleteMapping("stakeholders/{stakeholderId}/indicators/overrides")
     @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
-    public ResponseEntity<StakeholderIndicatorsOverride> deleteOverrides(@PathVariable("stakeholderId") String stakeholderId,
-                                                                 @PathVariable("id") String id) throws ResourceNotFoundException {
-        return ResponseEntity.ok(stakeholderIndicatorsService.delete(id));
+    public ResponseEntity<StakeholderIndicatorsOverride> deleteOverrides(@PathVariable("stakeholderId") String stakeholderId) throws ResourceNotFoundException {
+        return ResponseEntity.ok(stakeholderIndicatorsService.deleteByStakeholderId(stakeholderId));
     }
 }

@@ -63,6 +63,20 @@ public class StakeholderIndicatorsService extends AbstractCrudService<Stakeholde
         return super.update(id, resource);
     }
 
+    public StakeholderIndicatorsOverride deleteByStakeholderId(String stakeholderId) throws ResourceNotFoundException {
+        StakeholderIndicatorsOverride existing = getByStakeholderId(stakeholderId)
+                .orElseThrow(() -> new ResourceNotFoundException("stakeholderId", stakeholderId));
+        return delete(existing.getId());
+    }
+
+    public StakeholderIndicatorsOverride upsert(StakeholderIndicatorsOverride resource) throws ResourceNotFoundException {
+        Optional<StakeholderIndicatorsOverride> existing = getByStakeholderId(resource.getStakeholderId());
+        if (existing.isPresent()) {
+            return update(existing.get().getId(), resource);
+        }
+        return add(resource);
+    }
+
     public Optional<StakeholderIndicatorsOverride> getByStakeholderId(String stakeholderId) {
         FacetFilter filter = new FacetFilter();
         filter.setResourceType(RESOURCE_TYPE);
