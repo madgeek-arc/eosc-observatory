@@ -1,0 +1,26 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "resource_internal_id",
+      "path": "$.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": false,
+      "name": "surveyType",
+      "label": "Survey Type",
+      "path": "$.surveyType",
+      "type": "java.lang.String"
+    }
+  ],
+  "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
+  "name": "survey_settings",
+  "aliases": [],
+  "payloadType": "json",
+  "properties": {
+    "class": "eu.openaire.observatory.domain.SurveyNotificationSettings"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+}
