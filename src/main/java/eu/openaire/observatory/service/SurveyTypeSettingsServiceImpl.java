@@ -20,6 +20,7 @@ import eu.openaire.observatory.domain.SurveyTypeSettings;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.registry.service.*;
 import org.springframework.stereotype.Service;
 
@@ -39,7 +40,7 @@ public class SurveyTypeSettingsServiceImpl extends AbstractCrudService<SurveyTyp
 
     @Override
     public String createId(SurveyTypeSettings resource) {
-        return "survey-type-settings-" + resource.getSurveyType();
+        return "survey-settings-" + resource.getSurveyType();
     }
 
     @Override
@@ -55,5 +56,23 @@ public class SurveyTypeSettingsServiceImpl extends AbstractCrudService<SurveyTyp
         Browsing<SurveyTypeSettings> results = getAll(filter);
         List<SurveyTypeSettings> list = results.getResults();
         return list.isEmpty() ? null : list.get(0);
+    }
+
+    @Override
+    public SurveyTypeSettings upsert(SurveyTypeSettings settings) {
+        SurveyTypeSettings existing = getByType(settings.getSurveyType());
+        if (existing != null) {
+            return update(existing.getId(), settings);
+        }
+        return add(settings);
+    }
+
+    @Override
+    public SurveyTypeSettings deleteByType(String surveyType) throws ResourceNotFoundException {
+        SurveyTypeSettings existing = getByType(surveyType);
+        if (existing == null) {
+            throw new ResourceNotFoundException("No settings found for survey type: " + surveyType);
+        }
+        return delete(existing.getId());
     }
 }

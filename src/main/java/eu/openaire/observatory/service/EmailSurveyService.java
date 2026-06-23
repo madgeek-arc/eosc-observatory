@@ -149,6 +149,42 @@ public class EmailSurveyService {
         }
     }
 
+    public void notifyDeadlineDay(String surveyId) {
+        try {
+            Model survey = modelService.get(surveyId);
+            Set<String> recipients = getStakeholderEmailsForSurvey(survey);
+            if (recipients.isEmpty()) return;
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("surveyName", survey.getName());
+            data.put("deadline", survey.getSubmissionCloseAt() != null ? DATE_FORMAT.format(survey.getSubmissionCloseAt()) : "N/A");
+            data.put("url", buildSurveyUrl(surveyId));
+
+            String body = renderTemplate("emails/inlined-css/deadline_day.ftlh", data);
+            sendBcc("Last day to submit: " + survey.getName(), body, recipients);
+        } catch (Exception e) {
+            logger.error("Failed to send deadline day notification [surveyId={}]", surveyId, e);
+        }
+    }
+
+    public void notifyReopened(String surveyId) {
+        try {
+            Model survey = modelService.get(surveyId);
+            Set<String> recipients = getStakeholderEmailsForSurvey(survey);
+            if (recipients.isEmpty()) return;
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("surveyName", survey.getName());
+            data.put("deadline", survey.getSubmissionCloseAt() != null ? DATE_FORMAT.format(survey.getSubmissionCloseAt()) : null);
+            data.put("url", buildSurveyUrl(surveyId));
+
+            String body = renderTemplate("emails/inlined-css/survey_reopened.ftlh", data);
+            sendBcc("Survey reopened: " + survey.getName(), body, recipients);
+        } catch (Exception e) {
+            logger.error("Failed to send survey reopened notification [surveyId={}]", surveyId, e);
+        }
+    }
+
     @Scheduled(cron = "${observatory.surveySchedulerCron}")
     public void checkSurveyDates() {
         logger.info("Running daily survey date check");
@@ -170,8 +206,13 @@ public class EmailSurveyService {
 
                     if (model.getSubmissionCloseAt() != null) {
                         LocalDate closeDate = toLocalDate(model.getSubmissionCloseAt());
-                        if (today.equals(closeDate) && (settings == null || settings.isNotifyOnEnd())) {
-                            notifySurveyEnd(model.getId());
+                        if (today.equals(closeDate)) {
+                            if (settings == null || settings.isNotifyOnDeadlineDay()) {
+                                notifyDeadlineDay(model.getId());
+                            }
+                            if (settings == null || settings.isNotifyOnEnd()) {
+                                notifySurveyEnd(model.getId());
+                            }
                         } else {
                             int daysAhead = settings != null ? settings.getDeadlineApproachingDays() : 7;
                             LocalDate approachingDate = today.plusDays(daysAhead);

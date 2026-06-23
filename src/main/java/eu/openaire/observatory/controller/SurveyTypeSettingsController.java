@@ -23,7 +23,6 @@ import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Parameter;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,7 +30,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(path = "survey-type-settings", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
 public class SurveyTypeSettingsController {
 
     private final SurveyTypeSettingsService surveyTypeSettingsService;
@@ -40,37 +39,32 @@ public class SurveyTypeSettingsController {
         this.surveyTypeSettingsService = surveyTypeSettingsService;
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/surveys/type/{type}/notification-settings")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<SurveyTypeSettings> get(@PathVariable("id") String id) {
-        return ResponseEntity.ok(surveyTypeSettingsService.get(id));
+    public ResponseEntity<SurveyTypeSettings> getByType(@PathVariable("type") String type) {
+        return ResponseEntity.ok(surveyTypeSettingsService.getByType(type));
     }
 
-    @GetMapping
+    @GetMapping("/surveys/type/notification-settings")
     @BrowseParameters
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Browsing<SurveyTypeSettings>> getAll(
             @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
         return ResponseEntity.ok(surveyTypeSettingsService.getAll(filter));
     }
 
-    @PostMapping
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#settings.surveyType)")
-    public ResponseEntity<SurveyTypeSettings> create(@RequestBody SurveyTypeSettings settings) {
-        return new ResponseEntity<>(surveyTypeSettingsService.add(settings), HttpStatus.CREATED);
+    @PutMapping("/surveys/type/{type}/notification-settings")
+    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type)")
+    public ResponseEntity<SurveyTypeSettings> upsert(@PathVariable("type") String type,
+                                                     @RequestBody SurveyTypeSettings settings) {
+        settings.setSurveyType(type);
+        return ResponseEntity.ok(surveyTypeSettingsService.upsert(settings));
     }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#settings.surveyType)")
-    public ResponseEntity<SurveyTypeSettings> update(@PathVariable("id") String id,
-                                                     @RequestBody SurveyTypeSettings settings) throws ResourceNotFoundException {
-        return ResponseEntity.ok(surveyTypeSettingsService.update(id, settings));
-    }
-
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/surveys/type/{type}/notification-settings")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<SurveyTypeSettings> delete(@PathVariable("id") String id) throws ResourceNotFoundException {
-        return ResponseEntity.ok(surveyTypeSettingsService.delete(id));
+    public ResponseEntity<SurveyTypeSettings> delete(@PathVariable("type") String type) throws ResourceNotFoundException {
+        return ResponseEntity.ok(surveyTypeSettingsService.deleteByType(type));
     }
 }

@@ -26,6 +26,8 @@ public class SurveyTypeSettings implements Identifiable<String> {
     private boolean notifyOnEnd = true;
     private boolean notifyOnDeadlineChange = true;
     private boolean notifyOnDeadlineApproaching = true;
+    private boolean notifyOnDeadlineDay = true;
+    private boolean notifyOnReopened = true;
     private int deadlineApproachingDays = 7;
 
     public SurveyTypeSettings() {
@@ -83,6 +85,24 @@ public class SurveyTypeSettings implements Identifiable<String> {
 
     public SurveyTypeSettings setNotifyOnDeadlineApproaching(boolean notifyOnDeadlineApproaching) {
         this.notifyOnDeadlineApproaching = notifyOnDeadlineApproaching;
+        return this;
+    }
+
+    public boolean isNotifyOnDeadlineDay() {
+        return notifyOnDeadlineDay;
+    }
+
+    public SurveyTypeSettings setNotifyOnDeadlineDay(boolean notifyOnDeadlineDay) {
+        this.notifyOnDeadlineDay = notifyOnDeadlineDay;
+        return this;
+    }
+
+    public boolean isNotifyOnReopened() {
+        return notifyOnReopened;
+    }
+
+    public SurveyTypeSettings setNotifyOnReopened(boolean notifyOnReopened) {
+        this.notifyOnReopened = notifyOnReopened;
         return this;
     }
 

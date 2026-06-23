@@ -17,8 +17,13 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.domain.SurveyTypeSettings;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 
 public interface SurveyTypeSettingsService extends CrudService<SurveyTypeSettings> {
 
     SurveyTypeSettings getByType(String surveyType);
+
+    SurveyTypeSettings upsert(SurveyTypeSettings settings);
+
+    SurveyTypeSettings deleteByType(String surveyType) throws ResourceNotFoundException;
 }

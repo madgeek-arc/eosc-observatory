@@ -131,6 +131,7 @@ public class SurveyAspect {
         updateSurveyPermissions(existing, model, id);
         Model updated = (Model) pjp.proceed();
         notifyDeadlineChangeIfNeeded(existing, model, id);
+        notifyReopenedIfNeeded(existing, model, id);
         return updated;
     }
 
@@ -156,6 +157,17 @@ public class SurveyAspect {
                     permissionService.addPermissions(stakeholder.getAdmins(), List.of(Permissions.WRITE.getKey(), Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey()), List.of(answer.getId()), Groups.STAKEHOLDER_MANAGER.getKey());
                 }
             }
+        }
+    }
+
+    private void notifyReopenedIfNeeded(Model existing, Model model, String id) {
+        if (existing.isActive() || !model.isActive()) return;
+        SurveyTypeSettings settings = surveyTypeSettingsService.getByType(model.getType());
+        if (settings != null && !settings.isNotifyOnReopened()) return;
+        try {
+            emailSurveyService.notifyReopened(id);
+        } catch (Exception e) {
+            logger.warn("Failed to send survey reopened email [surveyId={}]", id, e);
         }
     }
 
