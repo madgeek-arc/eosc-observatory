@@ -16,7 +16,7 @@
 
 package eu.openaire.observatory.service;
 
-import eu.openaire.observatory.domain.SurveyTypeSettings;
+import eu.openaire.observatory.domain.SurveySettings;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
@@ -27,40 +27,40 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class SurveyTypeSettingsServiceImpl extends AbstractCrudService<SurveyTypeSettings> implements SurveyTypeSettingsService {
+public class SurveySettingsServiceImpl extends AbstractCrudService<SurveySettings> implements SurveySettingsService {
 
-    protected SurveyTypeSettingsServiceImpl(ResourceTypeService resourceTypeService,
-                                            ResourceService resourceService,
-                                            SearchService searchService,
-                                            VersionService versionService,
-                                            ParserService parserService,
-                                            ModelResponseValidator validator) {
+    protected SurveySettingsServiceImpl(ResourceTypeService resourceTypeService,
+                                        ResourceService resourceService,
+                                        SearchService searchService,
+                                        VersionService versionService,
+                                        ParserService parserService,
+                                        ModelResponseValidator validator) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
     }
 
     @Override
-    public String createId(SurveyTypeSettings resource) {
+    public String createId(SurveySettings resource) {
         return "survey-settings-" + resource.getSurveyType();
     }
 
     @Override
     public String getResourceType() {
-        return "survey_type_settings";
+        return "survey_settings";
     }
 
     @Override
-    public SurveyTypeSettings getByType(String surveyType) {
+    public SurveySettings getByType(String surveyType) {
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(1);
         filter.addFilter("surveyType", surveyType);
-        Browsing<SurveyTypeSettings> results = getAll(filter);
-        List<SurveyTypeSettings> list = results.getResults();
+        Browsing<SurveySettings> results = getAll(filter);
+        List<SurveySettings> list = results.getResults();
         return list.isEmpty() ? null : list.get(0);
     }
 
     @Override
-    public SurveyTypeSettings upsert(SurveyTypeSettings settings) {
-        SurveyTypeSettings existing = getByType(settings.getSurveyType());
+    public SurveySettings upsert(SurveySettings settings) {
+        SurveySettings existing = getByType(settings.getSurveyType());
         if (existing != null) {
             return update(existing.getId(), settings);
         }
@@ -68,8 +68,8 @@ public class SurveyTypeSettingsServiceImpl extends AbstractCrudService<SurveyTyp
     }
 
     @Override
-    public SurveyTypeSettings deleteByType(String surveyType) throws ResourceNotFoundException {
-        SurveyTypeSettings existing = getByType(surveyType);
+    public SurveySettings deleteByType(String surveyType) throws ResourceNotFoundException {
+        SurveySettings existing = getByType(surveyType);
         if (existing == null) {
             throw new ResourceNotFoundException("No settings found for survey type: " + surveyType);
         }

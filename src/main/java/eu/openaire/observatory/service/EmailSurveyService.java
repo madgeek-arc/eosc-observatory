@@ -19,7 +19,7 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.NotificationPreferences;
 import eu.openaire.observatory.domain.Stakeholder;
-import eu.openaire.observatory.domain.SurveyTypeSettings;
+import eu.openaire.observatory.domain.SurveySettings;
 import eu.openaire.observatory.domain.User;
 import freemarker.template.Configuration;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
@@ -51,7 +51,7 @@ public class EmailSurveyService {
     private final ModelService modelService;
     private final SurveyService surveyService;
     private final UserService userService;
-    private final SurveyTypeSettingsService surveyTypeSettingsService;
+    private final SurveySettingsService surveyNotificationSettingsService;
     private final Configuration freemarkerConfig;
     private final String emailFrom;
     private final ApplicationProperties applicationProperties;
@@ -61,7 +61,7 @@ public class EmailSurveyService {
                               ModelService modelService,
                               @Lazy SurveyService surveyService,
                               UserService userService,
-                              SurveyTypeSettingsService surveyTypeSettingsService,
+                              SurveySettingsService surveyNotificationSettingsService,
                               Configuration freemarkerConfig,
                               @Value("${mailer.from}") String emailFrom,
                               ApplicationProperties applicationProperties) {
@@ -70,7 +70,7 @@ public class EmailSurveyService {
         this.modelService = modelService;
         this.surveyService = surveyService;
         this.userService = userService;
-        this.surveyTypeSettingsService = surveyTypeSettingsService;
+        this.surveyNotificationSettingsService = surveyNotificationSettingsService;
         this.freemarkerConfig = freemarkerConfig;
         this.emailFrom = emailFrom;
         this.applicationProperties = applicationProperties;
@@ -195,7 +195,7 @@ public class EmailSurveyService {
             List<Model> surveys = surveyService.getByType(filter, null).getResults();
             for (Model model : surveys) {
                 try {
-                    SurveyTypeSettings settings = surveyTypeSettingsService.getByType(model.getType());
+                    SurveySettings settings = surveyNotificationSettingsService.getByType(model.getType());
 
                     if (model.getSubmissionStartAt() != null) {
                         LocalDate startDate = toLocalDate(model.getSubmissionStartAt());

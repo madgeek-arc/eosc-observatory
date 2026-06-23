@@ -40,7 +40,7 @@ class EmailSurveyServiceTest {
     @Mock private ModelService modelService;
     @Mock private SurveyService surveyService;
     @Mock private UserService userService;
-    @Mock private SurveyTypeSettingsService surveyTypeSettingsService;
+    @Mock private SurveySettingsService surveyNotificationSettingsService;
     @Mock private Configuration freemarkerConfig;
     @Mock private Template template;
     @Mock private ApplicationProperties applicationProperties;
@@ -55,7 +55,7 @@ class EmailSurveyServiceTest {
                 modelService,
                 surveyService,
                 userService,
-                surveyTypeSettingsService,
+                surveyNotificationSettingsService,
                 freemarkerConfig,
                 "no-reply@openaire.eu",
                 applicationProperties
@@ -171,6 +171,40 @@ class EmailSurveyServiceTest {
         captured.forEach(e -> System.out.println("[notifyDeadlineApproaching] Subject: " + e.getSubject() + " | BCC: " + e.getBcc()));
     }
 
+    // ── notifyDeadlineDay ────────────────────────────────────────────────────
+
+    @Test
+    void notifyDeadlineDay_sendsLastDayEmail() {
+        Model s = survey("s1", "National Survey", "country");
+        stubSurveyAndStakeholders(s, stakeholderWith("alice@test.com"));
+
+        service.notifyDeadlineDay("s1");
+
+        List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
+        assertEquals(1, captured.size());
+        assertTrue(captured.get(0).getBcc().contains("alice@test.com"));
+        assertTrue(captured.get(0).getSubject().contains("Last day"));
+        assertTrue(captured.get(0).getSubject().contains("National Survey"));
+        captured.forEach(e -> System.out.println("[notifyDeadlineDay] Subject: " + e.getSubject() + " | BCC: " + e.getBcc()));
+    }
+
+    // ── notifyReopened ───────────────────────────────────────────────────────
+
+    @Test
+    void notifyReopened_sendsSurveyReopenedEmail() {
+        Model s = survey("s1", "National Survey", "country");
+        stubSurveyAndStakeholders(s, stakeholderWith("alice@test.com"));
+
+        service.notifyReopened("s1");
+
+        List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
+        assertEquals(1, captured.size());
+        assertTrue(captured.get(0).getBcc().contains("alice@test.com"));
+        assertTrue(captured.get(0).getSubject().contains("reopened"));
+        assertTrue(captured.get(0).getSubject().contains("National Survey"));
+        captured.forEach(e -> System.out.println("[notifyReopened] Subject: " + e.getSubject() + " | BCC: " + e.getBcc()));
+    }
+
     // ── Opt-out ──────────────────────────────────────────────────────────────
 
     @Test
@@ -225,7 +259,7 @@ class EmailSurveyServiceTest {
     }
 
     @Test
-    void checkSurveyDates_notifiesEnd_whenTodayIsCloseDate() {
+    void checkSurveyDates_notifiesEndAndDeadlineDay_whenTodayIsCloseDate() {
         Model s = survey("s1", "National Survey", "country");
         s.setSubmissionStartAt(futureDate(-10));
         s.setSubmissionCloseAt(new Date()); // today
@@ -238,8 +272,11 @@ class EmailSurveyServiceTest {
         service.checkSurveyDates();
 
         List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
-        assertEquals(1, captured.size());
-        assertTrue(captured.get(0).getSubject().contains("closed"));
+        // both deadline_day and survey_end fire on the close date
+        assertEquals(2, captured.size());
+        List<String> subjects = captured.stream().map(EmailMessage::getSubject).toList();
+        assertTrue(subjects.stream().anyMatch(sub -> sub.contains("Last day")));
+        assertTrue(subjects.stream().anyMatch(sub -> sub.contains("closed")));
         captured.forEach(e -> System.out.println("[checkSurveyDates-end] Subject: " + e.getSubject() + " | BCC: " + e.getBcc()));
     }
 

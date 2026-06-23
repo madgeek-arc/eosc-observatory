@@ -16,11 +16,11 @@
     }
   ],
   "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
-  "name": "survey_type_settings",
+  "name": "survey_settings",
   "aliases": [],
   "payloadType": "json",
   "properties": {
-    "class": "eu.openaire.observatory.domain.SurveyTypeSettings"
+    "class": "eu.openaire.observatory.domain.SurveyNotificationSettings"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
 }

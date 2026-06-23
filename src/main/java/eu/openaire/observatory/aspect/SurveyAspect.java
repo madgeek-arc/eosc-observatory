@@ -18,7 +18,7 @@ package eu.openaire.observatory.aspect;
 
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
-import eu.openaire.observatory.domain.SurveyTypeSettings;
+import eu.openaire.observatory.domain.SurveySettings;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
@@ -26,7 +26,7 @@ import eu.openaire.observatory.service.EmailSurveyService;
 import eu.openaire.observatory.service.StakeholderService;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
 import eu.openaire.observatory.service.SurveyService;
-import eu.openaire.observatory.service.SurveyTypeSettingsService;
+import eu.openaire.observatory.service.SurveySettingsService;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
@@ -57,7 +57,7 @@ public class SurveyAspect {
     private final StakeholderService stakeholderService;
     private final SurveyAnswerCrudService surveyAnswerService;
     private final EmailSurveyService emailSurveyService;
-    private final SurveyTypeSettingsService surveyTypeSettingsService;
+    private final SurveySettingsService surveyNotificationSettingsService;
 
 
     public SurveyAspect(ModelService modelService,
@@ -66,14 +66,14 @@ public class SurveyAspect {
                         StakeholderService stakeholderService,
                         SurveyAnswerCrudService surveyAnswerService,
                         EmailSurveyService emailSurveyService,
-                        SurveyTypeSettingsService surveyTypeSettingsService) {
+                        SurveySettingsService surveyNotificationSettingsService) {
         this.modelService = modelService;
         this.surveyService = surveyService;
         this.permissionService = permissionService;
         this.stakeholderService = stakeholderService;
         this.surveyAnswerService = surveyAnswerService;
         this.emailSurveyService = emailSurveyService;
-        this.surveyTypeSettingsService = surveyTypeSettingsService;
+        this.surveyNotificationSettingsService = surveyNotificationSettingsService;
     }
 
 
@@ -162,7 +162,7 @@ public class SurveyAspect {
 
     private void notifyReopenedIfNeeded(Model existing, Model model, String id) {
         if (existing.isActive() || !model.isActive()) return;
-        SurveyTypeSettings settings = surveyTypeSettingsService.getByType(model.getType());
+        SurveySettings settings = surveyNotificationSettingsService.getByType(model.getType());
         if (settings != null && !settings.isNotifyOnReopened()) return;
         try {
             emailSurveyService.notifyReopened(id);
@@ -179,7 +179,7 @@ public class SurveyAspect {
                                 .atZone(java.time.ZoneId.systemDefault()).toLocalDate());
         if (!deadlineChanged || model.getSubmissionCloseAt() == null || !surveyHasStarted) return;
 
-        SurveyTypeSettings settings = surveyTypeSettingsService.getByType(model.getType());
+        SurveySettings settings = surveyNotificationSettingsService.getByType(model.getType());
         if (settings != null && !settings.isNotifyOnDeadlineChange()) return;
 
         try {

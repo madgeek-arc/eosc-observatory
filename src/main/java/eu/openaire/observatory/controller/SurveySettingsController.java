@@ -16,8 +16,8 @@
 
 package eu.openaire.observatory.controller;
 
-import eu.openaire.observatory.domain.SurveyTypeSettings;
-import eu.openaire.observatory.service.SurveyTypeSettingsService;
+import eu.openaire.observatory.domain.SurveySettings;
+import eu.openaire.observatory.service.SurveySettingsService;
 import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
@@ -31,40 +31,40 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-public class SurveyTypeSettingsController {
+public class SurveySettingsController {
 
-    private final SurveyTypeSettingsService surveyTypeSettingsService;
+    private final SurveySettingsService surveySettingsService;
 
-    public SurveyTypeSettingsController(SurveyTypeSettingsService surveyTypeSettingsService) {
-        this.surveyTypeSettingsService = surveyTypeSettingsService;
+    public SurveySettingsController(SurveySettingsService surveySettingsService) {
+        this.surveySettingsService = surveySettingsService;
     }
 
-    @GetMapping("/surveys/type/{type}/notification-settings")
+    @GetMapping("/surveys/type/{type}/settings")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<SurveyTypeSettings> getByType(@PathVariable("type") String type) {
-        return ResponseEntity.ok(surveyTypeSettingsService.getByType(type));
+    public ResponseEntity<SurveySettings> getByType(@PathVariable("type") String type) {
+        return ResponseEntity.ok(surveySettingsService.getByType(type));
     }
 
-    @GetMapping("/surveys/type/notification-settings")
+    @GetMapping("/surveys/type/settings")
     @BrowseParameters
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Browsing<SurveyTypeSettings>> getAll(
+    public ResponseEntity<Browsing<SurveySettings>> getAll(
             @Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter filter = FacetFilter.from(allRequestParams);
-        return ResponseEntity.ok(surveyTypeSettingsService.getAll(filter));
+        return ResponseEntity.ok(surveySettingsService.getAll(filter));
     }
 
-    @PutMapping("/surveys/type/{type}/notification-settings")
+    @PutMapping("/surveys/type/{type}/settings")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type)")
-    public ResponseEntity<SurveyTypeSettings> upsert(@PathVariable("type") String type,
-                                                     @RequestBody SurveyTypeSettings settings) {
+    public ResponseEntity<SurveySettings> upsert(@PathVariable("type") String type,
+                                                 @RequestBody SurveySettings settings) {
         settings.setSurveyType(type);
-        return ResponseEntity.ok(surveyTypeSettingsService.upsert(settings));
+        return ResponseEntity.ok(surveySettingsService.upsert(settings));
     }
 
-    @DeleteMapping("/surveys/type/{type}/notification-settings")
+    @DeleteMapping("/surveys/type/{type}/settings")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<SurveyTypeSettings> delete(@PathVariable("type") String type) throws ResourceNotFoundException {
-        return ResponseEntity.ok(surveyTypeSettingsService.deleteByType(type));
+    public ResponseEntity<SurveySettings> delete(@PathVariable("type") String type) throws ResourceNotFoundException {
+        return ResponseEntity.ok(surveySettingsService.deleteByType(type));
     }
 }

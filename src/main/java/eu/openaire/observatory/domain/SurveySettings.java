@@ -18,7 +18,7 @@ package eu.openaire.observatory.domain;
 
 import eu.openaire.observatory.service.Identifiable;
 
-public class SurveyTypeSettings implements Identifiable<String> {
+public class SurveySettings implements Identifiable<String> {
 
     private String id;
     private String surveyType;
@@ -30,7 +30,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
     private boolean notifyOnReopened = true;
     private int deadlineApproachingDays = 7;
 
-    public SurveyTypeSettings() {
+    public SurveySettings() {
     }
 
     @Override
@@ -47,7 +47,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
         return surveyType;
     }
 
-    public SurveyTypeSettings setSurveyType(String surveyType) {
+    public SurveySettings setSurveyType(String surveyType) {
         this.surveyType = surveyType;
         return this;
     }
@@ -56,7 +56,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
         return notifyOnStart;
     }
 
-    public SurveyTypeSettings setNotifyOnStart(boolean notifyOnStart) {
+    public SurveySettings setNotifyOnStart(boolean notifyOnStart) {
         this.notifyOnStart = notifyOnStart;
         return this;
     }
@@ -65,7 +65,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
         return notifyOnEnd;
     }
 
-    public SurveyTypeSettings setNotifyOnEnd(boolean notifyOnEnd) {
+    public SurveySettings setNotifyOnEnd(boolean notifyOnEnd) {
         this.notifyOnEnd = notifyOnEnd;
         return this;
     }
@@ -74,7 +74,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
         return notifyOnDeadlineChange;
     }
 
-    public SurveyTypeSettings setNotifyOnDeadlineChange(boolean notifyOnDeadlineChange) {
+    public SurveySettings setNotifyOnDeadlineChange(boolean notifyOnDeadlineChange) {
         this.notifyOnDeadlineChange = notifyOnDeadlineChange;
         return this;
     }
@@ -83,7 +83,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
         return notifyOnDeadlineApproaching;
     }
 
-    public SurveyTypeSettings setNotifyOnDeadlineApproaching(boolean notifyOnDeadlineApproaching) {
+    public SurveySettings setNotifyOnDeadlineApproaching(boolean notifyOnDeadlineApproaching) {
         this.notifyOnDeadlineApproaching = notifyOnDeadlineApproaching;
         return this;
     }
@@ -92,7 +92,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
         return notifyOnDeadlineDay;
     }
 
-    public SurveyTypeSettings setNotifyOnDeadlineDay(boolean notifyOnDeadlineDay) {
+    public SurveySettings setNotifyOnDeadlineDay(boolean notifyOnDeadlineDay) {
         this.notifyOnDeadlineDay = notifyOnDeadlineDay;
         return this;
     }
@@ -101,7 +101,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
         return notifyOnReopened;
     }
 
-    public SurveyTypeSettings setNotifyOnReopened(boolean notifyOnReopened) {
+    public SurveySettings setNotifyOnReopened(boolean notifyOnReopened) {
         this.notifyOnReopened = notifyOnReopened;
         return this;
     }
@@ -110,7 +110,7 @@ public class SurveyTypeSettings implements Identifiable<String> {
         return deadlineApproachingDays;
     }
 
-    public SurveyTypeSettings setDeadlineApproachingDays(int deadlineApproachingDays) {
+    public SurveySettings setDeadlineApproachingDays(int deadlineApproachingDays) {
         this.deadlineApproachingDays = deadlineApproachingDays;
         return this;
     }
