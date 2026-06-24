@@ -49,22 +49,27 @@ public class SurveySettingsServiceImpl extends AbstractCrudService<SurveySetting
     }
 
     @Override
-    public SurveySettings getByType(String surveyType) {
+    public SurveySettings getByType(String surveyType) throws ResourceNotFoundException {
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(1);
         filter.addFilter("surveyType", surveyType);
         Browsing<SurveySettings> results = getAll(filter);
         List<SurveySettings> list = results.getResults();
-        return list.isEmpty() ? null : list.get(0);
+        if (list.isEmpty()) {
+            throw new ResourceNotFoundException();
+        }
+        return list.getFirst();
     }
 
     @Override
     public SurveySettings upsert(SurveySettings settings) {
-        SurveySettings existing = getByType(settings.getSurveyType());
-        if (existing != null) {
+        try {
+            SurveySettings existing = getByType(settings.getSurveyType());
+            settings.setId(existing.getId()); // set ID when updating
             return update(existing.getId(), settings);
+        } catch (ResourceNotFoundException e) {
+            return add(settings);
         }
-        return add(settings);
     }
 
     @Override
