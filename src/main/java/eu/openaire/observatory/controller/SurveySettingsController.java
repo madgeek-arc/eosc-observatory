@@ -39,13 +39,13 @@ public class SurveySettingsController {
         this.surveySettingsService = surveySettingsService;
     }
 
-    @GetMapping("/surveys/type/{type}/settings")
+    @GetMapping("/surveys/types/{type}/settings")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SurveySettings> getByType(@PathVariable("type") String type) {
         return ResponseEntity.ok(surveySettingsService.getByType(type));
     }
 
-    @GetMapping("/surveys/type/settings")
+    @GetMapping("/surveys/settings")
     @BrowseParameters
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Browsing<SurveySettings>> getAll(
@@ -54,7 +54,7 @@ public class SurveySettingsController {
         return ResponseEntity.ok(surveySettingsService.getAll(filter));
     }
 
-    @PutMapping("/surveys/type/{type}/settings")
+    @PutMapping("/surveys/types/{type}/settings")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type)")
     public ResponseEntity<SurveySettings> upsert(@PathVariable("type") String type,
                                                  @RequestBody SurveySettings settings) {
@@ -62,7 +62,7 @@ public class SurveySettingsController {
         return ResponseEntity.ok(surveySettingsService.upsert(settings));
     }
 
-    @DeleteMapping("/surveys/type/{type}/settings")
+    @DeleteMapping("/surveys/types/{type}/settings")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<SurveySettings> delete(@PathVariable("type") String type) throws ResourceNotFoundException {
         return ResponseEntity.ok(surveySettingsService.deleteByType(type));
