@@ -150,8 +150,10 @@ public class UserController {
 
     @DeleteMapping("users/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<User> delete(@PathVariable("id") String userId) throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException {
-        User user = userService.delete(userId);
-        return new ResponseEntity<>(user, HttpStatus.OK);
+    public ResponseEntity<Void> purge(@PathVariable("id") String userId) throws gr.uoa.di.madgik.registry.exception.ResourceNotFoundException {
+//        User user = userService.delete(userId);  // old: only removed the user record from DB
+//        return new ResponseEntity<>(user, HttpStatus.OK);
+        userService.purge(userId);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }

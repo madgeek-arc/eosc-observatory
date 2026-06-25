@@ -18,7 +18,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.*;
-import eu.openaire.observatory.domain.*;
+import eu.openaire.observatory.permissions.PermissionService;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
@@ -33,16 +33,26 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl extends AbstractCrudService<User> implements UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
+    public static final String DELETED_USER_PLACEHOLDER = "[Deleted User]";
+
     private final PrivacyPolicyService privacyPolicyService;
     private final CrudService<Stakeholder> stakeholderCrudService;
     private final CrudService<Coordinator> coordinatorCrudService;
     private final CrudService<Administrator> administratorCrudService;
+    private final StakeholderService stakeholderService;
+    private final CoordinatorService coordinatorService;
+    private final AdministratorService administratorService;
+    private final CrudService<SurveyAnswer> surveyAnswerCrudService;
+    private final PermissionService permissionService;
+    private final SurveyAnswerCommentService commentService;
     private final ApplicationProperties applicationProperties;
 
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
@@ -54,6 +64,12 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy CrudService<Stakeholder> stakeholderCrudService,
                               @Lazy CrudService<Coordinator> coordinatorCrudService,
                               @Lazy CrudService<Administrator> administratorCrudService,
+                              @Lazy StakeholderService stakeholderService,
+                              @Lazy CoordinatorService coordinatorService,
+                              @Lazy AdministratorService administratorService,
+                              @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
+                              PermissionService permissionService,
+                              SurveyAnswerCommentService commentService,
                               ApplicationProperties applicationProperties,
                               ModelResponseValidator validator) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
@@ -61,6 +77,12 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         this.stakeholderCrudService = stakeholderCrudService;
         this.coordinatorCrudService = coordinatorCrudService;
         this.administratorCrudService = administratorCrudService;
+        this.stakeholderService = stakeholderService;
+        this.coordinatorService = coordinatorService;
+        this.administratorService = administratorService;
+        this.surveyAnswerCrudService = surveyAnswerCrudService;
+        this.permissionService = permissionService;
+        this.commentService = commentService;
         this.applicationProperties = applicationProperties;
     }
 
@@ -158,14 +180,70 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
 
     @Override
     public void purge(String id) throws ResourceNotFoundException {
-        throw new UnsupportedOperationException("Not implemented yet");
-//        User user = delete(id);
-        // delete user from everywhere
-        // stakeholders
-        // surveyAnswers
-        // survey metadata
-        // permissions
-        // core versions of the above
+        // Remove from all stakeholder groups (handles permission cleanup internally)
+        Set<Stakeholder> stakeholders = stakeholderCrudService.getWithFilter("users", id);
+        for (Stakeholder s : stakeholders) {
+            stakeholderService.removeMember(s.getId(), id);
+            stakeholderService.removeAdmin(s.getId(), id);
+        }
+
+        // Remove from all coordinator groups
+        Set<Coordinator> coordinators = coordinatorCrudService.getWithFilter("users", id);
+        for (Coordinator c : coordinators) {
+            coordinatorService.removeMember(c.getId(), id);
+            coordinatorService.removeAdmin(c.getId(), id);
+        }
+
+        // Remove from all administrator groups
+        Set<Administrator> administrators = administratorCrudService.getWithFilter("users", id);
+        for (Administrator a : administrators) {
+            administratorService.removeMember(a.getId(), id);
+        }
+
+        // Anonymize user identity from all survey answer history and metadata
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        List<SurveyAnswer> surveyAnswers = surveyAnswerCrudService.getAll(filter).getResults();
+        for (SurveyAnswer answer : surveyAnswers) {
+            boolean modified = false;
+            if (answer.getHistory() != null && answer.getHistory().getEntries() != null) {
+                for (HistoryEntry entry : answer.getHistory().getEntries()) {
+                    if (entry.getEditors() != null) {
+                        for (Editor editor : entry.getEditors()) {
+                            if (id.equals(editor.getUser())) {
+                                editor.setUser(DELETED_USER_PLACEHOLDER);
+                                modified = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if (answer.getMetadata() != null) {
+                if (id.equals(answer.getMetadata().getCreatedBy())) {
+                    answer.getMetadata().setCreatedBy(DELETED_USER_PLACEHOLDER);
+                    modified = true;
+                }
+                if (id.equals(answer.getMetadata().getModifiedBy())) {
+                    answer.getMetadata().setModifiedBy(DELETED_USER_PLACEHOLDER);
+                    modified = true;
+                }
+            }
+            if (modified) {
+                surveyAnswerCrudService.update(answer.getId(), answer);
+            }
+        }
+
+        // Anonymize comment authorship and @mentions in survey comments
+        commentService.anonymizeUser(id, DELETED_USER_PLACEHOLDER);
+
+        // Safety net: remove any remaining permissions
+        permissionService.removeAll(id);
+
+        // Delete the user record
+//        User user = delete(id);  // old: only removed the user record from DB
+        delete(id);
+
+        // Note: registry versioned copies (core versions) are intentionally left for manual cleanup
     }
 
     private UserInfo createUserInfo(User user) {

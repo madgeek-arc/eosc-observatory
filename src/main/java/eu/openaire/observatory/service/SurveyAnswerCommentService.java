@@ -144,6 +144,12 @@ public class SurveyAnswerCommentService implements CommentService {
         commentRepository.save(thread);
     }
 
+    @Transactional
+    public void anonymizeUser(String userId, String placeholder) {
+        messageRepository.anonymizeAuthor(userId, placeholder);
+        messageRepository.anonymizeMentions(userId, placeholder);
+    }
+
     @Override
     public void deleteMessage(UUID messageId) {
         CommentMessage m = messageRepository.findById(messageId).orElseThrow();

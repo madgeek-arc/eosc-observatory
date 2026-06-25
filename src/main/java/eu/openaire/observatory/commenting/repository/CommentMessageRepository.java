@@ -18,8 +18,12 @@ package eu.openaire.observatory.commenting.repository;
 
 import eu.openaire.observatory.commenting.domain.CommentMessage;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -29,4 +33,14 @@ public interface CommentMessageRepository extends CrudRepository<CommentMessage,
 
     @EntityGraph(attributePaths = "comment")
     Optional<CommentMessage> findWithCommentById(UUID id);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE CommentMessage m SET m.authorId = :placeholder WHERE m.authorId = :userId")
+    void anonymizeAuthor(@Param("userId") String userId, @Param("placeholder") String placeholder);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE commenting.mention SET user_id = :placeholder WHERE user_id = :userId", nativeQuery = true)
+    void anonymizeMentions(@Param("userId") String userId, @Param("placeholder") String placeholder);
 }
