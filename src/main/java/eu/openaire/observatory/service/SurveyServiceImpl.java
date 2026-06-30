@@ -653,6 +653,10 @@ public class SurveyServiceImpl implements SurveyService {
         // Enrich Editors
         for (HistoryEntryDTO entryDTO : history.getEntries()) {
             for (EditorDTO editorDTO : entryDTO.getEditors()) {
+                if (editorDTO.getEmail() == null || editorDTO.getEmail().isEmpty()) {
+                    editorDTO.setFullname("unknown");
+                    continue;
+                }
                 try {
                     User user = userService.get(editorDTO.getEmail());
                     editorDTO.setFullname(user.getFullname());
