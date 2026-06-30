@@ -49,14 +49,14 @@ public class User implements Identifiable<String> {
         } else if (auth.getPrincipal() instanceof OidcUser) {
             OidcUser principal = ((OidcUser) auth.getPrincipal());
             user.sub = principal.getSubject();
-            user.email = principal.getEmail();
+            user.setEmail(principal.getEmail()); // setter normalizes to lowercase
             user.name = principal.getGivenName();
             user.surname = principal.getFamilyName();
             user.fullname = principal.getFullName();
         } else if (auth instanceof OAuth2AuthenticationToken) {
             OAuth2User principal = ((OAuth2AuthenticationToken) auth).getPrincipal();
             user.sub = principal.getAttribute("subject");
-            user.email = principal.getAttribute("email");
+            user.setEmail(principal.getAttribute("email")); // setter normalizes to lowercase
             user.name = principal.getAttribute("givenName");
             user.surname = principal.getAttribute("familyName");
             user.fullname = principal.getAttribute("fullName");
