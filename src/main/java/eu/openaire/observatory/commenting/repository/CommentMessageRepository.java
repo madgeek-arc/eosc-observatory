@@ -25,6 +25,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +34,9 @@ public interface CommentMessageRepository extends CrudRepository<CommentMessage,
 
     @EntityGraph(attributePaths = "comment")
     Optional<CommentMessage> findWithCommentById(UUID id);
+
+    @Query("SELECT DISTINCT mm.commentMessage FROM MessageMention mm WHERE mm.id.userId = :userId")
+    List<CommentMessage> findMessagesMentioning(@Param("userId") String userId);
 
     @Modifying
     @Transactional

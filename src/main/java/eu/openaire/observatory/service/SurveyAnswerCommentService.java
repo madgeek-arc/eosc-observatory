@@ -38,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class SurveyAnswerCommentService implements CommentService {
@@ -146,6 +148,16 @@ public class SurveyAnswerCommentService implements CommentService {
 
     @Transactional
     public void anonymizeUser(String userId, String placeholder) {
+        // scrub the mentioned user's email out of message bodies before anonymizeMentions()
+        // overwrites the structured mention rows this lookup depends on
+        Pattern pattern = Pattern.compile("@\\[[^]]*]\\(" + Pattern.quote(userId) + "\\)");
+        for (CommentMessage message : messageRepository.findMessagesMentioning(userId)) {
+            String updated = pattern.matcher(message.getBody()).replaceAll(Matcher.quoteReplacement(placeholder));
+            if (!updated.equals(message.getBody())) {
+                message.setBody(updated);
+                messageRepository.save(message);
+            }
+        }
         messageRepository.anonymizeAuthor(userId, placeholder);
         messageRepository.anonymizeMentions(userId, placeholder);
     }
