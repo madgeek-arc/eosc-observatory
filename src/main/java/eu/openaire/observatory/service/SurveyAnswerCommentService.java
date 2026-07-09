@@ -150,7 +150,7 @@ public class SurveyAnswerCommentService implements CommentService {
     public void anonymizeUser(String userId, String placeholder) {
         // scrub the mentioned user's email out of message bodies before anonymizeMentions()
         // overwrites the structured mention rows this lookup depends on
-        Pattern pattern = Pattern.compile("@\\[[^]]*]\\(" + Pattern.quote(userId) + "\\)");
+        Pattern pattern = Pattern.compile("@\\{[^}]*}\\(" + Pattern.quote(userId) + "\\)", Pattern.CASE_INSENSITIVE);
         for (CommentMessage message : messageRepository.findMessagesMentioning(userId)) {
             String updated = pattern.matcher(message.getBody()).replaceAll(Matcher.quoteReplacement(placeholder));
             if (!updated.equals(message.getBody())) {
