@@ -80,7 +80,7 @@ public class IndicatorsController {
     }
 
     @PutMapping("stakeholders/{stakeholderId}/indicators/overrides")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
     public ResponseEntity<StakeholderIndicatorsOverride> upsertOverrides(@PathVariable("stakeholderId") String stakeholderId,
                                                                          @RequestBody StakeholderIndicatorsOverride overrides) throws ResourceNotFoundException {
         overrides.setStakeholderId(stakeholderId);
@@ -88,7 +88,7 @@ public class IndicatorsController {
     }
 
     @DeleteMapping("stakeholders/{stakeholderId}/indicators/overrides")
-    @PreAuthorize("hasAuthority('ADMIN') or isStakeholderManager(#stakeholderId)")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
     public ResponseEntity<StakeholderIndicatorsOverride> deleteOverrides(@PathVariable("stakeholderId") String stakeholderId) throws ResourceNotFoundException {
         return ResponseEntity.ok(stakeholderIndicatorsService.deleteByStakeholderId(stakeholderId));
     }
