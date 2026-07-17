@@ -205,7 +205,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             administratorService.removeMember(a.getId(), id);
         }
 
-        // Anonymize user identity from all survey answer history and metadata
+        // Anonymize user identity from all survey answer history and metadata.
+        // 10000 is Elasticsearch's default max result window, not an arbitrary cap; a single
+        // user participating in more than that many surveys is not a realistic scenario.
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(10000);
         List<SurveyAnswer> surveyAnswers = surveyAnswerCrudService.getAll(filter).getResults();
