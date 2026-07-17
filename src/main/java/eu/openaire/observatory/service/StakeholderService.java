@@ -33,4 +33,6 @@ public interface StakeholderService extends CrudService<Stakeholder>, UserGroupS
 
     List<UserDTO> getManagers(String stakeholderId);
 
+    List<String> getAllCountryCodes();
+
 }

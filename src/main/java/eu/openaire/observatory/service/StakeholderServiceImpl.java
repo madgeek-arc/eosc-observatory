@@ -25,6 +25,7 @@ import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
 import gr.uoa.di.madgik.authorization.domain.Permission;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.registry.service.*;
 import org.slf4j.Logger;
@@ -197,6 +198,20 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
                 .map(userService::getUser)
                 .filter(u -> u.getName() != null && u.getSurname() != null)
                 .map(UserDTO::new)
+                .toList();
+    }
+
+    @Override
+    public List<String> getAllCountryCodes() {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        return getAll(filter)
+                .getResults()
+                .stream()
+                .map(Stakeholder::getCountry)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
                 .toList();
     }
 

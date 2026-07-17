@@ -8,6 +8,7 @@ import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
 import gr.uoa.di.madgik.authorization.domain.Permission;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
+import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.Resource;
 import gr.uoa.di.madgik.registry.domain.ResourceType;
 import gr.uoa.di.madgik.registry.service.ParserService;
@@ -246,6 +247,26 @@ class StakeholderServiceImplTest {
         verify(permissionService, never()).removeAll(anyString(), anyString());
         verify(permissionService, never()).removeAll(any(Collection.class), anyString());
         verify(surveyService, never()).getAllByStakeholder("sh-2");
+    }
+
+    @Test
+    void getAllCountryCodesReturnsDistinctSortedCodesIgnoringNulls() {
+        Stakeholder gr = new Stakeholder();
+        gr.setCountry("GR");
+        Stakeholder de = new Stakeholder();
+        de.setCountry("DE");
+        Stakeholder grAgain = new Stakeholder();
+        grAgain.setCountry("GR");
+        Stakeholder noCountry = new Stakeholder();
+        noCountry.setCountry(null);
+
+        Browsing<Stakeholder> browsing = new Browsing<>();
+        browsing.setResults(List.of(gr, de, grAgain, noCountry));
+        doReturn(browsing).when(service).getAll(any());
+
+        List<String> countryCodes = service.getAllCountryCodes();
+
+        assertEquals(List.of("DE", "GR"), countryCodes);
     }
 
     /**
