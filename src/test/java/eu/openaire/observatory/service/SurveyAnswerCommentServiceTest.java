@@ -1,5 +1,6 @@
 package eu.openaire.observatory.service;
 
+import eu.openaire.observatory.commenting.CommentNotificationService;
 import eu.openaire.observatory.commenting.domain.CommentMessage;
 import eu.openaire.observatory.commenting.repository.CommentMessageRepository;
 import eu.openaire.observatory.commenting.repository.CommentRepository;
@@ -31,12 +32,14 @@ class SurveyAnswerCommentServiceTest {
     private CommentMessageRepository messageRepository;
     @Mock
     private CommentMapper mapper;
+    @Mock
+    private CommentNotificationService notificationService;
 
     private SurveyAnswerCommentService service;
 
     @BeforeEach
     void setUp() {
-        service = new SurveyAnswerCommentService(commentRepository, messageRepository, mapper);
+        service = new SurveyAnswerCommentService(commentRepository, messageRepository, mapper, notificationService);
     }
 
     @Test
