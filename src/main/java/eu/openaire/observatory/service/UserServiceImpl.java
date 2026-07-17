@@ -178,6 +178,16 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         }
     }
 
+    /**
+     * Not wrapped in a single transaction: the steps span both the registry's
+     * Postgres+Elasticsearch-backed group/permission storage and this service's own
+     * JPA-backed comment/user storage, so no single transaction manager could cover all of it.
+     * Instead, every step here is idempotent (group/permission removal and the placeholder
+     * rewrites are no-ops when reapplied), so on partial failure it is safe to simply call
+     * purge() again — it will pick up wherever it left off. The one exception is the final
+     * delete(id): if a prior run already completed, retrying throws ResourceNotFoundException,
+     * which is the expected/idiomatic response for deleting an already-deleted resource.
+     */
     @Override
     public void purge(String id) throws ResourceNotFoundException {
         // Normalize to lowercase up front: emails/ids are stored lowercase everywhere
@@ -187,22 +197,28 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
 
         // Remove from all stakeholder groups (handles permission cleanup internally)
         Set<Stakeholder> stakeholders = stakeholderCrudService.getWithFilter("users", id);
+        List<String> stakeholderIds = new ArrayList<>();
         for (Stakeholder s : stakeholders) {
             stakeholderService.removeMember(s.getId(), id);
             stakeholderService.removeAdmin(s.getId(), id);
+            stakeholderIds.add(s.getId());
         }
 
         // Remove from all coordinator groups
         Set<Coordinator> coordinators = coordinatorCrudService.getWithFilter("users", id);
+        List<String> coordinatorIds = new ArrayList<>();
         for (Coordinator c : coordinators) {
             coordinatorService.removeMember(c.getId(), id);
             coordinatorService.removeAdmin(c.getId(), id);
+            coordinatorIds.add(c.getId());
         }
 
         // Remove from all administrator groups
         Set<Administrator> administrators = administratorCrudService.getWithFilter("users", id);
+        List<String> administratorIds = new ArrayList<>();
         for (Administrator a : administrators) {
             administratorService.removeMember(a.getId(), id);
+            administratorIds.add(a.getId());
         }
 
         // Anonymize user identity from all survey answer history and metadata.
@@ -211,6 +227,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         FacetFilter filter = new FacetFilter();
         filter.setQuantity(10000);
         List<SurveyAnswer> surveyAnswers = surveyAnswerCrudService.getAll(filter).getResults();
+        int surveyAnswersAnonymized = 0;
         for (SurveyAnswer answer : surveyAnswers) {
             boolean modified = false;
             if (answer.getHistory() != null && answer.getHistory().getEntries() != null) {
@@ -237,6 +254,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             }
             if (modified) {
                 surveyAnswerCrudService.update(answer.getId(), answer);
+                surveyAnswersAnonymized++;
             }
         }
 
@@ -245,6 +263,15 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
 
         // Safety net: remove any remaining permissions
         permissionService.removeAll(id);
+
+        // Report what the purge touched, for audit/compliance purposes. Logged before the
+        // final delete() so the report is captured even if that last step fails.
+        // Deliberately omits the purged user's id/email from the log line — logging the
+        // identifier being purged would itself retain the PII this method exists to remove.
+        logger.info("Purge report: removed from stakeholder group(s) {}, coordinator group(s) {}, " +
+                        "administrator group(s) {}; anonymized {} survey answer(s); anonymized comment authorship " +
+                        "and @mentions; removed residual permissions.",
+                stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized);
 
         // Delete the user record
 //        User user = delete(id);  // old: only removed the user record from DB
