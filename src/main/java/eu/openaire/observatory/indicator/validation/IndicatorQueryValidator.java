@@ -1,9 +1,10 @@
 package eu.openaire.observatory.indicator.validation;
 
 import eu.openaire.observatory.indicator.model.AggregationType;
+import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
-import eu.openaire.observatory.indicator.model.IndicatorDimensionRef;
-import eu.openaire.observatory.indicator.model.IndicatorKind;
+import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 
@@ -19,10 +20,15 @@ public class IndicatorQueryValidator {
 
     private final IndicatorDefinitionLookup definitions;
     private final DimensionDefinitionLookup dimensions;
+    private final IndicatorAuthorizationService authorization;
 
-    public IndicatorQueryValidator(IndicatorDefinitionLookup definitions, DimensionDefinitionLookup dimensions) {
+    public IndicatorQueryValidator(
+            IndicatorDefinitionLookup definitions,
+            DimensionDefinitionLookup dimensions,
+            IndicatorAuthorizationService authorization) {
         this.definitions = definitions;
         this.dimensions = dimensions;
+        this.authorization = authorization;
     }
 
     public IndicatorExecutionPlan compile(IndicatorQuery query, ActorContext actor) {
@@ -32,6 +38,8 @@ public class IndicatorQueryValidator {
             throw new IndicatorAccessDeniedException(definition.code());
         }
 
+        QuerySecurityScope securityScope = authorization.authorize(actor, definition, query);
+
         AggregationType aggregation = resolveAggregation(definition, query);
 
         List<ResolvedFilter> filters = query.filters().stream()
@@ -39,7 +47,7 @@ public class IndicatorQueryValidator {
             .toList();
 
         List<ResolvedDimension> groupBy = query.groupBy().stream()
-            .peek(dimensionCode -> requireDimensionRef(definition, dimensionCode))
+            .peek(dimensionCode -> requireDimensionBinding(definition, dimensionCode, DimensionUsage.GROUP))
             .map(ResolvedDimension::new)
             .toList();
 
@@ -47,7 +55,7 @@ public class IndicatorQueryValidator {
 
         int limit = query.limit() != null ? query.limit() : DEFAULT_LIMIT;
 
-        return new IndicatorExecutionPlan(definition, aggregation, filters, groupBy, timeRange, limit);
+        return new IndicatorExecutionPlan(definition, aggregation, filters, groupBy, timeRange, securityScope, limit);
     }
 
     private AggregationType resolveAggregation(IndicatorDefinition definition, IndicatorQuery query) {
@@ -55,7 +63,7 @@ public class IndicatorQueryValidator {
             ? query.aggregation()
             : definition.aggregationPolicy().defaultAggregation();
 
-        if (definition.kind() != IndicatorKind.RATIO
+        if (definition.semanticType() != IndicatorSemanticType.RATIO
                 && !definition.aggregationPolicy().allowedAggregations().contains(aggregation)) {
             throw new InvalidAggregationException(definition.code(), aggregation);
         }
@@ -64,10 +72,11 @@ public class IndicatorQueryValidator {
     }
 
     private ResolvedFilter resolveFilter(IndicatorDefinition definition, IndicatorFilter filter) {
-        requireDimensionRef(definition, filter.dimension());
+        IndicatorDimensionBinding binding = requireDimensionBinding(definition, filter.dimension(), DimensionUsage.FILTER);
 
         var dimensionDefinition = dimensions.getRequired(filter.dimension());
-        if (!dimensionDefinition.supportedOperators().contains(filter.operator())) {
+        if (!binding.allowedOperators().contains(filter.operator())
+                || !dimensionDefinition.supportedOperators().contains(filter.operator())) {
             throw new UnsupportedOperatorException(filter.dimension(), filter.operator());
         }
 
@@ -94,10 +103,17 @@ public class IndicatorQueryValidator {
         );
     }
 
-    private IndicatorDimensionRef requireDimensionRef(IndicatorDefinition definition, String dimensionCode) {
-        return definition.dimensions().stream()
-            .filter(ref -> ref.dimensionCode().equals(dimensionCode))
+    private IndicatorDimensionBinding requireDimensionBinding(
+            IndicatorDefinition definition, String dimensionCode, DimensionUsage usage) {
+        IndicatorDimensionBinding binding = definition.dimensions().stream()
+            .filter(b -> b.dimensionCode().equals(dimensionCode))
             .findFirst()
             .orElseThrow(() -> new UnsupportedDimensionException(definition.code(), dimensionCode));
+
+        if (!binding.usages().contains(usage)) {
+            throw new UnsupportedDimensionException(definition.code(), dimensionCode);
+        }
+
+        return binding;
     }
 }

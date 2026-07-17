@@ -4,19 +4,23 @@ import eu.openaire.observatory.indicator.model.AggregationPolicy;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.DimensionDefinition;
 import eu.openaire.observatory.indicator.model.DimensionType;
+import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
-import eu.openaire.observatory.indicator.model.IndicatorDimensionRef;
-import eu.openaire.observatory.indicator.model.IndicatorKind;
+import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
 import eu.openaire.observatory.indicator.model.IndicatorStatus;
 import eu.openaire.observatory.indicator.model.IndicatorValueType;
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
+import eu.openaire.observatory.indicator.model.RatioPolicy;
 import eu.openaire.observatory.indicator.model.TemporalBehavior;
 import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
+import eu.openaire.observatory.indicator.model.ZeroDenominatorHandling;
 
 import java.util.Set;
 import java.util.UUID;
@@ -42,7 +46,7 @@ public final class IndicatorFixtures {
         );
     }
 
-    /** A COUNT indicator, time-series enabled, sourced by whichever handler the test wires up. */
+    /** A MEASURE indicator, time-series enabled, bound to a "local-test-handler" execution binding. */
     public static IndicatorDefinition countIndicator(String code) {
         return new IndicatorDefinition(
             UUID.randomUUID(),
@@ -50,17 +54,20 @@ public final class IndicatorFixtures {
             "Publications",
             "Number of published works",
             IndicatorValueType.INTEGER,
-            IndicatorKind.COUNT,
+            IndicatorSemanticType.MEASURE,
             UnitType.COUNT,
             new AggregationPolicy(
                 AggregationType.SUM,
                 Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
-                null,
-                null,
-                null,
                 NullHandling.EXCLUDE
             ),
-            Set.of(new IndicatorDimensionRef(COUNTRY_DIMENSION, false)),
+            null,
+            Set.of(new IndicatorDimensionBinding(
+                COUNTRY_DIMENSION,
+                Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                Set.of(FilterOperator.EQ, FilterOperator.IN),
+                false
+            )),
             new TimePolicy(
                 true,
                 "publicationYear",
@@ -69,6 +76,7 @@ public final class IndicatorFixtures {
                 TemporalBehavior.PERIOD_VALUE,
                 MissingPeriodHandling.ZERO_FILL
             ),
+            new IndicatorExecutionBinding(code, code), // handlerKey defaults to the indicator code; override per-test as needed
             IndicatorAccessLevel.PUBLIC,
             IndicatorStatus.ACTIVE,
             1
@@ -83,20 +91,19 @@ public final class IndicatorFixtures {
             "Acceptance rate",
             "Accepted / submitted publications",
             IndicatorValueType.DECIMAL,
-            IndicatorKind.RATIO,
+            IndicatorSemanticType.RATIO,
             UnitType.PERCENT,
             new AggregationPolicy(
                 AggregationType.NONE,
                 Set.of(AggregationType.NONE),
-                "publications.accepted",
-                "publications.submitted",
-                AggregationType.SUM,
                 NullHandling.EXCLUDE
             ),
+            new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(),
             new TimePolicy(
                 false, null, Set.of(), null, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.OMIT
             ),
+            new IndicatorExecutionBinding(code, code),
             IndicatorAccessLevel.PUBLIC,
             IndicatorStatus.ACTIVE,
             1
@@ -111,13 +118,13 @@ public final class IndicatorFixtures {
             "Country name",
             "Country display name",
             IndicatorValueType.TEXT,
-            IndicatorKind.ATTRIBUTE,
+            IndicatorSemanticType.ATTRIBUTE,
             UnitType.NONE,
-            new AggregationPolicy(
-                AggregationType.NONE, Set.of(AggregationType.NONE), null, null, null, NullHandling.PRESERVE
-            ),
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
+            null,
             Set.of(),
             new TimePolicy(false, null, Set.of(), null, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.OMIT),
+            new IndicatorExecutionBinding(code, code),
             IndicatorAccessLevel.PUBLIC,
             IndicatorStatus.ACTIVE,
             1
@@ -127,9 +134,9 @@ public final class IndicatorFixtures {
     public static IndicatorDefinition restrictedIndicator(String code) {
         IndicatorDefinition base = countIndicator(code);
         return new IndicatorDefinition(
-            base.id(), base.code(), base.label(), base.description(), base.valueType(), base.kind(),
-            base.unit(), base.aggregationPolicy(), base.dimensions(), base.timePolicy(),
-            IndicatorAccessLevel.RESTRICTED, base.status(), base.version()
+            base.id(), base.code(), base.label(), base.description(), base.valueType(), base.semanticType(),
+            base.unit(), base.aggregationPolicy(), base.ratioPolicy(), base.dimensions(), base.timePolicy(),
+            base.executionBinding(), IndicatorAccessLevel.RESTRICTED, base.status(), base.version()
         );
     }
 }

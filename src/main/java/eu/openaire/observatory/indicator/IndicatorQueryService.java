@@ -24,7 +24,7 @@ public class IndicatorQueryService {
 
     public IndicatorResult execute(IndicatorQuery query, ActorContext actor) {
         IndicatorExecutionPlan plan = validator.compile(query, actor);
-        var handler = handlers.getRequired(plan.definition().code());
+        var handler = handlers.getRequired(plan.definition().executionBinding().handlerKey());
         IndicatorResult result = handler.execute(plan);
         return normalizer.normalize(result, plan.timeRange());
     }

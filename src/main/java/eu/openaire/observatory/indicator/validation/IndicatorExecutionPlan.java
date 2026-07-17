@@ -15,6 +15,7 @@ public record IndicatorExecutionPlan(
     List<ResolvedFilter> filters,
     List<ResolvedDimension> groupBy,
     ResolvedTimeRange timeRange, // nullable
+    QuerySecurityScope securityScope, // trusted, server-derived; never from the client request
     int limit
 ) {
 }

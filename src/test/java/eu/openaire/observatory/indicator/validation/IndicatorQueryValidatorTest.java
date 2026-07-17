@@ -52,7 +52,9 @@ class IndicatorQueryValidatorTest {
         throw new IllegalStateException("unexpected dimension in test: " + code);
     };
 
-    private final IndicatorQueryValidator validator = new IndicatorQueryValidator(definitionLookup, dimensionLookup);
+    private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
+        definitionLookup, dimensionLookup, new AllowAllIndicatorAuthorizationService()
+    );
 
     private static final ActorContext ALLOW_ALL = level -> true;
     private static final ActorContext DENY_RESTRICTED = level -> level != IndicatorAccessLevel.RESTRICTED;
@@ -80,7 +82,7 @@ class IndicatorQueryValidatorTest {
     @Test
     void compileThrowsInvalidAggregationExceptionWhenAggregationNotAllowed() {
         var query = new IndicatorQuery(
-            COUNT_CODE, AggregationType.COUNT_DISTINCT, List.of(), List.of(), null, List.of(), null
+            COUNT_CODE, AggregationType.LAST, List.of(), List.of(), null, List.of(), null
         );
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
@@ -162,5 +164,6 @@ class IndicatorQueryValidatorTest {
         assertThat(plan.timeRange().missingPeriods())
             .isEqualTo(countIndicator.timePolicy().missingPeriodHandling());
         assertThat(plan.limit()).isEqualTo(50);
+        assertThat(plan.securityScope()).isEqualTo(QuerySecurityScope.unrestricted());
     }
 }

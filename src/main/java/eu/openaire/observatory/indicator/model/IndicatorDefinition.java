@@ -13,11 +13,13 @@ public record IndicatorDefinition(
     String label,
     String description,
     IndicatorValueType valueType,
-    IndicatorKind kind,
+    IndicatorSemanticType semanticType,
     UnitType unit,
     AggregationPolicy aggregationPolicy,
-    Set<IndicatorDimensionRef> dimensions, // references DimensionDefinition by code
+    RatioPolicy ratioPolicy, // nullable; meaningful only when semanticType == RATIO
+    Set<IndicatorDimensionBinding> dimensions, // references DimensionDefinition by code
     TimePolicy timePolicy,
+    IndicatorExecutionBinding executionBinding,
     IndicatorAccessLevel accessLevel,
     IndicatorStatus status,
     int version
