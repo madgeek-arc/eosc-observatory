@@ -39,6 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class SurveyAnswerCommentService implements CommentService {
@@ -49,6 +51,12 @@ public class SurveyAnswerCommentService implements CommentService {
     private final CommentNotificationService notificationService;
 
     private static final String TARGET_TYPE = "survey_answer";
+
+    // Mirrors the mention markup the frontend renders into a message body, "@{Display Name}(user-id)"
+    // — CreateMessage/CommentMessage only carry the free-text body plus a separate structured
+    // mentions list, so this format isn't defined anywhere else on the backend. If the frontend's
+    // rendering convention ever changes, this pattern needs to change with it.
+    private static final String MENTION_PATTERN_TEMPLATE = "@\\{[^}]*}\\(%s\\)";
 
     public SurveyAnswerCommentService(CommentRepository commentRepository,
                                       CommentMessageRepository messageRepository,
@@ -149,6 +157,25 @@ public class SurveyAnswerCommentService implements CommentService {
         }
         thread.setStatus(CommentStatus.DELETED);
         commentRepository.save(thread);
+    }
+
+    @Transactional
+    public void anonymizeUser(String userId, String placeholder) {
+        // scrub the mentioned user's email out of message bodies before anonymizeMentions()
+        // overwrites the structured mention rows this lookup depends on
+        Pattern pattern = Pattern.compile(String.format(MENTION_PATTERN_TEMPLATE, Pattern.quote(userId)), Pattern.CASE_INSENSITIVE);
+        for (CommentMessage message : messageRepository.findMessagesMentioning(userId)) {
+            String updated = pattern.matcher(message.getBody()).replaceAll(Matcher.quoteReplacement(placeholder));
+            if (!updated.equals(message.getBody())) {
+                message.setBody(updated);
+                messageRepository.save(message);
+            }
+        }
+        messageRepository.anonymizeAuthor(userId, placeholder);
+        // Order matters: drop mention rows that would collide with an existing placeholder
+        // mention on the same message before rewriting the remaining ones to the placeholder.
+        messageRepository.deleteRedundantMentions(userId, placeholder);
+        messageRepository.anonymizeMentions(userId, placeholder);
     }
 
     @Override
