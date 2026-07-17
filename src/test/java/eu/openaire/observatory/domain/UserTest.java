@@ -23,7 +23,7 @@ class UserTest {
 
         User user = User.of(authentication);
 
-        assertThat(user.getEmail()).isEqualTo("User@Example.com");
+        assertThat(user.getEmail()).isEqualTo("user@example.com");
         assertThat(user.getId()).isEqualTo("user@example.com");
     }
 
@@ -38,7 +38,7 @@ class UserTest {
 
         User user = User.of(authentication);
 
-        assertThat(user.getEmail()).isEqualTo("Other@Example.com");
+        assertThat(user.getEmail()).isEqualTo("other@example.com");
         assertThat(user.getId()).isEqualTo("other@example.com");
     }
 
