@@ -181,4 +181,31 @@ class CommentingTests extends IntegrationTestConfig {
         assertEquals(1, reloaded.getMentions().size());
     }
 
+    @Test
+    void findMessagesMentioningReturnsOnlyMessagesThatMentionTheGivenUser() {
+        CommentThread comment = commentRepository.findById(getCommentId()).orElseThrow();
+
+        CommentMessage mentioning = new CommentMessage();
+        mentioning.setBody("cc @{A}(user-a@example.com)");
+        mentioning.addMentions(List.of("user-a@example.com"));
+        comment.addMessage(mentioning);
+        commentMessageRepository.save(mentioning);
+
+        CommentMessage mentioningSomeoneElse = new CommentMessage();
+        mentioningSomeoneElse.setBody("cc @{B}(user-b@example.com)");
+        mentioningSomeoneElse.addMentions(List.of("user-b@example.com"));
+        comment.addMessage(mentioningSomeoneElse);
+        commentMessageRepository.save(mentioningSomeoneElse);
+
+        CommentMessage notMentioningAnyone = new CommentMessage();
+        notMentioningAnyone.setBody("no mentions here");
+        comment.addMessage(notMentioningAnyone);
+        commentMessageRepository.save(notMentioningAnyone);
+
+        List<CommentMessage> found = commentMessageRepository.findMessagesMentioning("user-a@example.com");
+
+        assertEquals(1, found.size());
+        assertEquals(mentioning.getId(), found.getFirst().getId());
+    }
+
 }
