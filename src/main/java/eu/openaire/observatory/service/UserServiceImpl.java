@@ -277,7 +277,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
 //        User user = delete(id);  // old: only removed the user record from DB
         delete(id);
 
-        // Note: registry versioned copies (core versions) are intentionally left for manual cleanup
+        // TODO: registry versioned copies (core versions) of User/SurveyAnswer still retain
+        // this user's PII after purge() runs — they are not anonymized or deleted. This is a
+        // GDPR gap, not just tech debt; needs a tracked fix (e.g. anonymize/purge past versions
+        // too), not manual cleanup.
     }
 
     private UserInfo createUserInfo(User user) {
