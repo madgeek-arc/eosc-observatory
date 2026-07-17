@@ -180,6 +180,11 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
 
     @Override
     public void purge(String id) throws ResourceNotFoundException {
+        // Normalize to lowercase up front: emails/ids are stored lowercase everywhere
+        // (see User#setEmail, User#getId), but this id comes from a path variable and
+        // isn't guaranteed to match that casing. Every comparison/query below is exact-case.
+        id = id.toLowerCase();
+
         // Remove from all stakeholder groups (handles permission cleanup internally)
         Set<Stakeholder> stakeholders = stakeholderCrudService.getWithFilter("users", id);
         for (Stakeholder s : stakeholders) {
