@@ -86,10 +86,9 @@ public class JWSInvitationService implements InvitationService {
         JWSObject jwsObject = new JWSObject(new JWSHeader(JWSAlgorithm.HS256), new Payload(invitation));
 
         try {
-            // Apply the HMAC to the JWS object
             jwsObject.sign(signer);
         } catch (JOSEException e) {
-            logger.error(e.getMessage(), e);
+            throw new ServiceException(e);
         }
 
         return jwsObject.serialize();
@@ -138,7 +137,7 @@ public class JWSInvitationService implements InvitationService {
 
     private Map<String, Object> createInvitationObject(User inviter, String invitee, String role, String stakeholderId, Date expiration) {
         Map<String, Object> invitation = new LinkedHashMap<>();
-        invitation.put("inviter", inviter.getEmail());
+        invitation.put("inviter", inviter.getEmail().toLowerCase());
         invitation.put("invitee", invitee.toLowerCase());
         invitation.put("role", role);
         invitation.put("stakeholder", stakeholderId);

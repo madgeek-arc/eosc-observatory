@@ -5,6 +5,11 @@ import eu.openaire.observatory.domain.History;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
+import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.dto.EditorDTO;
+import eu.openaire.observatory.dto.HistoryActionDTO;
+import eu.openaire.observatory.dto.HistoryDTO;
+import eu.openaire.observatory.dto.HistoryEntryDTO;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
@@ -18,6 +23,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 
+import java.util.Date;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -113,6 +122,62 @@ class SurveyServiceImplTest {
 
         assertSame(surveyAnswer, result);
         verify(surveyAnswerCrudService).get("sa-1");
+    }
+
+    // enrichHistory tests — exercised via getHistory(), which calls enrichHistory() internally
+
+    @Test
+    void getHistorySetsFulnameToUnknownWhenEditorEmailIsNull() {
+        HistoryDTO historyDTO = historyWithEditors(new EditorDTO(null, "manager", new Date()));
+        when(surveyAnswerCrudService.getHistory(eq("sa-1"), any())).thenReturn(historyDTO);
+
+        HistoryDTO result = service.getHistory("sa-1");
+
+        assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("unknown");
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void getHistorySetsFulnameToUnknownWhenEditorEmailIsEmpty() {
+        HistoryDTO historyDTO = historyWithEditors(new EditorDTO("", "manager", new Date()));
+        when(surveyAnswerCrudService.getHistory(eq("sa-1"), any())).thenReturn(historyDTO);
+
+        HistoryDTO result = service.getHistory("sa-1");
+
+        assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("unknown");
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void getHistoryResolvesFullnameFromUserServiceWhenEmailIsPresent() {
+        HistoryDTO historyDTO = historyWithEditors(new EditorDTO("alice@example.com", "manager", new Date()));
+        User alice = new User();
+        alice.setEmail("alice@example.com");
+        alice.setFullname("Alice Smith");
+        when(surveyAnswerCrudService.getHistory(eq("sa-1"), any())).thenReturn(historyDTO);
+        when(userService.get("alice@example.com")).thenReturn(alice);
+
+        HistoryDTO result = service.getHistory("sa-1");
+
+        assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("Alice Smith");
+    }
+
+    @Test
+    void getHistorySetsFulnameToUnknownWhenUserNotFoundInRegistry() {
+        HistoryDTO historyDTO = historyWithEditors(new EditorDTO("ghost@example.com", "manager", new Date()));
+        when(surveyAnswerCrudService.getHistory(eq("sa-1"), any())).thenReturn(historyDTO);
+        when(userService.get("ghost@example.com")).thenThrow(new ResourceNotFoundException("ghost@example.com", "user"));
+
+        HistoryDTO result = service.getHistory("sa-1");
+
+        assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("unknown");
+    }
+
+    private static HistoryDTO historyWithEditors(EditorDTO... editors) {
+        HistoryEntryDTO entry = new HistoryEntryDTO();
+        entry.setEditors(List.of(editors));
+        entry.setAction(HistoryActionDTO.of(History.HistoryAction.UPDATED, null));
+        return new HistoryDTO(List.of(entry));
     }
 
     private Authentication oidcAuthentication() {

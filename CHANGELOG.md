@@ -44,6 +44,20 @@
 * Updating a document sets 'curated' flag to true ([7059b69](https://github.com/madgeek-arc/eosc-observatory/commit/7059b69426a7c1fb7097a4d94ea8a26b2a942bc4))
 * Updating a message method uses findWithCommentById() method which initializes the comment thread - fixes lazy initialization outside of session when mapping to dto ([ba39258](https://github.com/madgeek-arc/eosc-observatory/commit/ba39258da2ccaceb1096d6d629d364aff20ad48f))
 
+## [4.4.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.3.0...4.4.0) (2026-05-21)
+
+
+### Features
+
+* add method returning public news of a stakeholder ([dd6e599](https://github.com/madgeek-arc/eosc-observatory/commit/dd6e59945d28ac5aa923a54baaf9f02324f2ea01))
+* add method returning views for the provided path ([d7add13](https://github.com/madgeek-arc/eosc-observatory/commit/d7add13aa050f747d0d782b9dd02272d8089f818))
+
+
+### Bug Fixes
+
+* pageviews now returns correct number of months ([2ef7831](https://github.com/madgeek-arc/eosc-observatory/commit/2ef783105650bb5ad9bef7ee6fdfddbc3779f34a))
+* permit STOMP DISCONNECT frames to avoid Spring Security access denied warnings ([8b1c098](https://github.com/madgeek-arc/eosc-observatory/commit/8b1c098a872fd0b7ef88dc0adced1ff037526737))
+
 ## [4.3.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.2.1...4.3.0) (2026-04-01)
 
 
