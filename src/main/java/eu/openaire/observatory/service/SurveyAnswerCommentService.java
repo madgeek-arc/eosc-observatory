@@ -50,6 +50,12 @@ public class SurveyAnswerCommentService implements CommentService {
 
     private static final String TARGET_TYPE = "survey_answer";
 
+    // Mirrors the mention markup the frontend renders into a message body, "@{Display Name}(user-id)"
+    // — CreateMessage/CommentMessage only carry the free-text body plus a separate structured
+    // mentions list, so this format isn't defined anywhere else on the backend. If the frontend's
+    // rendering convention ever changes, this pattern needs to change with it.
+    private static final String MENTION_PATTERN_TEMPLATE = "@\\{[^}]*}\\(%s\\)";
+
     public SurveyAnswerCommentService(CommentRepository commentRepository,
                                       CommentMessageRepository messageRepository,
                                       CommentMapper mapper) {
@@ -150,7 +156,7 @@ public class SurveyAnswerCommentService implements CommentService {
     public void anonymizeUser(String userId, String placeholder) {
         // scrub the mentioned user's email out of message bodies before anonymizeMentions()
         // overwrites the structured mention rows this lookup depends on
-        Pattern pattern = Pattern.compile("@\\{[^}]*}\\(" + Pattern.quote(userId) + "\\)", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile(String.format(MENTION_PATTERN_TEMPLATE, Pattern.quote(userId)), Pattern.CASE_INSENSITIVE);
         for (CommentMessage message : messageRepository.findMessagesMentioning(userId)) {
             String updated = pattern.matcher(message.getBody()).replaceAll(Matcher.quoteReplacement(placeholder));
             if (!updated.equals(message.getBody())) {

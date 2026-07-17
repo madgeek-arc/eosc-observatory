@@ -274,7 +274,6 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                 stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized);
 
         // Delete the user record
-//        User user = delete(id);  // old: only removed the user record from DB
         delete(id);
 
         // TODO: registry versioned copies (core versions) of User/SurveyAnswer still retain
