@@ -195,6 +195,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // isn't guaranteed to match that casing. Every comparison/query below is exact-case.
         id = id.toLowerCase();
 
+        // TODO: removeMember/removeAdmin below only clear this user from the *current* version
+        // of each Stakeholder. Registry core versions still show this user in past members/admins
+        // sets. Implement user erasure from Stakeholder and its versions.
         // Remove from all stakeholder groups (handles permission cleanup internally)
         Set<Stakeholder> stakeholders = stakeholderCrudService.getWithFilter("users", id);
         List<String> stakeholderIds = new ArrayList<>();
@@ -204,6 +207,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             stakeholderIds.add(s.getId());
         }
 
+        // TODO: same gap as above, for Coordinator — past members/admins sets survive in its
+        // registry core versions. Implement user erasure from Coordinator and its versions.
         // Remove from all coordinator groups
         Set<Coordinator> coordinators = coordinatorCrudService.getWithFilter("users", id);
         List<String> coordinatorIds = new ArrayList<>();
@@ -213,6 +218,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             coordinatorIds.add(c.getId());
         }
 
+        // TODO: same gap as above, for Administrator — past members sets survive in its
+        // registry core versions. Implement user erasure from Administrator and its versions.
         // Remove from all administrator groups
         Set<Administrator> administrators = administratorCrudService.getWithFilter("users", id);
         List<String> administratorIds = new ArrayList<>();
@@ -221,6 +228,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             administratorIds.add(a.getId());
         }
 
+        // TODO: the anonymization below only rewrites the *current* version of each SurveyAnswer.
+        // Registry core versions still show this user as editor/creator/modifier in past
+        // revisions. Implement user erasure from Surveys and their versions.
         // Anonymize user identity from all survey answer history and metadata.
         // 10000 is Elasticsearch's default max result window, not an arbitrary cap; a single
         // user participating in more than that many surveys is not a realistic scenario.
@@ -273,13 +283,11 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                         "and @mentions; removed residual permissions.",
                 stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized);
 
+        // TODO: delete(id) below only removes the *current* User resource. Registry core
+        // versions still retain this user's full PII (name, email, etc.) from before this purge.
+        // Implement erasure of the User resource's own version history too.
         // Delete the user record
         delete(id);
-
-        // TODO: registry versioned copies (core versions) of User/SurveyAnswer still retain
-        // this user's PII after purge() runs — they are not anonymized or deleted. This is a
-        // GDPR gap, not just tech debt; needs a tracked fix (e.g. anonymize/purge past versions
-        // too), not manual cleanup.
     }
 
     private UserInfo createUserInfo(User user) {
