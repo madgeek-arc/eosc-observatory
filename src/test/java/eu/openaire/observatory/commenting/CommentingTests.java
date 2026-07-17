@@ -32,6 +32,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -147,6 +148,37 @@ class CommentingTests extends IntegrationTestConfig {
     @Test
     void deleteComment() {
         commentRepository.deleteById(getCommentId());
+    }
+
+    @Test
+    void anonymizeMentionsHandlesPlaceholderCollision() {
+        String placeholder = "[Deleted User]";
+        CommentThread comment = commentRepository.findById(getCommentId()).orElseThrow();
+
+        // one message mentioning two different users
+        CommentMessage message = new CommentMessage();
+        message.setBody("cc @{A}(user-a@example.com) @{B}(user-b@example.com)");
+        message.addMentions(List.of("user-a@example.com", "user-b@example.com"));
+        comment.addMessage(message);
+        commentMessageRepository.save(message);
+
+        // simulate user-b being purged first: its mention row becomes the placeholder
+        commentMessageRepository.deleteRedundantMentions("user-b@example.com", placeholder);
+        commentMessageRepository.anonymizeMentions("user-b@example.com", placeholder);
+
+        // purging user-a next would collide on (message_id, placeholder) without
+        // deleteRedundantMentions() clearing the redundant row first
+        assertDoesNotThrow(() -> {
+            commentMessageRepository.deleteRedundantMentions("user-a@example.com", placeholder);
+            commentMessageRepository.anonymizeMentions("user-a@example.com", placeholder);
+        });
+
+        CommentMessage reloaded = commentMessageRepository.findById(message.getId()).orElseThrow();
+        long placeholderMentions = reloaded.getMentions().stream()
+                .filter(m -> placeholder.equals(m.getUserId()))
+                .count();
+        assertEquals(1, placeholderMentions);
+        assertEquals(1, reloaded.getMentions().size());
     }
 
 }

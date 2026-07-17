@@ -159,6 +159,9 @@ public class SurveyAnswerCommentService implements CommentService {
             }
         }
         messageRepository.anonymizeAuthor(userId, placeholder);
+        // Order matters: drop mention rows that would collide with an existing placeholder
+        // mention on the same message before rewriting the remaining ones to the placeholder.
+        messageRepository.deleteRedundantMentions(userId, placeholder);
         messageRepository.anonymizeMentions(userId, placeholder);
     }
 

@@ -43,6 +43,21 @@ public interface CommentMessageRepository extends CrudRepository<CommentMessage,
     @Query("UPDATE CommentMessage m SET m.authorId = :placeholder WHERE m.authorId = :userId")
     void anonymizeAuthor(@Param("userId") String userId, @Param("placeholder") String placeholder);
 
+    /**
+     * mention's PK is (message_id, user_id). If this message already has a mention row
+     * for the placeholder (e.g. a different mentioned user in the same message was purged
+     * earlier), rewriting this user's row to the placeholder would collide on that PK.
+     * Drop the redundant row instead — the message already shows the placeholder as mentioned.
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM commenting.mention m1 WHERE m1.user_id = :userId " +
+                   "AND EXISTS (SELECT 1 FROM commenting.mention m2 WHERE m2.comment_message_id = m1.comment_message_id AND m2.user_id = :placeholder)",
+           nativeQuery = true)
+    void deleteRedundantMentions(@Param("userId") String userId, @Param("placeholder") String placeholder);
+
+    // Safe to update in place: deleteRedundantMentions() already removed any row that would
+    // collide with an existing placeholder mention on the same message.
     @Modifying
     @Transactional
     @Query(value = "UPDATE commenting.mention SET user_id = :placeholder WHERE user_id = :userId", nativeQuery = true)
