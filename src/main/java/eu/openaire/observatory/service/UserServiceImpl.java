@@ -69,7 +69,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy AdministratorService administratorService,
                               @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
                               PermissionService permissionService,
-                              SurveyAnswerCommentService commentService,
+                              @Lazy SurveyAnswerCommentService commentService,
                               ApplicationProperties applicationProperties,
                               ModelResponseValidator validator) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
