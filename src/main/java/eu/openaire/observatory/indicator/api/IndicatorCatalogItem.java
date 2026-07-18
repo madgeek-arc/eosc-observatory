@@ -3,25 +3,33 @@ package eu.openaire.observatory.indicator.api;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.RenderHint;
 import eu.openaire.observatory.indicator.model.UnitType;
+import eu.openaire.observatory.indicator.validation.DimensionDefinitionLookup;
 
-/** UI-facing catalog projection — deliberately excludes executionBinding and internal policy objects. */
+import java.util.List;
+
+/**
+ * UI-facing catalog projection — deliberately excludes executionBinding and internal policy
+ * objects. Exposes every dimension the indicator can be filtered/grouped by (not just country) so
+ * a dynamic builder can discover and render filter controls generically, per indicator.
+ */
 public record IndicatorCatalogItem(
     String id,
     String label,
     String format, // "percentage" | "number" | "map"
     String group,
-    boolean supportsCountry,
+    List<IndicatorDimensionCapability> dimensions,
     boolean supportsTimeRange
 ) {
-    public static IndicatorCatalogItem from(IndicatorDefinition definition) {
+    public static IndicatorCatalogItem from(IndicatorDefinition definition, DimensionDefinitionLookup dimensionLookup) {
         String format = definition.renderHint() == RenderHint.ENTITY_MAP ? "map"
             : definition.unit() == UnitType.PERCENT ? "percentage"
             : "number";
-        boolean supportsCountry = definition.dimensions().stream()
-            .anyMatch(binding -> binding.dimensionCode().equals("country"));
+        List<IndicatorDimensionCapability> dimensions = definition.dimensions().stream()
+            .map(binding -> IndicatorDimensionCapability.from(binding, dimensionLookup.getRequired(binding.dimensionCode())))
+            .toList();
         return new IndicatorCatalogItem(
             definition.code(), definition.label(), format, definition.groupCode(),
-            supportsCountry, definition.timePolicy().supported()
+            dimensions, definition.timePolicy().supported()
         );
     }
 }

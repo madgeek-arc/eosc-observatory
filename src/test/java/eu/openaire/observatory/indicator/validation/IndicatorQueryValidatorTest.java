@@ -26,15 +26,17 @@ class IndicatorQueryValidatorTest {
     private static final String RATIO_CODE = "publications.acceptance_rate";
     private static final String NON_TIME_SERIES_CODE = "country.name";
     private static final String RESTRICTED_CODE = "publications.count.restricted";
+    private static final String REQUIRED_FILTER_CODE = "publications.count.required_filter";
 
     private final IndicatorDefinition countIndicator = IndicatorFixtures.countIndicator(COUNT_CODE);
     private final IndicatorDefinition ratioIndicator = IndicatorFixtures.ratioIndicator(RATIO_CODE);
     private final IndicatorDefinition nonTimeSeriesIndicator = IndicatorFixtures.nonTimeSeriesIndicator(NON_TIME_SERIES_CODE);
     private final IndicatorDefinition restrictedIndicator = IndicatorFixtures.restrictedIndicator(RESTRICTED_CODE);
+    private final IndicatorDefinition requiredFilterIndicator = IndicatorFixtures.requiredFilterIndicator(REQUIRED_FILTER_CODE);
     private final DimensionDefinition countryDimension = IndicatorFixtures.countryDimension();
 
     private final Map<String, IndicatorDefinition> definitionsByCode = List.of(
-        countIndicator, ratioIndicator, nonTimeSeriesIndicator, restrictedIndicator
+        countIndicator, ratioIndicator, nonTimeSeriesIndicator, restrictedIndicator, requiredFilterIndicator
     ).stream().collect(Collectors.toMap(IndicatorDefinition::code, d -> d));
 
     private final IndicatorDefinitionLookup definitionLookup = code -> {
@@ -140,6 +142,32 @@ class IndicatorQueryValidatorTest {
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(TimeSeriesNotSupportedException.class);
+    }
+
+    @Test
+    void compileThrowsMissingRequiredFilterExceptionWhenRequiredFilterOmitted() {
+        var query = baseQuery(REQUIRED_FILTER_CODE);
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(MissingRequiredFilterException.class);
+    }
+
+    @Test
+    void compileSucceedsWhenRequiredFilterIsProvided() {
+        var query = new IndicatorQuery(
+            REQUIRED_FILTER_CODE,
+            null,
+            List.of(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
+            List.of(),
+            null,
+            List.of(),
+            null
+        );
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.definition().code()).isEqualTo(REQUIRED_FILTER_CODE);
+        assertThat(plan.filters()).hasSize(1);
     }
 
     @Test

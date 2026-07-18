@@ -10,36 +10,70 @@ class MockIndicatorCatalogTest {
     private final MockIndicatorCatalog catalog = new MockIndicatorCatalog();
 
     @Test
-    void containsAllEightLegacyIndicators() {
-        assertThat(catalog.getAll()).hasSize(8);
-        assertThat(catalog.getAll()).extracting("code")
-            .containsExactlyInAnyOrder("67", "68", "69", "70", "71", "72", "73", "74");
+    void containsTheFiveCollapsedDefinitions() {
+        assertThat(catalog.getAll()).hasSize(5);
+        assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
+            MockIndicatorCatalog.PUBLICATIONS_COUNT, MockIndicatorCatalog.PUBLICATIONS_OA_SHARE,
+            MockIndicatorCatalog.FINANCIAL_INVESTMENT, MockIndicatorCatalog.COUNTRY_INITIATIVE_STATUS,
+            MockIndicatorCatalog.EU_COUNTRY_COVERAGE
+        );
     }
 
     @Test
-    void mapIndicatorsUseEntityMapRenderHint() {
-        assertThat(catalog.get("73").renderHint()).isEqualTo(RenderHint.ENTITY_MAP);
-        assertThat(catalog.get("74").renderHint()).isEqualTo(RenderHint.ENTITY_MAP);
+    void mapIndicatorUsesEntityMapRenderHint() {
+        assertThat(catalog.get(MockIndicatorCatalog.COUNTRY_INITIATIVE_STATUS).renderHint()).isEqualTo(RenderHint.ENTITY_MAP);
     }
 
     @Test
-    void europeWideRatioIndicatorsHaveNoCountryDimension() {
-        assertThat(catalog.get("67").dimensions()).isEmpty();
-        assertThat(catalog.get("68").dimensions()).isEmpty();
-        assertThat(catalog.get("70").dimensions()).isEmpty();
-        assertThat(catalog.get("71").dimensions()).isEmpty();
-        assertThat(catalog.get("72").dimensions()).isEmpty();
+    void euShareIndicatorsHaveNoCountryDimension() {
+        assertThat(catalog.get(MockIndicatorCatalog.PUBLICATIONS_OA_SHARE).dimensions()).isEmpty();
     }
 
     @Test
     void financialInvestmentIsCountryFilterableAndGroupable() {
-        assertThat(catalog.get("69").dimensions())
+        assertThat(catalog.get(MockIndicatorCatalog.FINANCIAL_INVESTMENT).dimensions())
             .extracting("dimensionCode")
             .containsExactly("country");
     }
 
     @Test
+    void euCountryCoverageAndCountryInitiativeStatusRequireInitiativeTypeFilter() {
+        assertThat(catalog.get(MockIndicatorCatalog.EU_COUNTRY_COVERAGE).dimensions())
+            .filteredOn(binding -> binding.dimensionCode().equals("initiativeType"))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+        assertThat(catalog.get(MockIndicatorCatalog.COUNTRY_INITIATIVE_STATUS).dimensions())
+            .filteredOn(binding -> binding.dimensionCode().equals("initiativeType"))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+    }
+
+    @Test
+    void allDefinitionsSupportTimeSeries() {
+        assertThat(catalog.getAll()).allMatch(definition -> definition.timePolicy().supported());
+    }
+
+    @Test
     void unknownCodeReturnsNull() {
         assertThat(catalog.get("999")).isNull();
+    }
+
+    @Test
+    void dimensionReturnsRegisteredDimensions() {
+        assertThat(catalog.dimension("country")).isNotNull();
+        assertThat(catalog.dimension("initiativeType")).isNotNull();
+        assertThat(catalog.dimension("accessStatus")).isNotNull();
+        assertThat(catalog.dimension("unknown")).isNull();
+    }
+
+    @Test
+    void everyDimensionBoundByEveryDefinitionIsRegistered() {
+        for (var definition : catalog.getAll()) {
+            for (var binding : definition.dimensions()) {
+                assertThat(catalog.dimension(binding.dimensionCode()))
+                    .as("dimension %s bound by %s must be registered", binding.dimensionCode(), definition.code())
+                    .isNotNull();
+            }
+        }
     }
 }

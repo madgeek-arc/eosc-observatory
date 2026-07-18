@@ -48,6 +48,8 @@ public class IndicatorQueryValidator {
             .map(filter -> resolveFilter(definition, filter))
             .toList();
 
+        requireMandatoryFilters(definition, filters);
+
         List<ResolvedDimension> groupBy = query.groupBy().stream()
             .peek(dimensionCode -> requireDimensionBinding(definition, dimensionCode, DimensionUsage.GROUP))
             .map(ResolvedDimension::new)
@@ -83,6 +85,18 @@ public class IndicatorQueryValidator {
         }
 
         return new ResolvedFilter(filter.dimension(), filter.operator(), filter.values());
+    }
+
+    private void requireMandatoryFilters(IndicatorDefinition definition, List<ResolvedFilter> filters) {
+        for (IndicatorDimensionBinding binding : definition.dimensions()) {
+            if (!binding.requiredFilter()) {
+                continue;
+            }
+            boolean present = filters.stream().anyMatch(filter -> filter.dimensionCode().equals(binding.dimensionCode()));
+            if (!present) {
+                throw new MissingRequiredFilterException(definition.code(), binding.dimensionCode());
+            }
+        }
     }
 
     private ResolvedTimeRange resolveTimeRange(IndicatorDefinition definition, IndicatorQuery query) {

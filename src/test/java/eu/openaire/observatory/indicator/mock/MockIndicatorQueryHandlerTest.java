@@ -3,6 +3,7 @@ package eu.openaire.observatory.indicator.mock;
 import eu.openaire.observatory.indicator.dimension.DimensionMember;
 import eu.openaire.observatory.indicator.dimension.DimensionMemberPage;
 import eu.openaire.observatory.indicator.dimension.DimensionMemberProvider;
+import eu.openaire.observatory.indicator.dimension.DimensionMemberProviderRegistry;
 import eu.openaire.observatory.indicator.model.AggregationPolicy;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
@@ -42,19 +43,34 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MockIndicatorQueryHandlerTest {
 
     private static final List<String> ALL_COUNTRIES = List.of("DE", "FR", "GR");
+    private static final List<String> ALL_ACCESS_STATUSES = List.of("OA", "CLOSED", "EMBARGOED", "RESTRICTED");
 
-    private final DimensionMemberProvider dimensionMemberProvider =
-        (dimensionCode, indicatorCode, searchText, limit) ->
-            new DimensionMemberPage(ALL_COUNTRIES.stream().map(c -> new DimensionMember(c, c)).toList());
+    private final DimensionMemberProvider countryProvider = fixedProvider("country", ALL_COUNTRIES);
+    private final DimensionMemberProvider accessStatusProvider = fixedProvider("accessStatus", ALL_ACCESS_STATUSES);
 
-    private final MockIndicatorQueryHandler handler = new MockIndicatorQueryHandler(dimensionMemberProvider);
+    private final MockIndicatorQueryHandler handler =
+        new MockIndicatorQueryHandler(new DimensionMemberProviderRegistry(List.of(countryProvider, accessStatusProvider)));
+
+    private static DimensionMemberProvider fixedProvider(String dimensionCode, List<String> codes) {
+        return new DimensionMemberProvider() {
+            @Override
+            public String dimensionCode() {
+                return dimensionCode;
+            }
+
+            @Override
+            public DimensionMemberPage search(String queriedCode, String indicatorCode, String searchText, int limit) {
+                return new DimensionMemberPage(codes.stream().map(c -> new DimensionMember(c, c)).toList());
+            }
+        };
+    }
 
     @Test
     void singleCountrySingleYear() {
         var timeRange = yearRange(2023, 2023);
         var filters = List.of(new ResolvedFilter("country", FilterOperator.EQ, List.of("GR")));
 
-        var result = handler.execute(plan(countryBoundDefinition(), filters, List.of(), timeRange));
+        var result = handler.execute(plan(financialInvestmentDefinition(), filters, List.of(), timeRange));
 
         assertThat(result.data()).hasSize(1);
         assertThat(result.dimensions()).containsExactly("period");
@@ -66,7 +82,7 @@ class MockIndicatorQueryHandlerTest {
         var timeRange = yearRange(2021, 2023);
         var filters = List.of(new ResolvedFilter("country", FilterOperator.EQ, List.of("GR")));
 
-        var result = handler.execute(plan(countryBoundDefinition(), filters, List.of(), timeRange));
+        var result = handler.execute(plan(financialInvestmentDefinition(), filters, List.of(), timeRange));
 
         assertThat(result.data()).hasSize(3);
         assertThat(result.data()).extracting(dp -> dp.dimensions().get("period"))
@@ -78,7 +94,7 @@ class MockIndicatorQueryHandlerTest {
         var timeRange = yearRange(2023, 2023);
         var groupBy = List.of(new ResolvedDimension("country"));
 
-        var result = handler.execute(plan(countryBoundDefinition(), List.of(), groupBy, timeRange));
+        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(), groupBy, timeRange));
 
         assertThat(result.data()).hasSize(ALL_COUNTRIES.size());
         assertThat(result.dimensions()).containsExactly("country", "period");
@@ -89,7 +105,7 @@ class MockIndicatorQueryHandlerTest {
         var timeRange = yearRange(2021, 2023);
         var groupBy = List.of(new ResolvedDimension("country"));
 
-        var result = handler.execute(plan(countryBoundDefinition(), List.of(), groupBy, timeRange));
+        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(), groupBy, timeRange));
 
         assertThat(result.data()).hasSize(ALL_COUNTRIES.size() * 3);
         var year2023ValuesByCountry = result.data().stream()
@@ -103,7 +119,7 @@ class MockIndicatorQueryHandlerTest {
     void nonCountryBoundIndicatorAlwaysReturnsOneAggregateRowPerPeriod() {
         var timeRange = yearRange(2021, 2023);
 
-        var result = handler.execute(plan(europeWideDefinition(), List.of(), List.of(), timeRange));
+        var result = handler.execute(plan(publicationsOaShareDefinition(), List.of(), List.of(), timeRange));
 
         assertThat(result.data()).hasSize(3);
         assertThat(result.dimensions()).containsExactly("period");
@@ -112,10 +128,45 @@ class MockIndicatorQueryHandlerTest {
 
     @Test
     void noTimeRangeReturnsSingleSnapshotRow() {
-        var result = handler.execute(plan(europeWideDefinition(), List.of(), List.of(), null));
+        var result = handler.execute(plan(publicationsOaShareDefinition(), List.of(), List.of(), null));
 
         assertThat(result.data()).hasSize(1);
         assertThat(result.dimensions()).isEmpty();
+    }
+
+    @Test
+    void groupsByNonCountryDimension() {
+        var timeRange = yearRange(2023, 2023);
+        var groupBy = List.of(new ResolvedDimension("accessStatus"));
+
+        var result = handler.execute(plan(publicationsCountDefinition(), List.of(), groupBy, timeRange));
+
+        assertThat(result.dimensions()).containsExactly("accessStatus", "period");
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get("accessStatus"))
+            .containsExactlyInAnyOrderElementsOf(ALL_ACCESS_STATUSES);
+    }
+
+    @Test
+    void groupsByMultipleDimensionsAsACartesianProduct() {
+        var timeRange = yearRange(2023, 2023);
+        var groupBy = List.of(new ResolvedDimension("country"), new ResolvedDimension("accessStatus"));
+
+        var result = handler.execute(plan(publicationsCountDefinition(), List.of(), groupBy, timeRange));
+
+        assertThat(result.dimensions()).containsExactly("country", "accessStatus", "period");
+        assertThat(result.data()).hasSize(ALL_COUNTRIES.size() * ALL_ACCESS_STATUSES.size());
+    }
+
+    @Test
+    void differentInitiativeTypeFiltersProduceDifferentValuesForSameCountryAndYear() {
+        var timeRange = yearRange(2023, 2023);
+        var policyFilters = List.of(new ResolvedFilter("initiativeType", FilterOperator.EQ, List.of("OA_PUBLICATION_POLICY")));
+        var monitoringFilters = List.of(new ResolvedFilter("initiativeType", FilterOperator.EQ, List.of("MONITORING_INITIATIVE")));
+
+        var policyResult = handler.execute(plan(euCountryCoverageDefinition(), policyFilters, List.of(), timeRange));
+        var monitoringResult = handler.execute(plan(euCountryCoverageDefinition(), monitoringFilters, List.of(), timeRange));
+
+        assertThat(policyResult.data().get(0).value()).isNotEqualTo(monitoringResult.data().get(0).value());
     }
 
     private static ResolvedTimeRange yearRange(int fromYear, int toYear) {
@@ -131,10 +182,10 @@ class MockIndicatorQueryHandlerTest {
         );
     }
 
-    /** 69-shaped: country filterable/groupable. */
-    private static IndicatorDefinition countryBoundDefinition() {
+    /** oa.financial_investment-shaped: country filterable/groupable. */
+    private static IndicatorDefinition financialInvestmentDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), "69", "Financial investments in OA Publication", "desc", "Publications",
+            UUID.randomUUID(), "oa.financial_investment", "Financial Investment in OA Publication", "desc", "Publications",
             IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
             null,
@@ -143,21 +194,60 @@ class MockIndicatorQueryHandlerTest {
                 Set.of(FilterOperator.EQ, FilterOperator.IN), false
             )),
             timePolicy(),
-            new IndicatorExecutionBinding("mock", "69"),
+            new IndicatorExecutionBinding("mock", "oa.financial_investment"),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }
 
-    /** 67-shaped: intrinsically Europe-wide, no country dimension. */
-    private static IndicatorDefinition europeWideDefinition() {
+    /** publications.count-shaped: filterable/groupable by both country and accessStatus. */
+    private static IndicatorDefinition publicationsCountDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), "67", "OA Publication in Europe (OA vs Closed)", "desc", "Publications",
+            UUID.randomUUID(), "publications.count", "Publications", "desc", "Publications",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
+            null,
+            Set.of(
+                new IndicatorDimensionBinding(
+                    "country", Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                ),
+                new IndicatorDimensionBinding(
+                    "accessStatus", Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                )
+            ),
+            timePolicy(),
+            new IndicatorExecutionBinding("mock", "publications.count"),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    /** publications.oa_share-shaped: intrinsically Europe-wide, no country dimension. */
+    private static IndicatorDefinition publicationsOaShareDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), "publications.oa_share", "OA Publication Share (Europe)", "desc", "Publications",
             IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(),
             timePolicy(),
-            new IndicatorExecutionBinding("mock", "67"),
+            new IndicatorExecutionBinding("mock", "publications.oa_share"),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    /** oa.eu_country_coverage-shaped: requires an initiativeType filter, no country dimension. */
+    private static IndicatorDefinition euCountryCoverageDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), "oa.eu_country_coverage", "EU Country Coverage of OA Initiative", "desc", "Publications",
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            new RatioPolicy(ZeroDenominatorHandling.NULL),
+            Set.of(new IndicatorDimensionBinding(
+                "initiativeType", Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
+            )),
+            timePolicy(),
+            new IndicatorExecutionBinding("mock", "oa.eu_country_coverage"),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }

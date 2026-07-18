@@ -25,6 +25,11 @@ public class CountryDimensionMemberProvider implements DimensionMemberProvider {
     }
 
     @Override
+    public String dimensionCode() {
+        return COUNTRY_DIMENSION_CODE;
+    }
+
+    @Override
     public DimensionMemberPage search(String dimensionCode, String indicatorCode, String searchText, int limit) {
         if (!COUNTRY_DIMENSION_CODE.equals(dimensionCode)) {
             throw new UnknownDimensionException(dimensionCode);

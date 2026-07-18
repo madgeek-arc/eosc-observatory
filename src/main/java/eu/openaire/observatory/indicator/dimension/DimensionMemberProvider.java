@@ -8,6 +8,9 @@ package eu.openaire.observatory.indicator.dimension;
  */
 public interface DimensionMemberProvider {
 
+    /** The single dimension code this provider serves, used by {@link DimensionMemberProviderRegistry} to dispatch. */
+    String dimensionCode();
+
     /**
      * @param indicatorCode optional; narrows members to what's valid for a specific indicator when
      *                       an implementation supports per-indicator scoping. Unused by

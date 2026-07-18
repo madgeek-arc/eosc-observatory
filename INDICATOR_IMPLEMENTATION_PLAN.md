@@ -67,18 +67,17 @@ replacement composite field instead — a composite number+percentage pair doesn
 **"Types of publications" / access status — not in the survey Model at all**: checked, and the survey
 Model has no such field. Publication access-status/type vocabulary (Open/Closed/Embargo, etc.) is
 **OpenAIRE's own bibliometric API vocabulary** (`result.access mode`, `result.type`), external to this
-survey entirely — matching indicator 67's already-established external sourcing. **Not verified this
-round** against OpenAIRE's live API contract; the allowed `accessStatus` values below are a best-effort
-guess from the existing, working Angular query builder (`OA`/`CLOSED`, possibly also
-`EMBARGO`/`RESTRICTED`), flagged as an assumption to confirm before implementation, not fabricated as
-certain.
+survey entirely — matching indicator 67's already-established external sourcing. **Confirmed**:
+`accessStatus` is not a binary OA/Closed split — it's `OA` vs three distinct non-open statuses,
+`CLOSED`/`EMBARGOED`/`RESTRICTED` (not a single collapsed "Closed" bucket). Exact wire values against
+OpenAIRE's live API contract still unverified this round.
 
 ## Indicator catalog
 
 | Definition | Semantic type | Source | Handler | Notes |
 |---|---|---|---|---|
 | `publications.count` | MEASURE | OpenAIRE bibliometric | `OpenAireBibliometricIndicatorQueryHandler` | `accessStatus` filter values TBC against real OpenAIRE API |
-| `publications.oa_share` | RATIO | OpenAIRE bibliometric | `OpenAireBibliometricIndicatorQueryHandler` | **First working example target** — `accessStatus` filter (`OA`/`CLOSED`) selects which share is returned, directly satisfying "ratio of closed access publications" |
+| `publications.oa_share` | RATIO | OpenAIRE bibliometric | `OpenAireBibliometricIndicatorQueryHandler` | **First working example target** — `accessStatus` filter (`OA` vs `CLOSED`/`EMBARGOED`/`RESTRICTED`) selects which share is returned, directly satisfying "ratio of closed access publications" |
 | `survey.eu_topic_coverage` (generalizes `oa.eu_country_coverage`) | RATIO | Survey stats-tool (proxied) | `SurveyStatsToolIndicatorQueryHandler` | `topic`+aspect filter — confirmed Yes/No source shape above |
 | `survey.country_topic_status` (generalizes `oa.country_initiative_status`) | ATTRIBUTE | Survey stats-tool (proxied) | `SurveyStatsToolIndicatorQueryHandler` | same source, per-country instead of aggregated |
 | `survey.financial_investment` | MEASURE | Survey stats-tool (proxied) | `SurveyStatsToolIndicatorQueryHandler` | confirmed decimals:2, "in millions" scale — needs `DisplayFormat` before real launch |
@@ -94,7 +93,8 @@ certain.
       `https://services.openaire.eu/stats-tool/raw?json=...`, translating the query-DSL shape already
       proven working in `observatory-ui/.../explore-queries.ts` (`OAPublicationVSClosed`) into Java.
       `providerIndicatorKey` distinguishes `publications.count` vs `publications.oa_share`; the
-      `accessStatus` filter value picks OA-share vs Closed-share (complementary, one query covers both)
+      `accessStatus` filter value picks which share is returned — `OA` vs one of `CLOSED`/
+      `EMBARGOED`/`RESTRICTED`, not a single complementary "Closed" bucket (four real statuses, not two)
 - [ ] **`SurveyStatsToolIndicatorQueryHandler`** — implements `IndicatorQueryHandler`. Delegates to
       the existing, already-wired `StatsToolWrapperController` internally (reuse, don't reimplement
       the external call) or a direct `WebClient` against the same `stats-tool.endpoint` config
@@ -150,8 +150,8 @@ and requires only one handler (not all three), keeping the first slice small.
 - [ ] OpenAIRE stats-tool query-DSL and response shape not independently verified against a live call
       this round (translated from the existing working Angular code, which is good evidence, but the
       Java translation itself is unverified)
-- [ ] `accessStatus` allowed values (`OA`/`CLOSED`/others?) — best-effort guess from Angular code, not
-      confirmed against OpenAIRE's API docs
+- [x] `accessStatus` allowed values — confirmed: `OA` vs `CLOSED`/`EMBARGOED`/`RESTRICTED` (not a
+      binary OA/Closed split). Exact wire-format values still to confirm against OpenAIRE's API docs.
 - [ ] EU-country-membership source for coverage denominators (`Stakeholder.associationMember`/
       `mandated` vs. a hardcoded list) — still unresolved
 - [ ] External survey stats-tool's raw response shape (country-coded or not) — `stats-tool.endpoint`

@@ -138,6 +138,37 @@ public final class IndicatorFixtures {
         );
     }
 
+    /** A MEASURE indicator whose sole dimension binding is a required filter (requiredFilter=true). */
+    public static IndicatorDefinition requiredFilterIndicator(String code) {
+        return new IndicatorDefinition(
+            UUID.randomUUID(),
+            code,
+            "Requires a filter",
+            "A measure that cannot be queried without filtering by country",
+            null,
+            IndicatorValueType.INTEGER,
+            IndicatorSemanticType.MEASURE,
+            UnitType.COUNT,
+            RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
+            null,
+            Set.of(new IndicatorDimensionBinding(
+                COUNTRY_DIMENSION,
+                Set.of(DimensionUsage.FILTER),
+                Set.of(FilterOperator.EQ, FilterOperator.IN),
+                true
+            )),
+            new TimePolicy(
+                true, "publicationYear", Set.of(TimeGrain.YEAR), TimeGrain.YEAR,
+                TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.ZERO_FILL
+            ),
+            new IndicatorExecutionBinding(code, code),
+            IndicatorAccessLevel.PUBLIC,
+            IndicatorStatus.ACTIVE,
+            1
+        );
+    }
+
     public static IndicatorDefinition restrictedIndicator(String code) {
         IndicatorDefinition base = countIndicator(code);
         return new IndicatorDefinition(

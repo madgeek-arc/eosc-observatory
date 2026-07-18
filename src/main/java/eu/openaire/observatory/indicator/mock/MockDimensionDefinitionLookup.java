@@ -15,9 +15,10 @@ public class MockDimensionDefinitionLookup implements DimensionDefinitionLookup 
 
     @Override
     public DimensionDefinition getRequired(String code) {
-        if (!MockIndicatorCatalog.COUNTRY_DIMENSION.equals(code)) {
+        DimensionDefinition dimension = catalog.dimension(code);
+        if (dimension == null) {
             throw new IllegalStateException("No dimension registered for code: " + code);
         }
-        return catalog.countryDimension();
+        return dimension;
     }
 }
