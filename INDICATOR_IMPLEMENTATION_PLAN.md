@@ -12,11 +12,22 @@ today: proxied through this backend's `/statistics/raw` endpoint to an external 
 proxied to OpenAIRE's separate bibliometric stats-tool, or (in two cases) genuinely computed locally
 by this backend from its own `SurveyAnswer`/`Stakeholder` storage.
 
-None of this is wired end-to-end yet. `IndicatorQueryController`/`IndicatorCatalogController` are
-unmapped skeletons, no `IndicatorQueryHandler` implementation exists beyond test doubles, and
-`IndicatorAnalyticsRepository`/`RemoteIndicatorClient` have zero implementations. Meanwhile the
-Angular dashboard (`observatory-ui`) works today by calling those external services directly with
-hand-built query strings — the semantic layer isn't in that data path at all.
+**Update — the Spring-wiring half of this is done.** `IndicatorCatalogController`
+(`GET /api/indicators`, `GET /api/indicators/{code}`), `IndicatorQueryController`
+(`POST /api/indicator-queries`), and `DimensionMemberController`
+(`GET /api/dimensions/{code}/members`) are mapped and live (context-path `/api`,
+`server.port=8280`). `IndicatorDefinitionLookup`/`DimensionDefinitionLookup` have concrete,
+Spring-wired implementations (`MockIndicatorDefinitionLookup`/`MockDimensionDefinitionLookup`,
+backed by an in-memory `MockIndicatorCatalog` of the 5 collapsed definitions below), and
+`IndicatorQueryHandlerRegistry` auto-populates from Spring's `List<IndicatorQueryHandler>`
+injection. What's still missing is the data itself: the only registered `IndicatorQueryHandler` is
+`MockIndicatorQueryHandler` (`handlerKey() == "mock"`), which every one of the 5 definitions'
+`executionBinding` currently points at — it returns deterministic synthetic numbers, not real
+ones. `OpenAireBibliometricIndicatorQueryHandler`/`SurveyStatsToolIndicatorQueryHandler`/
+`LocalRegistryIndicatorQueryHandler` below are still unimplemented; nothing below reflects that
+change except where explicitly marked. The Angular dashboard (`observatory-ui`) still works today
+by calling those external services directly with hand-built query strings — the semantic layer
+isn't in that data path at all yet, mock or real.
 
 **Goal**: a concrete, checkable plan to reach a *first working example* — one real, Spring-wired,
 HTTP-reachable indicator query path — so a future dynamic dashboard can ask for something like "ratio
@@ -86,7 +97,20 @@ OpenAIRE's live API contract still unverified this round.
 | `survey.countries_with_validated_answers` | MEASURE | **Local** (`SurveyServiceImpl.getCountriesWithValidatedAnswer`) | `LocalRegistryIndicatorQueryHandler` | genuinely backend-computed (filter+map over local storage, no HTTP) |
 | `stakeholder.participating_countries_count` | MEASURE | **Local** (`StakeholderController.getStakeholderCountryCodesByType`) | `LocalRegistryIndicatorQueryHandler` | same handler, different local source method |
 
+**Naming reality check**: `MockIndicatorCatalog` — the in-memory catalog actually wired up today —
+kept the original `oa.country_initiative_status`/`oa.eu_country_coverage`/`oa.financial_investment`
+codes (matching `LegacyIndicatorCatalogMappingTest`) rather than adopting this table's proposed
+`survey.*` generalization. Those `oa.*` codes are now live in the API contract (see
+`INDICATOR_QUERY_CURL_EXAMPLES.md`), so renaming them to match this table is a real decision with a
+real (if currently mock-only) consumer to consider, not a docs-only fix — left as an open item
+rather than silently reconciled.
+
 ## Handler architecture
+
+`MockIndicatorQueryHandler` (`indicator/mock/MockIndicatorQueryHandler.java`) currently serves
+`handlerKey() == "mock"` for all 5 definitions as a stand-in. The three items below are about
+*replacing* that stand-in with real handlers — the registry/lookup plumbing they'll plug into
+already exists (see "Wiring a new/real indicator into the API" below).
 
 - [ ] **`OpenAireBibliometricIndicatorQueryHandler`** — implements `IndicatorQueryHandler` +
       `RemoteIndicatorClient`. New `WebClient`/`RestTemplate` call to
@@ -106,17 +130,39 @@ OpenAIRE's live API contract still unverified this round.
       Wraps `SurveyServiceImpl`/`StakeholderService` calls directly (constructor-injected), no HTTP
       client at all — the genuinely-local case
 
+## Wiring a new/real indicator into the API
+
+Yes — once a handler is implemented, wiring it in is two additions, not new endpoints:
+
+1. Implement a class `implements IndicatorQueryHandler` (internally wrapping a
+   `RemoteIndicatorClient`/`IndicatorAnalyticsRepository` as appropriate), annotate it `@Service`,
+   give it a distinct `handlerKey()`. Spring auto-collects it into `IndicatorQueryHandlerRegistry`
+   via its `List<IndicatorQueryHandler>` constructor injection
+   (`handler/IndicatorQueryHandlerRegistry.java`) — no controller or registry code changes needed.
+2. Register (or update) the relevant `IndicatorDefinition` so its `executionBinding().handlerKey()`
+   points at the new handler — today that means editing an entry in `MockIndicatorCatalog`; once a
+   real `IndicatorDefinitionLookup` implementation replaces the mock (the persistence decision is
+   still open, see below), it'll be whatever that lookup reads from instead.
+
+Nothing else changes: `GET /api/indicators` lists it and `GET /api/indicators/{code}` describes its
+real dimension capabilities automatically (`IndicatorCatalogItem.from()` is generic over any
+`IndicatorDefinition`), and `POST /api/indicator-queries` routes to it automatically once
+`IndicatorQueryValidator.compile()` resolves the plan's `handlerKey`. This is the payoff of the
+registry/lookup indirection already built — adding a real indicator is a new handler class plus a
+catalog entry, not new plumbing.
+
 ## Spring wiring (needed for a first working example, not full coverage)
 
-- [ ] Add real `@RestController`/`@RequestMapping` annotations to `IndicatorQueryController`
-      (currently an unmapped skeleton) — one route, e.g. `POST /api/v1/indicators/query`, accepting an
-      `IndicatorQuery` body and an authenticated `ActorContext`
-- [ ] `IndicatorDefinitionLookup`/`DimensionDefinitionLookup` need a concrete implementation —
-      recommend an in-memory, `@Component`-annotated class backed by a static `List<IndicatorDefinition>`
-      (the catalog above), since persistence is still an explicit open question
-      — do not block the first working example on a persistence decision
-- [ ] `IndicatorQueryHandlerRegistry` gets a `@Bean` constructed from the concrete handler list
-- [ ] `AllowAllIndicatorAuthorizationService` (already built) is fine as the first-pass authorization
+- [x] `IndicatorQueryController` is mapped and live: `POST /api/indicator-queries`, accepting an
+      `IndicatorQuery` body and an `ActorContext` (currently `AllowAllActorContext`)
+- [x] `IndicatorDefinitionLookup`/`DimensionDefinitionLookup` have concrete implementations —
+      `MockIndicatorDefinitionLookup`/`MockDimensionDefinitionLookup`, backed by the in-memory
+      `MockIndicatorCatalog` (the persistence decision itself is still open — this is the
+      not-blocking-on-it placeholder as intended)
+- [x] `IndicatorQueryHandlerRegistry` auto-populates from Spring's `List<IndicatorQueryHandler>`
+      injection — no manual `@Bean` wiring needed, any `@Service implements IndicatorQueryHandler`
+      is picked up automatically
+- [x] `AllowAllIndicatorAuthorizationService` is built and wired as the first-pass authorization
       implementation
 
 ## First working example — concrete target
@@ -124,13 +170,17 @@ OpenAIRE's live API contract still unverified this round.
 Wire `publications.oa_share` end-to-end:
 
 ```
-POST /api/v1/indicators/query
+POST /api/indicator-queries
 {"indicatorCode":"publications.oa_share","filters":[{"dimension":"accessStatus","operator":"EQ","values":["CLOSED"]}]}
 ```
 
-→ validator compiles a plan → `OpenAireBibliometricIndicatorQueryHandler` calls the real OpenAIRE
-stats-tool → returns a real percentage. This directly answers "ratio of closed access publications"
-and requires only one handler (not all three), keeping the first slice small.
+This exact request/response shape already works today — `IndicatorQueryController` routes it
+through the validator to `MockIndicatorQueryHandler`, which returns a synthetically-generated
+percentage in the right shape. The remaining gap is swapping in
+`OpenAireBibliometricIndicatorQueryHandler` so the same request calls the real OpenAIRE stats-tool
+and returns a real percentage instead — per "Wiring a new/real indicator into the API" above, that
+swap is just a new handler class plus updating this definition's `executionBinding` in the catalog,
+no controller changes.
 
 - [ ] `publications.oa_share` end-to-end path returns a real number from a real HTTP call
 
@@ -160,10 +210,13 @@ and requires only one handler (not all three), keeping the first slice small.
 
 ## Phased rollout
 
-- [ ] **Phase A** — catalog + handler classes, unit-testable, no Spring wiring, no live HTTP
-- [ ] **Phase B** — Spring-wire `IndicatorQueryController`, implement
-      `OpenAireBibliometricIndicatorQueryHandler` for real, ship the one first-working-example path
+- [~] **Phase A** — catalog: done (`MockIndicatorCatalog`, unit-tested). Handler classes: not
+      done — `MockIndicatorQueryHandler` is a mock stand-in, not one of the three real handlers
       above
+- [~] **Phase B** — Spring-wiring `IndicatorQueryController` (and `IndicatorCatalogController`/
+      `DimensionMemberController`): done, live, tested. Implementing
+      `OpenAireBibliometricIndicatorQueryHandler` for real and shipping the first-working-example
+      path with actual data: not done
 - [ ] **Phase C** (future, not detailed here) — remaining handlers, broader catalog coverage, UI
       migration off `EoscReadinessDataService`'s direct external calls, toward a dynamic
       indicator-driven dashboard
