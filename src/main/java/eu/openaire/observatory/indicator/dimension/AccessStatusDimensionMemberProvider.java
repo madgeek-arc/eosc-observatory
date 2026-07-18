@@ -29,11 +29,7 @@ public class AccessStatusDimensionMemberProvider implements DimensionMemberProvi
     }
 
     @Override
-    public DimensionMemberPage search(String dimensionCode, String indicatorCode, String searchText, int limit) {
-        if (!DIMENSION_CODE.equals(dimensionCode)) {
-            throw new UnknownDimensionException(dimensionCode);
-        }
-
+    public DimensionMemberPage search(String indicatorCode, String searchText, int limit) {
         String normalizedSearch = searchText == null ? "" : searchText.trim().toLowerCase(Locale.ROOT);
 
         List<DimensionMember> members = MEMBERS.stream()

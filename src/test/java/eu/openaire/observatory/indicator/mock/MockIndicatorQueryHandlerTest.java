@@ -59,7 +59,7 @@ class MockIndicatorQueryHandlerTest {
             }
 
             @Override
-            public DimensionMemberPage search(String queriedCode, String indicatorCode, String searchText, int limit) {
+            public DimensionMemberPage search(String indicatorCode, String searchText, int limit) {
                 return new DimensionMemberPage(codes.stream().map(c -> new DimensionMember(c, c)).toList());
             }
         };

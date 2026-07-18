@@ -10,7 +10,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,7 +29,7 @@ class CountryDimensionMemberProviderTest {
     void returnsAllCountriesWithDisplayLabelsWhenNoSearchText() {
         when(stakeholderService.getAllCountryCodes()).thenReturn(List.of("DE", "GR"));
 
-        DimensionMemberPage page = provider.search("country", null, "", 100);
+        DimensionMemberPage page = provider.search(null, "", 100);
 
         assertThat(page.members()).containsExactly(
             new DimensionMember("DE", "Germany"),
@@ -42,7 +41,7 @@ class CountryDimensionMemberProviderTest {
     void filtersByCaseInsensitiveSearchTextOnLabelOrCode() {
         when(stakeholderService.getAllCountryCodes()).thenReturn(List.of("DE", "GR", "FR"));
 
-        DimensionMemberPage page = provider.search("country", null, "ger", 100);
+        DimensionMemberPage page = provider.search(null, "ger", 100);
 
         assertThat(page.members()).containsExactly(new DimensionMember("DE", "Germany"));
     }
@@ -51,14 +50,8 @@ class CountryDimensionMemberProviderTest {
     void truncatesToLimit() {
         when(stakeholderService.getAllCountryCodes()).thenReturn(List.of("DE", "GR", "FR"));
 
-        DimensionMemberPage page = provider.search("country", null, "", 2);
+        DimensionMemberPage page = provider.search(null, "", 2);
 
         assertThat(page.members()).hasSize(2);
-    }
-
-    @Test
-    void throwsForUnknownDimension() {
-        assertThatThrownBy(() -> provider.search("industry", null, "", 100))
-            .isInstanceOf(UnknownDimensionException.class);
     }
 }

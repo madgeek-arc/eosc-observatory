@@ -16,5 +16,5 @@ public interface DimensionMemberProvider {
      *                       an implementation supports per-indicator scoping. Unused by
      *                       single-dimension implementations that have nothing to narrow.
      */
-    DimensionMemberPage search(String dimensionCode, String indicatorCode, String searchText, int limit);
+    DimensionMemberPage search(String indicatorCode, String searchText, int limit);
 }

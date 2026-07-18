@@ -25,6 +25,6 @@ public class DimensionMemberProviderRegistry {
         if (provider == null) {
             throw new UnknownDimensionException(dimensionCode);
         }
-        return provider.search(dimensionCode, indicatorCode, searchText, limit);
+        return provider.search(indicatorCode, searchText, limit);
     }
 }
