@@ -53,7 +53,7 @@ public class MockIndicatorCatalog {
 
     static final String HANDLER_KEY = "mock";
 
-    private static final String GROUP_CODE = "Publications";
+    private static final String GROUP_LABEL = "Publications";
 
     private static final TimePolicy TIME_POLICY = new TimePolicy(
         true, "year", Set.of(TimeGrain.YEAR), TimeGrain.YEAR,
@@ -113,7 +113,7 @@ public class MockIndicatorCatalog {
         return new IndicatorDefinition(
             UUID.randomUUID(), PUBLICATIONS_COUNT, "Publications",
             "Number of published works, filterable by access status (OA vs. Closed) and country.",
-            GROUP_CODE, IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            GROUP_LABEL, IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.SUM,
                 Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
@@ -138,7 +138,7 @@ public class MockIndicatorCatalog {
         return new IndicatorDefinition(
             UUID.randomUUID(), PUBLICATIONS_OA_SHARE, "OA Publication Share (Europe)",
             "Share of open access vs. closed publications across Europe.",
-            GROUP_CODE, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(),
@@ -153,7 +153,7 @@ public class MockIndicatorCatalog {
         return new IndicatorDefinition(
             UUID.randomUUID(), FINANCIAL_INVESTMENT, "Financial Investment in OA Publication",
             "Total financial investment in open access publication activities.",
-            GROUP_CODE, IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
+            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.SUM,
                 Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
@@ -173,7 +173,7 @@ public class MockIndicatorCatalog {
             UUID.randomUUID(), COUNTRY_INITIATIVE_STATUS, "National OA Initiative Status",
             "Per-country status (adopted / not adopted) of a national OA initiative — policy, "
                 + "immediate-OA policy, financial strategy, or monitoring, selected via initiativeType.",
-            GROUP_CODE, IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            GROUP_LABEL, IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
             null,
             Set.of(countryBinding(), requiredInitiativeTypeBinding()),
@@ -188,7 +188,7 @@ public class MockIndicatorCatalog {
         return new IndicatorDefinition(
             UUID.randomUUID(), EU_COUNTRY_COVERAGE, "EU Country Coverage of OA Initiative",
             "Percentage of EU member states with a given national OA initiative adopted, selected via initiativeType.",
-            GROUP_CODE, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(requiredInitiativeTypeBinding()),

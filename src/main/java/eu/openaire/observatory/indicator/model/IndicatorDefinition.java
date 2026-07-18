@@ -12,14 +12,14 @@ public record IndicatorDefinition(
     String code, // stable external identifier, e.g. "publications.count"
     String label,
     String description,
-    String groupCode, // nullable; category for a UI picker, e.g. "Publications"
+    String groupLabel, // nullable; category label for a UI picker, e.g. "Publications"
     IndicatorValueType valueType,
     IndicatorSemanticType semanticType,
     UnitType unit,
     RenderHint renderHint,
     AggregationPolicy aggregationPolicy,
     RatioPolicy ratioPolicy, // nullable; meaningful only when semanticType == RATIO
-    Set<IndicatorDimensionBinding> dimensions, // references DimensionDefinition by code
+    Set<IndicatorDimensionBinding> dimensionBindings, // this indicator's bindings to DimensionDefinitions, by code
     TimePolicy timePolicy,
     IndicatorExecutionBinding executionBinding,
     IndicatorAccessLevel accessLevel,
@@ -27,6 +27,6 @@ public record IndicatorDefinition(
     int version
 ) {
     public IndicatorDefinition {
-        dimensions = Set.copyOf(dimensions);
+        dimensionBindings = Set.copyOf(dimensionBindings);
     }
 }

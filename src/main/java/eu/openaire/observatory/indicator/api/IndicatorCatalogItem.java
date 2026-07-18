@@ -24,11 +24,11 @@ public record IndicatorCatalogItem(
         String format = definition.renderHint() == RenderHint.ENTITY_MAP ? "map"
             : definition.unit() == UnitType.PERCENT ? "percentage"
             : "number";
-        List<IndicatorDimensionCapability> dimensions = definition.dimensions().stream()
+        List<IndicatorDimensionCapability> dimensions = definition.dimensionBindings().stream()
             .map(binding -> IndicatorDimensionCapability.from(binding, dimensionLookup.getRequired(binding.dimensionCode())))
             .toList();
         return new IndicatorCatalogItem(
-            definition.code(), definition.label(), format, definition.groupCode(),
+            definition.code(), definition.label(), format, definition.groupLabel(),
             dimensions, definition.timePolicy().supported()
         );
     }

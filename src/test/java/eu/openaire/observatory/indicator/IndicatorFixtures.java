@@ -172,9 +172,9 @@ public final class IndicatorFixtures {
     public static IndicatorDefinition restrictedIndicator(String code) {
         IndicatorDefinition base = countIndicator(code);
         return new IndicatorDefinition(
-            base.id(), base.code(), base.label(), base.description(), base.groupCode(), base.valueType(),
+            base.id(), base.code(), base.label(), base.description(), base.groupLabel(), base.valueType(),
             base.semanticType(), base.unit(), base.renderHint(), base.aggregationPolicy(), base.ratioPolicy(),
-            base.dimensions(), base.timePolicy(), base.executionBinding(), IndicatorAccessLevel.RESTRICTED,
+            base.dimensionBindings(), base.timePolicy(), base.executionBinding(), IndicatorAccessLevel.RESTRICTED,
             base.status(), base.version()
         );
     }

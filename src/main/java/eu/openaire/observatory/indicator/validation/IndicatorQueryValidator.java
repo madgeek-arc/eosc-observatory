@@ -88,7 +88,7 @@ public class IndicatorQueryValidator {
     }
 
     private void requireMandatoryFilters(IndicatorDefinition definition, List<ResolvedFilter> filters) {
-        for (IndicatorDimensionBinding binding : definition.dimensions()) {
+        for (IndicatorDimensionBinding binding : definition.dimensionBindings()) {
             if (!binding.requiredFilter()) {
                 continue;
             }
@@ -121,7 +121,7 @@ public class IndicatorQueryValidator {
 
     private IndicatorDimensionBinding requireDimensionBinding(
             IndicatorDefinition definition, String dimensionCode, DimensionUsage usage) {
-        IndicatorDimensionBinding binding = definition.dimensions().stream()
+        IndicatorDimensionBinding binding = definition.dimensionBindings().stream()
             .filter(b -> b.dimensionCode().equals(dimensionCode))
             .findFirst()
             .orElseThrow(() -> new UnsupportedDimensionException(definition.code(), dimensionCode));

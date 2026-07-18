@@ -26,23 +26,23 @@ class MockIndicatorCatalogTest {
 
     @Test
     void euShareIndicatorsHaveNoCountryDimension() {
-        assertThat(catalog.get(MockIndicatorCatalog.PUBLICATIONS_OA_SHARE).dimensions()).isEmpty();
+        assertThat(catalog.get(MockIndicatorCatalog.PUBLICATIONS_OA_SHARE).dimensionBindings()).isEmpty();
     }
 
     @Test
     void financialInvestmentIsCountryFilterableAndGroupable() {
-        assertThat(catalog.get(MockIndicatorCatalog.FINANCIAL_INVESTMENT).dimensions())
+        assertThat(catalog.get(MockIndicatorCatalog.FINANCIAL_INVESTMENT).dimensionBindings())
             .extracting("dimensionCode")
             .containsExactly("country");
     }
 
     @Test
     void euCountryCoverageAndCountryInitiativeStatusRequireInitiativeTypeFilter() {
-        assertThat(catalog.get(MockIndicatorCatalog.EU_COUNTRY_COVERAGE).dimensions())
+        assertThat(catalog.get(MockIndicatorCatalog.EU_COUNTRY_COVERAGE).dimensionBindings())
             .filteredOn(binding -> binding.dimensionCode().equals("initiativeType"))
             .extracting("requiredFilter")
             .containsExactly(true);
-        assertThat(catalog.get(MockIndicatorCatalog.COUNTRY_INITIATIVE_STATUS).dimensions())
+        assertThat(catalog.get(MockIndicatorCatalog.COUNTRY_INITIATIVE_STATUS).dimensionBindings())
             .filteredOn(binding -> binding.dimensionCode().equals("initiativeType"))
             .extracting("requiredFilter")
             .containsExactly(true);
@@ -69,7 +69,7 @@ class MockIndicatorCatalogTest {
     @Test
     void everyDimensionBoundByEveryDefinitionIsRegistered() {
         for (var definition : catalog.getAll()) {
-            for (var binding : definition.dimensions()) {
+            for (var binding : definition.dimensionBindings()) {
                 assertThat(catalog.dimension(binding.dimensionCode()))
                     .as("dimension %s bound by %s must be registered", binding.dimensionCode(), definition.code())
                     .isNotNull();
