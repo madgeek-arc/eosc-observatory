@@ -16,6 +16,7 @@ import eu.openaire.observatory.indicator.model.IndicatorValueType;
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RatioPolicy;
+import eu.openaire.observatory.indicator.model.RenderHint;
 import eu.openaire.observatory.indicator.model.TemporalBehavior;
 import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.model.TimePolicy;
@@ -53,9 +54,11 @@ public final class IndicatorFixtures {
             code,
             "Publications",
             "Number of published works",
+            null,
             IndicatorValueType.INTEGER,
             IndicatorSemanticType.MEASURE,
             UnitType.COUNT,
+            RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.SUM,
                 Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
@@ -90,9 +93,11 @@ public final class IndicatorFixtures {
             code,
             "Acceptance rate",
             "Accepted / submitted publications",
+            null,
             IndicatorValueType.DECIMAL,
             IndicatorSemanticType.RATIO,
             UnitType.PERCENT,
+            RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.NONE,
                 Set.of(AggregationType.NONE),
@@ -117,9 +122,11 @@ public final class IndicatorFixtures {
             code,
             "Country name",
             "Country display name",
+            null,
             IndicatorValueType.TEXT,
             IndicatorSemanticType.ATTRIBUTE,
             UnitType.NONE,
+            RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
             null,
             Set.of(),
@@ -134,9 +141,10 @@ public final class IndicatorFixtures {
     public static IndicatorDefinition restrictedIndicator(String code) {
         IndicatorDefinition base = countIndicator(code);
         return new IndicatorDefinition(
-            base.id(), base.code(), base.label(), base.description(), base.valueType(), base.semanticType(),
-            base.unit(), base.aggregationPolicy(), base.ratioPolicy(), base.dimensions(), base.timePolicy(),
-            base.executionBinding(), IndicatorAccessLevel.RESTRICTED, base.status(), base.version()
+            base.id(), base.code(), base.label(), base.description(), base.groupCode(), base.valueType(),
+            base.semanticType(), base.unit(), base.renderHint(), base.aggregationPolicy(), base.ratioPolicy(),
+            base.dimensions(), base.timePolicy(), base.executionBinding(), IndicatorAccessLevel.RESTRICTED,
+            base.status(), base.version()
         );
     }
 }

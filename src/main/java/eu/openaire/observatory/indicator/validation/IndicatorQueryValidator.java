@@ -7,6 +7,7 @@ import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
@@ -14,6 +15,7 @@ import java.util.List;
  * Compiles a raw IndicatorQuery into a validated IndicatorExecutionPlan, checking it against the
  * indicator's own definition. Handlers only ever see the compiled plan, never the raw query.
  */
+@Service
 public class IndicatorQueryValidator {
 
     private static final int DEFAULT_LIMIT = 1000;

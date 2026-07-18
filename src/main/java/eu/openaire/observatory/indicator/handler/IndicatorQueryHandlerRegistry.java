@@ -1,12 +1,14 @@
 package eu.openaire.observatory.indicator.handler;
 
 import eu.openaire.observatory.indicator.validation.UnknownIndicatorException;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Service
 public class IndicatorQueryHandlerRegistry {
 
     private final Map<String, IndicatorQueryHandler> handlers;

@@ -6,7 +6,9 @@ import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
+import org.springframework.stereotype.Service;
 
+@Service
 public class IndicatorQueryService {
 
     private final IndicatorQueryValidator validator;

@@ -16,6 +16,7 @@ import eu.openaire.observatory.indicator.model.IndicatorValueType;
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RatioPolicy;
+import eu.openaire.observatory.indicator.model.RenderHint;
 import eu.openaire.observatory.indicator.model.TemporalBehavior;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
@@ -108,9 +109,11 @@ class LegacyIndicatorCatalogMappingTest {
             PUBLICATIONS_COUNT,
             "Publications",
             "Number of published works, filterable by access status (OA vs. Closed) and country.",
+            null,
             IndicatorValueType.INTEGER,
             IndicatorSemanticType.MEASURE,
             UnitType.COUNT,
+            RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.SUM,
                 Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
@@ -150,9 +153,11 @@ class LegacyIndicatorCatalogMappingTest {
             "Share of open access vs. closed publications. Scope is intrinsically limited to "
                 + "Europe and is not selectable via query filters — the handler applies it "
                 + "internally.",
+            null,
             IndicatorValueType.DECIMAL,
             IndicatorSemanticType.RATIO,
             UnitType.PERCENT,
+            RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(),
@@ -173,9 +178,11 @@ class LegacyIndicatorCatalogMappingTest {
             FINANCIAL_INVESTMENT,
             "Financial Investment in OA Publication",
             "Total financial investment in open access publication activities.",
+            null,
             IndicatorValueType.DECIMAL,
             IndicatorSemanticType.MEASURE,
             UnitType.CURRENCY,
+            RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
             null,
             Set.of(new IndicatorDimensionBinding(
@@ -209,9 +216,11 @@ class LegacyIndicatorCatalogMappingTest {
                 + "immediate-OA policy, financial strategy, or monitoring, selected via "
                 + "initiativeType. Rendered as a per-country map; requires grouping by country "
                 + "(not yet enforced by the model).",
+            null,
             IndicatorValueType.BOOLEAN,
             IndicatorSemanticType.ATTRIBUTE,
             UnitType.NONE,
+            RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
             null,
             Set.of(
@@ -252,9 +261,11 @@ class LegacyIndicatorCatalogMappingTest {
                 + "selected via initiativeType. Scope is intrinsically limited to EU member "
                 + "states and is not selectable via query filters — the handler applies it "
                 + "internally.",
+            null,
             IndicatorValueType.DECIMAL,
             IndicatorSemanticType.RATIO,
             UnitType.PERCENT,
+            RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(new IndicatorDimensionBinding(

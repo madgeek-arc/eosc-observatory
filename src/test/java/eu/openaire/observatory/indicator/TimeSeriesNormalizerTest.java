@@ -62,6 +62,34 @@ class TimeSeriesNormalizerTest {
     }
 
     @Test
+    void zeroFillsEachCountrysSeriesIndependently() {
+        List<IndicatorDataPoint> data = List.of(
+            new IndicatorDataPoint(Map.of("country", "GR", TimeSeriesNormalizer.PERIOD_DIMENSION, "2020"), 10),
+            new IndicatorDataPoint(Map.of("country", "GR", TimeSeriesNormalizer.PERIOD_DIMENSION, "2022"), 30),
+            new IndicatorDataPoint(Map.of("country", "DE", TimeSeriesNormalizer.PERIOD_DIMENSION, "2021"), 20)
+        );
+        var result = new IndicatorResult(
+            new IndicatorMetadata("publications.count", "label", null, null, null),
+            List.of("country", TimeSeriesNormalizer.PERIOD_DIMENSION),
+            data,
+            new QueryExecutionMetadata(Instant.now(), false)
+        );
+        var range = new ResolvedTimeRange(
+            TimeGrain.YEAR, LocalDate.of(2020, 1, 1), LocalDate.of(2022, 1, 1), MissingPeriodHandling.ZERO_FILL
+        );
+
+        var normalized = normalizer.normalize(result, range);
+
+        assertThat(normalized.data()).hasSize(6);
+        assertThat(valueForCountry(normalized, "GR", "2020")).isEqualTo(10);
+        assertThat(valueForCountry(normalized, "GR", "2021")).isEqualTo(0);
+        assertThat(valueForCountry(normalized, "GR", "2022")).isEqualTo(30);
+        assertThat(valueForCountry(normalized, "DE", "2020")).isEqualTo(0);
+        assertThat(valueForCountry(normalized, "DE", "2021")).isEqualTo(20);
+        assertThat(valueForCountry(normalized, "DE", "2022")).isEqualTo(0);
+    }
+
+    @Test
     void omitLeavesGapsUntouched() {
         var result = resultWithPeriods(Map.of("2020", 10));
         var range = new ResolvedTimeRange(
@@ -76,6 +104,15 @@ class TimeSeriesNormalizerTest {
     private static Object valueFor(IndicatorResult result, String period) {
         return result.data().stream()
             .filter(dp -> period.equals(dp.dimensions().get(TimeSeriesNormalizer.PERIOD_DIMENSION)))
+            .findFirst()
+            .orElseThrow()
+            .value();
+    }
+
+    private static Object valueForCountry(IndicatorResult result, String country, String period) {
+        return result.data().stream()
+            .filter(dp -> country.equals(dp.dimensions().get("country"))
+                && period.equals(dp.dimensions().get(TimeSeriesNormalizer.PERIOD_DIMENSION)))
             .findFirst()
             .orElseThrow()
             .value();
