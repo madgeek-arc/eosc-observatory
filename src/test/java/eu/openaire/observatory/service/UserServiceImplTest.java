@@ -11,6 +11,9 @@ import eu.openaire.observatory.permissions.PermissionService;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.domain.Resource;
+import gr.uoa.di.madgik.registry.domain.ResourceType;
+import gr.uoa.di.madgik.registry.domain.Version;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.registry.service.ParserService;
 import gr.uoa.di.madgik.registry.service.ResourceService;
@@ -25,11 +28,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -98,6 +106,14 @@ class UserServiceImplTest {
                 applicationProperties,
                 validator
         ));
+
+        // Default: no version history, so anonymizeVersions() is a no-op unless a test
+        // overrides these with a Resource that actually has Versions on it.
+        lenient().when(stakeholderCrudService.getResource(anyString())).thenReturn(new Resource());
+        lenient().when(coordinatorCrudService.getResource(anyString())).thenReturn(new Resource());
+        lenient().when(administratorCrudService.getResource(anyString())).thenReturn(new Resource());
+        lenient().when(surveyAnswerCrudService.getResource(anyString())).thenReturn(new Resource());
+        lenient().doReturn(new Resource()).when(service).getResource(USER_ID);
     }
 
     @Test
@@ -171,6 +187,76 @@ class UserServiceImplTest {
         verify(commentService).anonymizeUser(USER_ID, UserServiceImpl.DELETED_USER_PLACEHOLDER);
         verify(permissionService).removeAll(USER_ID);
         verify(service).delete(USER_ID);
+    }
+
+    @Test
+    void purgeAnonymizesStakeholderVersionHistory() throws ResourceNotFoundException {
+        Stakeholder stakeholder = new Stakeholder();
+        stakeholder.setId("sh-1");
+        when(stakeholderCrudService.getWithFilter("users", USER_ID)).thenReturn(Set.of(stakeholder));
+
+        Version version = new Version();
+        version.setPayload("old-payload");
+        version.setResourceTypeName("stakeholder");
+        ResourceType resourceType = new ResourceType();
+        resourceType.setPayloadType("json");
+        version.setResourceType(resourceType);
+        Resource stakeholderResource = new Resource();
+        stakeholderResource.setVersions(List.of(version));
+        when(stakeholderCrudService.getResource("sh-1")).thenReturn(stakeholderResource);
+
+        Stakeholder historicalStakeholder = new Stakeholder();
+        historicalStakeholder.setMembers(new TreeSet<>(Set.of(USER_ID, "other@example.org")));
+        historicalStakeholder.setAdmins(new TreeSet<>(Set.of(USER_ID)));
+        doReturn(Stakeholder.class).when(service).getClassFromResourceType("stakeholder");
+        when(parserService.deserialize(stakeholderResource, Stakeholder.class)).thenReturn(historicalStakeholder);
+        when(parserService.serialize(eq(historicalStakeholder), any())).thenReturn("new-payload");
+        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+
+        doReturn(new User()).when(service).delete(USER_ID);
+
+        service.purge(USER_ID);
+
+        verify(versionService).updateVersion(version);
+        assertEquals("new-payload", version.getPayload());
+        assertFalse(historicalStakeholder.getMembers().contains(USER_ID));
+        assertFalse(historicalStakeholder.getAdmins().contains(USER_ID));
+    }
+
+    @Test
+    void purgeAnonymizesUsersOwnVersionHistory() throws ResourceNotFoundException {
+        Version version = new Version();
+        version.setPayload("old-payload");
+        version.setResourceTypeName("user");
+        ResourceType resourceType = new ResourceType();
+        resourceType.setPayloadType("json");
+        version.setResourceType(resourceType);
+        Resource userResource = new Resource();
+        userResource.setVersions(List.of(version));
+        doReturn(userResource).when(service).getResource(USER_ID);
+
+        User historicalUser = new User();
+        historicalUser.setEmail(USER_ID);
+        historicalUser.setSub("sub-123");
+        historicalUser.setName("Jane");
+        historicalUser.setSurname("Doe");
+        historicalUser.setFullname("Jane Doe");
+        doReturn(User.class).when(service).getClassFromResourceType("user");
+        when(parserService.deserialize(userResource, User.class)).thenReturn(historicalUser);
+        when(parserService.serialize(eq(historicalUser), any())).thenReturn("new-payload");
+        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+
+        doReturn(new User()).when(service).delete(USER_ID);
+
+        service.purge(USER_ID);
+
+        verify(versionService).updateVersion(version);
+        assertEquals("new-payload", version.getPayload());
+        assertNull(historicalUser.getSub());
+        assertNull(historicalUser.getEmail());
+        assertEquals(UserServiceImpl.DELETED_FIELD_PLACEHOLDER, historicalUser.getName());
+        assertEquals(UserServiceImpl.DELETED_FIELD_PLACEHOLDER, historicalUser.getSurname());
+        assertEquals(UserServiceImpl.DELETED_USER_PLACEHOLDER, historicalUser.getFullname());
     }
 
     private SurveyAnswer surveyAnswer(String id) {
