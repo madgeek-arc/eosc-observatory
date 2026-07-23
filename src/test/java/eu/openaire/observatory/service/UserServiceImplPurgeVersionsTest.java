@@ -2,6 +2,9 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.IntegrationTestConfig;
 import eu.openaire.observatory.domain.History;
+import eu.openaire.observatory.domain.NotificationPreferences;
+import eu.openaire.observatory.domain.Profile;
+import eu.openaire.observatory.domain.Settings;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
@@ -134,6 +137,35 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
     }
 
     @Test
+    void purgeShouldRemoveUserFromVersionHistoryOfGroupUserHasLeft() throws ResourceNotFoundException {
+        persistUser(USER_ID);
+        Stakeholder stakeholder = persistStakeholderBypassingSurveyGeneration(
+                "purge-versions-test-left-stakeholder-" + UUID.randomUUID());
+        String stakeholderId = stakeholder.getId();
+
+        // Snapshot a version WITH the user as a member, then update again with the user REMOVED,
+        // so the current payload no longer lists them but a prior version still does. This is the
+        // "left-group" case: getWithFilter("users", USER_ID) would NOT return this stakeholder.
+        stakeholder.setMembers(new TreeSet<>(Set.of(USER_ID)));
+        stakeholderCrudService.update(stakeholderId, stakeholder);
+        stakeholder.setMembers(new TreeSet<>());
+        stakeholderCrudService.update(stakeholderId, stakeholder);
+
+        Stakeholder current = stakeholderCrudService.get(stakeholderId);
+        assertTrue(current.getMembers() == null || !current.getMembers().contains(USER_ID),
+                "sanity check: the user must have LEFT the current members set");
+        List<Version> versionsBeforePurge = stakeholderCrudService.getResource(stakeholderId).getVersions();
+        assertTrue(versionsBeforePurge.stream().anyMatch(v -> v.getPayload().contains(USER_ID)),
+                "sanity check: a historical version should still list USER_ID as a member before purge");
+
+        userService.purge(USER_ID);
+
+        List<Version> versionsAfterPurge = stakeholderCrudService.getResource(stakeholderId).getVersions();
+        assertTrue(versionsAfterPurge.stream().noneMatch(v -> v.getPayload().contains(USER_ID)),
+                "purge() should scrub USER_ID from the version history of a group the user has LEFT");
+    }
+
+    @Test
     void purgeShouldScrubUsersOwnVersionHistory() throws ResourceNotFoundException {
         User user = new User();
         user.setEmail(USER_ID);
@@ -141,6 +173,16 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
         user.setName("Purge");
         user.setSurname("VersionsTest");
         user.setFullname("Purge VersionsTest");
+        Profile profile = new Profile();
+        profile.setAffiliation("Secret-Affiliation-Marker");
+        profile.setPosition("Secret-Position-Marker");
+        profile.setWebpage("https://secret-webpage-marker.example.org");
+        user.setProfile(profile);
+        NotificationPreferences prefs = new NotificationPreferences();
+        prefs.setForwardEmails(List.of("secret-forward-marker@example.org"));
+        Settings settings = new Settings();
+        settings.setNotificationPreferences(prefs);
+        user.setSettings(settings);
         user = userService.add(user);
 
         // Touch a field and update once, so the pre-update payload — still containing this
@@ -170,6 +212,10 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
                     "purge() should have scrubbed this user's sub out of every historical User version");
             assertTrue(versionsAfterPurge.stream().noneMatch(v -> v.getPayload().contains(USER_ID)),
                     "purge() should have scrubbed this user's email out of every historical User version");
+            assertTrue(versionsAfterPurge.stream().noneMatch(v -> v.getPayload().contains("Secret-Affiliation-Marker")),
+                    "purge() should have scrubbed this user's profile out of every historical User version");
+            assertTrue(versionsAfterPurge.stream().noneMatch(v -> v.getPayload().contains("secret-forward-marker@example.org")),
+                    "purge() should have scrubbed this user's forwardEmails out of every historical User version");
         }
     }
 
