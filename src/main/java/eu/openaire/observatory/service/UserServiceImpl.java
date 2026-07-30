@@ -257,6 +257,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // Safety net: remove any remaining permissions
         permissionService.removeAll(id);
 
+        // TODO: switch Spring Session to indexed mode (spring.session.redis.repository-type=indexed) so this user's Redis-backed HTTP sessions can be found by principal and deleted here.
+
         // Report what the purge touched, for audit/compliance purposes. Logged before the
         // final delete() so the report is captured even if that last step fails.
         // Deliberately omits the purged user's id/email from the log line — logging the
