@@ -235,6 +235,9 @@ class UserServiceImplTest {
         // strand the user's name and email inside the messaging service with nothing to key
         // a retry on.
         verify(service, never()).delete(USER_ID);
+    }
+
+    @Test
     void purgeAnonymizesStakeholderVersionHistory() throws ResourceNotFoundException {
         Stakeholder stakeholder = new Stakeholder();
         stakeholder.setId("sh-1");
