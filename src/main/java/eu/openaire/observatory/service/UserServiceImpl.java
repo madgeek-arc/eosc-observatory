@@ -19,6 +19,7 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.permissions.PermissionService;
+import gr.athenarc.messaging.service.MessagingService;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
@@ -30,6 +31,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
@@ -43,6 +45,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
 
     public static final String DELETED_USER_PLACEHOLDER = "[Deleted User]";
 
+    /** Bounds the blocking wait on the messaging service, which sweeps every thread a user appears in. */
+    private static final Duration MESSAGING_ERASURE_TIMEOUT = Duration.ofSeconds(30);
+
     private final PrivacyPolicyService privacyPolicyService;
     private final CrudService<Stakeholder> stakeholderCrudService;
     private final CrudService<Coordinator> coordinatorCrudService;
@@ -53,6 +58,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private final CrudService<SurveyAnswer> surveyAnswerCrudService;
     private final PermissionService permissionService;
     private final SurveyAnswerCommentService commentService;
+    // Named 'messagingClient' rather than 'messagingService' to keep it distinct from
+    // eu.openaire.observatory.messaging.MessagingService, a different class entirely.
+    private final MessagingService messagingClient;
     private final ApplicationProperties applicationProperties;
 
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
@@ -70,6 +78,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
                               PermissionService permissionService,
                               @Lazy SurveyAnswerCommentService commentService,
+                              MessagingService messagingClient,
                               ApplicationProperties applicationProperties,
                               ModelResponseValidator validator) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
@@ -83,6 +92,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.permissionService = permissionService;
         this.commentService = commentService;
+        this.messagingClient = messagingClient;
         this.applicationProperties = applicationProperties;
     }
 
@@ -179,9 +189,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     }
 
     /**
-     * Not wrapped in a single transaction: the steps span both the registry's
-     * Postgres+Elasticsearch-backed group/permission storage and this service's own
-     * JPA-backed comment/user storage, so no single transaction manager could cover all of it.
+     * Not wrapped in a single transaction: the steps span the registry's
+     * Postgres+Elasticsearch-backed group/permission storage, this service's own
+     * JPA-backed comment/user storage, and a remote MongoDB-backed messaging service reached
+     * over HTTP, so no single transaction manager could cover all of it.
      * Instead, every step here is idempotent (group/permission removal and the placeholder
      * rewrites are no-ops when reapplied), so on partial failure it is safe to simply call
      * purge() again — it will pick up wherever it left off. The one exception is the final
@@ -271,6 +282,12 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // Anonymize comment authorship and @mentions in survey comments
         commentService.anonymizeUser(id, DELETED_USER_PLACEHOLDER);
 
+        // Erase the user from the messaging service's threads. That service owns its own MongoDB,
+        // so this HTTP call is the only path to the name and email it holds at rest. Failures are
+        // deliberately not caught: aborting here leaves the User record intact for a re-run, which
+        // beats deleting the account while its messaging PII survives. The operation is idempotent.
+        int messagingThreadsAnonymized = messagingClient.anonymizeUser(id).block(MESSAGING_ERASURE_TIMEOUT);
+
         // Safety net: remove any remaining permissions
         permissionService.removeAll(id);
 
@@ -280,8 +297,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // identifier being purged would itself retain the PII this method exists to remove.
         logger.info("Purge report: removed from stakeholder group(s) {}, coordinator group(s) {}, " +
                         "administrator group(s) {}; anonymized {} survey answer(s); anonymized comment authorship " +
-                        "and @mentions; removed residual permissions.",
-                stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized);
+                        "and @mentions; anonymized {} messaging thread(s); removed residual permissions.",
+                stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized, messagingThreadsAnonymized);
 
         // TODO: delete(id) below only removes the *current* User resource. Registry core
         // versions still retain this user's full PII (name, email, etc.) from before this purge.
