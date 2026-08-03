@@ -23,6 +23,8 @@ import gr.athenarc.messaging.service.MessagingService;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.domain.Resource;
+import gr.uoa.di.madgik.registry.domain.Version;
 import gr.uoa.di.madgik.registry.service.*;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
@@ -37,6 +39,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 @Service
 public class UserServiceImpl extends AbstractCrudService<User> implements UserService {
@@ -44,6 +47,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
     public static final String DELETED_USER_PLACEHOLDER = "[Deleted User]";
+    // For decomposed name fields (User#name/#surname) rather than a whole identity string:
+    // some call sites (e.g. UserDTO, StakeholderServiceImpl#getManagers) filter on non-null
+    // name/surname or concatenate them, so both must stay non-null and non-duplicated.
+    public static final String DELETED_FIELD_PLACEHOLDER = "[Deleted]";
 
     /** Bounds the blocking wait on the messaging service, which sweeps every thread a user appears in. */
     private static final Duration MESSAGING_ERASURE_TIMEOUT = Duration.ofSeconds(30);
@@ -205,79 +212,55 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // (see User#setEmail, User#getId), but this id comes from a path variable and
         // isn't guaranteed to match that casing. Every comparison/query below is exact-case.
         id = id.toLowerCase();
+        // Captured by the anonymizeVersions(...) lambdas below, which need an effectively-final reference.
+        final String userId = id;
 
-        // TODO: removeMember/removeAdmin below only clear this user from the *current* version
-        // of each Stakeholder. Registry core versions still show this user in past members/admins
-        // sets. Implement user erasure from Stakeholder and its versions.
-        // Remove from all stakeholder groups (handles permission cleanup internally)
-        Set<Stakeholder> stakeholders = stakeholderCrudService.getWithFilter("users", id);
+        // --- Live removal from the groups the user is CURRENTLY a member/admin of ---
+        // removeMember/removeAdmin handle permission cleanup internally. Version-history scrubbing
+        // is done separately, as a full sweep over ALL groups below, because a group the user has
+        // LEFT still carries them in its historical versions yet is not returned by
+        // getWithFilter("users", id) (that index reflects only current membership).
         List<String> stakeholderIds = new ArrayList<>();
-        for (Stakeholder s : stakeholders) {
+        for (Stakeholder s : stakeholderCrudService.getWithFilter("users", id)) {
             stakeholderService.removeMember(s.getId(), id);
             stakeholderService.removeAdmin(s.getId(), id);
             stakeholderIds.add(s.getId());
         }
 
-        // TODO: same gap as above, for Coordinator — past members/admins sets survive in its
-        // registry core versions. Implement user erasure from Coordinator and its versions.
-        // Remove from all coordinator groups
-        Set<Coordinator> coordinators = coordinatorCrudService.getWithFilter("users", id);
         List<String> coordinatorIds = new ArrayList<>();
-        for (Coordinator c : coordinators) {
+        for (Coordinator c : coordinatorCrudService.getWithFilter("users", id)) {
             coordinatorService.removeMember(c.getId(), id);
             coordinatorService.removeAdmin(c.getId(), id);
             coordinatorIds.add(c.getId());
         }
 
-        // TODO: same gap as above, for Administrator — past members sets survive in its
-        // registry core versions. Implement user erasure from Administrator and its versions.
-        // Remove from all administrator groups
-        Set<Administrator> administrators = administratorCrudService.getWithFilter("users", id);
         List<String> administratorIds = new ArrayList<>();
-        for (Administrator a : administrators) {
+        for (Administrator a : administratorCrudService.getWithFilter("users", id)) {
             administratorService.removeMember(a.getId(), id);
             administratorIds.add(a.getId());
         }
 
-        // TODO: the anonymization below only rewrites the *current* version of each SurveyAnswer.
-        // Registry core versions still show this user as editor/creator/modifier in past
-        // revisions. Implement user erasure from Surveys and their versions.
-        // Anonymize user identity from all survey answer history and metadata.
-        // 10000 is Elasticsearch's default max result window, not an arbitrary cap; a single
-        // user participating in more than that many surveys is not a realistic scenario.
-        FacetFilter filter = new FacetFilter();
-        filter.setQuantity(10000);
-        List<SurveyAnswer> surveyAnswers = surveyAnswerCrudService.getAll(filter).getResults();
-        int surveyAnswersAnonymized = 0;
-        for (SurveyAnswer answer : surveyAnswers) {
-            boolean modified = false;
-            if (answer.getHistory() != null && answer.getHistory().getEntries() != null) {
-                for (HistoryEntry entry : answer.getHistory().getEntries()) {
-                    if (entry.getEditors() != null) {
-                        for (Editor editor : entry.getEditors()) {
-                            if (id.equals(editor.getUser())) {
-                                editor.setUser(DELETED_USER_PLACEHOLDER);
-                                modified = true;
-                            }
-                        }
-                    }
-                }
-            }
-            if (answer.getMetadata() != null) {
-                if (id.equals(answer.getMetadata().getCreatedBy())) {
-                    answer.getMetadata().setCreatedBy(DELETED_USER_PLACEHOLDER);
-                    modified = true;
-                }
-                if (id.equals(answer.getMetadata().getModifiedBy())) {
-                    answer.getMetadata().setModifiedBy(DELETED_USER_PLACEHOLDER);
-                    modified = true;
-                }
-            }
-            if (modified) {
-                surveyAnswerCrudService.update(answer.getId(), answer);
-                surveyAnswersAnonymized++;
-            }
-        }
+        // --- Scrub the user out of EVERY group's version history (current AND left groups) ---
+        // The predicate removes the user from members/admins; it is a no-op (returns false,
+        // nothing written) for groups the user never belonged to, so a blanket sweep is safe and
+        // idempotent. Runs after the live removals above so it also catches the extra
+        // "pre-removal" version snapshots those removals create.
+        scrubAllOfType(stakeholderCrudService, (Stakeholder g) -> removeUserFromGroup(g, userId));
+        scrubAllOfType(coordinatorCrudService, (Coordinator g) -> removeUserFromGroup(g, userId));
+        scrubAllOfType(administratorCrudService, (Administrator g) -> removeUserFromGroup(g, userId));
+
+        // Anonymize user identity from all survey answer history/metadata (current + versions).
+        // A user can appear in an old version's history without appearing in the current payload
+        // (e.g. later edited out by someone else), so every survey answer's versions are checked.
+        int surveyAnswersAnonymized = scrubAllOfType(surveyAnswerCrudService,
+                (SurveyAnswer a) -> scrubSurveyAnswerPii(a, userId));
+
+        // NOTE (follow-up, not covered here): user identity in "news_item" and "document" registry
+        // resources (metadata.createdBy/modifiedBy). NewsItemService#update restores the existing
+        // metadata and re-stamps modifiedBy from the security context, so the generic version-scrub
+        // can't clean the *current* news_item record; Document is not Identifiable and has no typed
+        // CrudService (it is managed via GenericResourceService). Both need a dedicated
+        // metadata-aware scrub, tracked alongside the external messaging-service erasure.
 
         // Anonymize comment authorship and @mentions in survey comments
         commentService.anonymizeUser(id, DELETED_USER_PLACEHOLDER);
@@ -291,6 +274,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // Safety net: remove any remaining permissions
         permissionService.removeAll(id);
 
+        // TODO: switch Spring Session to indexed mode (spring.session.redis.repository-type=indexed) so this user's Redis-backed HTTP sessions can be found by principal and deleted here.
+
         // Report what the purge touched, for audit/compliance purposes. Logged before the
         // final delete() so the report is captured even if that last step fails.
         // Deliberately omits the purged user's id/email from the log line — logging the
@@ -300,11 +285,130 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                         "and @mentions; anonymized {} messaging thread(s); removed residual permissions.",
                 stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized, messagingThreadsAnonymized);
 
-        // TODO: delete(id) below only removes the *current* User resource. Registry core
-        // versions still retain this user's full PII (name, email, etc.) from before this purge.
-        // Implement erasure of the User resource's own version history too.
+        // Scrub the User resource's own version history before delete(id) below (which only
+        // removes the current record; version rows persist and must be scrubbed in place).
+        // Clears every identity field, nulls the whole profile block (future-proof: any new
+        // profile field is dropped automatically), and clears forwardEmails. policiesAccepted is
+        // kept as consent proof. Must run before delete(id): a deleted resource is no longer
+        // fetchable via getResource.
+        anonymizeVersions(this, id, (User u) -> {
+            u.setSub(null);
+            u.setEmail(null);
+            u.setName(DELETED_FIELD_PLACEHOLDER);
+            u.setSurname(DELETED_FIELD_PLACEHOLDER);
+            u.setFullname(DELETED_USER_PLACEHOLDER);
+            u.setProfile(null);
+            if (u.getSettings() != null && u.getSettings().getNotificationPreferences() != null) {
+                u.getSettings().getNotificationPreferences().setForwardEmails(null);
+            }
+            return true;
+        });
+
         // Delete the user record
         delete(id);
+    }
+
+    /**
+     * Rewrites every historical registry-core {@link Version} payload of a resource in place.
+     * There is no API to delete a Version row (registry-core keeps version history append-only),
+     * so erasure here means overwriting the PII inside the row, not removing the row itself —
+     * the audit trail (row count, timestamps) stays intact.
+     *
+     * @param anonymizer mutates the deserialized version payload in place and returns whether
+     *                   anything changed; only changed versions are written back.
+     */
+    private <T extends Identifiable> void anonymizeVersions(CrudService<T> crudService, String resourceId, Predicate<T> anonymizer) {
+        Resource resource = crudService.getResource(resourceId);
+        List<Version> versions = resource.getVersions();
+        if (versions == null) {
+            return;
+        }
+        for (Version version : versions) {
+            resource.setPayload(version.getPayload());
+            resource.setResourceTypeName(version.getResourceTypeName());
+            resource.setResourceType(version.getResourceType());
+            T obj = (T) parserPool.deserialize(resource, getClassFromResourceType(version.getResourceTypeName()));
+            if (anonymizer.test(obj)) {
+                version.setPayload(parserPool.serialize(obj,
+                        ParserService.ParserServiceTypes.fromString(version.getResourceType().getPayloadType())));
+                versionService.updateVersion(version);
+            }
+        }
+    }
+
+    /**
+     * Full-sweep erasure helper: iterates EVERY resource of the given type, scrubs the current
+     * payload (persisting only when the predicate reports a change), and rewrites the resource's
+     * entire version history. The predicate mutates its argument in place and returns whether
+     * anything changed, so it is a safe no-op for resources the user never touched — making a
+     * blanket sweep idempotent. Reused for groups, survey answers and news items.
+     *
+     * @return how many current payloads were actually modified.
+     */
+    private <T extends Identifiable<String>> int scrubAllOfType(CrudService<T> crudService, Predicate<T> scrub) {
+        FacetFilter filter = new FacetFilter();
+        // 10000 is Elasticsearch's default max result window, not an arbitrary cap; these resource
+        // types (groups / survey answers / news items) never approach it.
+        filter.setQuantity(10000);
+        int modified = 0;
+        for (T resource : crudService.getAll(filter).getResults()) {
+            if (scrub.test(resource)) {
+                crudService.update(resource.getId(), resource);
+                modified++;
+            }
+            anonymizeVersions(crudService, resource.getId(), scrub);
+        }
+        return modified;
+    }
+
+    /**
+     * Removes {@code userId} from a group's members and admins sets. Null-safe; returns whether
+     * anything changed, so it doubles as the scrub predicate for group version history.
+     */
+    private static boolean removeUserFromGroup(UserGroup group, String userId) {
+        boolean removed = group.getMembers() != null && group.getMembers().remove(userId);
+        if (group.getAdmins() != null && group.getAdmins().remove(userId)) {
+            removed = true;
+        }
+        return removed;
+    }
+
+    /**
+     * Scrubs {@code id} out of a SurveyAnswer's editor/creator/modifier fields, including the
+     * deprecated {@link HistoryEntry#getUserId()} field (pre-dates the {@code editors} list;
+     * older registry-core version snapshots may still carry the raw id there instead).
+     *
+     * @return whether anything was changed.
+     */
+    private boolean scrubSurveyAnswerPii(SurveyAnswer answer, String id) {
+        boolean modified = false;
+        if (answer.getHistory() != null && answer.getHistory().getEntries() != null) {
+            for (HistoryEntry entry : answer.getHistory().getEntries()) {
+                if (id.equals(entry.getUserId())) {
+                    entry.setUserId(DELETED_USER_PLACEHOLDER);
+                    modified = true;
+                }
+                if (entry.getEditors() != null) {
+                    for (Editor editor : entry.getEditors()) {
+                        if (id.equals(editor.getUser())) {
+                            editor.setUser(DELETED_USER_PLACEHOLDER);
+                            modified = true;
+                        }
+                    }
+                }
+            }
+        }
+        if (answer.getMetadata() != null) {
+            if (id.equals(answer.getMetadata().getCreatedBy())) {
+                answer.getMetadata().setCreatedBy(DELETED_USER_PLACEHOLDER);
+                modified = true;
+            }
+            if (id.equals(answer.getMetadata().getModifiedBy())) {
+                answer.getMetadata().setModifiedBy(DELETED_USER_PLACEHOLDER);
+                modified = true;
+            }
+        }
+        return modified;
     }
 
     private UserInfo createUserInfo(User user) {
