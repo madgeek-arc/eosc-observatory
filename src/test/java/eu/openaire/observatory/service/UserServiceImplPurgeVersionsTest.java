@@ -11,6 +11,10 @@ import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.domain.UserGroup;
 import eu.openaire.observatory.permissions.PermissionService;
+import gr.uoa.di.madgik.catalogue.service.ModelService;
+import gr.uoa.di.madgik.catalogue.ui.domain.Model;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Resource;
 import gr.uoa.di.madgik.registry.domain.ResourceType;
 import gr.uoa.di.madgik.registry.domain.Version;
@@ -19,6 +23,7 @@ import gr.uoa.di.madgik.registry.service.ParserService;
 import gr.uoa.di.madgik.registry.service.ResourceService;
 import gr.uoa.di.madgik.registry.service.ResourceTypeService;
 import gr.uoa.di.madgik.registry.service.VersionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -33,6 +38,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -70,6 +77,22 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
 
     @MockBean
     private PermissionService permissionService;
+
+    // Same reasoning: purge() sweeps survey definitions, but "model" is a catalogue-owned resource
+    // type (the definition ships as resourceTypes/model.json inside the catalogue jar) and this
+    // context deliberately skips catalogue-level survey setup — see
+    // persistStakeholderBypassingSurveyGeneration below. Without this the sweep would abort on
+    // "No resource types found for alias: model", which is a gap in this test's fixture rather than
+    // in purge(): in any real deployment the type is registered at startup.
+    @MockBean
+    private ModelService modelService;
+
+    @BeforeEach
+    void stubEmptySurveyDefinitionSweep() {
+        Browsing<Model> noModels = new Browsing<>();
+        noModels.setResults(List.of());
+        when(modelService.browse(any(FacetFilter.class))).thenReturn(noModels);
+    }
 
     @Test
     void purgeShouldRemoveUserFromSurveyAnswerVersionHistory() throws ResourceNotFoundException {

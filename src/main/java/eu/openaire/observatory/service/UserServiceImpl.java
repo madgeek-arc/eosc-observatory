@@ -19,7 +19,12 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.permissions.PermissionService;
+import eu.openaire.observatory.resources.model.Document;
+import eu.openaire.observatory.utils.UserIds;
+import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
+import gr.uoa.di.madgik.catalogue.service.ModelService;
+import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Resource;
@@ -32,12 +37,16 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @Service
 public class UserServiceImpl extends AbstractCrudService<User> implements UserService {
@@ -49,6 +58,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     // some call sites (e.g. UserDTO, StakeholderServiceImpl#getManagers) filter on non-null
     // name/surname or concatenate them, so both must stay non-null and non-duplicated.
     public static final String DELETED_FIELD_PLACEHOLDER = "[Deleted]";
+    // Unlike every other resource type, "document" has no shared RESOURCE_TYPE constant — it is a
+    // string literal at nine call sites across ResourcesService, ResourcesController and
+    // SurveyAnswerDocumentAnalyzer. Kept local here rather than introducing a shared one.
+    private static final String DOCUMENT_RESOURCE_TYPE = "document";
 
     private final PrivacyPolicyService privacyPolicyService;
     private final CrudService<Stakeholder> stakeholderCrudService;
@@ -60,6 +73,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private final CrudService<SurveyAnswer> surveyAnswerCrudService;
     private final PermissionService permissionService;
     private final SurveyAnswerCommentService commentService;
+    private final NewsItemService newsItemService;
+    private final ModelService modelService;
+    private final GenericResourceService genericResourceService;
+    private final ErasureSubjectReference erasureSubjectReference;
     private final ApplicationProperties applicationProperties;
 
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
@@ -77,6 +94,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
                               PermissionService permissionService,
                               @Lazy SurveyAnswerCommentService commentService,
+                              @Lazy NewsItemService newsItemService,
+                              @Lazy ModelService modelService,
+                              @Lazy GenericResourceService genericResourceService,
+                              ErasureSubjectReference erasureSubjectReference,
                               ApplicationProperties applicationProperties,
                               ModelResponseValidator validator) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
@@ -90,6 +111,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.permissionService = permissionService;
         this.commentService = commentService;
+        this.newsItemService = newsItemService;
+        this.modelService = modelService;
+        this.genericResourceService = genericResourceService;
+        this.erasureSubjectReference = erasureSubjectReference;
         this.applicationProperties = applicationProperties;
     }
 
@@ -197,12 +222,19 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
      */
     @Override
     public void purge(String id) throws ResourceNotFoundException {
-        // Normalize to lowercase up front: emails/ids are stored lowercase everywhere
-        // (see User#setEmail, User#getId), but this id comes from a path variable and
-        // isn't guaranteed to match that casing. Every comparison/query below is exact-case.
-        id = id.toLowerCase();
+        // Normalize up front: ids are stored in canonical form everywhere (see UserIds#normalize,
+        // applied on every write path), but this id comes from a path variable and isn't guaranteed
+        // to match. Every comparison/query below is an exact match against the stored form.
+        id = UserIds.normalize(id);
         // Captured by the anonymizeVersions(...) lambdas below, which need an effectively-final reference.
         final String userId = id;
+
+        // Resolved up front, before anything is mutated. The report line at the end of this method is
+        // the only record that the erasure happened, so a misconfigured secret has to fail here —
+        // not two thirds of the way through, after the scrubs have run but before delete(id).
+        String subjectRef = erasureSubjectReference.of(userId);
+
+        // TODO: scrub the Redis edit-session cache here (SurveyAnswerCrudService#autoSaveCache flushes a cached aggregate back over the erased record) — blocked because deserializing SurveyAnswerRevisionsAggregation invokes its single-arg constructor, which appends a HistoryEntry, so a fetch-mutate-save scrub would corrupt history; see RevisionsCacheRoundTripTest.
 
         // --- Live removal from the groups the user is CURRENTLY a member/admin of ---
         // removeMember/removeAdmin handle permission cleanup internally. Version-history scrubbing
@@ -244,12 +276,31 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         int surveyAnswersAnonymized = scrubAllOfType(surveyAnswerCrudService,
                 (SurveyAnswer a) -> scrubSurveyAnswerPii(a, userId));
 
-        // NOTE (follow-up, not covered here): user identity in "news_item" and "document" registry
-        // resources (metadata.createdBy/modifiedBy). NewsItemService#update restores the existing
-        // metadata and re-stamps modifiedBy from the security context, so the generic version-scrub
-        // can't clean the *current* news_item record; Document is not Identifiable and has no typed
-        // CrudService (it is managed via GenericResourceService). Both need a dedicated
-        // metadata-aware scrub, tracked alongside the external messaging-service erasure.
+        // News item authorship (metadata.createdBy/modifiedBy). Persisted through saveScrubbed
+        // rather than update(): update() restores the stored metadata block and then re-stamps
+        // modifiedBy from the security context, so routing the scrub through it would put the
+        // purged address back and then replace it with the purging admin's.
+        int newsItemsAnonymized = scrubAllOfType(newsItemService,
+                (NewsItem n) -> scrubMetadata(n.getMetadata(), userId),
+                newsItemService::saveScrubbed);
+
+        // Survey definitions (Model) carry createdBy/modifiedBy as FLAT top-level fields rather than
+        // inside a Metadata block, and Model is not Identifiable, so scrubAllOfType cannot take it.
+        int surveyDefinitionsAnonymized = scrubAllUntyped(
+                ModelService.MODEL_RESOURCE_TYPE_NAME,
+                modelService.browse(sweepFilter()).getResults(),
+                Model::getId,
+                (Model m) -> scrubIdentityPair(m::getCreatedBy, m::setCreatedBy,
+                        m::getModifiedBy, m::setModifiedBy, userId));
+
+        // Documents. Metadata only: docInfo.authors.name/orcid and the harvested text/paragraphs are
+        // bibliographic data about third parties in publicly harvested documents, not platform-user
+        // identity, and are deliberately left alone.
+        int documentsAnonymized = scrubAllUntyped(
+                DOCUMENT_RESOURCE_TYPE,
+                genericResourceService.<Document>getResults(sweepFilter(DOCUMENT_RESOURCE_TYPE)).getResults(),
+                Document::getId,
+                (Document d) -> scrubMetadata(d.getMetadata(), userId));
 
         // Anonymize comment authorship and @mentions in survey comments
         commentService.anonymizeUser(id, DELETED_USER_PLACEHOLDER);
@@ -263,10 +314,15 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // final delete() so the report is captured even if that last step fails.
         // Deliberately omits the purged user's id/email from the log line — logging the
         // identifier being purged would itself retain the PII this method exists to remove.
+        // The subject reference is a keyed HMAC, so it answers "was this person purged?" without
+        // storing a readable address; it is pseudonymous, not anonymous.
+        // TODO: write this to a durable erasure register (subject_ref, timestamp, requested_by, executed_by, scope, outcome) — archived logs are deleted after 180 days, but a complaint to a supervisory authority can arrive long after; pending the DPO's hash-vs-plaintext decision, which does not block the build since the column is a varchar either way.
         logger.info("Purge report: removed from stakeholder group(s) {}, coordinator group(s) {}, " +
-                        "administrator group(s) {}; anonymized {} survey answer(s); anonymized comment authorship " +
-                        "and @mentions; removed residual permissions.",
-                stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized);
+                        "administrator group(s) {}; anonymized {} survey answer(s), {} news item(s), {} survey " +
+                        "definition(s), {} document(s); anonymized comment authorship and @mentions; removed " +
+                        "residual permissions. subject={}",
+                stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized, newsItemsAnonymized,
+                surveyDefinitionsAnonymized, documentsAnonymized, subjectRef);
 
         // Scrub the User resource's own version history before delete(id) below (which only
         // removes the current record; version rows persist and must be scrubbed in place).
@@ -301,7 +357,16 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
      *                   anything changed; only changed versions are written back.
      */
     private <T extends Identifiable> void anonymizeVersions(CrudService<T> crudService, String resourceId, Predicate<T> anonymizer) {
-        Resource resource = crudService.getResource(resourceId);
+        anonymizeVersions(crudService.getResource(resourceId), anonymizer);
+    }
+
+    /**
+     * As above, but taking the {@link Resource} directly. Split out because {@code Document} and
+     * {@code Model} are not {@link Identifiable} and have no typed {@link CrudService} to obtain it
+     * from — for those, resolve it the same two steps {@code AbstractCrudService#getResource} uses:
+     * {@code resourceService.getResource(searchResource(<type>, id, true).getId())}.
+     */
+    private <T> void anonymizeVersions(Resource resource, Predicate<T> anonymizer) {
         List<Version> versions = resource.getVersions();
         if (versions == null) {
             return;
@@ -324,24 +389,172 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
      * payload (persisting only when the predicate reports a change), and rewrites the resource's
      * entire version history. The predicate mutates its argument in place and returns whether
      * anything changed, so it is a safe no-op for resources the user never touched — making a
-     * blanket sweep idempotent. Reused for groups, survey answers and news items.
+     * blanket sweep idempotent. Used for groups, survey answers and news items; resource types with
+     * no typed {@link CrudService} go through {@link #scrubAllUntyped} instead.
      *
      * @return how many current payloads were actually modified.
      */
     private <T extends Identifiable<String>> int scrubAllOfType(CrudService<T> crudService, Predicate<T> scrub) {
-        FacetFilter filter = new FacetFilter();
-        // 10000 is Elasticsearch's default max result window, not an arbitrary cap; these resource
-        // types (groups / survey answers / news items) never approach it.
-        filter.setQuantity(10000);
+        return scrubAllOfType(crudService, scrub, crudService::update);
+    }
+
+    /**
+     * As above, but writing the scrubbed payload through {@code persist} instead of the service's
+     * own {@code update}. News items need this: {@code NewsItemService#update} restores the stored
+     * metadata block and then re-stamps {@code modifiedBy} from the security context, so routing a
+     * scrub through it would put back the purged user's address and then overwrite it with the
+     * identity of whoever is running the purge — trading one person's PII for another's.
+     */
+    private <T extends Identifiable<String>> int scrubAllOfType(CrudService<T> crudService, Predicate<T> scrub,
+                                                                BiConsumer<String, T> persist) {
         int modified = 0;
-        for (T resource : crudService.getAll(filter).getResults()) {
+        for (T resource : crudService.getAll(sweepFilter()).getResults()) {
             if (scrub.test(resource)) {
-                crudService.update(resource.getId(), resource);
+                persist.accept(resource.getId(), resource);
                 modified++;
             }
             anonymizeVersions(crudService, resource.getId(), scrub);
         }
         return modified;
+    }
+
+    /**
+     * A sweep filter sized to Elasticsearch's default max result window. 10000 is that default, not
+     * an arbitrary cap; none of the swept resource types comes close to it.
+     */
+    private static FacetFilter sweepFilter() {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        return filter;
+    }
+
+    private static FacetFilter sweepFilter(String resourceType) {
+        FacetFilter filter = sweepFilter();
+        filter.setResourceType(resourceType);
+        return filter;
+    }
+
+    /**
+     * {@link #scrubAllOfType} for resource types with no typed {@link CrudService}: {@code Model} and
+     * {@code Document} are not {@link Identifiable}, so they are enumerated and written through the
+     * untyped {@link GenericResourceService} instead.
+     *
+     * <p>Writing directly rather than through the type's own service is deliberate in both cases.
+     * {@code DefaultModelService#update} re-stamps {@code modificationDate}, mutates section
+     * structure and runs validation that can throw on models dating from 2021–2022 — none of which
+     * should happen for an administrative erasure — and it is the join point for the
+     * {@code SurveyAspect} advice that can email every stakeholder on a deadline change or reopening.
+     * {@code ResourcesService#update} likewise sets {@code curated = true} and re-stamps
+     * {@code modifiedBy} from the security context.
+     *
+     * @return how many current payloads were modified.
+     */
+    private <T> int scrubAllUntyped(String resourceType, List<T> resources,
+                                    java.util.function.Function<T, String> idOf, Predicate<T> scrub) {
+        int modified = 0;
+        for (T resource : resources) {
+            String id = idOf.apply(resource);
+            if (scrub.test(resource)) {
+                updateUntyped(resourceType, id, resource);
+                modified++;
+            }
+            anonymizeVersions(untypedResource(resourceType, id), scrub);
+        }
+        return modified;
+    }
+
+    /**
+     * Resolves the {@link Resource} behind an untyped resource id, the same two steps
+     * {@code AbstractCrudService#getResource} uses internally.
+     */
+    private Resource untypedResource(String resourceType, String id) {
+        return resourceService.getResource(searchResource(resourceType, id, true).getId());
+    }
+
+    /**
+     * {@code GenericResourceService#update} declares three checked reflection exceptions. They are
+     * wrapped and rethrown rather than logged and swallowed: {@code purge()} is documented as safe to
+     * re-run after a partial failure, so aborting loudly is both safe and correct — an erasure that
+     * only half-succeeded must not report as a clean run.
+     */
+    private <T> void updateUntyped(String resourceType, String id, T resource) {
+        try {
+            genericResourceService.update(resourceType, id, resource);
+        } catch (NoSuchFieldException | InvocationTargetException | NoSuchMethodException e) {
+            throw new ServiceException(
+                    String.format("Failed to scrub %s '%s' during purge.", resourceType, id), e);
+        }
+    }
+
+    /**
+     * Rewrites a comma-delimited list of user ids, replacing every occurrence of {@code userId} with
+     * {@link #DELETED_USER_PLACEHOLDER}.
+     *
+     * <p>Needed because {@code SurveyAnswerRevisionsAggregation#updateHistory} writes
+     * {@code metadata.modifiedBy} as a comma-joined list of everyone who edited during a session, so
+     * a whole-string {@code equals} never matches it and the address survives the purge.
+     *
+     * <p>The placeholder is de-duplicated globally rather than only where it repeats consecutively:
+     * purging two people at different times would otherwise leave two identical markers. Nothing is
+     * lost by collapsing them — the per-editor rows in {@code history.entries[].editors[]} are
+     * scrubbed individually and still record how many distinct people edited. Real ids are left
+     * exactly as they are, repeats included.
+     *
+     * @return the rewritten value, or {@code null} when nothing matched — so a re-run writes nothing
+     *         and the purge stays idempotent.
+     */
+    private static String scrubDelimited(String value, String userId) {
+        if (value == null) {
+            return null;
+        }
+        boolean matched = false;
+        List<String> tokens = new ArrayList<>();
+        // Tolerant of a spaced separator too, in case the writer ever emits ", " instead of ",".
+        for (String token : value.split("\\s*,\\s*")) {
+            if (token.isEmpty()) {
+                continue;
+            }
+            if (userId.equals(UserIds.normalize(token))) {
+                matched = true;
+                token = DELETED_USER_PLACEHOLDER;
+            }
+            if (DELETED_USER_PLACEHOLDER.equals(token) && tokens.contains(DELETED_USER_PLACEHOLDER)) {
+                continue;
+            }
+            tokens.add(token);
+        }
+        return matched ? String.join(",", tokens) : null;
+    }
+
+    /**
+     * Scrubs a createdBy/modifiedBy pair reached through accessors rather than a {@link Metadata}
+     * block — {@code Model} carries them as flat top-level fields. One predicate, two shapes.
+     *
+     * @return whether anything changed.
+     */
+    private static boolean scrubIdentityPair(Supplier<String> getCreatedBy, Consumer<String> setCreatedBy,
+                                             Supplier<String> getModifiedBy, Consumer<String> setModifiedBy,
+                                             String userId) {
+        boolean modified = false;
+        String createdBy = scrubDelimited(getCreatedBy.get(), userId);
+        if (createdBy != null) {
+            setCreatedBy.accept(createdBy);
+            modified = true;
+        }
+        String modifiedBy = scrubDelimited(getModifiedBy.get(), userId);
+        if (modifiedBy != null) {
+            setModifiedBy.accept(modifiedBy);
+            modified = true;
+        }
+        return modified;
+    }
+
+    /**
+     * {@link #scrubIdentityPair} for the common case of a {@link Metadata} block. Null-safe.
+     */
+    private static boolean scrubMetadata(Metadata metadata, String userId) {
+        return metadata != null && scrubIdentityPair(metadata::getCreatedBy, metadata::setCreatedBy,
+                metadata::getModifiedBy, metadata::setModifiedBy, userId);
     }
 
     /**
@@ -381,15 +594,12 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                 }
             }
         }
-        if (answer.getMetadata() != null) {
-            if (id.equals(answer.getMetadata().getCreatedBy())) {
-                answer.getMetadata().setCreatedBy(DELETED_USER_PLACEHOLDER);
-                modified = true;
-            }
-            if (id.equals(answer.getMetadata().getModifiedBy())) {
-                answer.getMetadata().setModifiedBy(DELETED_USER_PLACEHOLDER);
-                modified = true;
-            }
+        // Both go through scrubDelimited rather than an exact match: modifiedBy is written as a
+        // comma-joined list of a session's editors, so a whole-string equals never fires against it.
+        // createdBy is single-valued today, but sharing the code path costs nothing and survives
+        // anyone later reusing the aggregation logic for creation.
+        if (scrubMetadata(answer.getMetadata(), id)) {
+            modified = true;
         }
         return modified;
     }
