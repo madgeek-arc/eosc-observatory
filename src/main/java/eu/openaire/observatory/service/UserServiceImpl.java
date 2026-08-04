@@ -21,6 +21,7 @@ import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.utils.UserIds;
+import gr.athenarc.messaging.service.MessagingService;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
@@ -38,6 +39,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.InvocationTargetException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
@@ -63,6 +65,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     // SurveyAnswerDocumentAnalyzer. Kept local here rather than introducing a shared one.
     private static final String DOCUMENT_RESOURCE_TYPE = "document";
 
+    /** Bounds the blocking wait on the messaging service, which sweeps every thread a user appears in. */
+    private static final Duration MESSAGING_ERASURE_TIMEOUT = Duration.ofSeconds(30);
+
     private final PrivacyPolicyService privacyPolicyService;
     private final CrudService<Stakeholder> stakeholderCrudService;
     private final CrudService<Coordinator> coordinatorCrudService;
@@ -77,6 +82,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private final ModelService modelService;
     private final GenericResourceService genericResourceService;
     private final ErasureSubjectReference erasureSubjectReference;
+    // Named 'messagingClient' rather than 'messagingService' to keep it distinct from
+    // eu.openaire.observatory.messaging.MessagingService, a different class entirely.
+    private final MessagingService messagingClient;
     private final ApplicationProperties applicationProperties;
 
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
@@ -98,6 +106,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy ModelService modelService,
                               @Lazy GenericResourceService genericResourceService,
                               ErasureSubjectReference erasureSubjectReference,
+                              MessagingService messagingClient,
                               ApplicationProperties applicationProperties,
                               ModelResponseValidator validator) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
@@ -115,6 +124,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         this.modelService = modelService;
         this.genericResourceService = genericResourceService;
         this.erasureSubjectReference = erasureSubjectReference;
+        this.messagingClient = messagingClient;
         this.applicationProperties = applicationProperties;
     }
 
@@ -211,9 +221,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     }
 
     /**
-     * Not wrapped in a single transaction: the steps span both the registry's
-     * Postgres+Elasticsearch-backed group/permission storage and this service's own
-     * JPA-backed comment/user storage, so no single transaction manager could cover all of it.
+     * Not wrapped in a single transaction: the steps span the registry's
+     * Postgres+Elasticsearch-backed group/permission storage, this service's own
+     * JPA-backed comment/user storage, and a remote MongoDB-backed messaging service reached
+     * over HTTP, so no single transaction manager could cover all of it.
      * Instead, every step here is idempotent (group/permission removal and the placeholder
      * rewrites are no-ops when reapplied), so on partial failure it is safe to simply call
      * purge() again — it will pick up wherever it left off. The one exception is the final
@@ -305,6 +316,12 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // Anonymize comment authorship and @mentions in survey comments
         commentService.anonymizeUser(id, DELETED_USER_PLACEHOLDER);
 
+        // Erase the user from the messaging service's threads. That service owns its own MongoDB,
+        // so this HTTP call is the only path to the name and email it holds at rest. Failures are
+        // deliberately not caught: aborting here leaves the User record intact for a re-run, which
+        // beats deleting the account while its messaging PII survives. The operation is idempotent.
+        int messagingThreadsAnonymized = messagingClient.anonymizeUser(id).block(MESSAGING_ERASURE_TIMEOUT);
+
         // Safety net: remove any remaining permissions
         permissionService.removeAll(id);
 
@@ -319,10 +336,10 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // TODO: write this to a durable erasure register (subject_ref, timestamp, requested_by, executed_by, scope, outcome) — archived logs are deleted after 180 days, but a complaint to a supervisory authority can arrive long after; pending the DPO's hash-vs-plaintext decision, which does not block the build since the column is a varchar either way.
         logger.info("Purge report: removed from stakeholder group(s) {}, coordinator group(s) {}, " +
                         "administrator group(s) {}; anonymized {} survey answer(s), {} news item(s), {} survey " +
-                        "definition(s), {} document(s); anonymized comment authorship and @mentions; removed " +
-                        "residual permissions. subject={}",
+                        "definition(s), {} document(s), {} messaging thread(s); anonymized comment authorship " +
+                        "and @mentions; removed residual permissions. subject={}",
                 stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized, newsItemsAnonymized,
-                surveyDefinitionsAnonymized, documentsAnonymized, subjectRef);
+                surveyDefinitionsAnonymized, documentsAnonymized, messagingThreadsAnonymized, subjectRef);
 
         // Scrub the User resource's own version history before delete(id) below (which only
         // removes the current record; version rows persist and must be scrubbed in place).

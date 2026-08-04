@@ -17,6 +17,7 @@ import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.resources.model.DocumentMetadata;
+import gr.athenarc.messaging.service.MessagingService;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Mono;
 
 import java.util.Date;
 import java.util.List;
@@ -44,6 +46,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -101,6 +104,8 @@ class UserServiceImplTest {
     @Mock
     private ErasureSubjectReference erasureSubjectReference;
     @Mock
+    private MessagingService messagingClient;
+    @Mock
     private ApplicationProperties applicationProperties;
     @Mock
     private ModelResponseValidator validator;
@@ -129,9 +134,14 @@ class UserServiceImplTest {
                 modelService,
                 genericResourceService,
                 erasureSubjectReference,
+                messagingClient,
                 applicationProperties,
                 validator
         ));
+
+        // Every purge test reaches the messaging step; the ones that don't assert on it still
+        // need a non-null Mono back, so stub it leniently here and override where it matters.
+        lenient().when(messagingClient.anonymizeUser(anyString())).thenReturn(Mono.just(0));
 
         // Default: no version history, so anonymizeVersions() is a no-op unless a test
         // overrides these with a Resource that actually has Versions on it.
@@ -431,6 +441,33 @@ class UserServiceImplTest {
         verify(commentService).anonymizeUser(USER_ID, UserServiceImpl.DELETED_USER_PLACEHOLDER);
         verify(permissionService).removeAll(USER_ID);
         verify(service).delete(USER_ID);
+    }
+
+    @Test
+    void purgeAnonymizesMessagingThreads() throws ResourceNotFoundException {
+        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(messagingClient.anonymizeUser(USER_ID)).thenReturn(Mono.just(3));
+        doReturn(new User()).when(service).delete(USER_ID);
+
+        service.purge("User@Example.ORG");
+
+        // The messaging service is keyed by email, so it must receive the normalized id.
+        verify(messagingClient).anonymizeUser(USER_ID);
+        verify(service).delete(USER_ID);
+    }
+
+    @Test
+    void purgeAbortsWithoutDeletingUserWhenMessagingFails() {
+        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(messagingClient.anonymizeUser(USER_ID))
+                .thenReturn(Mono.error(new IllegalStateException("messaging service unreachable")));
+
+        assertThrows(IllegalStateException.class, () -> service.purge(USER_ID));
+
+        // The User record must survive so the purge can be re-run; deleting it here would
+        // strand the user's name and email inside the messaging service with nothing to key
+        // a retry on.
+        verify(service, never()).delete(USER_ID);
     }
 
     @Test
