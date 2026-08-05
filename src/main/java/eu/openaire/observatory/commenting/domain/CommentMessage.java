@@ -18,6 +18,7 @@ package eu.openaire.observatory.commenting.domain;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import eu.openaire.observatory.utils.UserIds;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -93,7 +94,7 @@ public class CommentMessage {
         List<MessageMention> mentions = new ArrayList<>();
         if (mentionedUsers != null) {
             for (String mentionedUser : mentionedUsers) {
-                MessageMention mention = new MessageMention(this, mentionedUser.toLowerCase());
+                MessageMention mention = new MessageMention(this, UserIds.normalize(mentionedUser));
                 mentions.add(mention);
             }
         }
