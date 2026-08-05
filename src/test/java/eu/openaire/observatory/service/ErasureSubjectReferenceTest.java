@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ErasureSubjectReferenceTest {
 
-    private static final String USER_ID = "ermis.ioannidis@openaire.eu";
+    private static final String USER_ID = "jane.doe@example.org";
 
     private ApplicationProperties properties;
     private ErasureSubjectReference reference;
@@ -46,14 +46,14 @@ class ErasureSubjectReferenceTest {
     void referenceIsStableAcrossCasingAndQuotingVariants() {
         String canonical = reference.of(USER_ID);
 
-        assertEquals(canonical, reference.of("Ermis.Ioannidis@OpenAIRE.eu"));
+        assertEquals(canonical, reference.of("Jane.Doe@Example.ORG"));
         assertEquals(canonical, reference.of("\"" + USER_ID + "\""));
-        assertEquals(canonical, reference.of("  \"ERMIS.IOANNIDIS@OPENAIRE.EU\"  "));
+        assertEquals(canonical, reference.of("  \"JANE.DOE@EXAMPLE.ORG\"  "));
     }
 
     @Test
     void differentIdsYieldDifferentReferences() {
-        assertNotEquals(reference.of(USER_ID), reference.of("someone.else@openaire.eu"));
+        assertNotEquals(reference.of(USER_ID), reference.of("someone.else@example.org"));
     }
 
     /**

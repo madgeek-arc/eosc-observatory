@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class UserIdsTest {
 
-    private static final String CANONICAL = "ermis.ioannidis@openaire.eu";
+    private static final String CANONICAL = "jane.doe@example.org";
 
     @Test
     void normalizeReturnsNullForNull() {
@@ -23,7 +23,7 @@ class UserIdsTest {
 
     @Test
     void normalizeLowercases() {
-        assertEquals(CANONICAL, UserIds.normalize("Ermis.Ioannidis@OpenAIRE.eu"));
+        assertEquals(CANONICAL, UserIds.normalize("Jane.Doe@Example.ORG"));
     }
 
     @Test
@@ -63,7 +63,7 @@ class UserIdsTest {
 
     @Test
     void normalizeIsIdempotent() {
-        String once = UserIds.normalize("  \"Ermis.Ioannidis@OpenAIRE.eu\"  ");
+        String once = UserIds.normalize("  \"Jane.Doe@Example.ORG\"  ");
         assertEquals(once, UserIds.normalize(once));
         assertEquals(CANONICAL, once);
     }
@@ -78,7 +78,7 @@ class UserIdsTest {
         Locale original = Locale.getDefault();
         try {
             Locale.setDefault(Locale.forLanguageTag("tr"));
-            assertEquals("ioannidis@openaire.eu", UserIds.normalize("IOANNIDIS@OPENAIRE.EU"));
+            assertEquals("doe@example.org", UserIds.normalize("DOE@EXAMPLE.ORG"));
         } finally {
             Locale.setDefault(original);
         }
