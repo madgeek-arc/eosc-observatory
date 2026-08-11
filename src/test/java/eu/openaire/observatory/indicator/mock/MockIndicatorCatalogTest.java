@@ -1,7 +1,12 @@
 package eu.openaire.observatory.indicator.mock;
 
+import eu.openaire.observatory.indicator.IndicatorCodes;
+import eu.openaire.observatory.indicator.model.DimensionUsage;
+import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.RenderHint;
 import org.junit.jupiter.api.Test;
+
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -13,36 +18,69 @@ class MockIndicatorCatalogTest {
     void containsTheFiveCollapsedDefinitions() {
         assertThat(catalog.getAll()).hasSize(5);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
-            MockIndicatorCatalog.PUBLICATIONS_COUNT, MockIndicatorCatalog.PUBLICATIONS_OA_SHARE,
-            MockIndicatorCatalog.FINANCIAL_INVESTMENT, MockIndicatorCatalog.COUNTRY_INITIATIVE_STATUS,
-            MockIndicatorCatalog.EU_COUNTRY_COVERAGE
+            IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE,
+            IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS,
+            IndicatorCodes.EU_COUNTRY_COVERAGE
         );
     }
 
     @Test
     void mapIndicatorUsesEntityMapRenderHint() {
-        assertThat(catalog.get(MockIndicatorCatalog.COUNTRY_INITIATIVE_STATUS).renderHint()).isEqualTo(RenderHint.ENTITY_MAP);
+        assertThat(catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).renderHint()).isEqualTo(RenderHint.ENTITY_MAP);
     }
 
     @Test
-    void euShareIndicatorsHaveNoCountryDimension() {
-        assertThat(catalog.get(MockIndicatorCatalog.PUBLICATIONS_OA_SHARE).dimensionBindings()).isEmpty();
+    void accessStatusShareRequiresAccessStatusFilterAndIsCountryFilterableAndGroupable() {
+        var bindings = catalog.get(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.ACCESS_STATUS_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.ACCESS_STATUS_DIMENSION))
+            .extracting("allowedOperators")
+            .containsExactly(Set.of(FilterOperator.EQ, FilterOperator.IN, FilterOperator.NOT_EQ, FilterOperator.NOT_IN));
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
+            .extracting("allowedOperators")
+            .containsExactly(Set.of(FilterOperator.EQ, FilterOperator.IN));
+    }
+
+    @Test
+    void publicationsCountIsCountryFilterableAndGroupable() {
+        var bindings = catalog.get(IndicatorCodes.PUBLICATIONS_COUNT).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
+            .extracting("allowedOperators")
+            .containsExactly(Set.of(FilterOperator.EQ, FilterOperator.IN));
     }
 
     @Test
     void financialInvestmentIsCountryFilterableAndGroupable() {
-        assertThat(catalog.get(MockIndicatorCatalog.FINANCIAL_INVESTMENT).dimensionBindings())
+        assertThat(catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).dimensionBindings())
             .extracting("dimensionCode")
             .containsExactly("country");
     }
 
     @Test
     void euCountryCoverageAndCountryInitiativeStatusRequireInitiativeTypeFilter() {
-        assertThat(catalog.get(MockIndicatorCatalog.EU_COUNTRY_COVERAGE).dimensionBindings())
+        assertThat(catalog.get(IndicatorCodes.EU_COUNTRY_COVERAGE).dimensionBindings())
             .filteredOn(binding -> binding.dimensionCode().equals("initiativeType"))
             .extracting("requiredFilter")
             .containsExactly(true);
-        assertThat(catalog.get(MockIndicatorCatalog.COUNTRY_INITIATIVE_STATUS).dimensionBindings())
+        assertThat(catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).dimensionBindings())
             .filteredOn(binding -> binding.dimensionCode().equals("initiativeType"))
             .extracting("requiredFilter")
             .containsExactly(true);

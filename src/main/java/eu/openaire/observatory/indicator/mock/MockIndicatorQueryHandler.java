@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
 @Service
 public class MockIndicatorQueryHandler implements IndicatorQueryHandler {
 
+    public static final String HANDLER_KEY = "mock";
+
     private static final String EU_AGGREGATE_SCOPE = "EU";
     private static final String CURRENT_PERIOD = "current";
 
@@ -48,7 +50,7 @@ public class MockIndicatorQueryHandler implements IndicatorQueryHandler {
 
     @Override
     public String handlerKey() {
-        return MockIndicatorCatalog.HANDLER_KEY;
+        return HANDLER_KEY;
     }
 
     @Override

@@ -14,4 +14,9 @@ public record IndicatorQuery(
     List<SortRequest> sort,
     Integer limit
 ) {
+    public IndicatorQuery {
+        filters = filters != null ? filters : List.of();
+        groupBy = groupBy != null ? groupBy : List.of();
+        sort = sort != null ? sort : List.of();
+    }
 }

@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator.mock;
 
+import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.validation.UnknownDimensionException;
 import org.junit.jupiter.api.Test;
 
@@ -12,9 +13,9 @@ class MockDimensionDefinitionLookupTest {
 
     @Test
     void returnsTheRegisteredDimensionForAKnownCode() {
-        var dimension = lookup.getRequired(MockIndicatorCatalog.COUNTRY_DIMENSION);
+        var dimension = lookup.getRequired(IndicatorCodes.COUNTRY_DIMENSION);
 
-        assertThat(dimension.code()).isEqualTo(MockIndicatorCatalog.COUNTRY_DIMENSION);
+        assertThat(dimension.code()).isEqualTo(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
     @Test

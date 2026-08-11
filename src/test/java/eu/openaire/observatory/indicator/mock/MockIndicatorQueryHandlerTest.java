@@ -119,7 +119,7 @@ class MockIndicatorQueryHandlerTest {
     void nonCountryBoundIndicatorAlwaysReturnsOneAggregateRowPerPeriod() {
         var timeRange = yearRange(2021, 2023);
 
-        var result = handler.execute(plan(publicationsOaShareDefinition(), List.of(), List.of(), timeRange));
+        var result = handler.execute(plan(noGroupableDimensionsDefinition(), List.of(), List.of(), timeRange));
 
         assertThat(result.data()).hasSize(3);
         assertThat(result.dimensions()).containsExactly("period");
@@ -128,7 +128,7 @@ class MockIndicatorQueryHandlerTest {
 
     @Test
     void noTimeRangeReturnsSingleSnapshotRow() {
-        var result = handler.execute(plan(publicationsOaShareDefinition(), List.of(), List.of(), null));
+        var result = handler.execute(plan(noGroupableDimensionsDefinition(), List.of(), List.of(), null));
 
         assertThat(result.data()).hasSize(1);
         assertThat(result.dimensions()).isEmpty();
@@ -222,16 +222,16 @@ class MockIndicatorQueryHandlerTest {
         );
     }
 
-    /** publications.oa_share-shaped: intrinsically Europe-wide, no country dimension. */
-    private static IndicatorDefinition publicationsOaShareDefinition() {
+    /** Generic example of a definition with no groupable dimensions at all — no country binding. */
+    private static IndicatorDefinition noGroupableDimensionsDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), "publications.oa_share", "OA Publication Share (Europe)", "desc", "Publications",
+            UUID.randomUUID(), "test.no_groupable_dimensions", "No Groupable Dimensions (test fixture)", "desc", "Publications",
             IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(),
             timePolicy(),
-            new IndicatorExecutionBinding("mock", "publications.oa_share"),
+            new IndicatorExecutionBinding("mock", "test.no_groupable_dimensions"),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }
