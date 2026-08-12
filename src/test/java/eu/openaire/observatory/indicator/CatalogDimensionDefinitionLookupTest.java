@@ -1,15 +1,14 @@
-package eu.openaire.observatory.indicator.mock;
+package eu.openaire.observatory.indicator;
 
-import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.validation.UnknownDimensionException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class MockDimensionDefinitionLookupTest {
+class CatalogDimensionDefinitionLookupTest {
 
-    private final MockDimensionDefinitionLookup lookup = new MockDimensionDefinitionLookup(new MockIndicatorCatalog());
+    private final CatalogDimensionDefinitionLookup lookup = new CatalogDimensionDefinitionLookup(new IndicatorCatalog());
 
     @Test
     void returnsTheRegisteredDimensionForAKnownCode() {

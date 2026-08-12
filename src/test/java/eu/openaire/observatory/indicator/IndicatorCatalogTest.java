@@ -1,32 +1,23 @@
-package eu.openaire.observatory.indicator.mock;
+package eu.openaire.observatory.indicator;
 
-import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
-import eu.openaire.observatory.indicator.model.RenderHint;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class MockIndicatorCatalogTest {
+class IndicatorCatalogTest {
 
-    private final MockIndicatorCatalog catalog = new MockIndicatorCatalog();
+    private final IndicatorCatalog catalog = new IndicatorCatalog();
 
     @Test
-    void containsTheFiveCollapsedDefinitions() {
-        assertThat(catalog.getAll()).hasSize(5);
+    void containsTheTwoRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(2);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
-            IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE,
-            IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS,
-            IndicatorCodes.EU_COUNTRY_COVERAGE
+            IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE
         );
-    }
-
-    @Test
-    void mapIndicatorUsesEntityMapRenderHint() {
-        assertThat(catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).renderHint()).isEqualTo(RenderHint.ENTITY_MAP);
     }
 
     @Test
@@ -68,25 +59,6 @@ class MockIndicatorCatalogTest {
     }
 
     @Test
-    void financialInvestmentIsCountryFilterableAndGroupable() {
-        assertThat(catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).dimensionBindings())
-            .extracting("dimensionCode")
-            .containsExactly("country");
-    }
-
-    @Test
-    void euCountryCoverageAndCountryInitiativeStatusRequireInitiativeTypeFilter() {
-        assertThat(catalog.get(IndicatorCodes.EU_COUNTRY_COVERAGE).dimensionBindings())
-            .filteredOn(binding -> binding.dimensionCode().equals("initiativeType"))
-            .extracting("requiredFilter")
-            .containsExactly(true);
-        assertThat(catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).dimensionBindings())
-            .filteredOn(binding -> binding.dimensionCode().equals("initiativeType"))
-            .extracting("requiredFilter")
-            .containsExactly(true);
-    }
-
-    @Test
     void allDefinitionsSupportTimeSeries() {
         assertThat(catalog.getAll()).allMatch(definition -> definition.timePolicy().supported());
     }
@@ -99,8 +71,8 @@ class MockIndicatorCatalogTest {
     @Test
     void dimensionReturnsRegisteredDimensions() {
         assertThat(catalog.dimension("country")).isNotNull();
-        assertThat(catalog.dimension("initiativeType")).isNotNull();
         assertThat(catalog.dimension("accessStatus")).isNotNull();
+        assertThat(catalog.dimension("initiativeType")).isNull();
         assertThat(catalog.dimension("unknown")).isNull();
     }
 

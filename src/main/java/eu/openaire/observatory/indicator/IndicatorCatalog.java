@@ -1,4 +1,4 @@
-package eu.openaire.observatory.indicator.mock;
+package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.AggregationPolicy;
 import eu.openaire.observatory.indicator.model.AggregationType;
@@ -33,24 +33,18 @@ import java.util.UUID;
 
 import static eu.openaire.observatory.indicator.IndicatorCodes.ACCESS_STATUS_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_DIMENSION;
-import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_INITIATIVE_STATUS;
-import static eu.openaire.observatory.indicator.IndicatorCodes.EU_COUNTRY_COVERAGE;
-import static eu.openaire.observatory.indicator.IndicatorCodes.FINANCIAL_INVESTMENT;
-import static eu.openaire.observatory.indicator.IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_COUNT;
 
 /**
- * In-memory catalog standing in until a real persistence/handler layer exists. Mirrors the
- * collapsed model proven in LegacyIndicatorCatalogMappingTest (5 definitions instead of 8
- * per-legacy-id ones) so a dynamic UI builder can browse real definitions, discover their real
- * dimension capabilities (including the initiativeType filter), and query them directly — no
- * legacy-id translation layer needed. One deliberate deviation from that test: every definition
- * here is time-enabled (year grain, zero-fill), since the builder needs single/multi-year support
- * uniformly, including for the two definitions the test modeled as SNAPSHOT-only.
+ * In-memory catalog of real, OpenAIRE-backed indicator definitions. Not a stand-in for a future
+ * persistence layer — the 2 definitions it holds today are real (both route to
+ * OpenAireBibliometricIndicatorQueryHandler). It previously also held 3 synthetic mock indicators;
+ * those were removed since they returned fake data with no path to a real implementation yet — see
+ * docs/INDICATOR_ROADMAP.md for what they need and what's still planned beyond them.
  */
 @Service
-public class MockIndicatorCatalog {
+public class IndicatorCatalog {
 
     private static final String GROUP_LABEL = "Publications";
 
@@ -62,14 +56,10 @@ public class MockIndicatorCatalog {
     private final Map<String, IndicatorDefinition> definitionsByCode;
     private final Map<String, DimensionDefinition> dimensionsByCode;
 
-    public MockIndicatorCatalog() {
+    public IndicatorCatalog() {
         DimensionDefinition countryDimension = new DimensionDefinition(
             COUNTRY_DIMENSION, "Country", DimensionType.ENTITY_REFERENCE,
             true, true, true, Set.of(FilterOperator.EQ, FilterOperator.IN), null
-        );
-        DimensionDefinition initiativeTypeDimension = new DimensionDefinition(
-            INITIATIVE_TYPE_DIMENSION, "OA initiative type", DimensionType.ENUM,
-            true, false, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
         );
         DimensionDefinition accessStatusDimension = new DimensionDefinition(
             ACCESS_STATUS_DIMENSION, "Access status", DimensionType.ENUM,
@@ -78,7 +68,6 @@ public class MockIndicatorCatalog {
         );
         this.dimensionsByCode = Map.of(
             COUNTRY_DIMENSION, countryDimension,
-            INITIATIVE_TYPE_DIMENSION, initiativeTypeDimension,
             ACCESS_STATUS_DIMENSION, accessStatusDimension
         );
 
@@ -102,10 +91,7 @@ public class MockIndicatorCatalog {
     }
 
     private static List<IndicatorDefinition> allDefinitions() {
-        return List.of(
-            publicationsCount(), publicationsAccessStatusShare(), financialInvestment(),
-            countryInitiativeStatus(), euCountryCoverage()
-        );
+        return List.of(publicationsCount(), publicationsAccessStatusShare());
     }
 
     /**
@@ -171,71 +157,12 @@ public class MockIndicatorCatalog {
         );
     }
 
-    /** Legacy id 69 — "Financial investments in OA Publication", country filterable/groupable. */
-    private static IndicatorDefinition financialInvestment() {
-        return new IndicatorDefinition(
-            UUID.randomUUID(), FINANCIAL_INVESTMENT, "Financial Investment in OA Publication",
-            "Total financial investment in open access publication activities.",
-            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
-            new AggregationPolicy(
-                AggregationType.SUM,
-                Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
-                NullHandling.EXCLUDE
-            ),
-            null,
-            Set.of(countryBinding()),
-            TIME_POLICY,
-            new IndicatorExecutionBinding(MockIndicatorQueryHandler.HANDLER_KEY, FINANCIAL_INVESTMENT),
-            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
-        );
-    }
-
-    /** Legacy ids 73 & 74 — per-country boolean status, rendered as a map, requires initiativeType. */
-    private static IndicatorDefinition countryInitiativeStatus() {
-        return new IndicatorDefinition(
-            UUID.randomUUID(), COUNTRY_INITIATIVE_STATUS, "National OA Initiative Status",
-            "Per-country status (adopted / not adopted) of a national OA initiative — policy, "
-                + "immediate-OA policy, financial strategy, or monitoring, selected via initiativeType.",
-            GROUP_LABEL, IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
-            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
-            null,
-            Set.of(countryBinding(), requiredInitiativeTypeBinding()),
-            TIME_POLICY,
-            new IndicatorExecutionBinding(MockIndicatorQueryHandler.HANDLER_KEY, COUNTRY_INITIATIVE_STATUS),
-            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
-        );
-    }
-
-    /** Legacy ids 68, 70, 71 & 72 — % of EU countries with a given initiative adopted. */
-    private static IndicatorDefinition euCountryCoverage() {
-        return new IndicatorDefinition(
-            UUID.randomUUID(), EU_COUNTRY_COVERAGE, "EU Country Coverage of OA Initiative",
-            "Percentage of EU member states with a given national OA initiative adopted, selected via initiativeType.",
-            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
-            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
-            new RatioPolicy(ZeroDenominatorHandling.NULL),
-            Set.of(requiredInitiativeTypeBinding()),
-            TIME_POLICY,
-            new IndicatorExecutionBinding(MockIndicatorQueryHandler.HANDLER_KEY, EU_COUNTRY_COVERAGE),
-            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
-        );
-    }
-
     private static IndicatorDimensionBinding countryBinding() {
         return new IndicatorDimensionBinding(
             COUNTRY_DIMENSION,
             Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
             Set.of(FilterOperator.EQ, FilterOperator.IN),
             false
-        );
-    }
-
-    private static IndicatorDimensionBinding requiredInitiativeTypeBinding() {
-        return new IndicatorDimensionBinding(
-            INITIATIVE_TYPE_DIMENSION,
-            Set.of(DimensionUsage.FILTER),
-            Set.of(FilterOperator.EQ),
-            true
         );
     }
 }

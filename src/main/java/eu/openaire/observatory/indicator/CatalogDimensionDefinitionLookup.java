@@ -1,4 +1,4 @@
-package eu.openaire.observatory.indicator.mock;
+package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.DimensionDefinition;
 import eu.openaire.observatory.indicator.validation.DimensionDefinitionLookup;
@@ -6,11 +6,11 @@ import eu.openaire.observatory.indicator.validation.UnknownDimensionException;
 import org.springframework.stereotype.Service;
 
 @Service
-public class MockDimensionDefinitionLookup implements DimensionDefinitionLookup {
+public class CatalogDimensionDefinitionLookup implements DimensionDefinitionLookup {
 
-    private final MockIndicatorCatalog catalog;
+    private final IndicatorCatalog catalog;
 
-    public MockDimensionDefinitionLookup(MockIndicatorCatalog catalog) {
+    public CatalogDimensionDefinitionLookup(IndicatorCatalog catalog) {
         this.catalog = catalog;
     }
 

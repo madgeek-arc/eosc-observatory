@@ -1,6 +1,6 @@
 package eu.openaire.observatory.indicator.api;
 
-import eu.openaire.observatory.indicator.mock.MockIndicatorCatalog;
+import eu.openaire.observatory.indicator.IndicatorCatalog;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.validation.DimensionDefinitionLookup;
 import org.springframework.http.MediaType;
@@ -14,10 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(path = "indicators", produces = MediaType.APPLICATION_JSON_VALUE)
 public class IndicatorCatalogController {
 
-    private final MockIndicatorCatalog catalog;
+    private final IndicatorCatalog catalog;
     private final DimensionDefinitionLookup dimensionLookup;
 
-    public IndicatorCatalogController(MockIndicatorCatalog catalog, DimensionDefinitionLookup dimensionLookup) {
+    public IndicatorCatalogController(IndicatorCatalog catalog, DimensionDefinitionLookup dimensionLookup) {
         this.catalog = catalog;
         this.dimensionLookup = dimensionLookup;
     }

@@ -1,4 +1,4 @@
-package eu.openaire.observatory.indicator.mock;
+package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.validation.IndicatorDefinitionLookup;
@@ -6,11 +6,11 @@ import eu.openaire.observatory.indicator.validation.UnknownIndicatorException;
 import org.springframework.stereotype.Service;
 
 @Service
-public class MockIndicatorDefinitionLookup implements IndicatorDefinitionLookup {
+public class CatalogIndicatorDefinitionLookup implements IndicatorDefinitionLookup {
 
-    private final MockIndicatorCatalog catalog;
+    private final IndicatorCatalog catalog;
 
-    public MockIndicatorDefinitionLookup(MockIndicatorCatalog catalog) {
+    public CatalogIndicatorDefinitionLookup(IndicatorCatalog catalog) {
         this.catalog = catalog;
     }
 

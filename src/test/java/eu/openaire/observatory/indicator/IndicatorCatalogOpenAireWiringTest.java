@@ -1,6 +1,5 @@
-package eu.openaire.observatory.indicator.mock;
+package eu.openaire.observatory.indicator;
 
-import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.openaire.OpenAireBibliometricIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
@@ -21,16 +20,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * publications.access_status_share (previously named publications.oa_share) had no
  * dimensionBindings at all before this work, so an accessStatus filter (the shape
  * INDICATOR_IMPLEMENTATION_PLAN.md's own first-working-example curl relies on) would have failed
- * validation. Both publications.access_status_share and publications.count should now route to the
- * real handler instead of the mock, and both accept country either as a filter (EQ or IN, one or
- * more countries) or a groupBy (for a per-country map). publications.access_status_share's
- * accessStatus filter also accepts NOT_EQ/IN, not just EQ, to aggregate several statuses together.
+ * validation. Both publications.access_status_share and publications.count route to the real
+ * handler, and both accept country either as a filter (EQ or IN, one or more countries) or a
+ * groupBy (for a per-country map). publications.access_status_share's accessStatus filter also
+ * accepts NOT_EQ/IN/NOT_IN, not just EQ, to aggregate several statuses together.
  */
-class MockIndicatorCatalogOpenAireWiringTest {
+class IndicatorCatalogOpenAireWiringTest {
 
-    private final MockIndicatorCatalog catalog = new MockIndicatorCatalog();
+    private final IndicatorCatalog catalog = new IndicatorCatalog();
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
-        new MockIndicatorDefinitionLookup(catalog), new MockDimensionDefinitionLookup(catalog),
+        new CatalogIndicatorDefinitionLookup(catalog), new CatalogDimensionDefinitionLookup(catalog),
         new AllowAllIndicatorAuthorizationService()
     );
     private static final ActorContext ALLOW_ALL = level -> true;
