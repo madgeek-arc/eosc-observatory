@@ -31,6 +31,10 @@ public class StatsToolProperties {
 
     private String endpoint;
     private List<QueryAccess> queryAccess = new ArrayList<>();
+    // Not used by StatsToolWrapperController itself (its queries never carry a profile) — added for
+    // eu.openaire.observatory.indicator.survey.SurveyStatsToolQueryBuilder, which needs the survey
+    // stats-tool's registered profile name ("eosc-obs" in production) on every named query.
+    private String surveyProfile;
 
     public List<QueryAccess> getQueryAccess() {
         return queryAccess;
@@ -46,6 +50,15 @@ public class StatsToolProperties {
 
     public StatsToolProperties setEndpoint(String endpoint) {
         this.endpoint = endpoint;
+        return this;
+    }
+
+    public String getSurveyProfile() {
+        return surveyProfile;
+    }
+
+    public StatsToolProperties setSurveyProfile(String surveyProfile) {
+        this.surveyProfile = surveyProfile;
         return this;
     }
 

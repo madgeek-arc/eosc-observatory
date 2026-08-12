@@ -23,6 +23,7 @@ import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.model.ZeroDenominatorHandling;
 import eu.openaire.observatory.indicator.openaire.OpenAireBibliometricIndicatorQueryHandler;
+import eu.openaire.observatory.indicator.survey.SurveyStatsToolIndicatorQueryHandler;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -33,15 +34,21 @@ import java.util.UUID;
 
 import static eu.openaire.observatory.indicator.IndicatorCodes.ACCESS_STATUS_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_DIMENSION;
+import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_INITIATIVE_STATUS;
+import static eu.openaire.observatory.indicator.IndicatorCodes.EU_COUNTRY_COVERAGE;
+import static eu.openaire.observatory.indicator.IndicatorCodes.FINANCIAL_INVESTMENT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_COUNT;
 
 /**
- * In-memory catalog of real, OpenAIRE-backed indicator definitions. Not a stand-in for a future
- * persistence layer — the 2 definitions it holds today are real (both route to
- * OpenAireBibliometricIndicatorQueryHandler). It previously also held 3 synthetic mock indicators;
- * those were removed since they returned fake data with no path to a real implementation yet — see
- * docs/INDICATOR_ROADMAP.md for what they need and what's still planned beyond them.
+ * In-memory catalog of real indicator definitions. Not a stand-in for a future persistence layer
+ * — the 5 definitions it holds today are all real: 2 route to OpenAireBibliometricIndicatorQueryHandler
+ * (OpenAIRE bibliometric data), 3 route to SurveyStatsToolIndicatorQueryHandler (survey stats-tool
+ * data, scoped to survey years 2022+ — see that handler's Javadoc and docs/INDICATOR_ROADMAP.md
+ * for why 2021 is excluded). It previously also held 3 synthetic mock indicators with the same
+ * codes as the 3 survey ones; those were removed and later replaced with these real
+ * implementations — see docs/INDICATOR_ROADMAP.md for the remaining backlog beyond them.
  */
 @Service
 public class IndicatorCatalog {
@@ -66,9 +73,14 @@ public class IndicatorCatalog {
             true, true, false,
             Set.of(FilterOperator.EQ, FilterOperator.IN, FilterOperator.NOT_EQ, FilterOperator.NOT_IN), null
         );
+        DimensionDefinition initiativeTypeDimension = new DimensionDefinition(
+            INITIATIVE_TYPE_DIMENSION, "Initiative type", DimensionType.ENUM,
+            true, true, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
+        );
         this.dimensionsByCode = Map.of(
             COUNTRY_DIMENSION, countryDimension,
-            ACCESS_STATUS_DIMENSION, accessStatusDimension
+            ACCESS_STATUS_DIMENSION, accessStatusDimension,
+            INITIATIVE_TYPE_DIMENSION, initiativeTypeDimension
         );
 
         Map<String, IndicatorDefinition> byCode = new LinkedHashMap<>();
@@ -91,7 +103,10 @@ public class IndicatorCatalog {
     }
 
     private static List<IndicatorDefinition> allDefinitions() {
-        return List.of(publicationsCount(), publicationsAccessStatusShare());
+        return List.of(
+            publicationsCount(), publicationsAccessStatusShare(),
+            financialInvestment(), countryInitiativeStatus(), euCountryCoverage()
+        );
     }
 
     /**
@@ -153,6 +168,91 @@ public class IndicatorCatalog {
             ),
             TIME_POLICY,
             new IndicatorExecutionBinding(OpenAireBibliometricIndicatorQueryHandler.HANDLER_KEY, PUBLICATIONS_ACCESS_STATUS_SHARE),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    /**
+     * Legacy id 69 — "Financial investments in OA Publication". Survey Question56, in millions of
+     * euros; SurveyStatsToolIndicatorQueryHandler applies the ×1,000,000 scale so the returned
+     * value is in euros. Filterable/groupable by country (absent country filter aggregates all
+     * countries with an answer, per the requested AggregationPolicy — SUM by default).
+     */
+    private static IndicatorDefinition financialInvestment() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), FINANCIAL_INVESTMENT, "Financial Investment in OA Publication",
+            "Reported financial investment in Open Access publication (survey Question56), in euros. "
+                + "Survey values are collected in millions of euros — this indicator applies an "
+                + "explicit x1,000,000 scale before returning a value, so the returned number is "
+                + "already in euros, not millions.",
+            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
+            new AggregationPolicy(
+                AggregationType.SUM,
+                Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
+                NullHandling.EXCLUDE
+            ),
+            null,
+            Set.of(countryBinding()),
+            TIME_POLICY,
+            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, FINANCIAL_INVESTMENT),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    /**
+     * Legacy ids 73/74 — "National policy"/"National monitoring on OA Publication", collapsed
+     * behind a required initiativeType filter (fixed 4-value enum — see
+     * InitiativeTypeDimensionMemberProvider). Per-country Yes/No, always one row per answering
+     * country — country grouping is mandatory for this indicator to render, not optional, so
+     * there is no country dimension binding at all (unlike the MEASURE/RATIO indicators above).
+     */
+    private static IndicatorDefinition countryInitiativeStatus() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), COUNTRY_INITIATIVE_STATUS, "Country Initiative Status",
+            "Per-country adoption status (Yes/No) of a national OA initiative, for a given "
+                + "initiativeType (survey Question6/Question6.3/Question7/Question54, one per "
+                + "initiativeType value). No aggregation — always one boolean per answering country.",
+            GROUP_LABEL, IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            null,
+            Set.of(
+                new IndicatorDimensionBinding(
+                    INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER),
+                    Set.of(FilterOperator.EQ), true
+                )
+            ),
+            TIME_POLICY,
+            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, COUNTRY_INITIATIVE_STATUS),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    /**
+     * Legacy ids 68/70/71/72 — "EU Countries with Policy/Immediate-OA-Policy/Financial-Strategy/
+     * Monitoring on OA Publication", collapsed behind a required initiativeType filter. Two views
+     * over the same per-country fact as countryInitiativeStatus() — the handler shares one
+     * data-access call between them. Intrinsically EU-aggregate-only: no country binding, unlike
+     * publications.access_status_share.
+     */
+    private static IndicatorDefinition euCountryCoverage() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), EU_COUNTRY_COVERAGE, "EU Country Coverage",
+            "Percentage of that year's survey respondents with a Yes on the given initiativeType's "
+                + "national initiative question, out of all respondents to that question that year "
+                + "(matches observatory-ui's own calculation exactly, including any non-EU "
+                + "respondents present in the survey). A country with no answer to this specific "
+                + "question still counts toward the denominator, just not as a Yes.",
+            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            new RatioPolicy(ZeroDenominatorHandling.NULL),
+            Set.of(
+                new IndicatorDimensionBinding(
+                    INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER),
+                    Set.of(FilterOperator.EQ), true
+                )
+            ),
+            TIME_POLICY,
+            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, EU_COUNTRY_COVERAGE),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }

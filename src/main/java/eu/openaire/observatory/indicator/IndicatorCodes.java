@@ -16,8 +16,7 @@ public final class IndicatorCodes {
 
     public static final String PUBLICATIONS_COUNT = "publications.count";
     public static final String PUBLICATIONS_ACCESS_STATUS_SHARE = "publications.access_status_share";
-    // Not yet implemented — see docs/INDICATOR_ROADMAP.md. Kept as fixed identifiers so the eventual
-    // real implementation reuses the same codes rather than retyping them from the roadmap doc.
+    // Routed to SurveyStatsToolIndicatorQueryHandler — see docs/INDICATOR_ROADMAP.md.
     public static final String FINANCIAL_INVESTMENT = "oa.financial_investment";
     public static final String COUNTRY_INITIATIVE_STATUS = "oa.country_initiative_status";
     public static final String EU_COUNTRY_COVERAGE = "oa.eu_country_coverage";

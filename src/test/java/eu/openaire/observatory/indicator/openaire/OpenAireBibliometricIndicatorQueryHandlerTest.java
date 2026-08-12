@@ -64,9 +64,9 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
         var result = handler.execute(plan(accessStatusShareDefinition(), filters, List.of(), null));
 
         assertThat(result.data().get(0).value()).isEqualTo(25.0);
-        String request = capturedRequests.get(0);
-        assertThat(request).contains("\"values\":[\"Open Access\"]");
-        assertThat(request).doesNotContain("Closed Access").doesNotContain("Embargo").doesNotContain("Restricted");
+        String numeratorQuery = firstSubQuery(capturedRequests.get(0));
+        assertThat(numeratorQuery).contains("\"values\":[\"Open Access\"]");
+        assertThat(numeratorQuery).doesNotContain("Closed Access").doesNotContain("Embargo").doesNotContain("Restricted");
     }
 
     @Test
@@ -77,9 +77,9 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
         var result = handler.execute(plan(accessStatusShareDefinition(), filters, List.of(), null));
 
         assertThat(result.data().get(0).value()).isEqualTo(41.7);
-        String request = capturedRequests.get(0);
-        assertThat(request).contains("\"values\":[\"Closed Access\"]");
-        assertThat(request).doesNotContain("Embargo").doesNotContain("Restricted").doesNotContain("Open Access");
+        String numeratorQuery = firstSubQuery(capturedRequests.get(0));
+        assertThat(numeratorQuery).contains("\"values\":[\"Closed Access\"]");
+        assertThat(numeratorQuery).doesNotContain("Embargo").doesNotContain("Restricted").doesNotContain("Open Access");
     }
 
     @Test
@@ -89,9 +89,9 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
 
         handler.execute(plan(accessStatusShareDefinition(), filters, List.of(), null));
 
-        String request = capturedRequests.get(0);
-        assertThat(request).contains("\"values\":[\"Embargo\"]");
-        assertThat(request).doesNotContain("Closed Access").doesNotContain("Restricted").doesNotContain("Open Access");
+        String numeratorQuery = firstSubQuery(capturedRequests.get(0));
+        assertThat(numeratorQuery).contains("\"values\":[\"Embargo\"]");
+        assertThat(numeratorQuery).doesNotContain("Closed Access").doesNotContain("Restricted").doesNotContain("Open Access");
     }
 
     @Test
@@ -101,9 +101,9 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
 
         handler.execute(plan(accessStatusShareDefinition(), filters, List.of(), null));
 
-        String request = capturedRequests.get(0);
-        assertThat(request).contains("\"values\":[\"Restricted\"]");
-        assertThat(request).doesNotContain("Closed Access").doesNotContain("Embargo").doesNotContain("Open Access");
+        String numeratorQuery = firstSubQuery(capturedRequests.get(0));
+        assertThat(numeratorQuery).contains("\"values\":[\"Restricted\"]");
+        assertThat(numeratorQuery).doesNotContain("Closed Access").doesNotContain("Embargo").doesNotContain("Open Access");
     }
 
     @Test
@@ -116,10 +116,10 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
         var result = handler.execute(plan(accessStatusShareDefinition(), filters, List.of(), null));
 
         assertThat(result.data().get(0).value()).isEqualTo(75.0);
-        String request = capturedRequests.get(0);
-        assertThat(request).contains("\"op\":\"OR\"");
-        assertThat(request).contains("Closed Access").contains("Embargo").contains("Restricted");
-        assertThat(request).doesNotContain("\"values\":[\"Open Access\"]");
+        String numeratorQuery = firstSubQuery(capturedRequests.get(0));
+        assertThat(numeratorQuery).contains("\"op\":\"OR\"");
+        assertThat(numeratorQuery).contains("Closed Access").contains("Embargo").contains("Restricted");
+        assertThat(numeratorQuery).doesNotContain("\"values\":[\"Open Access\"]");
     }
 
     @Test
@@ -130,10 +130,10 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
         var result = handler.execute(plan(accessStatusShareDefinition(), filters, List.of(), null));
 
         assertThat(result.data().get(0).value()).isEqualTo(75.0);
-        String request = capturedRequests.get(0);
-        assertThat(request).contains("\"op\":\"OR\"");
-        assertThat(request).contains("Closed Access").contains("Embargo").contains("Restricted");
-        assertThat(request).doesNotContain("\"values\":[\"Open Access\"]");
+        String numeratorQuery = firstSubQuery(capturedRequests.get(0));
+        assertThat(numeratorQuery).contains("\"op\":\"OR\"");
+        assertThat(numeratorQuery).contains("Closed Access").contains("Embargo").contains("Restricted");
+        assertThat(numeratorQuery).doesNotContain("\"values\":[\"Open Access\"]");
     }
 
     @Test
@@ -146,10 +146,10 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
         var result = handler.execute(plan(accessStatusShareDefinition(), filters, List.of(), null));
 
         assertThat(result.data().get(0).value()).isEqualTo(75.0);
-        String request = capturedRequests.get(0);
-        assertThat(request).contains("\"op\":\"OR\"");
-        assertThat(request).contains("Open Access").contains("Restricted");
-        assertThat(request).doesNotContain("\"values\":[\"Closed Access\"]").doesNotContain("\"values\":[\"Embargo\"]");
+        String numeratorQuery = firstSubQuery(capturedRequests.get(0));
+        assertThat(numeratorQuery).contains("\"op\":\"OR\"");
+        assertThat(numeratorQuery).contains("Open Access").contains("Restricted");
+        assertThat(numeratorQuery).doesNotContain("\"values\":[\"Closed Access\"]").doesNotContain("\"values\":[\"Embargo\"]");
     }
 
     @Test
@@ -320,6 +320,15 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
             .containsExactlyInAnyOrder("GR", "DE");
         assertThat(result.data()).extracting(IndicatorDataPoint::value).containsExactlyInAnyOrder(10L, 5L);
         assertThat(capturedRequests.get(0)).contains("\"field\":\"result.organization.country\"");
+    }
+
+    /**
+     * A single request carries every sub-query as its own "series" entry (numerator, then
+     * denominator) — isolates the first one's text so assertions about the numerator's filters
+     * aren't tripped up by the denominator now deliberately mentioning all 4 access-mode literals.
+     */
+    private static String firstSubQuery(String request) {
+        return request.substring(0, request.indexOf("}},{\"query\":"));
     }
 
     private OpenAireBibliometricIndicatorQueryHandler handlerReturning(String responseJson) {

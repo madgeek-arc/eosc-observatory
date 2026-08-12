@@ -2,6 +2,7 @@ package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
+import eu.openaire.observatory.indicator.model.RenderHint;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -13,11 +14,49 @@ class IndicatorCatalogTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
 
     @Test
-    void containsTheTwoRealDefinitions() {
-        assertThat(catalog.getAll()).hasSize(2);
+    void containsAllFiveRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(5);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
-            IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE
+            IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE,
+            IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE
         );
+    }
+
+    @Test
+    void financialInvestmentIsCountryFilterableAndGroupable() {
+        var bindings = catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+    }
+
+    @Test
+    void countryInitiativeStatusRequiresInitiativeTypeFilter() {
+        var bindings = catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+    }
+
+    @Test
+    void euCountryCoverageRequiresInitiativeTypeFilterAndUsesEntityMapRenderHint() {
+        var definition = catalog.get(IndicatorCodes.EU_COUNTRY_COVERAGE);
+        assertThat(definition.dimensionBindings()).extracting("dimensionCode")
+            .containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+        assertThat(definition.dimensionBindings())
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+    }
+
+    @Test
+    void countryInitiativeStatusUsesEntityMapRenderHint() {
+        assertThat(catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).renderHint())
+            .isEqualTo(RenderHint.ENTITY_MAP);
     }
 
     @Test
@@ -72,7 +111,7 @@ class IndicatorCatalogTest {
     void dimensionReturnsRegisteredDimensions() {
         assertThat(catalog.dimension("country")).isNotNull();
         assertThat(catalog.dimension("accessStatus")).isNotNull();
-        assertThat(catalog.dimension("initiativeType")).isNull();
+        assertThat(catalog.dimension("initiativeType")).isNotNull();
         assertThat(catalog.dimension("unknown")).isNull();
     }
 

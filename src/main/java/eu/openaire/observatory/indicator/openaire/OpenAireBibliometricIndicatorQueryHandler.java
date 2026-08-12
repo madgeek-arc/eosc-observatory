@@ -32,6 +32,12 @@ import java.util.Map;
  * all-EU, matching the always-applied continent=Europe scope) or as a groupBy (fans out into one row
  * per country in a single extra sub-query, via OpenAireQueryBuilder's native groupBy-by-country
  * queries — not a query-per-country loop).
+ *
+ * <p>publications.access_status_share's denominator ("total") is explicitly scoped to the 4 known
+ * access-mode values (OA/Closed/Embargoed/Restricted, OR'd together), matching observatory-ui's own
+ * OAPublicationVSClosed exactly — confirmed live against a 2023 mismatch where an unrestricted count
+ * (no access-mode filter at all) pulled in ~21% more results than the legacy UI's definition of
+ * "total", producing a materially wrong share.
  */
 @Service
 public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQueryHandler, RemoteIndicatorClient {
@@ -84,7 +90,7 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
         List<ObjectNode> subQueries = new ArrayList<>();
         for (Period period : periods) {
             subQueries.add(queryBuilder.publicationCountSubQuery(period.year(), numeratorModes, countryCodes));
-            subQueries.add(queryBuilder.publicationCountSubQuery(period.year(), List.of(), countryCodes));
+            subQueries.add(queryBuilder.publicationCountSubQuery(period.year(), List.of(OpenAireAccessMode.values()), countryCodes));
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
 
@@ -105,7 +111,7 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
         List<ObjectNode> subQueries = new ArrayList<>();
         for (Period period : periods) {
             subQueries.add(queryBuilder.publicationCountByCountrySubQuery(period.year(), numeratorModes));
-            subQueries.add(queryBuilder.publicationCountByCountrySubQuery(period.year(), List.of()));
+            subQueries.add(queryBuilder.publicationCountByCountrySubQuery(period.year(), List.of(OpenAireAccessMode.values())));
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
 
