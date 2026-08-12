@@ -8,6 +8,7 @@ import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizationService;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
 import eu.openaire.observatory.indicator.validation.MissingRequiredFilterException;
+import eu.openaire.observatory.indicator.validation.UnsupportedDimensionException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -49,6 +50,18 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(MissingRequiredFilterException.class);
+    }
+
+    @Test
+    void euCountryCoverageCountryIsNotClientFilterable() {
+        var query = new IndicatorQuery(
+            IndicatorCodes.EU_COUNTRY_COVERAGE, null,
+            List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
+            List.of(), null, List.of(), null
+        );
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(UnsupportedDimensionException.class);
     }
 
     @Test
