@@ -47,7 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * No live network: the outbound WebClient call is stubbed, same pattern as
- * OpenAireBibliometricIndicatorQueryHandlerTest. Response fixtures are shaped exactly like the
+ * OpenAireStatsToolIndicatorQueryHandlerTest. Response fixtures are shaped exactly like the
  * envelope confirmed live against http://dl123.madgik.di.uoa.gr:8080/stats-api (see
  * SurveyRawResponse's Javadoc), with real observed values, not guessed ones.
  */
@@ -219,6 +219,51 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         });
     }
 
+    @Test
+    void longTermPreservationCountUsesQuestion89AndSumsByDefault() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"PL\",\"68\"]},{\"row\":[\"RS\",\"118\"]}]}}]}");
+
+        var result = handler.execute(plan(longTermPreservationCountDefinition(), List.of(), List.of(), null, AggregationType.SUM));
+
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question89\"");
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).value()).isEqualTo(186L);
+    }
+
+    @Test
+    void longTermPreservationCountSkipsNoAnswerRows() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":["
+                + "{\"row\":[\"PL\",\"68\"]},{\"row\":[\"CY\",\"0\"]},{\"row\":[\"IT\",\"\"]},{\"row\":[\"GE\",\"null\"]}"
+                + "]}}]}");
+
+        var result = handler.execute(plan(longTermPreservationCountDefinition(), List.of(), List.of(), null, AggregationType.SUM));
+
+        assertThat(result.data().get(0).value()).isEqualTo(68L);
+    }
+
+    @Test
+    void citizenScienceNewProjectsCountUsesQuestion101AndGroupsByCountry() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"14\"]},{\"row\":[\"IE\",\"124\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(citizenScienceNewProjectsCountDefinition(), List.of(), groupBy, null, AggregationType.SUM));
+
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question101\"");
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("FI");
+            assertThat(dp.value()).isEqualTo(14L);
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("IE");
+            assertThat(dp.value()).isEqualTo(124L);
+        });
+    }
+
     private SurveyStatsToolIndicatorQueryHandler handlerReturning(String responseJson) {
         WebClient.Builder builder = WebClient.builder().exchangeFunction(request -> {
             String rawJson = request.url().getRawQuery().substring("json=".length());
@@ -296,6 +341,33 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             )),
             timePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.FINANCIAL_INVESTMENT),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    private static IndicatorDefinition longTermPreservationCountDefinition() {
+        return countByQuestionDefinition(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, "Repositories with Long-Term Preservation");
+    }
+
+    private static IndicatorDefinition citizenScienceNewProjectsCountDefinition() {
+        return countByQuestionDefinition(IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, "New Citizen Science Projects");
+    }
+
+    private static IndicatorDefinition countByQuestionDefinition(String code, String label) {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), code, label, "desc", "Data Preservation",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            new AggregationPolicy(
+                AggregationType.SUM, Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
+                NullHandling.EXCLUDE
+            ),
+            null,
+            Set.of(new IndicatorDimensionBinding(
+                IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                Set.of(FilterOperator.EQ, FilterOperator.IN), false
+            )),
+            timePolicy(),
+            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, code),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }

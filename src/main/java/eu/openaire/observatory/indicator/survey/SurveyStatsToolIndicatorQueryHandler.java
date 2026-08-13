@@ -1,38 +1,38 @@
 package eu.openaire.observatory.indicator.survey;
 
 import eu.openaire.observatory.indicator.IndicatorCodes;
-import eu.openaire.observatory.indicator.handler.IndicatorQueryHandler;
+import eu.openaire.observatory.indicator.handler.AbstractIndicatorQueryHandler;
+import eu.openaire.observatory.indicator.handler.RatioPercentage;
 import eu.openaire.observatory.indicator.handler.RemoteIndicatorClient;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
-import eu.openaire.observatory.indicator.result.IndicatorMetadata;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
-import eu.openaire.observatory.indicator.result.QueryExecutionMetadata;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
 import eu.openaire.observatory.indicator.validation.ResolvedDimension;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BinaryOperator;
 
 /**
- * Real handler for the 3 survey-stats-tool-backed indicators (oa.financial_investment,
- * oa.country_initiative_status, oa.eu_country_coverage), all sourced from a separate external
- * survey stats-tool (distinct from the OpenAIRE bibliometric one — see indicator/openaire/).
- * Scoped to survey years 2022+ only: 2021 used incompatible question numbering (its "Question6"/
- * "Question7" are unrelated numeric funding data, and "Question54"/"Question6.3"/"Question56"
- * aren't registered at all for that year) — confirmed live, not assumed; see
- * docs/INDICATOR_ROADMAP.md. Does not model a real time series: each query resolves to a single
- * survey year (the requested time range's end year, or the latest known year if none is given),
- * not a multi-year OpenAIRE-style range — but every returned data point still stamps a "period"
- * dimension for that resolved year (matching OpenAireBibliometricIndicatorQueryHandler's own
- * PERIOD_DIMENSION convention), because TimeSeriesNormalizer gap-fills any data point it can't
- * match against the requested range's generated periods — without this stamp it would treat every
- * real value as "missing" and zero it out whenever a caller supplies a timeSeries range.
+ * Real handler for the 5 survey-stats-tool-backed indicators (oa.financial_investment,
+ * oa.country_initiative_status, oa.eu_country_coverage, repositories.long_term_preservation_count,
+ * citizen_science.new_projects_count), all sourced from a separate external survey stats-tool
+ * (distinct from the OpenAIRE one — see indicator/openaire/). Scoped to survey years
+ * 2022+ only: 2021 used incompatible question numbering (its "Question6"/"Question7" are unrelated
+ * numeric funding data, and "Question54"/"Question6.3"/"Question56" aren't registered at all for
+ * that year) — confirmed live, not assumed; see docs/INDICATOR_ROADMAP.md. Does not model a real
+ * time series: each query resolves to a single survey year (the requested time range's end year,
+ * or the latest known year if none is given), not a multi-year OpenAIRE-style range — but every
+ * returned data point still stamps a "period" dimension for that resolved year (matching
+ * OpenAireStatsToolIndicatorQueryHandler's own PERIOD_DIMENSION convention), because
+ * TimeSeriesNormalizer gap-fills any data point it can't match against the requested range's
+ * generated periods — without this stamp it would treat every real value as "missing" and zero it
+ * out whenever a caller supplies a timeSeries range.
  *
  * <p>oa.country_initiative_status (ATTRIBUTE) and oa.eu_country_coverage (RATIO) are two
  * renderings of the same per-initiativeType Yes/No dataset — one raw per-country map, one turned
@@ -41,24 +41,30 @@ import java.util.Objects;
  * respondent count (matching observatory-ui's own calculatePercentage exactly, including
  * countries that gave no answer), not a fixed EU-membership population — see
  * docs/INDICATOR_ROADMAP.md for why this isn't actually filtered to EU countries.
+ *
+ * <p>repositories.long_term_preservation_count (Question89) and citizen_science.new_projects_count
+ * (Question101) are plain per-country integer counts, structurally identical to
+ * oa.financial_investment apart from having no unit scale — both share
+ * {@link #queryCountByQuestion}.
  */
 @Service
-public class SurveyStatsToolIndicatorQueryHandler implements IndicatorQueryHandler, RemoteIndicatorClient {
+public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQueryHandler implements RemoteIndicatorClient {
 
     public static final String HANDLER_KEY = "survey-stats-tool";
 
     private static final String COUNTRY_DIMENSION = IndicatorCodes.COUNTRY_DIMENSION;
     private static final String INITIATIVE_TYPE_DIMENSION = IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
-    private static final String PERIOD_DIMENSION = "period";
 
     /**
-     * Latest survey year confirmed live to carry all 4 initiativeType question codes and
-     * Question56 — used when a query doesn't specify a time range. 2021 is deliberately excluded,
-     * see the class Javadoc.
+     * Latest survey year confirmed live to carry all 4 initiativeType question codes, Question56,
+     * Question89, and Question101 — used when a query doesn't specify a time range. 2021 is
+     * deliberately excluded, see the class Javadoc.
      */
     private static final int DEFAULT_YEAR = 2023;
 
     private static final String FINANCIAL_INVESTMENT_QUESTION_CODE = "Question56";
+    private static final String LONG_TERM_PRESERVATION_QUESTION_CODE = "Question89";
+    private static final String CITIZEN_SCIENCE_NEW_PROJECTS_QUESTION_CODE = "Question101";
 
     /** One survey question per fixed initiativeType member — confirmed live, cross-referenced against observatory-ui's report-chart.configuration.ts. */
     private static final Map<String, String> QUESTION_CODE_BY_INITIATIVE_TYPE = Map.of(
@@ -93,6 +99,8 @@ public class SurveyStatsToolIndicatorQueryHandler implements IndicatorQueryHandl
             case IndicatorCodes.FINANCIAL_INVESTMENT -> queryFinancialInvestment(plan);
             case IndicatorCodes.COUNTRY_INITIATIVE_STATUS -> queryCountryInitiativeStatus(plan);
             case IndicatorCodes.EU_COUNTRY_COVERAGE -> queryEuCountryCoverage(plan);
+            case IndicatorCodes.LONG_TERM_PRESERVATION_COUNT -> queryCountByQuestion(plan, LONG_TERM_PRESERVATION_QUESTION_CODE);
+            case IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT -> queryCountByQuestion(plan, CITIZEN_SCIENCE_NEW_PROJECTS_QUESTION_CODE);
             default -> throw new IllegalStateException(
                 "SurveyStatsToolIndicatorQueryHandler has no logic for providerIndicatorKey: " + providerIndicatorKey);
         };
@@ -103,21 +111,8 @@ public class SurveyStatsToolIndicatorQueryHandler implements IndicatorQueryHandl
         String questionCode = questionCodeForInitiativeType(requiredFilterValue(plan, INITIATIVE_TYPE_DIMENSION));
         InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(resolveYear(plan), questionCode);
 
-        Map<String, Object> periodDimension = periodDimension(plan);
-        List<IndicatorDataPoint> data = fetch.byCountry().entrySet().stream()
-            .map(entry -> {
-                Map<String, Object> dimensions = new LinkedHashMap<>();
-                dimensions.put(COUNTRY_DIMENSION, entry.getKey());
-                dimensions.putAll(periodDimension);
-                return new IndicatorDataPoint(dimensions, entry.getValue());
-            })
-            .toList();
-
-        List<String> dimensionKeys = new ArrayList<>(List.of(COUNTRY_DIMENSION));
-        if (plan.timeRange() != null) {
-            dimensionKeys.add(PERIOD_DIMENSION);
-        }
-        return buildResult(plan, dimensionKeys, data);
+        List<IndicatorDataPoint> data = byCountryDataPoints(fetch.byCountry(), periodDimension(plan));
+        return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), data);
     }
 
     /**
@@ -130,11 +125,9 @@ public class SurveyStatsToolIndicatorQueryHandler implements IndicatorQueryHandl
         InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(resolveYear(plan), questionCode);
 
         long adopted = fetch.byCountry().values().stream().filter(Boolean::booleanValue).count();
-        int totalRespondents = fetch.totalRespondents();
-        Object value = totalRespondents == 0 ? null : Math.round(adopted * 1000.0 / totalRespondents) / 10.0;
+        Object value = RatioPercentage.of(adopted, fetch.totalRespondents());
 
-        List<String> dimensionKeys = plan.timeRange() != null ? List.of(PERIOD_DIMENSION) : List.of();
-        return buildResult(plan, dimensionKeys, List.of(new IndicatorDataPoint(periodDimension(plan), value)));
+        return buildResult(plan, dimensionKeysFor(List.of(), plan), List.of(new IndicatorDataPoint(periodDimension(plan), value)));
     }
 
     /**
@@ -165,7 +158,7 @@ public class SurveyStatsToolIndicatorQueryHandler implements IndicatorQueryHandl
     private record InitiativeStatusFetch(Map<String, Boolean> byCountry, int totalRespondents) {
     }
 
-    /** Applies the requested AggregationPolicy server-side over per-country euro values; survey values arrive in millions, scaled x1,000,000 here. */
+    /** Applies the requested AggregationPolicy server-side over per-country values still in millions of euros; the aggregated result is scaled x1,000,000 to euros afterward. */
     private IndicatorResult queryFinancialInvestment(IndicatorExecutionPlan plan) {
         List<List<String>> rows = client.fetchRows(
             queryBuilder.surveyQuestionSeriesRequest(resolveYear(plan), FINANCIAL_INVESTMENT_QUESTION_CODE));
@@ -182,49 +175,87 @@ public class SurveyStatsToolIndicatorQueryHandler implements IndicatorQueryHandl
         Map<String, Object> periodDimension = periodDimension(plan);
         List<String> groupByCodes = plan.groupBy().stream().map(ResolvedDimension::dimensionCode).toList();
         if (groupByCodes.contains(COUNTRY_DIMENSION)) {
-            List<IndicatorDataPoint> data = millionsByCountry.entrySet().stream()
-                .map(entry -> {
-                    Map<String, Object> dimensions = new LinkedHashMap<>();
-                    dimensions.put(COUNTRY_DIMENSION, entry.getKey());
-                    dimensions.putAll(periodDimension);
-                    return new IndicatorDataPoint(dimensions, toEuros(entry.getValue()));
-                })
-                .toList();
-            List<String> dimensionKeys = new ArrayList<>(List.of(COUNTRY_DIMENSION));
-            if (plan.timeRange() != null) {
-                dimensionKeys.add(PERIOD_DIMENSION);
-            }
-            return buildResult(plan, dimensionKeys, data);
+            Map<String, Object> eurosByCountry = new LinkedHashMap<>();
+            millionsByCountry.forEach((country, millions) -> eurosByCountry.put(country, toEuros(millions)));
+            return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), byCountryDataPoints(eurosByCountry, periodDimension));
         }
 
-        List<String> requestedCountries = filterValues(plan, COUNTRY_DIMENSION);
-        List<Double> millionsValues = requestedCountries.isEmpty()
-            ? List.copyOf(millionsByCountry.values())
-            : requestedCountries.stream().map(millionsByCountry::get).filter(Objects::nonNull).toList();
-
-        Object aggregated = aggregate(plan.aggregation(), millionsValues);
-        List<String> dimensionKeys = plan.timeRange() != null ? List.of(PERIOD_DIMENSION) : List.of();
-        return buildResult(plan, dimensionKeys, List.of(new IndicatorDataPoint(periodDimension, aggregated)));
-    }
-
-    private Object aggregate(AggregationType aggregation, List<Double> millionsValues) {
-        if (millionsValues.isEmpty()) {
-            return null;
-        }
-        double resultInMillions = switch (aggregation) {
-            case SUM -> millionsValues.stream().mapToDouble(Double::doubleValue).sum();
-            case AVG -> millionsValues.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
-            case MIN -> millionsValues.stream().mapToDouble(Double::doubleValue).min().orElseThrow();
-            case MAX -> millionsValues.stream().mapToDouble(Double::doubleValue).max().orElseThrow();
-            default -> throw new IllegalStateException(
-                "Unsupported aggregation for oa.financial_investment: " + aggregation);
-        };
-        return toEuros(resultInMillions);
+        Double aggregatedMillions = (Double) aggregateNumbers(plan.aggregation(), selectedValues(plan, millionsByCountry), Double::sum, "oa.financial_investment");
+        Object aggregated = aggregatedMillions == null ? null : toEuros(aggregatedMillions);
+        return buildResult(plan, dimensionKeysFor(List.of(), plan), List.of(new IndicatorDataPoint(periodDimension, aggregated)));
     }
 
     /** Survey values are collected in millions of euros; the indicator's declared unit is plain currency (euros). */
     private static double toEuros(double millions) {
         return millions * 1_000_000.0;
+    }
+
+    /**
+     * Shared shape for repositories.long_term_preservation_count (Question89) and
+     * citizen_science.new_projects_count (Question101) — both plain per-country integer counts
+     * (unlike Question56/oa.financial_investment, no unit scaling applies). Mirrors
+     * queryFinancialInvestment's groupBy/aggregate branching.
+     */
+    private IndicatorResult queryCountByQuestion(IndicatorExecutionPlan plan, String questionCode) {
+        List<List<String>> rows = client.fetchRows(queryBuilder.surveyQuestionSeriesRequest(resolveYear(plan), questionCode));
+
+        Map<String, Long> countByCountry = new LinkedHashMap<>();
+        for (List<String> row : rows) {
+            String country = row.get(0);
+            String rawValue = row.size() > 1 ? row.get(1) : null;
+            if (!isNoAnswer(rawValue)) {
+                countByCountry.put(country, Math.round(Double.parseDouble(rawValue)));
+            }
+        }
+
+        Map<String, Object> periodDimension = periodDimension(plan);
+        List<String> groupByCodes = plan.groupBy().stream().map(ResolvedDimension::dimensionCode).toList();
+        if (groupByCodes.contains(COUNTRY_DIMENSION)) {
+            return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), byCountryDataPoints(countByCountry, periodDimension));
+        }
+
+        Object aggregated = aggregateNumbers(plan.aggregation(), selectedValues(plan, countByCountry), Long::sum, "count-by-question indicator");
+        return buildResult(plan, dimensionKeysFor(List.of(), plan), List.of(new IndicatorDataPoint(periodDimension, aggregated)));
+    }
+
+    /** Per-country IndicatorDataPoints, one per map entry, each stamped with the resolved period dimension. */
+    private List<IndicatorDataPoint> byCountryDataPoints(Map<String, ?> valueByCountry, Map<String, Object> periodDimension) {
+        return valueByCountry.entrySet().stream()
+            .map(entry -> {
+                Map<String, Object> dimensions = new LinkedHashMap<>();
+                dimensions.put(COUNTRY_DIMENSION, entry.getKey());
+                dimensions.putAll(periodDimension);
+                return new IndicatorDataPoint(dimensions, entry.getValue());
+            })
+            .toList();
+    }
+
+    /** The requested countries' values (filtered to those with an answer), or every answering country's value if none were requested. */
+    private <V> List<V> selectedValues(IndicatorExecutionPlan plan, Map<String, V> valueByCountry) {
+        List<String> requestedCountries = filterValues(plan, COUNTRY_DIMENSION);
+        return requestedCountries.isEmpty()
+            ? List.copyOf(valueByCountry.values())
+            : requestedCountries.stream().map(valueByCountry::get).filter(Objects::nonNull).toList();
+    }
+
+    /**
+     * Shared SUM/AVG/MIN/MAX switch for both financial-investment (millions of euros, as Double)
+     * and plain integer counts (as Long) — SUM/MIN/MAX preserve the input type T, AVG always
+     * yields a Double, matching each domain's natural arithmetic.
+     */
+    private static <T extends Number & Comparable<T>> Object aggregateNumbers(
+            AggregationType aggregation, List<T> values, BinaryOperator<T> sum, String indicatorDescription) {
+        if (values.isEmpty()) {
+            return null;
+        }
+        return switch (aggregation) {
+            case SUM -> values.stream().reduce(sum).orElseThrow();
+            case AVG -> values.stream().mapToDouble(Number::doubleValue).average().orElseThrow();
+            case MIN -> values.stream().min(Comparator.naturalOrder()).orElseThrow();
+            case MAX -> values.stream().max(Comparator.naturalOrder()).orElseThrow();
+            default -> throw new IllegalStateException(
+                "Unsupported aggregation for " + indicatorDescription + ": " + aggregation);
+        };
     }
 
     /** A real JSON null, the literal string "null", and an empty string were all observed live and all mean "no answer". */
@@ -240,24 +271,6 @@ public class SurveyStatsToolIndicatorQueryHandler implements IndicatorQueryHandl
         return questionCode;
     }
 
-    private String requiredFilterValue(IndicatorExecutionPlan plan, String dimensionCode) {
-        return plan.filters().stream()
-            .filter(filter -> filter.dimensionCode().equals(dimensionCode))
-            .findFirst()
-            .map(filter -> String.valueOf(filter.values().get(0)))
-            .orElseThrow(() -> new IllegalStateException(
-                "Expected a required '" + dimensionCode + "' filter to already have been validated"));
-    }
-
-    /** Every value of every filter on the given dimension — empty if none, e.g. for an optional country filter. */
-    private List<String> filterValues(IndicatorExecutionPlan plan, String dimensionCode) {
-        return plan.filters().stream()
-            .filter(filter -> filter.dimensionCode().equals(dimensionCode))
-            .flatMap(filter -> filter.values().stream())
-            .map(String::valueOf)
-            .toList();
-    }
-
     /** No timeRange -> the latest known survey year; otherwise the requested range's end year (single-year, not a real series). */
     private int resolveYear(IndicatorExecutionPlan plan) {
         return plan.timeRange() != null ? plan.timeRange().to().getYear() : DEFAULT_YEAR;
@@ -271,13 +284,5 @@ public class SurveyStatsToolIndicatorQueryHandler implements IndicatorQueryHandl
      */
     private Map<String, Object> periodDimension(IndicatorExecutionPlan plan) {
         return plan.timeRange() != null ? Map.of(PERIOD_DIMENSION, String.valueOf(resolveYear(plan))) : Map.of();
-    }
-
-    private IndicatorResult buildResult(IndicatorExecutionPlan plan, List<String> dimensionKeys, List<IndicatorDataPoint> data) {
-        IndicatorMetadata metadata = new IndicatorMetadata(
-            plan.definition().code(), plan.definition().label(), plan.definition().valueType(),
-            plan.definition().unit(), plan.aggregation()
-        );
-        return new IndicatorResult(metadata, dimensionKeys, data, new QueryExecutionMetadata(Instant.now(), false));
     }
 }

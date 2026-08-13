@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Pure, network-free builder for OpenAIRE bibliometric stats-tool DSL requests (the "raw?json="
+ * Pure, network-free builder for OpenAIRE's stats-tool DSL requests (the "raw?json="
  * shape), translating the query-DSL already proven working in observatory-ui's
  * explore-queries.ts (OAPublicationVSClosed) into Java. Every sub-query scopes to European
  * publications for a given year; an optional access-mode filter narrows it further.
@@ -92,7 +92,7 @@ public class OpenAireQueryBuilder {
         filters.add(groupFilter("result.year", "=", String.valueOf(year)));
     }
 
-    /** Wraps N sub-queries (each from publicationCountSubQuery) into one raw?json= request body, index-aligned with the response. */
+    /** Wraps N sub-queries (each from publicationCountSubQuery or publicationCountByCountrySubQuery) into one raw?json= request body, index-aligned with the response. */
     public String seriesRequest(List<ObjectNode> subQueries) {
         ObjectNode root = objectMapper.createObjectNode();
         root.put("verbose", false);

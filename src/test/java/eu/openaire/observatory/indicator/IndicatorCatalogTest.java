@@ -14,11 +14,13 @@ class IndicatorCatalogTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
 
     @Test
-    void containsAllFiveRealDefinitions() {
-        assertThat(catalog.getAll()).hasSize(5);
+    void containsAllNineRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(9);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE,
-            IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE
+            IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
+            IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
+            IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT
         );
     }
 
@@ -98,8 +100,49 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void allDefinitionsSupportTimeSeries() {
-        assertThat(catalog.getAll()).allMatch(definition -> definition.timePolicy().supported());
+    void longTermPreservationCountIsCountryFilterableAndGroupable() {
+        var bindings = catalog.get(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+    }
+
+    @Test
+    void citizenScienceNewProjectsCountIsCountryFilterableAndGroupable() {
+        var bindings = catalog.get(IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+    }
+
+    @Test
+    void countriesWithValidatedAnswersRequiresSurveyIdFilter() {
+        var bindings = catalog.get(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.SURVEY_ID_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_ID_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+    }
+
+    @Test
+    void stakeholderParticipatingCountriesCountHasNoDimensionBindings() {
+        assertThat(catalog.get(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT).dimensionBindings()).isEmpty();
+    }
+
+    @Test
+    void sevenDefinitionsSupportTimeSeriesButTheTwoLocalRegistryOnesDoNot() {
+        assertThat(catalog.getAll())
+            .filteredOn(definition -> !definition.code().equals(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS)
+                && !definition.code().equals(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT))
+            .allMatch(definition -> definition.timePolicy().supported());
+
+        assertThat(catalog.get(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS).timePolicy().supported()).isFalse();
+        assertThat(catalog.get(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT).timePolicy().supported()).isFalse();
     }
 
     @Test
@@ -112,6 +155,7 @@ class IndicatorCatalogTest {
         assertThat(catalog.dimension("country")).isNotNull();
         assertThat(catalog.dimension("accessStatus")).isNotNull();
         assertThat(catalog.dimension("initiativeType")).isNotNull();
+        assertThat(catalog.dimension("surveyId")).isNotNull();
         assertThat(catalog.dimension("unknown")).isNull();
     }
 

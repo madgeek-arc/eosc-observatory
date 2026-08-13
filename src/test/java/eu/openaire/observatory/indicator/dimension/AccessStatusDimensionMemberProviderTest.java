@@ -10,7 +10,7 @@ class AccessStatusDimensionMemberProviderTest {
 
     @Test
     void returnsTheFourFixedAccessStatuses() {
-        DimensionMemberPage page = provider.search(null, "", 100);
+        DimensionMembers page = provider.search(null, "", 100);
 
         assertThat(page.members()).extracting("code")
             .containsExactlyInAnyOrder("OA", "CLOSED", "EMBARGOED", "RESTRICTED");
@@ -18,7 +18,7 @@ class AccessStatusDimensionMemberProviderTest {
 
     @Test
     void filtersByCaseInsensitiveSearchTextOnLabelOrCode() {
-        DimensionMemberPage page = provider.search(null, "closed", 100);
+        DimensionMembers page = provider.search(null, "closed", 100);
 
         assertThat(page.members()).extracting("code").containsExactly("CLOSED");
     }

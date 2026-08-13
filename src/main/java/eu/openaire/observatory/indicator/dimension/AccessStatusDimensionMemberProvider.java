@@ -3,13 +3,11 @@ package eu.openaire.observatory.indicator.dimension;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Locale;
 
 /**
- * Fixed, hardcoded member list for the "accessStatus" dimension used by publications.count —
- * no backing storage for this vocabulary, unlike "country". "OA" is the open side; "CLOSED",
- * "EMBARGOED" and "RESTRICTED" are the three real non-open statuses (not a single collapsed
- * "Closed" bucket).
+ * Fixed, hardcoded member list for the "accessStatus" dimension used by publications.count and
+ * publications.access_status_share — no backing storage for this vocabulary.
+ * "OA" is the open side; "CLOSED", "EMBARGOED" and "RESTRICTED" are considered as non-open statuses.
  */
 @Service
 public class AccessStatusDimensionMemberProvider implements DimensionMemberProvider {
@@ -29,16 +27,7 @@ public class AccessStatusDimensionMemberProvider implements DimensionMemberProvi
     }
 
     @Override
-    public DimensionMemberPage search(String indicatorCode, String searchText, int limit) {
-        String normalizedSearch = searchText == null ? "" : searchText.trim().toLowerCase(Locale.ROOT);
-
-        List<DimensionMember> members = MEMBERS.stream()
-            .filter(member -> normalizedSearch.isEmpty()
-                || member.label().toLowerCase(Locale.ROOT).contains(normalizedSearch)
-                || member.code().toLowerCase(Locale.ROOT).contains(normalizedSearch))
-            .limit(limit)
-            .toList();
-
-        return new DimensionMemberPage(members);
+    public DimensionMembers search(String indicatorCode, String searchText, int limit) {
+        return DimensionMemberSearch.filter(MEMBERS, searchText, limit, false);
     }
 }

@@ -1,7 +1,7 @@
 package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.FilterOperator;
-import eu.openaire.observatory.indicator.openaire.OpenAireBibliometricIndicatorQueryHandler;
+import eu.openaire.observatory.indicator.openaire.OpenAireStatsToolIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.validation.ActorContext;
@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Confirms the catalog changes made when wiring in OpenAireBibliometricIndicatorQueryHandler:
+ * Confirms the catalog changes made when wiring in OpenAireStatsToolIndicatorQueryHandler:
  * publications.access_status_share (previously named publications.oa_share) had no
  * dimensionBindings at all before this work, so an accessStatus filter (the shape
  * INDICATOR_IMPLEMENTATION_PLAN.md's own first-working-example curl relies on) would have failed
@@ -154,8 +154,8 @@ class IndicatorCatalogOpenAireWiringTest {
     @Test
     void bothPublicationIndicatorsRouteToTheRealOpenAireHandler() {
         assertThat(catalog.get(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE).executionBinding().handlerKey())
-            .isEqualTo(OpenAireBibliometricIndicatorQueryHandler.HANDLER_KEY);
+            .isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
         assertThat(catalog.get(IndicatorCodes.PUBLICATIONS_COUNT).executionBinding().handlerKey())
-            .isEqualTo(OpenAireBibliometricIndicatorQueryHandler.HANDLER_KEY);
+            .isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
     }
 }

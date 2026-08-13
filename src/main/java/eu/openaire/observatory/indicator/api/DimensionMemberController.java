@@ -1,6 +1,6 @@
 package eu.openaire.observatory.indicator.api;
 
-import eu.openaire.observatory.indicator.dimension.DimensionMemberPage;
+import eu.openaire.observatory.indicator.dimension.DimensionMembers;
 import eu.openaire.observatory.indicator.dimension.DimensionMemberProviderRegistry;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +21,9 @@ public class DimensionMemberController {
     }
 
     @GetMapping("{code}/members")
-    public ResponseEntity<DimensionMemberPage> getMembers(@PathVariable String code,
-                                                            @RequestParam(defaultValue = "") String search,
-                                                            @RequestParam(defaultValue = "100") int limit) {
+    public ResponseEntity<DimensionMembers> getMembers(@PathVariable String code,
+                                                       @RequestParam(defaultValue = "") String search,
+                                                       @RequestParam(defaultValue = "100") int limit) {
         return ResponseEntity.ok(dimensionMemberProviderRegistry.search(code, null, search, limit));
     }
 }

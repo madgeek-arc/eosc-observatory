@@ -3,12 +3,11 @@ package eu.openaire.observatory.indicator.dimension;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Fixed, hardcoded member list for the "initiativeType" dimension used by the collapsed
- * oa.eu_country_coverage / oa.country_initiative_status mock indicators — there's no backing
- * storage for this vocabulary, unlike "country".
+ * oa.eu_country_coverage / oa.country_initiative_status indicators (both backed by the real
+ * survey stats tool) — there's no backing storage for this vocabulary.
  */
 @Service
 public class InitiativeTypeDimensionMemberProvider implements DimensionMemberProvider {
@@ -28,16 +27,7 @@ public class InitiativeTypeDimensionMemberProvider implements DimensionMemberPro
     }
 
     @Override
-    public DimensionMemberPage search(String indicatorCode, String searchText, int limit) {
-        String normalizedSearch = searchText == null ? "" : searchText.trim().toLowerCase(Locale.ROOT);
-
-        List<DimensionMember> members = MEMBERS.stream()
-            .filter(member -> normalizedSearch.isEmpty()
-                || member.label().toLowerCase(Locale.ROOT).contains(normalizedSearch)
-                || member.code().toLowerCase(Locale.ROOT).contains(normalizedSearch))
-            .limit(limit)
-            .toList();
-
-        return new DimensionMemberPage(members);
+    public DimensionMembers search(String indicatorCode, String searchText, int limit) {
+        return DimensionMemberSearch.filter(MEMBERS, searchText, limit, false);
     }
 }

@@ -1,30 +1,21 @@
 package eu.openaire.observatory.indicator.dimension;
 
+import eu.openaire.observatory.indicator.KeyedRegistry;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 public class DimensionMemberProviderRegistry {
 
-    private final Map<String, DimensionMemberProvider> providersByDimensionCode;
+    private final KeyedRegistry<String, DimensionMemberProvider> providersByDimensionCode;
 
     public DimensionMemberProviderRegistry(List<DimensionMemberProvider> providers) {
-        this.providersByDimensionCode = providers.stream()
-            .collect(Collectors.toUnmodifiableMap(
-                DimensionMemberProvider::dimensionCode,
-                Function.identity()
-            ));
+        this.providersByDimensionCode = new KeyedRegistry<>(providers, DimensionMemberProvider::dimensionCode);
     }
 
-    public DimensionMemberPage search(String dimensionCode, String indicatorCode, String searchText, int limit) {
-        var provider = providersByDimensionCode.get(dimensionCode);
-        if (provider == null) {
-            throw new UnknownDimensionException(dimensionCode);
-        }
+    public DimensionMembers search(String dimensionCode, String indicatorCode, String searchText, int limit) {
+        DimensionMemberProvider provider = providersByDimensionCode.getRequired(dimensionCode, UnknownDimensionException::new);
         return provider.search(indicatorCode, searchText, limit);
     }
 }

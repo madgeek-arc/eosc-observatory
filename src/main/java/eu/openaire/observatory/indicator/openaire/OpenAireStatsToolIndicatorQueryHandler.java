@@ -2,18 +2,16 @@ package eu.openaire.observatory.indicator.openaire;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import eu.openaire.observatory.indicator.IndicatorCodes;
-import eu.openaire.observatory.indicator.handler.IndicatorQueryHandler;
+import eu.openaire.observatory.indicator.handler.AbstractIndicatorQueryHandler;
+import eu.openaire.observatory.indicator.handler.RatioPercentage;
 import eu.openaire.observatory.indicator.handler.RemoteIndicatorClient;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
-import eu.openaire.observatory.indicator.result.IndicatorMetadata;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
-import eu.openaire.observatory.indicator.result.QueryExecutionMetadata;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
 import eu.openaire.observatory.indicator.validation.ResolvedDimension;
 import eu.openaire.observatory.indicator.validation.ResolvedFilter;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Real handler for OpenAIRE-bibliometric-sourced indicators, serving
+ * Real handler for OpenAIRE-sourced indicators, serving
  * publications.access_status_share (RATIO, requires an accessStatus filter to pick which share is
  * returned — a single EQ value returns that exact status's share; NOT_EQ or a multi-value IN
  * aggregates several statuses together, e.g. NOT_EQ OA for the full non-open share) and
@@ -40,18 +38,17 @@ import java.util.Map;
  * "total", producing a materially wrong share.
  */
 @Service
-public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQueryHandler, RemoteIndicatorClient {
+public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQueryHandler implements RemoteIndicatorClient {
 
-    public static final String HANDLER_KEY = "openaire-bibliometric";
+    public static final String HANDLER_KEY = "openaire-stats-tool";
 
     private static final String ACCESS_STATUS_DIMENSION = IndicatorCodes.ACCESS_STATUS_DIMENSION;
     private static final String COUNTRY_DIMENSION = IndicatorCodes.COUNTRY_DIMENSION;
-    private static final String PERIOD_DIMENSION = "period";
 
     private final OpenAireQueryBuilder queryBuilder;
     private final OpenAireStatsToolClient client;
 
-    public OpenAireBibliometricIndicatorQueryHandler(OpenAireQueryBuilder queryBuilder, OpenAireStatsToolClient client) {
+    public OpenAireStatsToolIndicatorQueryHandler(OpenAireQueryBuilder queryBuilder, OpenAireStatsToolClient client) {
         this.queryBuilder = queryBuilder;
         this.client = client;
     }
@@ -73,7 +70,7 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
             case IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE -> queryAccessStatusShare(plan);
             case IndicatorCodes.PUBLICATIONS_COUNT -> queryPublicationsCount(plan);
             default -> throw new IllegalStateException(
-                "OpenAireBibliometricIndicatorQueryHandler has no logic for providerIndicatorKey: " + providerIndicatorKey);
+                "OpenAireStatsToolIndicatorQueryHandler has no logic for providerIndicatorKey: " + providerIndicatorKey);
         };
     }
 
@@ -98,12 +95,11 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
         for (int i = 0; i < periods.size(); i++) {
             long numerator = parseCount(raw, i * 2);
             long denominator = parseCount(raw, i * 2 + 1);
-            Object value = denominator == 0 ? null : Math.round(numerator * 1000.0 / denominator) / 10.0;
+            Object value = RatioPercentage.of(numerator, denominator);
             data.add(new IndicatorDataPoint(periods.get(i).dimensions(), value));
         }
 
-        List<String> dimensionKeys = plan.timeRange() != null ? List.of(PERIOD_DIMENSION) : List.of();
-        return buildResult(plan, dimensionKeys, data);
+        return buildResult(plan, dimensionKeysFor(List.of(), plan), data);
     }
 
     private IndicatorResult queryAccessStatusShareByCountry(
@@ -123,7 +119,7 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
                 String country = entry.getKey();
                 long numerator = numeratorByCountry.getOrDefault(country, 0L);
                 long denominator = entry.getValue();
-                Object value = denominator == 0 ? null : Math.round(numerator * 1000.0 / denominator) / 10.0;
+                Object value = RatioPercentage.of(numerator, denominator);
                 Map<String, Object> dimensions = new LinkedHashMap<>();
                 dimensions.put(COUNTRY_DIMENSION, country);
                 dimensions.putAll(periods.get(i).dimensions());
@@ -131,11 +127,7 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
             }
         }
 
-        List<String> dimensionKeys = new ArrayList<>(groupByCodes);
-        if (plan.timeRange() != null) {
-            dimensionKeys.add(PERIOD_DIMENSION);
-        }
-        return buildResult(plan, dimensionKeys, data);
+        return buildResult(plan, dimensionKeysFor(groupByCodes, plan), data);
     }
 
     private IndicatorResult queryPublicationsCount(IndicatorExecutionPlan plan) {
@@ -181,11 +173,7 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
             }
         }
 
-        List<String> dimensionKeys = new ArrayList<>(groupByCodes);
-        if (plan.timeRange() != null) {
-            dimensionKeys.add(PERIOD_DIMENSION);
-        }
-        return buildResult(plan, dimensionKeys, data);
+        return buildResult(plan, dimensionKeysFor(groupByCodes, plan), data);
     }
 
     /** A matching EQ filter narrows to one value; a groupBy on accessStatus expands to all four; neither means unfiltered. */
@@ -225,23 +213,6 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
         };
     }
 
-    private ResolvedFilter requiredFilter(IndicatorExecutionPlan plan, String dimensionCode) {
-        return plan.filters().stream()
-            .filter(filter -> filter.dimensionCode().equals(dimensionCode))
-            .findFirst()
-            .orElseThrow(() -> new IllegalStateException(
-                "Expected a required '" + dimensionCode + "' filter to already have been validated"));
-    }
-
-    /** Every value of every filter on the given dimension — empty if none, e.g. for an EQ/IN country filter. */
-    private List<String> filterValues(IndicatorExecutionPlan plan, String dimensionCode) {
-        return plan.filters().stream()
-            .filter(filter -> filter.dimensionCode().equals(dimensionCode))
-            .flatMap(filter -> filter.values().stream())
-            .map(String::valueOf)
-            .toList();
-    }
-
     /** No timeRange -> one synthetic "current year" period with no period dimension; otherwise one period per year in range. */
     private List<Period> resolvePeriods(IndicatorExecutionPlan plan) {
         if (plan.timeRange() == null) {
@@ -269,14 +240,6 @@ public class OpenAireBibliometricIndicatorQueryHandler implements IndicatorQuery
             return 0L;
         }
         return Long.parseLong(rows.get(0).get(0));
-    }
-
-    private IndicatorResult buildResult(IndicatorExecutionPlan plan, List<String> dimensionKeys, List<IndicatorDataPoint> data) {
-        IndicatorMetadata metadata = new IndicatorMetadata(
-            plan.definition().code(), plan.definition().label(), plan.definition().valueType(),
-            plan.definition().unit(), plan.aggregation()
-        );
-        return new IndicatorResult(metadata, dimensionKeys, data, new QueryExecutionMetadata(Instant.now(), false));
     }
 
     private record Period(int year, Map<String, Object> dimensions) {

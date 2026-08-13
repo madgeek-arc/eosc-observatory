@@ -52,7 +52,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the decoded "json" query param of every request the handler made, so tests can assert on the
  * actual DSL sent, not just the resulting value.
  */
-class OpenAireBibliometricIndicatorQueryHandlerTest {
+class OpenAireStatsToolIndicatorQueryHandlerTest {
 
     private final List<String> capturedRequests = new ArrayList<>();
 
@@ -331,7 +331,7 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
         return request.substring(0, request.indexOf("}},{\"query\":"));
     }
 
-    private OpenAireBibliometricIndicatorQueryHandler handlerReturning(String responseJson) {
+    private OpenAireStatsToolIndicatorQueryHandler handlerReturning(String responseJson) {
         WebClient.Builder builder = WebClient.builder().exchangeFunction(request -> {
             String rawJson = request.url().getRawQuery().substring("json=".length());
             capturedRequests.add(URLDecoder.decode(rawJson, StandardCharsets.UTF_8));
@@ -342,7 +342,7 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
             return Mono.just(response);
         });
         OpenAireStatsToolClient client = new OpenAireStatsToolClient(builder, "https://openaire.test/stats-tool/");
-        return new OpenAireBibliometricIndicatorQueryHandler(new OpenAireQueryBuilder(new ObjectMapper()), client);
+        return new OpenAireStatsToolIndicatorQueryHandler(new OpenAireQueryBuilder(new ObjectMapper()), client);
     }
 
     private static ResolvedTimeRange yearRange(int fromYear, int toYear) {
@@ -383,7 +383,7 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
             ),
             timePolicy(),
             new IndicatorExecutionBinding(
-                OpenAireBibliometricIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE
+                OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE
             ),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
@@ -406,7 +406,7 @@ class OpenAireBibliometricIndicatorQueryHandlerTest {
                 )
             ),
             timePolicy(),
-            new IndicatorExecutionBinding(OpenAireBibliometricIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.PUBLICATIONS_COUNT),
+            new IndicatorExecutionBinding(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.PUBLICATIONS_COUNT),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }

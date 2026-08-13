@@ -29,7 +29,7 @@ class CountryDimensionMemberProviderTest {
     void returnsAllCountriesWithDisplayLabelsWhenNoSearchText() {
         when(stakeholderService.getAllCountryCodes()).thenReturn(List.of("DE", "GR"));
 
-        DimensionMemberPage page = provider.search(null, "", 100);
+        DimensionMembers page = provider.search(null, "", 100);
 
         assertThat(page.members()).containsExactly(
             new DimensionMember("DE", "Germany"),
@@ -41,7 +41,7 @@ class CountryDimensionMemberProviderTest {
     void filtersByCaseInsensitiveSearchTextOnLabelOrCode() {
         when(stakeholderService.getAllCountryCodes()).thenReturn(List.of("DE", "GR", "FR"));
 
-        DimensionMemberPage page = provider.search(null, "ger", 100);
+        DimensionMembers page = provider.search(null, "ger", 100);
 
         assertThat(page.members()).containsExactly(new DimensionMember("DE", "Germany"));
     }
@@ -50,7 +50,7 @@ class CountryDimensionMemberProviderTest {
     void truncatesToLimit() {
         when(stakeholderService.getAllCountryCodes()).thenReturn(List.of("DE", "GR", "FR"));
 
-        DimensionMemberPage page = provider.search(null, "", 2);
+        DimensionMembers page = provider.search(null, "", 2);
 
         assertThat(page.members()).hasSize(2);
     }

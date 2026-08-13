@@ -17,8 +17,8 @@ class DimensionMemberProviderRegistryTest {
             }
 
             @Override
-            public DimensionMemberPage search(String indicatorCode, String searchText, int limit) {
-                return new DimensionMemberPage(List.of(members));
+            public DimensionMembers search(String indicatorCode, String searchText, int limit) {
+                return new DimensionMembers(List.of(members));
             }
         };
     }

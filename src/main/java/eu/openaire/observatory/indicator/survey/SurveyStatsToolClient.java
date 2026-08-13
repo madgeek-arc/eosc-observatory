@@ -15,9 +15,10 @@ import java.util.List;
 
 /**
  * Thin synchronous wrapper around the survey stats-tool's "raw?json=" endpoint (a different
- * external system from OpenAIRE's bibliometric one — see OpenAireStatsToolClient). Reuses
- * StatsToolProperties for the endpoint rather than a duplicate @Value, since that's already the
- * config bean StatsToolWrapperController uses for this exact endpoint. Does not call
+ * external system from OpenAIRE's stats-tool — see OpenAireStatsToolClient). Reuses
+ * StatsToolProperties for the endpoint rather than a duplicate @Value, since it's already bound
+ * (via @ConfigurationProperties) to the same "stats-tool.endpoint" property that
+ * StatsToolWrapperController reads through its own separate @Value injection. Does not call
  * StatsToolWrapperController itself — that would be an in-process self-call — this hits the real
  * external endpoint directly, same as OpenAireStatsToolClient does for its own endpoint.
  * IndicatorQueryHandler.execute() is synchronous, so this blocks rather than returning a Mono.

@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Thin synchronous wrapper around OpenAIRE's bibliometric stats-tool "raw?json=" endpoint.
+ * Thin synchronous wrapper around OpenAIRE's stats-tool "raw?json=" endpoint.
  * IndicatorQueryHandler.execute() is synchronous, so this blocks rather than returning a Mono —
  * same precedent as AnalyticsController's matomoApiCall(). URI is built as an absolute java.net.URI
  * (like StatsToolWrapperController.statsUrl()) rather than passed as a String to WebClient's

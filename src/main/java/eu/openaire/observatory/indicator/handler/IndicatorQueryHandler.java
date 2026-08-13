@@ -4,7 +4,7 @@ import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
 
 /**
- * One handler typically serves many indicators (e.g. one external service client for ~100
+ * One handler typically serves many indicators (e.g. one external service client for ~10
  * indicators) — routing is by handlerKey, not by indicator code. Which indicator within this
  * handler's source is being queried comes from {@code plan.definition().executionBinding()
  * .providerIndicatorKey()}. Implementations are expected to apply {@code plan.securityScope()} in

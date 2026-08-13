@@ -10,7 +10,7 @@ class InitiativeTypeDimensionMemberProviderTest {
 
     @Test
     void returnsTheFourFixedInitiativeTypes() {
-        DimensionMemberPage page = provider.search(null, "", 100);
+        DimensionMembers page = provider.search(null, "", 100);
 
         assertThat(page.members()).extracting("code").containsExactlyInAnyOrder(
             "OA_PUBLICATION_POLICY", "IMMEDIATE_OA_POLICY", "FINANCIAL_STRATEGY", "MONITORING_INITIATIVE"
@@ -19,7 +19,7 @@ class InitiativeTypeDimensionMemberProviderTest {
 
     @Test
     void filtersByCaseInsensitiveSearchTextOnLabelOrCode() {
-        DimensionMemberPage page = provider.search(null, "monitoring", 100);
+        DimensionMembers page = provider.search(null, "monitoring", 100);
 
         assertThat(page.members()).extracting("code").containsExactly("MONITORING_INITIATIVE");
     }
