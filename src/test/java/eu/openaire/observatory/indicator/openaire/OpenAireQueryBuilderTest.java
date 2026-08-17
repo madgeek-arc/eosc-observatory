@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import eu.openaire.observatory.indicator.IndicatorCodes;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -142,6 +143,110 @@ class OpenAireQueryBuilderTest {
         assertThat(root.path("series").size()).isEqualTo(2);
         assertThat(root.path("series").get(0)).isEqualTo(first);
         assertThat(root.path("series").get(1)).isEqualTo(second);
+    }
+
+    @Test
+    void resultCountSubQueryWithDatasetResultTypeFiltersByDatasetInsteadOfPublication() {
+        ObjectNode subQuery = builder.resultCountSubQuery(
+            2023, List.of(), DimensionFilters.NONE, OpenAireQueryBuilder.RESULT_TYPE_DATASET);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(filters, "result.type")).containsExactly("dataset");
+    }
+
+    @Test
+    void resultCountByGroupSubQueryGroupsByClassificationField() {
+        ObjectNode subQuery = builder.resultCountByGroupSubQuery(
+            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
+
+        JsonNode query = subQuery.path("query");
+        List<JsonNode> select = toList(query.path("select"));
+        assertThat(select.get(1).path("field").asText()).isEqualTo("result.classification");
+        assertThat(select.get(1).path("aggregate").isNull()).isTrue();
+    }
+
+    @Test
+    void resultCountByGroupSubQueryGroupsByFieldOfScienceField() {
+        ObjectNode subQuery = builder.resultCountByGroupSubQuery(
+            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION, IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION, DimensionFilters.NONE);
+
+        List<JsonNode> select = toList(subQuery.path("query").path("select"));
+        assertThat(select.get(1).path("field").asText()).isEqualTo("result.result_fos.lvl1");
+    }
+
+    @Test
+    void resultCountByGroupSubQueryForDatasetsFiltersByDataset() {
+        ObjectNode subQuery = builder.resultCountByGroupSubQuery(
+            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_DATASET, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(filters, "result.type")).containsExactly("dataset");
+    }
+
+    @Test
+    void resultCountByGroupSubQueryCombinesANonCountryBreakdownWithACountryFilter() {
+        ObjectNode subQuery = builder.resultCountByGroupSubQuery(
+            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION,
+            IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION, DimensionFilters.ofCountry(List.of("GR")));
+
+        JsonNode query = subQuery.path("query");
+        assertThat(query.path("select").get(1).path("field").asText()).isEqualTo("result.result_fos.lvl1");
+
+        List<JsonNode> filters = toList(query.path("filters"));
+        assertThat(fieldValues(filters, "result.organization.country.code")).containsExactly("GR");
+        // The Europe continent scope still applies alongside the narrower country filter.
+        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+    }
+
+    @Test
+    void resultCountByGroupSubQueryWithoutCountryCodesOmitsCountryFilter() {
+        ObjectNode subQuery = builder.resultCountByGroupSubQuery(
+            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.organization.country.code");
+    }
+
+    @Test
+    void resultCountSubQueryWithClassificationFilterUsesTheSameFieldAsItsGroupBreakdown() {
+        var filters = new DimensionFilters(List.of(), List.of("Article"), List.of());
+        ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+
+        List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
+        assertThat(opOf(resultFilters, "result.classification")).isEqualTo("AND");
+        assertThat(fieldValues(resultFilters, "result.classification")).containsExactly("Article");
+    }
+
+    @Test
+    void resultCountSubQueryWithMultipleClassificationsOrsThemTogether() {
+        var filters = new DimensionFilters(List.of(), List.of("Article", "Book"), List.of());
+        ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+
+        List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
+        assertThat(opOf(resultFilters, "result.classification")).isEqualTo("OR");
+        assertThat(fieldValues(resultFilters, "result.classification")).containsExactlyInAnyOrder("Article", "Book");
+    }
+
+    @Test
+    void resultCountSubQueryWithFieldOfScienceFilterUsesTheSameFieldAsItsGroupBreakdown() {
+        var filters = new DimensionFilters(List.of(), List.of(), List.of("01 natural sciences"));
+        ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+
+        List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(resultFilters, "result.result_fos.lvl1")).containsExactly("01 natural sciences");
+    }
+
+    @Test
+    void resultCountByGroupSubQueryCombinesAClassificationFilterWithACountryGroupBreakdown() {
+        var filters = new DimensionFilters(List.of(), List.of("Article"), List.of());
+        ObjectNode subQuery = builder.resultCountByGroupSubQuery(
+            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION, IndicatorCodes.COUNTRY_DIMENSION, filters);
+
+        JsonNode query = subQuery.path("query");
+        assertThat(query.path("select").get(1).path("field").asText()).isEqualTo("result.organization.country");
+
+        List<JsonNode> resultFilters = toList(query.path("filters"));
+        assertThat(fieldValues(resultFilters, "result.classification")).containsExactly("Article");
     }
 
     private List<JsonNode> toList(JsonNode arrayNode) {

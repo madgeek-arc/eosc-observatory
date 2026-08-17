@@ -16,8 +16,10 @@
 
 package eu.openaire.observatory.configuration;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.openaire.observatory.indicator.dimension.DimensionMembers;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -29,6 +31,20 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Configuration
 public class RedisConfig {
 
+    /**
+     * DefaultTyping.NON_FINAL below never stamps {@code @class} type metadata for final types —
+     * and Java records are implicitly final — so a cached record can be written but never read
+     * back (GenericJackson2JsonRedisSerializer's read side always deserializes into Object and
+     * needs that metadata to know what to reconstruct). DefaultTyping.EVERYTHING would cover
+     * records too, but it's been deprecated since Jackson 2.17 and is removed in 3.0. A per-type
+     * mixin, applied only to this Redis-specific ObjectMapper copy (not the shared app-wide one
+     * used for HTTP responses), is the forward-compatible fix for the specific record types that
+     * get cached. Add more mixIn(...) lines here if another record needs caching.
+     */
+    @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.WRAPPER_ARRAY)
+    private interface RequiresRedisTypeInfo {
+    }
+
     @Bean
     @Primary
     public <T> RedisTemplate<String, T> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
@@ -38,6 +54,7 @@ public class RedisConfig {
                 redisMapper.getPolymorphicTypeValidator(),
                 ObjectMapper.DefaultTyping.NON_FINAL
         );
+        redisMapper.addMixIn(DimensionMembers.class, RequiresRedisTypeInfo.class);
 
         GenericJackson2JsonRedisSerializer serializer =
                 new GenericJackson2JsonRedisSerializer(redisMapper);

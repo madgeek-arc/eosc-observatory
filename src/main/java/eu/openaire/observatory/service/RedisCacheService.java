@@ -24,6 +24,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.serializer.SerializationException;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Set;
 
 @Service
@@ -95,6 +96,20 @@ public class RedisCacheService<K, V> implements CacheService<K, V> {
             logger.warn("Could not deserialize cached value for key '{}' before overwrite. Replacing entry.", k, e);
         }
         valueOps.set(k, value);
+        return previous;
+    }
+
+    @Override
+    public V save(K key, V value, Duration ttl) {
+        String k = getKey(key);
+        logger.debug("Updating value of key: '{}' from cache, expiring after {}.", k, ttl);
+        V previous = null;
+        try {
+            previous = valueOps.get(k);
+        } catch (SerializationException e) {
+            logger.warn("Could not deserialize cached value for key '{}' before overwrite. Replacing entry.", k, e);
+        }
+        valueOps.set(k, value, ttl);
         return previous;
     }
 

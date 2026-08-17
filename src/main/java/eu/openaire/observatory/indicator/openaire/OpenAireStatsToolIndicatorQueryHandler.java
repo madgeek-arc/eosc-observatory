@@ -25,12 +25,15 @@ import java.util.Map;
  * Real handler for OpenAIRE-sourced indicators, serving
  * publications.access_status_share (RATIO, requires an accessStatus filter to pick which share is
  * returned — a single EQ value returns that exact status's share; NOT_EQ or a multi-value IN
- * aggregates several statuses together, e.g. NOT_EQ OA for the full non-open share) and
- * publications.count (MEASURE, optionally filtered/grouped by accessStatus). Both indicators
- * support country either as an EQ/IN filter (one or more countries OR'd together; absent means
- * all-EU, matching the always-applied continent=Europe scope) or as a groupBy (fans out into one row
- * per country in a single extra sub-query, via OpenAireQueryBuilder's native groupBy-by-country
- * queries — not a query-per-country loop).
+ * aggregates several statuses together, e.g. NOT_EQ OA for the full non-open share),
+ * publications.count, and datasets.count (both MEASURE, optionally filtered/grouped by accessStatus
+ * — the two are otherwise identical, just entity=publication vs entity=dataset). All three support
+ * country either as an EQ/IN filter (one or more countries OR'd together; absent means all-EU,
+ * matching the always-applied continent=Europe scope) or as a groupBy (fans out into one row per
+ * country in a single extra sub-query, via OpenAireQueryBuilder's native groupBy queries — not a
+ * query-per-country loop). publications.count/datasets.count are also groupable by classification
+ * (document/output type), and publications.count additionally by fieldOfScience — neither is
+ * filterable, only groupable, since the legacy UI only ever breaks results down by them.
  *
  * <p>publications.access_status_share's denominator ("total") is explicitly scoped to the 4 known
  * access-mode values (OA/Closed/Embargoed/Restricted, OR'd together), matching observatory-ui's own
@@ -46,6 +49,12 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
 
     private static final String ACCESS_STATUS_DIMENSION = IndicatorCodes.ACCESS_STATUS_DIMENSION;
     private static final String COUNTRY_DIMENSION = IndicatorCodes.COUNTRY_DIMENSION;
+    private static final String CLASSIFICATION_DIMENSION = IndicatorCodes.CLASSIFICATION_DIMENSION;
+    private static final String FIELD_OF_SCIENCE_DIMENSION = IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION;
+
+    /** At most one of these is an active groupBy at a time — the legacy UI never breaks down by more than one. */
+    private static final List<String> BREAKDOWN_DIMENSIONS =
+        List.of(COUNTRY_DIMENSION, CLASSIFICATION_DIMENSION, FIELD_OF_SCIENCE_DIMENSION);
 
     private final OpenAireQueryBuilder queryBuilder;
     private final OpenAireStatsToolClient client;
@@ -70,7 +79,8 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
         String providerIndicatorKey = plan.definition().executionBinding().providerIndicatorKey();
         return switch (providerIndicatorKey) {
             case IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE -> queryAccessStatusShare(plan);
-            case IndicatorCodes.PUBLICATIONS_COUNT -> queryPublicationsCount(plan);
+            case IndicatorCodes.PUBLICATIONS_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+            case IndicatorCodes.DATASETS_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_DATASET);
             default -> throw new IllegalStateException(
                 "OpenAireStatsToolIndicatorQueryHandler has no logic for providerIndicatorKey: " + providerIndicatorKey);
         };
@@ -115,8 +125,8 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
 
         List<IndicatorDataPoint> data = new ArrayList<>();
         for (int i = 0; i < periods.size(); i++) {
-            Map<String, Long> numeratorByCountry = countsByCountry(raw.get(i * 2));
-            Map<String, Long> denominatorByCountry = countsByCountry(raw.get(i * 2 + 1));
+            Map<String, Long> numeratorByCountry = countsByBreakdownValue(raw.get(i * 2));
+            Map<String, Long> denominatorByCountry = countsByBreakdownValue(raw.get(i * 2 + 1));
             for (Map.Entry<String, Long> entry : denominatorByCountry.entrySet()) {
                 String country = entry.getKey();
                 long numerator = numeratorByCountry.getOrDefault(country, 0L);
@@ -132,11 +142,23 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
         return buildResult(plan, dimensionKeysFor(groupByCodes, plan), data);
     }
 
-    private IndicatorResult queryPublicationsCount(IndicatorExecutionPlan plan) {
+    /**
+     * Shared by publications.count and datasets.count — same query shape, just entity=publication vs
+     * entity=dataset. At most one of country/classification/fieldOfScience is treated as the active
+     * "fan out into one row per value" breakdown (whichever appears first in BREAKDOWN_DIMENSIONS);
+     * a country filter still narrows the results even when a different dimension is the breakdown
+     * (confirmed live: country-filtered fieldOfScience/classification groupBy both work). The
+     * accessStatus cross-product (one sub-query per requested access mode) composes independently,
+     * same as before this method also handled non-country breakdowns.
+     */
+    private IndicatorResult queryResultCount(IndicatorExecutionPlan plan, String resultType) {
         List<String> groupByCodes = plan.groupBy().stream().map(ResolvedDimension::dimensionCode).toList();
         List<OpenAireAccessMode> accessModes = resolveAccessModeGroupValues(plan, groupByCodes);
-        boolean byCountry = groupByCodes.contains(COUNTRY_DIMENSION);
-        List<String> countryCodes = byCountry ? List.of() : filterValues(plan, COUNTRY_DIMENSION);
+        String breakdownDimension = BREAKDOWN_DIMENSIONS.stream().filter(groupByCodes::contains).findFirst().orElse(null);
+        List<String> countryCodes = COUNTRY_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, COUNTRY_DIMENSION);
+        List<String> classificationCodes = CLASSIFICATION_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, CLASSIFICATION_DIMENSION);
+        List<String> fieldOfScienceCodes = FIELD_OF_SCIENCE_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, FIELD_OF_SCIENCE_DIMENSION);
+        DimensionFilters filters = new DimensionFilters(countryCodes, classificationCodes, fieldOfScienceCodes);
         List<Period> periods = resolvePeriods(plan);
 
         record Cell(OpenAireAccessMode accessMode, Period period) {
@@ -148,9 +170,9 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
             for (OpenAireAccessMode accessMode : accessModes) {
                 cells.add(new Cell(accessMode, period));
                 List<OpenAireAccessMode> modes = accessMode == null ? List.of() : List.of(accessMode);
-                subQueries.add(byCountry
-                    ? queryBuilder.publicationCountByCountrySubQuery(period.year(), modes)
-                    : queryBuilder.publicationCountSubQuery(period.year(), modes, countryCodes));
+                subQueries.add(breakdownDimension != null
+                    ? queryBuilder.resultCountByGroupSubQuery(period.year(), modes, resultType, breakdownDimension, filters)
+                    : queryBuilder.resultCountSubQuery(period.year(), modes, filters, resultType));
             }
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
@@ -164,10 +186,10 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
             }
             baseDimensions.putAll(cell.period().dimensions());
 
-            if (byCountry) {
-                for (Map.Entry<String, Long> entry : countsByCountry(raw.get(i)).entrySet()) {
+            if (breakdownDimension != null) {
+                for (Map.Entry<String, Long> entry : countsByBreakdownValue(raw.get(i)).entrySet()) {
                     Map<String, Object> dimensions = new LinkedHashMap<>(baseDimensions);
-                    dimensions.put(COUNTRY_DIMENSION, entry.getKey());
+                    dimensions.put(breakdownDimension, entry.getKey());
                     data.add(new IndicatorDataPoint(dimensions, entry.getValue()));
                 }
             } else {
@@ -227,8 +249,8 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
         return periods;
     }
 
-    /** Parses [count, countryCode] rows from a groupBy-by-country sub-query response into a country -> count map. */
-    private Map<String, Long> countsByCountry(List<List<String>> rows) {
+    /** Parses [count, value] rows from a groupBy sub-query response into a value -> count map (value is a country code, classification, or field of science, depending on the breakdown dimension). */
+    private Map<String, Long> countsByBreakdownValue(List<List<String>> rows) {
         Map<String, Long> counts = new LinkedHashMap<>();
         for (List<String> row : rows) {
             counts.put(row.get(1), Long.parseLong(row.get(0)));

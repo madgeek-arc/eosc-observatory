@@ -14,10 +14,10 @@ class IndicatorCatalogTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
 
     @Test
-    void containsAllNineRealDefinitions() {
-        assertThat(catalog.getAll()).hasSize(9);
+    void containsAllTenRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(10);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
-            IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE,
+            IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
             IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
             IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
             IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT
@@ -88,7 +88,10 @@ class IndicatorCatalogTest {
     void publicationsCountIsCountryFilterableAndGroupable() {
         var bindings = catalog.get(IndicatorCodes.PUBLICATIONS_COUNT).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
-            .containsExactlyInAnyOrder(IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+            .containsExactlyInAnyOrder(
+                IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION,
+                IndicatorCodes.CLASSIFICATION_DIMENSION, IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION
+            );
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
             .extracting("usages")
@@ -97,6 +100,35 @@ class IndicatorCatalogTest {
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
             .extracting("allowedOperators")
             .containsExactly(Set.of(FilterOperator.EQ, FilterOperator.IN));
+    }
+
+    @Test
+    void publicationsCountClassificationAndFieldOfScienceAreFilterableAndGroupable() {
+        var bindings = catalog.get(IndicatorCodes.PUBLICATIONS_COUNT).dimensionBindings();
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.CLASSIFICATION_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+    }
+
+    @Test
+    void datasetsCountIsCountryAndClassificationFilterableAndGroupableButNotFieldOfScience() {
+        var definition = catalog.get(IndicatorCodes.DATASETS_COUNT);
+        assertThat(definition.executionBinding().handlerKey()).isEqualTo("openaire-stats-tool");
+
+        var bindings = definition.dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(
+                IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION
+            );
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.CLASSIFICATION_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
     }
 
     @Test
@@ -135,7 +167,7 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void sevenDefinitionsSupportTimeSeriesButTheTwoLocalRegistryOnesDoNot() {
+    void eightDefinitionsSupportTimeSeriesButTheTwoLocalRegistryOnesDoNot() {
         assertThat(catalog.getAll())
             .filteredOn(definition -> !definition.code().equals(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS)
                 && !definition.code().equals(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT))
@@ -156,6 +188,8 @@ class IndicatorCatalogTest {
         assertThat(catalog.dimension("accessStatus")).isNotNull();
         assertThat(catalog.dimension("initiativeType")).isNotNull();
         assertThat(catalog.dimension("surveyId")).isNotNull();
+        assertThat(catalog.dimension("classification")).isNotNull();
+        assertThat(catalog.dimension("fieldOfScience")).isNotNull();
         assertThat(catalog.dimension("unknown")).isNull();
     }
 

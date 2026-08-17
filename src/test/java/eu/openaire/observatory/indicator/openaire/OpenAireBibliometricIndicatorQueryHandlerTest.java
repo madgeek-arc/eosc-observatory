@@ -320,6 +320,110 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
         assertThat(capturedRequests.get(0)).contains("\"field\":\"result.organization.country\"");
     }
 
+    @Test
+    void publicationsCountGroupedByClassificationReturnsOneRowPerClassification() {
+        var handler = handlerReturning("{\"data\":[[[\"1985015\",\"Article\"],[\"66287\",\"Book\"]]]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.CLASSIFICATION_DIMENSION));
+
+        var result = handler.execute(plan(countDefinition(), List.of(), groupBy, null));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.CLASSIFICATION_DIMENSION);
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.CLASSIFICATION_DIMENSION))
+            .containsExactlyInAnyOrder("Article", "Book");
+        assertThat(capturedRequests.get(0)).contains("\"field\":\"result.classification\"");
+    }
+
+    @Test
+    void publicationsCountGroupedByFieldOfScienceWithCountryFilterCombinesBoth() {
+        var handler = handlerReturning("{\"data\":[[[\"452008\",\"01 natural sciences\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION));
+
+        var result = handler.execute(plan(countDefinition(), filters, groupBy, null));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION))
+            .isEqualTo("01 natural sciences");
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"field\":\"result.result_fos.lvl1\"");
+        assertThat(request).contains("\"field\":\"result.organization.country.code\"").contains("\"GR\"");
+    }
+
+    @Test
+    void publicationsCountFilteredByClassificationWithNoGroupByReturnsOneCount() {
+        var handler = handlerReturning("{\"data\":[[[\"1985015\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.CLASSIFICATION_DIMENSION, FilterOperator.EQ, List.of("Article")));
+
+        var result = handler.execute(plan(countDefinition(), filters, List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(1985015L);
+        assertThat(capturedRequests.get(0)).contains("\"field\":\"result.classification\"").contains("\"Article\"");
+    }
+
+    @Test
+    void publicationsCountFilteredByClassificationGroupedByCountryCombinesBoth() {
+        var handler = handlerReturning("{\"data\":[[[\"26\",\"AD\"],[\"1556\",\"AL\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.CLASSIFICATION_DIMENSION, FilterOperator.EQ, List.of("Article")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(countDefinition(), filters, groupBy, null));
+
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION))
+            .containsExactlyInAnyOrder("AD", "AL");
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"field\":\"result.organization.country\"");
+        assertThat(request).contains("\"field\":\"result.classification\"").contains("\"Article\"");
+    }
+
+    @Test
+    void datasetsCountFilteredByClassificationReturnsOneCount() {
+        var handler = handlerReturning("{\"data\":[[[\"648\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.CLASSIFICATION_DIMENSION, FilterOperator.EQ, List.of("Dataset")));
+
+        var result = handler.execute(plan(datasetsCountDefinition(), filters, List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(648L);
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"values\":[\"dataset\"]");
+        assertThat(request).contains("\"field\":\"result.classification\"").contains("\"Dataset\"");
+    }
+
+    @Test
+    void datasetsCountFiltersByDatasetInsteadOfPublication() {
+        var handler = handlerReturning("{\"data\":[[[\"120641\"]]]}");
+
+        var result = handler.execute(plan(datasetsCountDefinition(), List.of(), List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(120641L);
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"values\":[\"dataset\"]");
+        assertThat(request).doesNotContain("\"values\":[\"publication\"]");
+    }
+
+    @Test
+    void datasetsCountGroupedByCountryReturnsOneRowPerCountry() {
+        var handler = handlerReturning("{\"data\":[[[\"648\",\"GR\"],[\"50\",\"DE\"]]]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(datasetsCountDefinition(), List.of(), groupBy, null));
+
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION))
+            .containsExactlyInAnyOrder("GR", "DE");
+    }
+
+    @Test
+    void datasetsCountGroupedByClassificationReturnsOneRowPerClassification() {
+        var handler = handlerReturning("{\"data\":[[[\"1\",\"Clinical Trial\"],[\"99\",\"Collection\"],[\"648\",\"Dataset\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.CLASSIFICATION_DIMENSION));
+
+        var result = handler.execute(plan(datasetsCountDefinition(), filters, groupBy, null));
+
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.CLASSIFICATION_DIMENSION))
+            .containsExactlyInAnyOrder("Clinical Trial", "Collection", "Dataset");
+        assertThat(result.data()).extracting(IndicatorDataPoint::value).containsExactlyInAnyOrder(1L, 99L, 648L);
+    }
+
     /**
      * A single request carries every sub-query as its own "series" entry (numerator, then
      * denominator) — isolates the first one's text so assertions about the numerator's filters
@@ -399,10 +503,44 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
                 new IndicatorDimensionBinding(
                     IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
                     Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
                 )
             ),
             timePolicy(),
             new IndicatorExecutionBinding(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.PUBLICATIONS_COUNT),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    private static IndicatorDefinition datasetsCountDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), IndicatorCodes.DATASETS_COUNT, "Datasets", "desc", "Datasets",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
+            null,
+            Set.of(
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.ACCESS_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ), false
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                )
+            ),
+            timePolicy(),
+            new IndicatorExecutionBinding(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.DATASETS_COUNT),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }

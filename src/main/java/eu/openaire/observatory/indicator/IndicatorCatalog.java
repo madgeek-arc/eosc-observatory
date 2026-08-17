@@ -33,10 +33,13 @@ import java.util.UUID;
 
 import static eu.openaire.observatory.indicator.IndicatorCodes.ACCESS_STATUS_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.CLASSIFICATION_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_INITIATIVE_STATUS;
+import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.EU_COUNTRY_COVERAGE;
+import static eu.openaire.observatory.indicator.IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.FINANCIAL_INVESTMENT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.LONG_TERM_PRESERVATION_COUNT;
@@ -98,11 +101,21 @@ public class IndicatorCatalog {
             SURVEY_ID_DIMENSION, "Survey", DimensionType.STRING,
             true, false, false, Set.of(FilterOperator.EQ), null
         );
+        DimensionDefinition classificationDimension = new DimensionDefinition(
+            CLASSIFICATION_DIMENSION, "Classification", DimensionType.STRING,
+            true, true, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
+        );
+        DimensionDefinition fieldOfScienceDimension = new DimensionDefinition(
+            FIELD_OF_SCIENCE_DIMENSION, "Field of science", DimensionType.STRING,
+            true, true, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
+        );
         this.dimensionsByCode = Map.of(
             COUNTRY_DIMENSION, countryDimension,
             ACCESS_STATUS_DIMENSION, accessStatusDimension,
             INITIATIVE_TYPE_DIMENSION, initiativeTypeDimension,
-            SURVEY_ID_DIMENSION, surveyIdDimension
+            SURVEY_ID_DIMENSION, surveyIdDimension,
+            CLASSIFICATION_DIMENSION, classificationDimension,
+            FIELD_OF_SCIENCE_DIMENSION, fieldOfScienceDimension
         );
 
         Map<String, IndicatorDefinition> byCode = new LinkedHashMap<>();
@@ -126,7 +139,7 @@ public class IndicatorCatalog {
 
     private static List<IndicatorDefinition> allDefinitions() {
         return List.of(
-            publicationsCount(), publicationsAccessStatusShare(),
+            publicationsCount(), publicationsAccessStatusShare(), datasetsCount(),
             financialInvestment(), countryInitiativeStatus(), euCountryCoverage(),
             longTermPreservationCount(), citizenScienceNewProjectsCount(),
             countriesWithValidatedAnswers(), stakeholderParticipatingCountriesCount()
@@ -137,13 +150,17 @@ public class IndicatorCatalog {
      * Base publication counts, filterable/groupable by accessStatus (OA vs. Closed/Embargoed/Restricted)
      * and by a single 2-letter country code (filter narrows to one country; group fans out into one row
      * per country). Country absent means all-EU (the handler always scopes to continent=Europe).
+     * Also filterable/groupable by classification (document/output type, e.g. "Article") and
+     * fieldOfScience (e.g. "01 natural sciences") — both use the same OpenAIRE field for filtering
+     * and grouping (unlike country, which has separate filter/group fields).
      */
     private static IndicatorDefinition publicationsCount() {
         return definition(
             PUBLICATIONS_COUNT, "Publications",
             "Number of published works, filterable/groupable by a single access status value (OA, "
                 + "Closed, Embargoed, or Restricted — never aggregated, unlike "
-                + "publications.access_status_share) and by country.",
+                + "publications.access_status_share), by country, by classification, or by "
+                + "fieldOfScience.",
             GROUP_LABEL, IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
@@ -152,7 +169,37 @@ public class IndicatorCatalog {
                     ACCESS_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
                     Set.of(FilterOperator.EQ), false
                 ),
-                countryBinding()
+                countryBinding(),
+                filterableGroupableBinding(CLASSIFICATION_DIMENSION),
+                filterableGroupableBinding(FIELD_OF_SCIENCE_DIMENSION)
+            ),
+            TIME_POLICY, OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * Dataset-entity counterpart to publicationsCount() — same shape and upstream
+     * (OpenAireStatsToolIndicatorQueryHandler, scoped to continent=Europe), just entity=dataset
+     * instead of entity=publication. Also filterable/groupable by classification (e.g. "Dataset",
+     * "Collection") — fieldOfScience is publication-only, not evidenced for datasets in the legacy UI.
+     */
+    private static IndicatorDefinition datasetsCount() {
+        return definition(
+            DATASETS_COUNT, "Datasets",
+            "Number of published datasets, filterable/groupable by a single access status value (OA, "
+                + "Closed, Embargoed, or Restricted), by country, or by classification. Same shape "
+                + "and upstream as publications.count, scoped to entity=dataset instead of "
+                + "entity=publication.",
+            "Datasets", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            SUM_AGGREGATION_POLICY,
+            null,
+            Set.of(
+                new IndicatorDimensionBinding(
+                    ACCESS_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ), false
+                ),
+                countryBinding(),
+                filterableGroupableBinding(CLASSIFICATION_DIMENSION)
             ),
             TIME_POLICY, OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
@@ -344,6 +391,13 @@ public class IndicatorCatalog {
     private static IndicatorDimensionBinding requiredEqFilterBinding(String dimensionCode) {
         return new IndicatorDimensionBinding(
             dimensionCode, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
+        );
+    }
+
+    /** EQ/IN filterable and groupable, optional — used by classification/fieldOfScience. */
+    private static IndicatorDimensionBinding filterableGroupableBinding(String dimensionCode) {
+        return new IndicatorDimensionBinding(
+            dimensionCode, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP), Set.of(FilterOperator.EQ, FilterOperator.IN), false
         );
     }
 

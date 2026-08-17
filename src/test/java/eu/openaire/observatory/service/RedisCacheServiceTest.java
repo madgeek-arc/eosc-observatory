@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.serializer.SerializationException;
 
+import java.time.Duration;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -83,6 +84,26 @@ class RedisCacheServiceTest {
 
         assertNull(previous);
         verify(valueOperations).set(TEST_KEY, "new-value");
+    }
+
+    @Test
+    void saveWithTtlSetsTheEntryToExpire() {
+        when(valueOperations.get(TEST_KEY)).thenReturn("old-value");
+
+        String previous = service.save("key", "new-value", Duration.ofDays(1));
+
+        assertEquals("old-value", previous);
+        verify(valueOperations).set(TEST_KEY, "new-value", Duration.ofDays(1));
+    }
+
+    @Test
+    void saveWithTtlOverwritesEntryEvenWhenOldValueCannotBeDeserialized() {
+        when(valueOperations.get(TEST_KEY)).thenThrow(new SerializationException("broken"));
+
+        String previous = service.save("key", "new-value", Duration.ofDays(1));
+
+        assertNull(previous);
+        verify(valueOperations).set(TEST_KEY, "new-value", Duration.ofDays(1));
     }
 
     @Test

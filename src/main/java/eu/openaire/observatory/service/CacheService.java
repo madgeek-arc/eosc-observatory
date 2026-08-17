@@ -16,6 +16,7 @@
 
 package eu.openaire.observatory.service;
 
+import java.time.Duration;
 import java.util.Set;
 
 public interface CacheService<K, V> {
@@ -53,6 +54,16 @@ public interface CacheService<K, V> {
      * @return the value
      */
     V save(K key, V value);
+
+    /**
+     * Updates (or adds) the key-value pair, expiring it automatically after the given duration.
+     *
+     * @param key the key
+     * @param value the value to save
+     * @param ttl how long the entry should live before Redis expires it
+     * @return the value
+     */
+    V save(K key, V value, Duration ttl);
 
     /**
      * Removes value based on key and returns it.
