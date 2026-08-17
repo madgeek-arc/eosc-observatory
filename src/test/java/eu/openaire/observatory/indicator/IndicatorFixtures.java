@@ -155,6 +155,52 @@ public final class IndicatorFixtures {
         );
     }
 
+    /** A RATIO indicator, time-series enabled (unlike ratioIndicator()) — for comparisonMode RATIO-branch coverage. */
+    public static IndicatorDefinition timeSeriesRatioIndicator(String code) {
+        return new IndicatorDefinition(
+            UUID.randomUUID(),
+            code,
+            "Access status share",
+            "Percentage share of publications matching a given access status",
+            null,
+            IndicatorValueType.DECIMAL,
+            IndicatorSemanticType.RATIO,
+            UnitType.PERCENT,
+            RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            new RatioPolicy(ZeroDenominatorHandling.NULL),
+            Set.of(),
+            new TimePolicy(true, MissingPeriodHandling.ZERO_FILL),
+            new IndicatorExecutionBinding(code, code),
+            IndicatorAccessLevel.PUBLIC,
+            IndicatorStatus.ACTIVE,
+            1
+        );
+    }
+
+    /** An ATTRIBUTE indicator, time-series enabled — for comparisonMode's semantic-type rejection coverage. */
+    public static IndicatorDefinition timeSeriesAttributeIndicator(String code) {
+        return new IndicatorDefinition(
+            UUID.randomUUID(),
+            code,
+            "Country name",
+            "Country display name",
+            null,
+            IndicatorValueType.TEXT,
+            IndicatorSemanticType.ATTRIBUTE,
+            UnitType.NONE,
+            RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
+            null,
+            Set.of(),
+            new TimePolicy(true, MissingPeriodHandling.ZERO_FILL),
+            new IndicatorExecutionBinding(code, code),
+            IndicatorAccessLevel.PUBLIC,
+            IndicatorStatus.ACTIVE,
+            1
+        );
+    }
+
     public static IndicatorDefinition restrictedIndicator(String code) {
         IndicatorDefinition base = countIndicator(code);
         return new IndicatorDefinition(

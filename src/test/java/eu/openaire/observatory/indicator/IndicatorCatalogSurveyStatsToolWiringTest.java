@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator;
 
+import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
@@ -29,14 +30,14 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
         new CatalogIndicatorDefinitionLookup(catalog), new CatalogDimensionDefinitionLookup(catalog),
-        new AllowAllIndicatorAuthorizationService()
+        new AllowAllIndicatorAuthorizationService(), new IndicatorQueryHandlerRegistry(List.of())
     );
     private static final ActorContext ALLOW_ALL = level -> true;
 
     @Test
     void countryInitiativeStatusRequiresTheInitiativeTypeFilter() {
         var query = new IndicatorQuery(
-            IndicatorCodes.COUNTRY_INITIATIVE_STATUS, null, List.of(), List.of(), null, List.of(), null
+            IndicatorCodes.COUNTRY_INITIATIVE_STATUS, null, List.of(), List.of(), null, null, List.of(), null
         );
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
@@ -46,7 +47,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     @Test
     void euCountryCoverageRequiresTheInitiativeTypeFilter() {
         var query = new IndicatorQuery(
-            IndicatorCodes.EU_COUNTRY_COVERAGE, null, List.of(), List.of(), null, List.of(), null
+            IndicatorCodes.EU_COUNTRY_COVERAGE, null, List.of(), List.of(), null, null, List.of(), null
         );
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
@@ -58,7 +59,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
         var query = new IndicatorQuery(
             IndicatorCodes.EU_COUNTRY_COVERAGE, null,
             List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
-            List.of(), null, List.of(), null
+            List.of(), null, null, List.of(), null
         );
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
@@ -70,7 +71,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
         var query = new IndicatorQuery(
             IndicatorCodes.COUNTRY_INITIATIVE_STATUS, null,
             List.of(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE"))),
-            List.of(), null, List.of(), null
+            List.of(), null, null, List.of(), null
         );
 
         var plan = validator.compile(query, ALLOW_ALL);
@@ -98,7 +99,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
         var query = new IndicatorQuery(
             IndicatorCodes.FINANCIAL_INVESTMENT, null,
             List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
-            List.of(), null, List.of(), null
+            List.of(), null, null, List.of(), null
         );
 
         var plan = validator.compile(query, ALLOW_ALL);
@@ -111,7 +112,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
         var query = new IndicatorQuery(
             IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, null,
             List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("PL"))),
-            List.of(), null, List.of(), null
+            List.of(), null, null, List.of(), null
         );
 
         var plan = validator.compile(query, ALLOW_ALL);
@@ -123,7 +124,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     void citizenScienceNewProjectsCountAcceptsAnOptionalCountryGroupBy() {
         var query = new IndicatorQuery(
             IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, null, List.of(),
-            List.of(IndicatorCodes.COUNTRY_DIMENSION), null, List.of(), null
+            List.of(IndicatorCodes.COUNTRY_DIMENSION), null, null, List.of(), null
         );
 
         var plan = validator.compile(query, ALLOW_ALL);

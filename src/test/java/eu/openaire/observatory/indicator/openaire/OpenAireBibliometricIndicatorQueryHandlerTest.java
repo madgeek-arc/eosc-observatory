@@ -350,7 +350,7 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     private static IndicatorExecutionPlan plan(IndicatorDefinition definition, List<ResolvedFilter> filters,
                                                 List<ResolvedDimension> groupBy, ResolvedTimeRange timeRange) {
         return new IndicatorExecutionPlan(
-            definition, null, filters, groupBy, timeRange, QuerySecurityScope.unrestricted(), 1000
+            definition, null, filters, groupBy, timeRange, null, QuerySecurityScope.unrestricted(), 1000
         );
     }
 

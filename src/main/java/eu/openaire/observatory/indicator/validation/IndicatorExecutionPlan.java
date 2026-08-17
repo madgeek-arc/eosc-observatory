@@ -2,6 +2,7 @@ package eu.openaire.observatory.indicator.validation;
 
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
+import eu.openaire.observatory.indicator.query.ComparisonMode;
 
 import java.util.List;
 
@@ -15,6 +16,7 @@ public record IndicatorExecutionPlan(
     List<ResolvedFilter> filters,
     List<ResolvedDimension> groupBy,
     ResolvedTimeRange timeRange, // nullable
+    ComparisonMode comparisonMode, // nullable; only meaningful alongside timeRange
     QuerySecurityScope securityScope, // trusted, server-derived; never from the client request
     int limit
 ) {

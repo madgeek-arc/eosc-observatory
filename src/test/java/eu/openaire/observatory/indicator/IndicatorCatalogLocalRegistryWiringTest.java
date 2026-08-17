@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator;
 
+import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.local.LocalRegistryIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
@@ -28,14 +29,14 @@ class IndicatorCatalogLocalRegistryWiringTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
         new CatalogIndicatorDefinitionLookup(catalog), new CatalogDimensionDefinitionLookup(catalog),
-        new AllowAllIndicatorAuthorizationService()
+        new AllowAllIndicatorAuthorizationService(), new IndicatorQueryHandlerRegistry(List.of())
     );
     private static final ActorContext ALLOW_ALL = level -> true;
 
     @Test
     void countriesWithValidatedAnswersRequiresTheSurveyIdFilter() {
         var query = new IndicatorQuery(
-            IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, null, List.of(), List.of(), null, List.of(), null
+            IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, null, List.of(), List.of(), null, null, List.of(), null
         );
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
@@ -47,7 +48,7 @@ class IndicatorCatalogLocalRegistryWiringTest {
         var query = new IndicatorQuery(
             IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, null,
             List.of(new IndicatorFilter(IndicatorCodes.SURVEY_ID_DIMENSION, FilterOperator.EQ, List.of("m-eosc-sb-2023"))),
-            List.of(), null, List.of(), null
+            List.of(), null, null, List.of(), null
         );
 
         var plan = validator.compile(query, ALLOW_ALL);
@@ -60,7 +61,7 @@ class IndicatorCatalogLocalRegistryWiringTest {
     @Test
     void stakeholderParticipatingCountriesCountNeedsNoFilters() {
         var query = new IndicatorQuery(
-            IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT, null, List.of(), List.of(), null, List.of(), null
+            IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT, null, List.of(), List.of(), null, null, List.of(), null
         );
 
         var plan = validator.compile(query, ALLOW_ALL);

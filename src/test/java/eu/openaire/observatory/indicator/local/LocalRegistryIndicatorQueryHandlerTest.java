@@ -103,7 +103,7 @@ class LocalRegistryIndicatorQueryHandlerTest {
 
     private static IndicatorExecutionPlan plan(IndicatorDefinition definition, List<ResolvedFilter> filters) {
         return new IndicatorExecutionPlan(
-            definition, AggregationType.NONE, filters, List.of(), null, QuerySecurityScope.unrestricted(), 1000
+            definition, AggregationType.NONE, filters, List.of(), null, null, QuerySecurityScope.unrestricted(), 1000
         );
     }
 

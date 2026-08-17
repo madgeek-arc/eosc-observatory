@@ -14,20 +14,24 @@ public class IndicatorQueryService {
     private final IndicatorQueryValidator validator;
     private final IndicatorQueryHandlerRegistry handlers;
     private final TimeSeriesNormalizer normalizer;
+    private final ComparisonCalculator comparisonCalculator;
 
     public IndicatorQueryService(
             IndicatorQueryValidator validator,
             IndicatorQueryHandlerRegistry handlers,
-            TimeSeriesNormalizer normalizer) {
+            TimeSeriesNormalizer normalizer,
+            ComparisonCalculator comparisonCalculator) {
         this.validator = validator;
         this.handlers = handlers;
         this.normalizer = normalizer;
+        this.comparisonCalculator = comparisonCalculator;
     }
 
     public IndicatorResult execute(IndicatorQuery query, ActorContext actor) {
         IndicatorExecutionPlan plan = validator.compile(query, actor);
         var handler = handlers.getRequired(plan.definition().executionBinding().handlerKey());
         IndicatorResult result = handler.execute(plan);
-        return normalizer.normalize(result, plan.timeRange());
+        result = normalizer.normalize(result, plan.timeRange());
+        return comparisonCalculator.compare(result, plan.comparisonMode(), plan.timeRange(), plan.definition().semanticType());
     }
 }

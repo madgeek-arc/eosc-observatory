@@ -5,6 +5,7 @@ import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.handler.AbstractIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.handler.RatioPercentage;
 import eu.openaire.observatory.indicator.handler.RemoteIndicatorClient;
+import eu.openaire.observatory.indicator.handler.SupportsComparisonQueries;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
@@ -38,7 +39,8 @@ import java.util.Map;
  * "total", producing a materially wrong share.
  */
 @Service
-public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQueryHandler implements RemoteIndicatorClient {
+public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQueryHandler
+        implements RemoteIndicatorClient, SupportsComparisonQueries {
 
     public static final String HANDLER_KEY = "openaire-stats-tool";
 

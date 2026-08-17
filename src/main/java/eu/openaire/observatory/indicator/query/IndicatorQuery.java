@@ -11,6 +11,7 @@ public record IndicatorQuery(
     List<IndicatorFilter> filters,
     List<String> groupBy,
     TimeSeriesRequest timeSeries, // null if not a time-series request
+    ComparisonMode comparisonMode, // null unless requesting period-over-period deltas; requires timeSeries
     List<SortRequest> sort,
     Integer limit
 ) {

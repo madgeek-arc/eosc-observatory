@@ -1,10 +1,13 @@
 package eu.openaire.observatory.indicator.validation;
 
+import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
+import eu.openaire.observatory.indicator.handler.SupportsComparisonQueries;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
+import eu.openaire.observatory.indicator.query.ComparisonMode;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import org.springframework.stereotype.Service;
@@ -25,14 +28,17 @@ public class IndicatorQueryValidator {
     private final IndicatorDefinitionLookup definitions;
     private final DimensionDefinitionLookup dimensions;
     private final IndicatorAuthorizationService authorization;
+    private final IndicatorQueryHandlerRegistry handlers;
 
     public IndicatorQueryValidator(
             IndicatorDefinitionLookup definitions,
             DimensionDefinitionLookup dimensions,
-            IndicatorAuthorizationService authorization) {
+            IndicatorAuthorizationService authorization,
+            IndicatorQueryHandlerRegistry handlers) {
         this.definitions = definitions;
         this.dimensions = dimensions;
         this.authorization = authorization;
+        this.handlers = handlers;
     }
 
     public IndicatorExecutionPlan compile(IndicatorQuery query, ActorContext actor) {
@@ -58,10 +64,13 @@ public class IndicatorQueryValidator {
             .toList();
 
         ResolvedTimeRange timeRange = resolveTimeRange(definition, query);
+        ComparisonMode comparisonMode = resolveComparisonMode(definition, query, timeRange);
 
         int limit = query.limit() != null ? query.limit() : DEFAULT_LIMIT;
 
-        return new IndicatorExecutionPlan(definition, aggregation, filters, groupBy, timeRange, securityScope, limit);
+        return new IndicatorExecutionPlan(
+            definition, aggregation, filters, groupBy, timeRange, comparisonMode, securityScope, limit
+        );
     }
 
     private AggregationType resolveAggregation(IndicatorDefinition definition, IndicatorQuery query) {
@@ -125,6 +134,27 @@ public class IndicatorQueryValidator {
                 ? timeSeries.missingPeriods()
                 : definition.timePolicy().missingPeriodHandling()
         );
+    }
+
+    private ComparisonMode resolveComparisonMode(IndicatorDefinition definition, IndicatorQuery query, ResolvedTimeRange timeRange) {
+        if (query.comparisonMode() == null) {
+            return null;
+        }
+
+        if (timeRange == null) {
+            throw new ComparisonRequiresTimeSeriesException(definition.code());
+        }
+        if (timeRange.from() == timeRange.to()) {
+            throw new InvalidComparisonRangeException(definition.code(), timeRange.from(), timeRange.to());
+        }
+        if (definition.semanticType() == IndicatorSemanticType.ATTRIBUTE) {
+            throw new ComparisonNotSupportedException(definition.code());
+        }
+        if (!(handlers.getRequired(definition.executionBinding().handlerKey()) instanceof SupportsComparisonQueries)) {
+            throw new ComparisonNotSupportedException(definition.code());
+        }
+
+        return query.comparisonMode();
     }
 
     private IndicatorDimensionBinding requireDimensionBinding(
