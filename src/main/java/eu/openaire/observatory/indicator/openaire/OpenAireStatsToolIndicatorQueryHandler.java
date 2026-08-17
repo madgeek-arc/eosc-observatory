@@ -219,7 +219,7 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
             return List.of(new Period(Year.now().getValue(), Map.of()));
         }
         List<Period> periods = new ArrayList<>();
-        for (int year = plan.timeRange().from().getYear(); year <= plan.timeRange().to().getYear(); year++) {
+        for (int year = plan.timeRange().from(); year <= plan.timeRange().to(); year++) {
             periods.add(new Period(year, Map.of(PERIOD_DIMENSION, String.valueOf(year))));
         }
         return periods;

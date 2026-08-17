@@ -1,6 +1,7 @@
 package eu.openaire.observatory.controller.advices;
 
 import eu.openaire.observatory.indicator.validation.IndicatorAccessDeniedException;
+import eu.openaire.observatory.indicator.validation.InvalidTimeRangeException;
 import eu.openaire.observatory.indicator.validation.MissingRequiredFilterException;
 import eu.openaire.observatory.indicator.validation.UnknownIndicatorException;
 import gr.uoa.di.madgik.catalogue.exception.ServerError;
@@ -41,6 +42,15 @@ class ExceptionControllerAdviceTest {
         when(request.getRequestURI()).thenReturn("/indicator-queries");
 
         ResponseEntity<ServerError> response = advice.handleException(request, new MissingRequiredFilterException("publications.count", "country"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    void invalidTimeRangeExceptionMapsToBadRequest() {
+        when(request.getRequestURI()).thenReturn("/indicator-queries");
+
+        ResponseEntity<ServerError> response = advice.handleException(request, new InvalidTimeRangeException(2010, 2020, 2026));
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }

@@ -14,8 +14,6 @@ import eu.openaire.observatory.indicator.model.IndicatorValueType;
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RenderHint;
-import eu.openaire.observatory.indicator.model.TemporalBehavior;
-import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.validation.DimensionDefinitionLookup;
@@ -82,9 +80,7 @@ class IndicatorCatalogItemTest {
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
             null,
             Set.of(),
-            new TimePolicy(
-                true, "year", Set.of(TimeGrain.YEAR), TimeGrain.YEAR, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.ZERO_FILL
-            ),
+            new TimePolicy(true, MissingPeriodHandling.ZERO_FILL),
             new IndicatorExecutionBinding("mock", code),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );

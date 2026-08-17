@@ -273,7 +273,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
 
     /** No timeRange -> the latest known survey year; otherwise the requested range's end year (single-year, not a real series). */
     private int resolveYear(IndicatorExecutionPlan plan) {
-        return plan.timeRange() != null ? plan.timeRange().to().getYear() : DEFAULT_YEAR;
+        return plan.timeRange() != null ? plan.timeRange().to() : DEFAULT_YEAR;
     }
 
     /**

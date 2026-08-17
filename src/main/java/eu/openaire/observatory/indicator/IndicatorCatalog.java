@@ -17,8 +17,6 @@ import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RatioPolicy;
 import eu.openaire.observatory.indicator.model.RenderHint;
-import eu.openaire.observatory.indicator.model.TemporalBehavior;
-import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.model.ZeroDenominatorHandling;
@@ -63,15 +61,10 @@ public class IndicatorCatalog {
 
     private static final String GROUP_LABEL = "Publications";
 
-    private static final TimePolicy TIME_POLICY = new TimePolicy(
-        true, "year", Set.of(TimeGrain.YEAR), TimeGrain.YEAR,
-        TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.ZERO_FILL
-    );
+    private static final TimePolicy TIME_POLICY = new TimePolicy(true, MissingPeriodHandling.ZERO_FILL);
 
     /** For the 2 local-registry indicators, which have no year/time concept at all. */
-    private static final TimePolicy NON_TIME_SERIES_POLICY = new TimePolicy(
-        false, null, Set.of(), null, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.OMIT
-    );
+    private static final TimePolicy NON_TIME_SERIES_POLICY = new TimePolicy(false, MissingPeriodHandling.OMIT);
 
     /** For MEASURE indicators summable across countries — publications.count and the 3 survey counts. */
     private static final AggregationPolicy SUM_AGGREGATION_POLICY = new AggregationPolicy(

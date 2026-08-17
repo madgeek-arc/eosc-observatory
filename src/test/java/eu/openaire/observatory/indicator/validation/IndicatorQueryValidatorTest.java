@@ -6,13 +6,12 @@ import eu.openaire.observatory.indicator.model.DimensionDefinition;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
-import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDate;
+import java.time.Year;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -135,13 +134,64 @@ class IndicatorQueryValidatorTest {
             null,
             List.of(),
             List.of(),
-            new TimeSeriesRequest(TimeGrain.YEAR, LocalDate.of(2020, 1, 1), LocalDate.of(2022, 1, 1), null),
+            new TimeSeriesRequest(2020, 2022, null),
             List.of(),
             null
         );
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(TimeSeriesNotSupportedException.class);
+    }
+
+    @Test
+    void compileThrowsInvalidTimeRangeExceptionWhenFromBeforeEarliestSupportedYear() {
+        var query = new IndicatorQuery(
+            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(2014, 2020, null), List.of(), null
+        );
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidTimeRangeException.class);
+    }
+
+    @Test
+    void compileThrowsInvalidTimeRangeExceptionWhenFromAfterTo() {
+        var query = new IndicatorQuery(
+            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(2022, 2020, null), List.of(), null
+        );
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidTimeRangeException.class);
+    }
+
+    @Test
+    void compileThrowsInvalidTimeRangeExceptionWhenToAfterCurrentYear() {
+        int nextYear = Year.now().getValue() + 1;
+        var query = new IndicatorQuery(
+            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(2020, nextYear, null), List.of(), null
+        );
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidTimeRangeException.class);
+    }
+
+    @Test
+    void compileThrowsInvalidTimeRangeExceptionWhenFromIsMissing() {
+        var query = new IndicatorQuery(
+            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(null, 2020, null), List.of(), null
+        );
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidTimeRangeException.class);
+    }
+
+    @Test
+    void compileThrowsInvalidTimeRangeExceptionWhenToIsMissing() {
+        var query = new IndicatorQuery(
+            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(2020, null, null), List.of(), null
+        );
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidTimeRangeException.class);
     }
 
     @Test
@@ -177,7 +227,7 @@ class IndicatorQueryValidatorTest {
             AggregationType.SUM,
             List.of(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
             List.of(IndicatorFixtures.COUNTRY_DIMENSION),
-            new TimeSeriesRequest(TimeGrain.YEAR, LocalDate.of(2020, 1, 1), LocalDate.of(2022, 1, 1), null),
+            new TimeSeriesRequest(2020, 2022, null),
             List.of(),
             50
         );

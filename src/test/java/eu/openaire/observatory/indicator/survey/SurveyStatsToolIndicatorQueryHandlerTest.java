@@ -17,8 +17,6 @@ import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RatioPolicy;
 import eu.openaire.observatory.indicator.model.RenderHint;
-import eu.openaire.observatory.indicator.model.TemporalBehavior;
-import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.model.ZeroDenominatorHandling;
@@ -37,7 +35,6 @@ import reactor.core.publisher.Mono;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -141,8 +138,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
         var filters = List.of(new ResolvedFilter(
             IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_POLICY")));
-        var timeRange = new ResolvedTimeRange(
-            TimeGrain.YEAR, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31), MissingPeriodHandling.ZERO_FILL);
+        var timeRange = new ResolvedTimeRange(2023, 2023, MissingPeriodHandling.ZERO_FILL);
 
         var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), timeRange, AggregationType.NONE));
 
@@ -157,8 +153,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     @Test
     void financialInvestmentStampsThePeriodDimensionWhenATimeRangeIsRequested() {
         var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"26.94\"]}]}}]}");
-        var timeRange = new ResolvedTimeRange(
-            TimeGrain.YEAR, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31), MissingPeriodHandling.ZERO_FILL);
+        var timeRange = new ResolvedTimeRange(2023, 2023, MissingPeriodHandling.ZERO_FILL);
 
         var result = handler.execute(plan(financialInvestmentDefinition(), List.of(), List.of(), timeRange, AggregationType.SUM));
 
@@ -292,7 +287,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static TimePolicy timePolicy() {
         return new TimePolicy(
-            true, "year", Set.of(TimeGrain.YEAR), TimeGrain.YEAR, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.ZERO_FILL
+            true, MissingPeriodHandling.ZERO_FILL
         );
     }
 

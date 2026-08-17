@@ -17,8 +17,6 @@ import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RatioPolicy;
 import eu.openaire.observatory.indicator.model.RenderHint;
-import eu.openaire.observatory.indicator.model.TemporalBehavior;
-import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.model.ZeroDenominatorHandling;
@@ -346,9 +344,7 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     }
 
     private static ResolvedTimeRange yearRange(int fromYear, int toYear) {
-        return new ResolvedTimeRange(
-            TimeGrain.YEAR, LocalDate.of(fromYear, 1, 1), LocalDate.of(toYear, 1, 1), MissingPeriodHandling.ZERO_FILL
-        );
+        return new ResolvedTimeRange(fromYear, toYear, MissingPeriodHandling.ZERO_FILL);
     }
 
     private static IndicatorExecutionPlan plan(IndicatorDefinition definition, List<ResolvedFilter> filters,
@@ -360,7 +356,7 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
 
     private static TimePolicy timePolicy() {
         return new TimePolicy(
-            true, "year", Set.of(TimeGrain.YEAR), TimeGrain.YEAR, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.ZERO_FILL
+            true, MissingPeriodHandling.ZERO_FILL
         );
     }
 

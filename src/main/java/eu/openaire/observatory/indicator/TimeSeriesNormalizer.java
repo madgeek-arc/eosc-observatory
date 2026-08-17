@@ -1,15 +1,11 @@
 package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
-import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.ResolvedTimeRange;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,7 +15,6 @@ import java.util.Map;
  * Fills gaps in a time-series result according to its MissingPeriodHandling policy. Groups data
  * points by every dimension except "period" (e.g. "country") and gap-fills each group's period
  * series independently, so a multi-country result doesn't have its countries collapsed together.
- * Assumes from/to are grain-aligned (e.g. quarter boundaries for QUARTER grain).
  */
 @Service
 public class TimeSeriesNormalizer {
@@ -43,7 +38,7 @@ public class TimeSeriesNormalizer {
             byGroupThenPeriod.put(Map.of(), Map.of());
         }
 
-        List<String> periods = generatePeriods(timeRange.grain(), timeRange.from(), timeRange.to());
+        List<String> periods = generatePeriods(timeRange.from(), timeRange.to());
         List<IndicatorDataPoint> filled = new ArrayList<>();
         for (var group : byGroupThenPeriod.entrySet()) {
             Map<String, Object> groupKey = group.getKey();
@@ -64,34 +59,11 @@ public class TimeSeriesNormalizer {
         return new IndicatorResult(result.metadata(), result.dimensions(), filled, result.execution());
     }
 
-    private List<String> generatePeriods(TimeGrain grain, LocalDate from, LocalDate to) {
+    private List<String> generatePeriods(int from, int to) {
         List<String> periods = new ArrayList<>();
-        LocalDate cursor = from;
-        while (!cursor.isAfter(to)) {
-            periods.add(formatPeriod(grain, cursor));
-            cursor = advance(grain, cursor);
+        for (int year = from; year <= to; year++) {
+            periods.add(String.valueOf(year));
         }
         return periods;
-    }
-
-    private LocalDate advance(TimeGrain grain, LocalDate date) {
-        return switch (grain) {
-            case DAY -> date.plusDays(1);
-            case WEEK -> date.plusWeeks(1);
-            case MONTH -> date.plusMonths(1);
-            case QUARTER -> date.plusMonths(3);
-            case YEAR -> date.plusYears(1);
-        };
-    }
-
-    private String formatPeriod(TimeGrain grain, LocalDate date) {
-        return switch (grain) {
-            case DAY -> date.toString();
-            case WEEK -> date.get(IsoFields.WEEK_BASED_YEAR) + "-W"
-                + String.format("%02d", date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
-            case MONTH -> YearMonth.from(date).toString();
-            case QUARTER -> date.getYear() + "-Q" + ((date.getMonthValue() - 1) / 3 + 1);
-            case YEAR -> String.valueOf(date.getYear());
-        };
     }
 }

@@ -9,6 +9,7 @@ import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import org.springframework.stereotype.Service;
 
+import java.time.Year;
 import java.util.List;
 
 /**
@@ -19,6 +20,7 @@ import java.util.List;
 public class IndicatorQueryValidator {
 
     private static final int DEFAULT_LIMIT = 1000;
+    private static final int EARLIEST_SUPPORTED_YEAR = 2015;
 
     private final IndicatorDefinitionLookup definitions;
     private final DimensionDefinitionLookup dimensions;
@@ -109,10 +111,16 @@ public class IndicatorQueryValidator {
         }
 
         var timeSeries = query.timeSeries();
+        Integer from = timeSeries.from();
+        Integer to = timeSeries.to();
+        int currentYear = Year.now().getValue();
+        if (from == null || to == null || from < EARLIEST_SUPPORTED_YEAR || from > to || to > currentYear) {
+            throw new InvalidTimeRangeException(from, to, currentYear);
+        }
+
         return new ResolvedTimeRange(
-            timeSeries.grain(),
-            timeSeries.from(),
-            timeSeries.to(),
+            from,
+            to,
             timeSeries.missingPeriods() != null
                 ? timeSeries.missingPeriods()
                 : definition.timePolicy().missingPeriodHandling()

@@ -16,7 +16,6 @@ import eu.openaire.observatory.indicator.model.IndicatorValueType;
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RenderHint;
-import eu.openaire.observatory.indicator.model.TemporalBehavior;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
@@ -109,7 +108,7 @@ class LocalRegistryIndicatorQueryHandlerTest {
     }
 
     private static TimePolicy nonTimeSeriesPolicy() {
-        return new TimePolicy(false, null, Set.of(), null, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.OMIT);
+        return new TimePolicy(false, MissingPeriodHandling.OMIT);
     }
 
     private static IndicatorDefinition countriesWithValidatedAnswersDefinition() {

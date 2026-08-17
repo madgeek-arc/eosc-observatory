@@ -1,7 +1,6 @@
 package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
-import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
 import eu.openaire.observatory.indicator.result.IndicatorMetadata;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
@@ -10,7 +9,6 @@ import eu.openaire.observatory.indicator.validation.ResolvedTimeRange;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -35,9 +33,7 @@ class TimeSeriesNormalizerTest {
     @Test
     void zeroFillsMissingYearsWithZero() {
         var result = resultWithPeriods(Map.of("2020", 10, "2022", 20));
-        var range = new ResolvedTimeRange(
-            TimeGrain.YEAR, LocalDate.of(2020, 1, 1), LocalDate.of(2022, 1, 1), MissingPeriodHandling.ZERO_FILL
-        );
+        var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.ZERO_FILL);
 
         var normalized = normalizer.normalize(result, range);
 
@@ -50,9 +46,7 @@ class TimeSeriesNormalizerTest {
     @Test
     void nullFillsMissingYears() {
         var result = resultWithPeriods(Map.of("2020", 10));
-        var range = new ResolvedTimeRange(
-            TimeGrain.YEAR, LocalDate.of(2020, 1, 1), LocalDate.of(2021, 1, 1), MissingPeriodHandling.NULL_FILL
-        );
+        var range = new ResolvedTimeRange(2020, 2021, MissingPeriodHandling.NULL_FILL);
 
         var normalized = normalizer.normalize(result, range);
 
@@ -74,9 +68,7 @@ class TimeSeriesNormalizerTest {
             data,
             new QueryExecutionMetadata(Instant.now(), false)
         );
-        var range = new ResolvedTimeRange(
-            TimeGrain.YEAR, LocalDate.of(2020, 1, 1), LocalDate.of(2022, 1, 1), MissingPeriodHandling.ZERO_FILL
-        );
+        var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.ZERO_FILL);
 
         var normalized = normalizer.normalize(result, range);
 
@@ -92,9 +84,7 @@ class TimeSeriesNormalizerTest {
     @Test
     void omitLeavesGapsUntouched() {
         var result = resultWithPeriods(Map.of("2020", 10));
-        var range = new ResolvedTimeRange(
-            TimeGrain.YEAR, LocalDate.of(2020, 1, 1), LocalDate.of(2022, 1, 1), MissingPeriodHandling.OMIT
-        );
+        var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.OMIT);
 
         var normalized = normalizer.normalize(result, range);
 

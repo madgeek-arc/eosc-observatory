@@ -17,8 +17,6 @@ import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RatioPolicy;
 import eu.openaire.observatory.indicator.model.RenderHint;
-import eu.openaire.observatory.indicator.model.TemporalBehavior;
-import eu.openaire.observatory.indicator.model.TimeGrain;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.model.ZeroDenominatorHandling;
@@ -71,14 +69,7 @@ public final class IndicatorFixtures {
                 Set.of(FilterOperator.EQ, FilterOperator.IN),
                 false
             )),
-            new TimePolicy(
-                true,
-                "publicationYear",
-                Set.of(TimeGrain.YEAR),
-                TimeGrain.YEAR,
-                TemporalBehavior.PERIOD_VALUE,
-                MissingPeriodHandling.ZERO_FILL
-            ),
+            new TimePolicy(true, MissingPeriodHandling.ZERO_FILL),
             new IndicatorExecutionBinding(code, code), // handlerKey defaults to the indicator code; override per-test as needed
             IndicatorAccessLevel.PUBLIC,
             IndicatorStatus.ACTIVE,
@@ -105,9 +96,7 @@ public final class IndicatorFixtures {
             ),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(),
-            new TimePolicy(
-                false, null, Set.of(), null, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.OMIT
-            ),
+            new TimePolicy(false, MissingPeriodHandling.OMIT),
             new IndicatorExecutionBinding(code, code),
             IndicatorAccessLevel.PUBLIC,
             IndicatorStatus.ACTIVE,
@@ -130,7 +119,7 @@ public final class IndicatorFixtures {
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
             null,
             Set.of(),
-            new TimePolicy(false, null, Set.of(), null, TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.OMIT),
+            new TimePolicy(false, MissingPeriodHandling.OMIT),
             new IndicatorExecutionBinding(code, code),
             IndicatorAccessLevel.PUBLIC,
             IndicatorStatus.ACTIVE,
@@ -158,10 +147,7 @@ public final class IndicatorFixtures {
                 Set.of(FilterOperator.EQ, FilterOperator.IN),
                 true
             )),
-            new TimePolicy(
-                true, "publicationYear", Set.of(TimeGrain.YEAR), TimeGrain.YEAR,
-                TemporalBehavior.PERIOD_VALUE, MissingPeriodHandling.ZERO_FILL
-            ),
+            new TimePolicy(true, MissingPeriodHandling.ZERO_FILL),
             new IndicatorExecutionBinding(code, code),
             IndicatorAccessLevel.PUBLIC,
             IndicatorStatus.ACTIVE,
