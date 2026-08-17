@@ -3,7 +3,7 @@ package eu.openaire.observatory.indicator;
 import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
-import eu.openaire.observatory.indicator.query.IndicatorQuery;
+import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
 import eu.openaire.observatory.indicator.survey.SurveyStatsToolIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizationService;
@@ -36,9 +36,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void countryInitiativeStatusRequiresTheInitiativeTypeFilter() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.COUNTRY_INITIATIVE_STATUS, null, List.of(), List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(MissingRequiredFilterException.class);
@@ -46,9 +44,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void euCountryCoverageRequiresTheInitiativeTypeFilter() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.EU_COUNTRY_COVERAGE, null, List.of(), List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE).build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(MissingRequiredFilterException.class);
@@ -56,11 +52,9 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void euCountryCoverageCountryIsNotClientFilterable() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.EU_COUNTRY_COVERAGE, null,
-            List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
-            List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
+            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")))
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(UnsupportedDimensionException.class);
@@ -68,11 +62,9 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void countryInitiativeStatusWithInitiativeTypeFilterValidates() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.COUNTRY_INITIATIVE_STATUS, null,
-            List.of(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE"))),
-            List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.COUNTRY_INITIATIVE_STATUS)
+            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -96,11 +88,9 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void financialInvestmentAcceptsAnOptionalCountryFilter() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.FINANCIAL_INVESTMENT, null,
-            List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
-            List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.FINANCIAL_INVESTMENT)
+            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -109,11 +99,9 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void longTermPreservationCountAcceptsAnOptionalCountryFilter() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, null,
-            List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("PL"))),
-            List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT)
+            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("PL")))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -122,10 +110,9 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void citizenScienceNewProjectsCountAcceptsAnOptionalCountryGroupBy() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, null, List.of(),
-            List.of(IndicatorCodes.COUNTRY_DIMENSION), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT)
+            .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 

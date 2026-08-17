@@ -4,7 +4,7 @@ import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.openaire.OpenAireStatsToolIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
-import eu.openaire.observatory.indicator.query.IndicatorQuery;
+import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizationService;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
@@ -37,11 +37,9 @@ class IndicatorCatalogOpenAireWiringTest {
 
     @Test
     void accessStatusShareFilterNowValidates() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, null,
-            List.of(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED"))),
-            List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE)
+            .withFilters(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED")))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -52,9 +50,7 @@ class IndicatorCatalogOpenAireWiringTest {
 
     @Test
     void accessStatusShareRequiresTheAccessStatusFilter() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, null, List.of(), List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE).build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(MissingRequiredFilterException.class);
@@ -62,18 +58,14 @@ class IndicatorCatalogOpenAireWiringTest {
 
     @Test
     void accessStatusShareAcceptsNotEqAndInOperatorsForAggregation() {
-        var notEqQuery = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, null,
-            List.of(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.NOT_EQ, List.of("OA"))),
-            List.of(), null, null, List.of(), null
-        );
-        var inQuery = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, null,
-            List.of(new IndicatorFilter(
+        var notEqQuery = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE)
+            .withFilters(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.NOT_EQ, List.of("OA")))
+            .build();
+        var inQuery = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE)
+            .withFilters(new IndicatorFilter(
                 IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.IN, List.of("CLOSED", "EMBARGOED", "RESTRICTED")
-            )),
-            List.of(), null, null, List.of(), null
-        );
+            ))
+            .build();
 
         var notEqPlan = validator.compile(notEqQuery, ALLOW_ALL);
         var inPlan = validator.compile(inQuery, ALLOW_ALL);
@@ -84,13 +76,11 @@ class IndicatorCatalogOpenAireWiringTest {
 
     @Test
     void accessStatusShareAcceptsNotInForAggregation() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, null,
-            List.of(new IndicatorFilter(
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE)
+            .withFilters(new IndicatorFilter(
                 IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.NOT_IN, List.of("CLOSED", "EMBARGOED", "RESTRICTED")
-            )),
-            List.of(), null, null, List.of(), null
-        );
+            ))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -100,11 +90,9 @@ class IndicatorCatalogOpenAireWiringTest {
 
     @Test
     void publicationsCountAcceptsAnOptionalCountryFilter() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_COUNT, null,
-            List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
-            List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_COUNT)
+            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -115,11 +103,9 @@ class IndicatorCatalogOpenAireWiringTest {
 
     @Test
     void publicationsCountAcceptsAnInCountryFilterForMultipleCountries() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_COUNT, null,
-            List.of(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "DE"))),
-            List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_COUNT)
+            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "DE")))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -129,11 +115,10 @@ class IndicatorCatalogOpenAireWiringTest {
 
     @Test
     void accessStatusShareAcceptsAnOptionalCountryGroupByForAPerCountryMap() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, null,
-            List.of(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA"))),
-            List.of(IndicatorCodes.COUNTRY_DIMENSION), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE)
+            .withFilters(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")))
+            .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -142,10 +127,9 @@ class IndicatorCatalogOpenAireWiringTest {
 
     @Test
     void publicationsCountAcceptsAnOptionalCountryGroupByForAPerCountryMap() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.PUBLICATIONS_COUNT, null, List.of(),
-            List.of(IndicatorCodes.COUNTRY_DIMENSION), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_COUNT)
+            .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 

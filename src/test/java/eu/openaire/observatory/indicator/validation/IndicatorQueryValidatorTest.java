@@ -12,6 +12,7 @@ import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.query.ComparisonMode;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
+import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import org.junit.jupiter.api.Test;
@@ -82,7 +83,7 @@ class IndicatorQueryValidatorTest {
     private static final ActorContext DENY_RESTRICTED = level -> level != IndicatorAccessLevel.RESTRICTED;
 
     private static IndicatorQuery baseQuery(String code) {
-        return new IndicatorQuery(code, null, List.of(), List.of(), null, null, List.of(), null);
+        return IndicatorQueryBuilder.forIndicator(code).build();
     }
 
     @Test
@@ -103,9 +104,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsInvalidAggregationExceptionWhenAggregationNotAllowed() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, AggregationType.LAST, List.of(), List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withAggregation(AggregationType.LAST)
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(InvalidAggregationException.class);
@@ -124,9 +125,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsUnsupportedDimensionExceptionForUnknownGroupByDimension() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of("publicationType"), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withGroupBy("publicationType")
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(UnsupportedDimensionException.class);
@@ -134,16 +135,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsUnsupportedOperatorExceptionForDisallowedFilterOperator() {
-        var query = new IndicatorQuery(
-            COUNT_CODE,
-            null,
-            List.of(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.GT, List.of("GR"))),
-            List.of(),
-            null,
-            null,
-            List.of(),
-            null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.GT, List.of("GR")))
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(UnsupportedOperatorException.class);
@@ -151,16 +145,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsTimeSeriesNotSupportedExceptionWhenIndicatorDoesNotSupportIt() {
-        var query = new IndicatorQuery(
-            NON_TIME_SERIES_CODE,
-            null,
-            List.of(),
-            List.of(),
-            new TimeSeriesRequest(2020, 2022, null),
-            null,
-            List.of(),
-            null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(NON_TIME_SERIES_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2020, 2022, null))
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(TimeSeriesNotSupportedException.class);
@@ -168,9 +155,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsInvalidTimeRangeExceptionWhenFromBeforeEarliestSupportedYear() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(2014, 2020, null), null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2014, 2020, null))
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(InvalidTimeRangeException.class);
@@ -178,9 +165,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsInvalidTimeRangeExceptionWhenFromAfterTo() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(2022, 2020, null), null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2022, 2020, null))
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(InvalidTimeRangeException.class);
@@ -189,9 +176,9 @@ class IndicatorQueryValidatorTest {
     @Test
     void compileThrowsInvalidTimeRangeExceptionWhenToAfterCurrentYear() {
         int nextYear = Year.now().getValue() + 1;
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(2020, nextYear, null), null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2020, nextYear, null))
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(InvalidTimeRangeException.class);
@@ -199,9 +186,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsInvalidTimeRangeExceptionWhenFromIsMissing() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(null, 2020, null), null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withTimeSeries(new TimeSeriesRequest(null, 2020, null))
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(InvalidTimeRangeException.class);
@@ -209,9 +196,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsInvalidTimeRangeExceptionWhenToIsMissing() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of(), new TimeSeriesRequest(2020, null, null), null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2020, null, null))
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(InvalidTimeRangeException.class);
@@ -227,16 +214,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileSucceedsWhenRequiredFilterIsProvided() {
-        var query = new IndicatorQuery(
-            REQUIRED_FILTER_CODE,
-            null,
-            List.of(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
-            List.of(),
-            null,
-            null,
-            List.of(),
-            null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(REQUIRED_FILTER_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -246,16 +226,13 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileProducesExpectedExecutionPlanForValidQuery() {
-        var query = new IndicatorQuery(
-            COUNT_CODE,
-            AggregationType.SUM,
-            List.of(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))),
-            List.of(IndicatorFixtures.COUNTRY_DIMENSION),
-            new TimeSeriesRequest(2020, 2022, null),
-            null,
-            List.of(),
-            50
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withAggregation(AggregationType.SUM)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")))
+            .withGroupBy(IndicatorFixtures.COUNTRY_DIMENSION)
+            .withTimeSeries(new TimeSeriesRequest(2020, 2022, null))
+            .withLimit(50)
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -273,10 +250,10 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileAcceptsComparisonModeForMeasureIndicatorWithCapableHandler() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of(),
-            new TimeSeriesRequest(2020, 2022, null), ComparisonMode.TWO_POINT, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2020, 2022, null))
+            .withComparisonMode(ComparisonMode.TWO_POINT)
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -285,10 +262,10 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileAcceptsComparisonModeForRatioIndicatorWithCapableHandler() {
-        var query = new IndicatorQuery(
-            COMPARABLE_RATIO_CODE, null, List.of(), List.of(),
-            new TimeSeriesRequest(2020, 2022, null), ComparisonMode.CONSECUTIVE, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COMPARABLE_RATIO_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2020, 2022, null))
+            .withComparisonMode(ComparisonMode.CONSECUTIVE)
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -297,9 +274,9 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsComparisonRequiresTimeSeriesExceptionWhenTimeSeriesOmitted() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of(), null, ComparisonMode.TWO_POINT, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withComparisonMode(ComparisonMode.TWO_POINT)
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(ComparisonRequiresTimeSeriesException.class);
@@ -307,10 +284,10 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsInvalidComparisonRangeExceptionWhenFromEqualsTo() {
-        var query = new IndicatorQuery(
-            COUNT_CODE, null, List.of(), List.of(),
-            new TimeSeriesRequest(2022, 2022, null), ComparisonMode.TWO_POINT, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2022, 2022, null))
+            .withComparisonMode(ComparisonMode.TWO_POINT)
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(InvalidComparisonRangeException.class);
@@ -318,10 +295,10 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsComparisonNotSupportedExceptionForAttributeIndicators() {
-        var query = new IndicatorQuery(
-            COMPARABLE_ATTRIBUTE_CODE, null, List.of(), List.of(),
-            new TimeSeriesRequest(2020, 2022, null), ComparisonMode.TWO_POINT, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(COMPARABLE_ATTRIBUTE_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2020, 2022, null))
+            .withComparisonMode(ComparisonMode.TWO_POINT)
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(ComparisonNotSupportedException.class);
@@ -329,10 +306,10 @@ class IndicatorQueryValidatorTest {
 
     @Test
     void compileThrowsComparisonNotSupportedExceptionWhenHandlerLacksTheMarker() {
-        var query = new IndicatorQuery(
-            NON_COMPARABLE_COUNT_CODE, null, List.of(), List.of(),
-            new TimeSeriesRequest(2020, 2022, null), ComparisonMode.TWO_POINT, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(NON_COMPARABLE_COUNT_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2020, 2022, null))
+            .withComparisonMode(ComparisonMode.TWO_POINT)
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(ComparisonNotSupportedException.class);

@@ -4,7 +4,7 @@ import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.local.LocalRegistryIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
-import eu.openaire.observatory.indicator.query.IndicatorQuery;
+import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizationService;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
@@ -35,9 +35,7 @@ class IndicatorCatalogLocalRegistryWiringTest {
 
     @Test
     void countriesWithValidatedAnswersRequiresTheSurveyIdFilter() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, null, List.of(), List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS).build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(MissingRequiredFilterException.class);
@@ -45,11 +43,9 @@ class IndicatorCatalogLocalRegistryWiringTest {
 
     @Test
     void countriesWithValidatedAnswersWithSurveyIdFilterValidates() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, null,
-            List.of(new IndicatorFilter(IndicatorCodes.SURVEY_ID_DIMENSION, FilterOperator.EQ, List.of("m-eosc-sb-2023"))),
-            List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS)
+            .withFilters(new IndicatorFilter(IndicatorCodes.SURVEY_ID_DIMENSION, FilterOperator.EQ, List.of("m-eosc-sb-2023")))
+            .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
@@ -60,9 +56,7 @@ class IndicatorCatalogLocalRegistryWiringTest {
 
     @Test
     void stakeholderParticipatingCountriesCountNeedsNoFilters() {
-        var query = new IndicatorQuery(
-            IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT, null, List.of(), List.of(), null, null, List.of(), null
-        );
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT).build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
