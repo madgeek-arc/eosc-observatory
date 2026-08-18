@@ -219,4 +219,53 @@ class IndicatorCatalogOpenAireWiringTest {
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(UnsupportedDimensionException.class);
     }
+
+    @Test
+    void softwareCountRoutesToTheRealOpenAireHandler() {
+        assertThat(catalog.get(IndicatorCodes.SOFTWARE_COUNT).executionBinding().handlerKey())
+            .isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
+    }
+
+    @Test
+    void softwareCountAcceptsCountryAndClassificationGroupBy() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.SOFTWARE_COUNT)
+            .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.groupBy()).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+    }
+
+    @Test
+    void softwareCountAcceptsAnOptionalAccessStatusFilter() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.SOFTWARE_COUNT)
+            .withFilters(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(IndicatorCodes.ACCESS_STATUS_DIMENSION);
+    }
+
+    @Test
+    void softwareCountAcceptsAClassificationFilter() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.SOFTWARE_COUNT)
+            .withFilters(new IndicatorFilter(IndicatorCodes.CLASSIFICATION_DIMENSION, FilterOperator.IN, List.of("Software", "Review")))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.filters().get(0).values()).containsExactly("Software", "Review");
+    }
+
+    @Test
+    void softwareCountDoesNotHaveAFieldOfScienceBinding() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.SOFTWARE_COUNT)
+            .withGroupBy(IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION)
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(UnsupportedDimensionException.class);
+    }
 }

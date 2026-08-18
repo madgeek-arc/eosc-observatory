@@ -14,10 +14,11 @@ class IndicatorCatalogTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
 
     @Test
-    void containsAllTenRealDefinitions() {
-        assertThat(catalog.getAll()).hasSize(10);
+    void containsAllElevenRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(11);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
+            IndicatorCodes.SOFTWARE_COUNT,
             IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
             IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
             IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT
@@ -132,6 +133,22 @@ class IndicatorCatalogTest {
     }
 
     @Test
+    void softwareCountIsCountryAndClassificationFilterableAndGroupableButNotFieldOfScience() {
+        var definition = catalog.get(IndicatorCodes.SOFTWARE_COUNT);
+        assertThat(definition.executionBinding().handlerKey()).isEqualTo("openaire-stats-tool");
+
+        var bindings = definition.dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(
+                IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION
+            );
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.CLASSIFICATION_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+    }
+
+    @Test
     void longTermPreservationCountIsCountryFilterableAndGroupable() {
         var bindings = catalog.get(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
@@ -167,7 +184,7 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void eightDefinitionsSupportTimeSeriesButTheTwoLocalRegistryOnesDoNot() {
+    void nineDefinitionsSupportTimeSeriesButTheTwoLocalRegistryOnesDoNot() {
         assertThat(catalog.getAll())
             .filteredOn(definition -> !definition.code().equals(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS)
                 && !definition.code().equals(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT))

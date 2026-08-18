@@ -56,6 +56,19 @@ class ClassificationDimensionMemberProviderTest {
     }
 
     @Test
+    void softwareCountIndicatorFetchesTheSoftwareScopedList() {
+        var provider = new ClassificationDimensionMemberProvider(fetcher);
+        when(fetcher.fetchCached(
+            eq("dimension-members:classification:" + OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE),
+            eq(IndicatorCodes.CLASSIFICATION_DIMENSION), eq(OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE)
+        )).thenReturn(new DimensionMembers(List.of(new DimensionMember("Software", "Software"))));
+
+        DimensionMembers page = provider.search(IndicatorCodes.SOFTWARE_COUNT, "", 100);
+
+        assertThat(page.members()).containsExactly(new DimensionMember("Software", "Software"));
+    }
+
+    @Test
     void nullIndicatorCodeDefaultsToThePublicationScopedList() {
         var provider = new ClassificationDimensionMemberProvider(fetcher);
         when(fetcher.fetchCached(

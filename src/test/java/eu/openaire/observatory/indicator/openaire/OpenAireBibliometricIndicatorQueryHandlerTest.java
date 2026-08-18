@@ -424,6 +424,55 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
         assertThat(result.data()).extracting(IndicatorDataPoint::value).containsExactlyInAnyOrder(1L, 99L, 648L);
     }
 
+    @Test
+    void softwareCountFilteredByClassificationReturnsOneCount() {
+        var handler = handlerReturning("{\"data\":[[[\"11883\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.CLASSIFICATION_DIMENSION, FilterOperator.EQ, List.of("Software")));
+
+        var result = handler.execute(plan(softwareCountDefinition(), filters, List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(11883L);
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"values\":[\"software\"]");
+        assertThat(request).contains("\"field\":\"result.classification\"").contains("\"Software\"");
+    }
+
+    @Test
+    void softwareCountFiltersBySoftwareInsteadOfPublicationOrDataset() {
+        var handler = handlerReturning("{\"data\":[[[\"11883\"]]]}");
+
+        var result = handler.execute(plan(softwareCountDefinition(), List.of(), List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(11883L);
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"values\":[\"software\"]");
+        assertThat(request).doesNotContain("\"values\":[\"publication\"]").doesNotContain("\"values\":[\"dataset\"]");
+    }
+
+    @Test
+    void softwareCountGroupedByCountryReturnsOneRowPerCountry() {
+        var handler = handlerReturning("{\"data\":[[[\"648\",\"GR\"],[\"50\",\"DE\"]]]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(softwareCountDefinition(), List.of(), groupBy, null));
+
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION))
+            .containsExactlyInAnyOrder("GR", "DE");
+    }
+
+    @Test
+    void softwareCountGroupedByClassificationReturnsOneRowPerClassification() {
+        var handler = handlerReturning("{\"data\":[[[\"3\",\"Other ORP type\"],[\"1\",\"Review\"],[\"11883\",\"Software\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.CLASSIFICATION_DIMENSION));
+
+        var result = handler.execute(plan(softwareCountDefinition(), filters, groupBy, null));
+
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.CLASSIFICATION_DIMENSION))
+            .containsExactlyInAnyOrder("Other ORP type", "Review", "Software");
+        assertThat(result.data()).extracting(IndicatorDataPoint::value).containsExactlyInAnyOrder(3L, 1L, 11883L);
+    }
+
     /**
      * A single request carries every sub-query as its own "series" entry (numerator, then
      * denominator) — isolates the first one's text so assertions about the numerator's filters
@@ -541,6 +590,32 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
             ),
             timePolicy(),
             new IndicatorExecutionBinding(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.DATASETS_COUNT),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    private static IndicatorDefinition softwareCountDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), IndicatorCodes.SOFTWARE_COUNT, "Software", "desc", "Software",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
+            null,
+            Set.of(
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.ACCESS_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ), false
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                )
+            ),
+            timePolicy(),
+            new IndicatorExecutionBinding(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.SOFTWARE_COUNT),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }

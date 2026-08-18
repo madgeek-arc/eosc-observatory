@@ -26,14 +26,14 @@ import java.util.Map;
  * publications.access_status_share (RATIO, requires an accessStatus filter to pick which share is
  * returned — a single EQ value returns that exact status's share; NOT_EQ or a multi-value IN
  * aggregates several statuses together, e.g. NOT_EQ OA for the full non-open share),
- * publications.count, and datasets.count (both MEASURE, optionally filtered/grouped by accessStatus
- * — the two are otherwise identical, just entity=publication vs entity=dataset). All three support
- * country either as an EQ/IN filter (one or more countries OR'd together; absent means all-EU,
- * matching the always-applied continent=Europe scope) or as a groupBy (fans out into one row per
- * country in a single extra sub-query, via OpenAireQueryBuilder's native groupBy queries — not a
- * query-per-country loop). publications.count/datasets.count are also groupable by classification
- * (document/output type), and publications.count additionally by fieldOfScience — neither is
- * filterable, only groupable, since the legacy UI only ever breaks results down by them.
+ * publications.count, datasets.count, and software.count (all MEASURE, optionally filtered/grouped
+ * by accessStatus — the three are otherwise identical, just entity=publication vs entity=dataset vs
+ * entity=software). All four support country either as an EQ/IN filter (one or more countries OR'd
+ * together; absent means all-EU, matching the always-applied continent=Europe scope) or as a groupBy
+ * (fans out into one row per country in a single extra sub-query, via OpenAireQueryBuilder's native
+ * groupBy queries — not a query-per-country loop). publications.count/datasets.count/software.count
+ * are also filterable/groupable by classification (document/output type), and publications.count
+ * additionally by fieldOfScience.
  *
  * <p>publications.access_status_share's denominator ("total") is explicitly scoped to the 4 known
  * access-mode values (OA/Closed/Embargoed/Restricted, OR'd together), matching observatory-ui's own
@@ -81,6 +81,7 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
             case IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE -> queryAccessStatusShare(plan);
             case IndicatorCodes.PUBLICATIONS_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
             case IndicatorCodes.DATASETS_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_DATASET);
+            case IndicatorCodes.SOFTWARE_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE);
             default -> throw new IllegalStateException(
                 "OpenAireStatsToolIndicatorQueryHandler has no logic for providerIndicatorKey: " + providerIndicatorKey);
         };

@@ -23,6 +23,7 @@ public class OpenAireQueryBuilder {
     private static final String PROFILE = "openaire_stats";
     public static final String RESULT_TYPE_PUBLICATION = "publication";
     public static final String RESULT_TYPE_DATASET = "dataset";
+    public static final String RESULT_TYPE_SOFTWARE = "software";
     private static final String COUNTRY_GROUP_FIELD = "result.organization.country";
     private static final String LIMIT = "30";
     private static final String UNLIMITED = "0";

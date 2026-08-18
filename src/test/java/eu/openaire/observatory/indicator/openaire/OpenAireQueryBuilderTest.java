@@ -155,6 +155,24 @@ class OpenAireQueryBuilderTest {
     }
 
     @Test
+    void resultCountSubQueryWithSoftwareResultTypeFiltersBySoftwareInsteadOfPublication() {
+        ObjectNode subQuery = builder.resultCountSubQuery(
+            2023, List.of(), DimensionFilters.NONE, OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(filters, "result.type")).containsExactly("software");
+    }
+
+    @Test
+    void resultCountByGroupSubQueryForSoftwareFiltersBySoftware() {
+        ObjectNode subQuery = builder.resultCountByGroupSubQuery(
+            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(filters, "result.type")).containsExactly("software");
+    }
+
+    @Test
     void resultCountByGroupSubQueryGroupsByClassificationField() {
         ObjectNode subQuery = builder.resultCountByGroupSubQuery(
             2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);

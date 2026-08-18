@@ -46,18 +46,19 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.LONG_TERM_PRESERV
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_ID_DIMENSION;
 
 /**
  * In-memory catalog of real indicator definitions. Not a stand-in for a future persistence layer
- * — the 9 definitions it holds today are all real: 2 route to OpenAireStatsToolIndicatorQueryHandler
+ * — the 11 definitions it holds today are all real: 4 route to OpenAireStatsToolIndicatorQueryHandler
  * (OpenAIRE data), 5 route to SurveyStatsToolIndicatorQueryHandler (survey stats-tool
  * data, scoped to survey years 2022+ — see that handler's Javadoc and docs/INDICATOR_ROADMAP.md
  * for why 2021 is excluded), and 2 route to LocalRegistryIndicatorQueryHandler (no external HTTP
  * call at all — wraps SurveyService/StakeholderService directly). It previously also held 3
  * synthetic mock indicators with the same codes as the 3 original survey ones; those were removed
  * and later replaced with real implementations — see docs/INDICATOR_ROADMAP.md for the design
- * history and remaining backlog beyond today's 9.
+ * history and remaining backlog beyond today's 11.
  */
 @Service
 public class IndicatorCatalog {
@@ -139,7 +140,7 @@ public class IndicatorCatalog {
 
     private static List<IndicatorDefinition> allDefinitions() {
         return List.of(
-            publicationsCount(), publicationsAccessStatusShare(), datasetsCount(),
+            publicationsCount(), publicationsAccessStatusShare(), datasetsCount(), softwareCount(),
             financialInvestment(), countryInitiativeStatus(), euCountryCoverage(),
             longTermPreservationCount(), citizenScienceNewProjectsCount(),
             countriesWithValidatedAnswers(), stakeholderParticipatingCountriesCount()
@@ -191,6 +192,34 @@ public class IndicatorCatalog {
                 + "and upstream as publications.count, scoped to entity=dataset instead of "
                 + "entity=publication.",
             "Datasets", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            SUM_AGGREGATION_POLICY,
+            null,
+            Set.of(
+                new IndicatorDimensionBinding(
+                    ACCESS_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ), false
+                ),
+                countryBinding(),
+                filterableGroupableBinding(CLASSIFICATION_DIMENSION)
+            ),
+            TIME_POLICY, OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * Software-entity counterpart to publicationsCount()/datasetsCount() — same shape and upstream
+     * (OpenAireStatsToolIndicatorQueryHandler, scoped to continent=Europe), just entity=software.
+     * Also filterable/groupable by classification (e.g. "Software") — fieldOfScience is
+     * publication-only, not evidenced for software.
+     */
+    private static IndicatorDefinition softwareCount() {
+        return definition(
+            SOFTWARE_COUNT, "Software",
+            "Number of published software, filterable/groupable by a single access status value (OA, "
+                + "Closed, Embargoed, or Restricted), by country, or by classification. Same shape "
+                + "and upstream as publications.count/datasets.count, scoped to entity=software "
+                + "instead of entity=publication/dataset.",
+            "Software", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(
