@@ -8,6 +8,7 @@ import eu.openaire.observatory.indicator.IndicatorCodes;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.List;
 import java.util.stream.StreamSupport;
@@ -212,7 +213,7 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void resultCountSubQueryWithClassificationFilterUsesTheSameFieldAsItsGroupBreakdown() {
-        var filters = new DimensionFilters(List.of(), List.of("Article"), List.of());
+        var filters = new DimensionFilters(List.of(), List.of("Article"), List.of(), List.of(), List.of());
         ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
@@ -222,7 +223,7 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void resultCountSubQueryWithMultipleClassificationsOrsThemTogether() {
-        var filters = new DimensionFilters(List.of(), List.of("Article", "Book"), List.of());
+        var filters = new DimensionFilters(List.of(), List.of("Article", "Book"), List.of(), List.of(), List.of());
         ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
@@ -232,7 +233,7 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void resultCountSubQueryWithFieldOfScienceFilterUsesTheSameFieldAsItsGroupBreakdown() {
-        var filters = new DimensionFilters(List.of(), List.of(), List.of("01 natural sciences"));
+        var filters = new DimensionFilters(List.of(), List.of(), List.of("01 natural sciences"), List.of(), List.of());
         ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
@@ -241,7 +242,7 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void resultCountByGroupSubQueryCombinesAClassificationFilterWithACountryGroupBreakdown() {
-        var filters = new DimensionFilters(List.of(), List.of("Article"), List.of());
+        var filters = new DimensionFilters(List.of(), List.of("Article"), List.of(), List.of(), List.of());
         ObjectNode subQuery = builder.resultCountByGroupSubQuery(
             2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION, IndicatorCodes.COUNTRY_DIMENSION, filters);
 
@@ -250,6 +251,114 @@ class OpenAireQueryBuilderTest {
 
         List<JsonNode> resultFilters = toList(query.path("filters"));
         assertThat(fieldValues(resultFilters, "result.classification")).containsExactly("Article");
+    }
+
+    @Test
+    void resultCountSubQueryWithGoldOaFilterAddsGoldOaField() {
+        var filters = new DimensionFilters(List.of(), List.of(), List.of(), List.of("1"), List.of());
+        ObjectNode subQuery = builder.resultCountSubQuery(2022, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+
+        List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(resultFilters, "result.gold_oa")).containsExactly("1");
+        assertThat(resultFilters.stream().map(this::fieldOf)).doesNotContain("result.green_oa");
+    }
+
+    @Test
+    void resultCountSubQueryWithGreenOaFilterAddsGreenOaField() {
+        var filters = new DimensionFilters(List.of(), List.of(), List.of(), List.of(), List.of("1"));
+        ObjectNode subQuery = builder.resultCountSubQuery(2022, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+
+        List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(resultFilters, "result.green_oa")).containsExactly("1");
+        assertThat(resultFilters.stream().map(this::fieldOf)).doesNotContain("result.gold_oa");
+    }
+
+    @Test
+    void resultCountSubQueryWithBothGoldAndGreenOaAddsTwoIndependentAndBlocks() {
+        var filters = new DimensionFilters(List.of(), List.of(), List.of(), List.of("1"), List.of("1"));
+        ObjectNode subQuery = builder.resultCountSubQuery(2022, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+
+        List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
+        assertThat(opOf(resultFilters, "result.gold_oa")).isEqualTo("AND");
+        assertThat(opOf(resultFilters, "result.green_oa")).isEqualTo("AND");
+        assertThat(fieldValues(resultFilters, "result.gold_oa")).containsExactly("1");
+        assertThat(fieldValues(resultFilters, "result.green_oa")).containsExactly("1");
+    }
+
+    @Test
+    void resultCountSubQueryWithoutGoldOrGreenOaOmitsBothFilters() {
+        ObjectNode subQuery = builder.resultCountSubQuery(2022, List.of(), DimensionFilters.NONE, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+
+        List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
+        assertThat(resultFilters.stream().map(this::fieldOf)).doesNotContain("result.gold_oa", "result.green_oa");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(OpenAireOaLicenseStatus.class)
+    void oaLicenseStatusSubQueryUsesTheEuropeMonitorProfile(OpenAireOaLicenseStatus status) {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, status);
+
+        assertThat(subQuery.path("query").path("profile").asText()).isEqualTo("europe_monitor");
+        assertThat(subQuery.path("query").path("limit").asText()).isEqualTo("0");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(OpenAireOaLicenseStatus.class)
+    void oaLicenseStatusSubQueryFiltersByTheStatusAccessMode(OpenAireOaLicenseStatus status) {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, status);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(filters, "result.access mode")).containsExactly(status.accessMode().openAireLiteral());
+        assertThat(fieldValues(filters, "result.type")).containsExactly("publication");
+        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+        assertThat(fieldValues(filters, "result.year")).containsExactly("2022");
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryForWithLicenseAddsTheLicenseFlagFilter() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.OA_WITH_LICENSE);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(filters, "result.indi_result_oa_with_license.oa_with_license")).containsExactly("1");
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryForWithoutLicenseAddsTheOtherLicenseFlagFilter() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.OA_WITHOUT_LICENSE);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(fieldValues(filters, "result.indi_result_oa_without_license.oa_without_license")).containsExactly("1");
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryForClosedOmitsAnyLicenseFlagFilter() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(filters.stream().map(this::fieldOf))
+            .doesNotContain("result.indi_result_oa_with_license.oa_with_license")
+            .doesNotContain("result.indi_result_oa_without_license.oa_without_license");
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryNarrowsClassificationToTheFixedVocabulary() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(opOf(filters, "result.classification")).isEqualTo("OR");
+        assertThat(fieldValues(filters, "result.classification"))
+            .containsExactlyInAnyOrder("article", "conference", "chapter", "book");
+        JsonNode classificationBlock = filters.stream().filter(f -> "result.classification".equals(fieldOf(f))).findFirst().orElseThrow();
+        assertThat(toList(classificationBlock.path("groupFilters")).get(0).path("type").asText()).isEqualTo("contains");
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryGroupsByClassificationField() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED);
+
+        List<JsonNode> select = toList(subQuery.path("query").path("select"));
+        assertThat(select.get(1).path("field").asText()).isEqualTo("result.classification");
+        assertThat(select.get(1).path("aggregate").isNull()).isTrue();
     }
 
     private List<JsonNode> toList(JsonNode arrayNode) {

@@ -21,10 +21,14 @@ public class OpenAireQueryBuilder {
 
     private static final String ENTITY = "result";
     private static final String PROFILE = "openaire_stats";
+    /** Stats-tool profile behind observatory-ui's distributionOfOAPublications — confirmed live, distinct from PROFILE above. */
+    private static final String EUROPE_MONITOR_PROFILE = "europe_monitor";
     public static final String RESULT_TYPE_PUBLICATION = "publication";
     public static final String RESULT_TYPE_DATASET = "dataset";
     public static final String RESULT_TYPE_SOFTWARE = "software";
     private static final String COUNTRY_GROUP_FIELD = "result.organization.country";
+    /** The narrower classification vocabulary distributionOfOAPublications always applies (contains-match, lowercase) — confirmed live, distinct from the classification dimension's own "=" filter over the full capitalized vocabulary. */
+    private static final List<String> OA_LICENSE_STATUS_CLASSIFICATIONS = List.of("article", "conference", "chapter", "book");
     private static final String LIMIT = "30";
     private static final String UNLIMITED = "0";
 
@@ -134,6 +138,60 @@ public class OpenAireQueryBuilder {
         if (!filters.fieldOfScienceCodes().isEmpty()) {
             filterArray.add(fieldOfScienceFilter(filters.fieldOfScienceCodes()));
         }
+        if (!filters.goldOaLiterals().isEmpty()) {
+            filterArray.add(multiLeafGroupFilter("result.gold_oa", "=", filters.goldOaLiterals(), "AND"));
+        }
+        if (!filters.greenOaLiterals().isEmpty()) {
+            filterArray.add(multiLeafGroupFilter("result.green_oa", "=", filters.greenOaLiterals(), "AND"));
+        }
+    }
+
+    /**
+     * One sub-query for publications.oa_license_status_count: European publication count for the
+     * given year and OA/license status, grouped by classification (narrowed to the fixed
+     * article/conference/chapter/book vocabulary) — confirmed live against the europe_monitor
+     * profile.
+     */
+    public ObjectNode oaLicenseStatusSubQuery(int year, OpenAireOaLicenseStatus status) {
+        ObjectNode query = objectMapper.createObjectNode();
+        query.putArray("parameters");
+        ArrayNode select = query.putArray("select");
+        select.addObject().put("field", ENTITY).put("aggregate", "count");
+        ObjectNode group = select.addObject();
+        group.put("field", GROUP_FIELD_BY_DIMENSION.get(IndicatorCodes.CLASSIFICATION_DIMENSION));
+        group.putNull("aggregate");
+
+        ArrayNode filterArray = query.putArray("filters");
+        filterArray.add(classificationVocabularyFilter());
+        filterArray.add(groupFilter("result.type", "=", RESULT_TYPE_PUBLICATION));
+        filterArray.add(groupFilter("result.access mode", "=", status.accessMode().openAireLiteral()));
+        if (status.licenseField() != null) {
+            filterArray.add(groupFilter(status.licenseField(), "=", "1"));
+        }
+        filterArray.add(groupFilter("result.organization.country.continent", "=", "Europe"));
+        filterArray.add(groupFilter("result.year", "=", String.valueOf(year)));
+
+        query.put("entity", ENTITY);
+        query.put("profile", EUROPE_MONITOR_PROFILE);
+        query.put("limit", UNLIMITED);
+
+        ObjectNode wrapper = objectMapper.createObjectNode();
+        wrapper.set("query", query);
+        return wrapper;
+    }
+
+    /** The fixed article/conference/chapter/book contains-match OR block every oaLicenseStatus sub-query applies. */
+    private ObjectNode classificationVocabularyFilter() {
+        ObjectNode block = objectMapper.createObjectNode();
+        ArrayNode groupFilters = block.putArray("groupFilters");
+        for (String value : OA_LICENSE_STATUS_CLASSIFICATIONS) {
+            ObjectNode leaf = groupFilters.addObject();
+            leaf.put("field", GROUP_FIELD_BY_DIMENSION.get(IndicatorCodes.CLASSIFICATION_DIMENSION));
+            leaf.put("type", "contains");
+            leaf.putArray("values").add(value);
+        }
+        block.put("op", "OR");
+        return block;
     }
 
     /** Wraps N sub-queries (each from publicationCountSubQuery or publicationCountByCountrySubQuery) into one raw?json= request body, index-aligned with the response. */

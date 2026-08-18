@@ -16,11 +16,11 @@ class IndicatorCatalogTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
 
     @Test
-    void containsAllElevenRealDefinitions() {
-        assertThat(catalog.getAll()).hasSize(11);
+    void containsAllTwelveRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(12);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
-            IndicatorCodes.SOFTWARE_COUNT,
+            IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT,
             IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
             IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
             IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT
@@ -93,7 +93,8 @@ class IndicatorCatalogTest {
         assertThat(bindings).extracting("dimensionCode")
             .containsExactlyInAnyOrder(
                 IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION,
-                IndicatorCodes.CLASSIFICATION_DIMENSION, IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION
+                IndicatorCodes.CLASSIFICATION_DIMENSION, IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION,
+                IndicatorCodes.GOLD_OA_DIMENSION, IndicatorCodes.GREEN_OA_DIMENSION
             );
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
@@ -103,6 +104,42 @@ class IndicatorCatalogTest {
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
             .extracting("allowedOperators")
             .containsExactly(Set.of(FilterOperator.EQ, FilterOperator.IN));
+    }
+
+    @Test
+    void publicationsCountGoldOaAndGreenOaAreFilterOnlyAndEqOnly() {
+        var bindings = catalog.get(IndicatorCodes.PUBLICATIONS_COUNT).dimensionBindings();
+        for (String dimensionCode : Set.of(IndicatorCodes.GOLD_OA_DIMENSION, IndicatorCodes.GREEN_OA_DIMENSION)) {
+            assertThat(bindings)
+                .filteredOn(binding -> binding.dimensionCode().equals(dimensionCode))
+                .extracting("usages")
+                .containsExactly(Set.of(DimensionUsage.FILTER));
+            assertThat(bindings)
+                .filteredOn(binding -> binding.dimensionCode().equals(dimensionCode))
+                .extracting("allowedOperators")
+                .containsExactly(Set.of(FilterOperator.EQ));
+        }
+    }
+
+    @Test
+    void oaLicenseStatusCountRequiresOaLicenseStatusFilterAndIsClassificationGroupOnly() {
+        var bindings = catalog.get(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.CLASSIFICATION_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.GROUP));
+    }
+
+    @Test
+    void oaLicenseStatusCountRoutesToOpenAireHandler() {
+        assertThat(catalog.get(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT).executionBinding().handlerKey())
+            .isEqualTo("openaire-stats-tool");
     }
 
     @Test
@@ -171,7 +208,7 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void nineDefinitionsSupportTimeSeriesButTheTwoLocalRegistryOnesDoNot() {
+    void tenDefinitionsSupportTimeSeriesButTheTwoLocalRegistryOnesDoNot() {
         assertThat(catalog.getAll())
             .filteredOn(definition -> !definition.code().equals(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS)
                 && !definition.code().equals(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT))
@@ -194,6 +231,9 @@ class IndicatorCatalogTest {
         assertThat(catalog.dimension("surveyId")).isNotNull();
         assertThat(catalog.dimension("classification")).isNotNull();
         assertThat(catalog.dimension("fieldOfScience")).isNotNull();
+        assertThat(catalog.dimension("goldOA")).isNotNull();
+        assertThat(catalog.dimension("greenOA")).isNotNull();
+        assertThat(catalog.dimension("oaLicenseStatus")).isNotNull();
         assertThat(catalog.dimension("unknown")).isNull();
     }
 

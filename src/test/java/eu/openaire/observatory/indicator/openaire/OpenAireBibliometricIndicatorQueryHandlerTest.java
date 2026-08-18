@@ -27,6 +27,8 @@ import eu.openaire.observatory.indicator.validation.ResolvedDimension;
 import eu.openaire.observatory.indicator.validation.ResolvedFilter;
 import eu.openaire.observatory.indicator.validation.ResolvedTimeRange;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
@@ -473,6 +475,76 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
         assertThat(result.data()).extracting(IndicatorDataPoint::value).containsExactlyInAnyOrder(3L, 1L, 11883L);
     }
 
+    @Test
+    void publicationsCountWithGoldOaFilterAddsGoldOaFieldToRequest() {
+        var handler = handlerReturning("{\"data\":[[[\"674409\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.GOLD_OA_DIMENSION, FilterOperator.EQ, List.of("YES")));
+
+        var result = handler.execute(plan(countDefinition(), filters, List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(674409L);
+        assertThat(capturedRequests.get(0)).contains("\"field\":\"result.gold_oa\"").contains("\"1\"");
+    }
+
+    @Test
+    void publicationsCountWithGreenOaFilterAddsGreenOaFieldToRequest() {
+        var handler = handlerReturning("{\"data\":[[[\"1000000\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.GREEN_OA_DIMENSION, FilterOperator.EQ, List.of("NO")));
+
+        handler.execute(plan(countDefinition(), filters, List.of(), null));
+
+        assertThat(capturedRequests.get(0)).contains("\"field\":\"result.green_oa\"").contains("\"0\"");
+    }
+
+    @Test
+    void publicationsCountWithBothGoldAndGreenOaFiltersAddsBothFieldsToRequest() {
+        var handler = handlerReturning("{\"data\":[[[\"372972\"]]]}");
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.GOLD_OA_DIMENSION, FilterOperator.EQ, List.of("YES")),
+            new ResolvedFilter(IndicatorCodes.GREEN_OA_DIMENSION, FilterOperator.EQ, List.of("YES"))
+        );
+
+        var result = handler.execute(plan(countDefinition(), filters, List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(372972L);
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"field\":\"result.gold_oa\"");
+        assertThat(request).contains("\"field\":\"result.green_oa\"");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(OpenAireOaLicenseStatus.class)
+    void oaLicenseStatusCountRoutesToTheEuropeMonitorProfile(OpenAireOaLicenseStatus status) {
+        var handler = handlerReturning("{\"data\":[[[\"1030508\",\"Article\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of(status.name())));
+
+        var result = handler.execute(plan(oaLicenseStatusCountDefinition(), filters, List.of(), null));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.CLASSIFICATION_DIMENSION);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.CLASSIFICATION_DIMENSION)).isEqualTo("Article");
+        assertThat(result.data().get(0).value()).isEqualTo(1030508L);
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"profile\":\"europe_monitor\"");
+        assertThat(request).contains("\"values\":[\"" + status.accessMode().openAireLiteral() + "\"]");
+    }
+
+    @Test
+    void oaLicenseStatusCountWithLicenseReturnsMultipleClassificationRows() {
+        var handler = handlerReturning(
+            "{\"data\":[[[\"1030508\",\"Article\"],[\"10649\",\"Book\"],[\"88822\",\"Conference object\"]]]}"
+        );
+        var filters = List.of(new ResolvedFilter(
+            IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA_WITH_LICENSE")
+        ));
+
+        var result = handler.execute(plan(oaLicenseStatusCountDefinition(), filters, List.of(), null));
+
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.CLASSIFICATION_DIMENSION))
+            .containsExactlyInAnyOrder("Article", "Book", "Conference object");
+        assertThat(capturedRequests.get(0))
+            .contains("\"field\":\"result.indi_result_oa_with_license.oa_with_license\"");
+    }
+
     /**
      * A single request carries every sub-query as its own "series" entry (numerator, then
      * denominator) — isolates the first one's text so assertions about the numerator's filters
@@ -616,6 +688,30 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
             ),
             timePolicy(),
             new IndicatorExecutionBinding(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.SOFTWARE_COUNT),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    private static IndicatorDefinition oaLicenseStatusCountDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT,
+            "Publications by OA License Status", "desc", "Publications",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
+            null,
+            Set.of(
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER),
+                    Set.of(FilterOperator.EQ), true
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.GROUP), Set.of(), false
+                )
+            ),
+            timePolicy(),
+            new IndicatorExecutionBinding(
+                OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT
+            ),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
     }

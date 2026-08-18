@@ -145,9 +145,9 @@ class IndicatorCatalogOpenAireWiringTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {
         IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.PUBLICATIONS_COUNT,
-        IndicatorCodes.DATASETS_COUNT, IndicatorCodes.SOFTWARE_COUNT
+        IndicatorCodes.DATASETS_COUNT, IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT
     })
-    void allFourOpenAireIndicatorsRouteToTheRealHandler(String indicatorCode) {
+    void allFiveOpenAireIndicatorsRouteToTheRealHandler(String indicatorCode) {
         assertThat(catalog.get(indicatorCode).executionBinding().handlerKey())
             .isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
     }
@@ -230,5 +230,65 @@ class IndicatorCatalogOpenAireWiringTest {
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(UnsupportedDimensionException.class);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.GOLD_OA_DIMENSION, IndicatorCodes.GREEN_OA_DIMENSION})
+    void publicationsCountAcceptsAnOptionalGoldOrGreenOaFilter(String dimensionCode) {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_COUNT)
+            .withFilters(new IndicatorFilter(dimensionCode, FilterOperator.EQ, List.of("YES")))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.filters()).hasSize(1);
+        assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(dimensionCode);
+        assertThat(plan.filters().get(0).values()).containsExactly("YES");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.GOLD_OA_DIMENSION, IndicatorCodes.GREEN_OA_DIMENSION})
+    void publicationsCountRejectsGoldOrGreenOaAsAGroupBy(String dimensionCode) {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_COUNT)
+            .withGroupBy(dimensionCode)
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(UnsupportedDimensionException.class);
+    }
+
+    @Test
+    void oaLicenseStatusCountRequiresTheOaLicenseStatusFilter() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT).build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(MissingRequiredFilterException.class);
+    }
+
+    @Test
+    void oaLicenseStatusCountAcceptsTheRequiredFilter() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT)
+            .withFilters(new IndicatorFilter(
+                IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA_WITH_LICENSE")
+            ))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION);
+        assertThat(plan.filters().get(0).values()).containsExactly("OA_WITH_LICENSE");
+    }
+
+    @Test
+    void oaLicenseStatusCountAcceptsClassificationAsAGroupByOnly() {
+        var groupQuery = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT)
+            .withFilters(new IndicatorFilter(
+                IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED")
+            ))
+            .withGroupBy(IndicatorCodes.CLASSIFICATION_DIMENSION)
+            .build();
+
+        assertThat(validator.compile(groupQuery, ALLOW_ALL).groupBy())
+            .extracting("dimensionCode").containsExactly(IndicatorCodes.CLASSIFICATION_DIMENSION);
     }
 }

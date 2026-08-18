@@ -51,6 +51,9 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
     private static final String COUNTRY_DIMENSION = IndicatorCodes.COUNTRY_DIMENSION;
     private static final String CLASSIFICATION_DIMENSION = IndicatorCodes.CLASSIFICATION_DIMENSION;
     private static final String FIELD_OF_SCIENCE_DIMENSION = IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION;
+    private static final String GOLD_OA_DIMENSION = IndicatorCodes.GOLD_OA_DIMENSION;
+    private static final String GREEN_OA_DIMENSION = IndicatorCodes.GREEN_OA_DIMENSION;
+    private static final String OA_LICENSE_STATUS_DIMENSION = IndicatorCodes.OA_LICENSE_STATUS_DIMENSION;
 
     /** At most one of these is an active groupBy at a time — the legacy UI never breaks down by more than one. */
     private static final List<String> BREAKDOWN_DIMENSIONS =
@@ -82,6 +85,7 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
             case IndicatorCodes.PUBLICATIONS_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
             case IndicatorCodes.DATASETS_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_DATASET);
             case IndicatorCodes.SOFTWARE_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE);
+            case IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT -> queryOaLicenseStatusCount(plan);
             default -> throw new IllegalStateException(
                 "OpenAireStatsToolIndicatorQueryHandler has no logic for providerIndicatorKey: " + providerIndicatorKey);
         };
@@ -159,7 +163,11 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
         List<String> countryCodes = COUNTRY_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, COUNTRY_DIMENSION);
         List<String> classificationCodes = CLASSIFICATION_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, CLASSIFICATION_DIMENSION);
         List<String> fieldOfScienceCodes = FIELD_OF_SCIENCE_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, FIELD_OF_SCIENCE_DIMENSION);
-        DimensionFilters filters = new DimensionFilters(countryCodes, classificationCodes, fieldOfScienceCodes);
+        List<String> goldOaLiterals = filterValues(plan, GOLD_OA_DIMENSION).stream()
+            .map(code -> OpenAireBooleanFlag.fromCatalogCode(code).openAireLiteral()).toList();
+        List<String> greenOaLiterals = filterValues(plan, GREEN_OA_DIMENSION).stream()
+            .map(code -> OpenAireBooleanFlag.fromCatalogCode(code).openAireLiteral()).toList();
+        DimensionFilters filters = new DimensionFilters(countryCodes, classificationCodes, fieldOfScienceCodes, goldOaLiterals, greenOaLiterals);
         List<Period> periods = resolvePeriods(plan);
 
         record Cell(OpenAireAccessMode accessMode, Period period) {
@@ -199,6 +207,34 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
         }
 
         return buildResult(plan, dimensionKeysFor(groupByCodes, plan), data);
+    }
+
+    /**
+     * publications.oa_license_status_count: one query per period for the required oaLicenseStatus,
+     * always grouped by classification (its only groupable binding) — europe_monitor-profiled,
+     * confirmed live.
+     */
+    private IndicatorResult queryOaLicenseStatusCount(IndicatorExecutionPlan plan) {
+        OpenAireOaLicenseStatus status = OpenAireOaLicenseStatus.fromCatalogCode(requiredFilterValue(plan, OA_LICENSE_STATUS_DIMENSION));
+        List<Period> periods = resolvePeriods(plan);
+
+        List<ObjectNode> subQueries = new ArrayList<>();
+        for (Period period : periods) {
+            subQueries.add(queryBuilder.oaLicenseStatusSubQuery(period.year(), status));
+        }
+        List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
+
+        List<IndicatorDataPoint> data = new ArrayList<>();
+        for (int i = 0; i < periods.size(); i++) {
+            for (Map.Entry<String, Long> entry : countsByBreakdownValue(raw.get(i)).entrySet()) {
+                Map<String, Object> dimensions = new LinkedHashMap<>();
+                dimensions.put(CLASSIFICATION_DIMENSION, entry.getKey());
+                dimensions.putAll(periods.get(i).dimensions());
+                data.add(new IndicatorDataPoint(dimensions, entry.getValue()));
+            }
+        }
+
+        return buildResult(plan, dimensionKeysFor(List.of(CLASSIFICATION_DIMENSION), plan), data);
     }
 
     /** A matching EQ filter narrows to one value; a groupBy on accessStatus expands to all four; neither means unfiltered. */

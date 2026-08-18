@@ -41,24 +41,30 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.EU_COUNTRY_COVERAGE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.FINANCIAL_INVESTMENT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.GOLD_OA_DIMENSION;
+import static eu.openaire.observatory.indicator.IndicatorCodes.GREEN_OA_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.LONG_TERM_PRESERVATION_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.OA_LICENSE_STATUS_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_ID_DIMENSION;
 
 /**
  * In-memory catalog of real indicator definitions. Not a stand-in for a future persistence layer
- * — the 11 definitions it holds today are all real: 4 route to OpenAireStatsToolIndicatorQueryHandler
- * (OpenAIRE data), 5 route to SurveyStatsToolIndicatorQueryHandler (survey stats-tool
- * data, scoped to survey years 2022+ — see that handler's Javadoc and docs/INDICATOR_ROADMAP.md
- * for why 2021 is excluded), and 2 route to LocalRegistryIndicatorQueryHandler (no external HTTP
- * call at all — wraps SurveyService/StakeholderService directly). It previously also held 3
- * synthetic mock indicators with the same codes as the 3 original survey ones; those were removed
- * and later replaced with real implementations — see docs/INDICATOR_ROADMAP.md for the design
- * history and remaining backlog beyond today's 11.
+ * — the 12 definitions it holds today are all real: 5 route to OpenAireStatsToolIndicatorQueryHandler
+ * (OpenAIRE data — publications.oa_license_status_count is the europe_monitor-profiled outlier of
+ * the 5, the other 4 use the default openaire_stats profile), 5 route to
+ * SurveyStatsToolIndicatorQueryHandler (survey stats-tool data, scoped to survey years 2022+ — see
+ * that handler's Javadoc and docs/INDICATOR_ROADMAP.md for why 2021 is excluded), and 2 route to
+ * LocalRegistryIndicatorQueryHandler (no external HTTP call at all — wraps
+ * SurveyService/StakeholderService directly). It previously also held 3 synthetic mock indicators
+ * with the same codes as the 3 original survey ones; those were removed and later replaced with
+ * real implementations — see docs/INDICATOR_ROADMAP.md for the design history and remaining
+ * backlog beyond today's 12.
  */
 @Service
 public class IndicatorCatalog {
@@ -110,13 +116,28 @@ public class IndicatorCatalog {
             FIELD_OF_SCIENCE_DIMENSION, "Field of science", DimensionType.STRING,
             true, true, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
         );
-        this.dimensionsByCode = Map.of(
-            COUNTRY_DIMENSION, countryDimension,
-            ACCESS_STATUS_DIMENSION, accessStatusDimension,
-            INITIATIVE_TYPE_DIMENSION, initiativeTypeDimension,
-            SURVEY_ID_DIMENSION, surveyIdDimension,
-            CLASSIFICATION_DIMENSION, classificationDimension,
-            FIELD_OF_SCIENCE_DIMENSION, fieldOfScienceDimension
+        DimensionDefinition goldOaDimension = new DimensionDefinition(
+            GOLD_OA_DIMENSION, "Gold OA", DimensionType.ENUM,
+            true, false, false, Set.of(FilterOperator.EQ), null
+        );
+        DimensionDefinition greenOaDimension = new DimensionDefinition(
+            GREEN_OA_DIMENSION, "Green OA", DimensionType.ENUM,
+            true, false, false, Set.of(FilterOperator.EQ), null
+        );
+        DimensionDefinition oaLicenseStatusDimension = new DimensionDefinition(
+            OA_LICENSE_STATUS_DIMENSION, "OA license status", DimensionType.ENUM,
+            true, false, false, Set.of(FilterOperator.EQ), null
+        );
+        this.dimensionsByCode = Map.ofEntries(
+            Map.entry(COUNTRY_DIMENSION, countryDimension),
+            Map.entry(ACCESS_STATUS_DIMENSION, accessStatusDimension),
+            Map.entry(INITIATIVE_TYPE_DIMENSION, initiativeTypeDimension),
+            Map.entry(SURVEY_ID_DIMENSION, surveyIdDimension),
+            Map.entry(CLASSIFICATION_DIMENSION, classificationDimension),
+            Map.entry(FIELD_OF_SCIENCE_DIMENSION, fieldOfScienceDimension),
+            Map.entry(GOLD_OA_DIMENSION, goldOaDimension),
+            Map.entry(GREEN_OA_DIMENSION, greenOaDimension),
+            Map.entry(OA_LICENSE_STATUS_DIMENSION, oaLicenseStatusDimension)
         );
 
         Map<String, IndicatorDefinition> byCode = new LinkedHashMap<>();
@@ -141,6 +162,7 @@ public class IndicatorCatalog {
     private static List<IndicatorDefinition> allDefinitions() {
         return List.of(
             publicationsCount(), publicationsAccessStatusShare(), datasetsCount(), softwareCount(),
+            publicationsOaLicenseStatusCount(),
             financialInvestment(), countryInitiativeStatus(), euCountryCoverage(),
             longTermPreservationCount(), citizenScienceNewProjectsCount(),
             countriesWithValidatedAnswers(), stakeholderParticipatingCountriesCount()
@@ -153,7 +175,9 @@ public class IndicatorCatalog {
      * per country). Country absent means all-EU (the handler always scopes to continent=Europe).
      * Also filterable/groupable by classification (document/output type, e.g. "Article") and
      * fieldOfScience (e.g. "01 natural sciences") — both use the same OpenAIRE field for filtering
-     * and grouping (unlike country, which has separate filter/group fields).
+     * and grouping (unlike country, which has separate filter/group fields). Also filter-only
+     * (no groupBy) by goldOA and greenOA — two independent YES/NO flags (e.g. both goldOA=YES and
+     * greenOA=YES together for "gold and green"), typically combined with a fieldOfScience groupBy.
      */
     private static IndicatorDefinition publicationsCount() {
         return definition(
@@ -161,7 +185,8 @@ public class IndicatorCatalog {
             "Number of published works, filterable/groupable by a single access status value (OA, "
                 + "Closed, Embargoed, or Restricted — never aggregated, unlike "
                 + "publications.access_status_share), by country, by classification, or by "
-                + "fieldOfScience.",
+                + "fieldOfScience. Also filterable (not groupable) by goldOA/greenOA, two "
+                + "independent YES/NO flags.",
             GROUP_LABEL, IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
@@ -172,7 +197,37 @@ public class IndicatorCatalog {
                 ),
                 countryBinding(),
                 filterableGroupableBinding(CLASSIFICATION_DIMENSION),
-                filterableGroupableBinding(FIELD_OF_SCIENCE_DIMENSION)
+                filterableGroupableBinding(FIELD_OF_SCIENCE_DIMENSION),
+                filterOnlyBinding(GOLD_OA_DIMENSION),
+                filterOnlyBinding(GREEN_OA_DIMENSION)
+            ),
+            TIME_POLICY, OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * Legacy chart "OA Publication in Europe by License Status" (distributionOfOAPublications) —
+     * the europe_monitor-profiled outlier among the OpenAIRE-routed indicators (every other one
+     * uses openaire_stats). oaLicenseStatus is a required, exhaustive 5-value partition
+     * (OA_WITH_LICENSE/OA_WITHOUT_LICENSE/EMBARGOED/RESTRICTED/CLOSED); always broken down by
+     * classification (its only groupable binding — narrowed server-side to a fixed
+     * article/conference/chapter/book vocabulary, not client-controlled). No country binding — not
+     * evidenced in the legacy query.
+     */
+    private static IndicatorDefinition publicationsOaLicenseStatusCount() {
+        return definition(
+            PUBLICATIONS_OA_LICENSE_STATUS_COUNT, "Publications by OA License Status",
+            "Number of published works matching the given OA license status (OA with licence, OA "
+                + "without licence, Embargoed, Restricted, or Closed), broken down by classification. "
+                + "The oaLicenseStatus filter is required — there is no meaningful value without "
+                + "specifying which status to measure. Routed to the europe_monitor stats-tool "
+                + "profile, unlike every other OpenAIRE-routed indicator in this catalog.",
+            GROUP_LABEL, IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            SUM_AGGREGATION_POLICY,
+            null,
+            Set.of(
+                requiredEqFilterBinding(OA_LICENSE_STATUS_DIMENSION),
+                new IndicatorDimensionBinding(CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.GROUP), Set.of(), false)
             ),
             TIME_POLICY, OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
@@ -427,6 +482,13 @@ public class IndicatorCatalog {
     private static IndicatorDimensionBinding filterableGroupableBinding(String dimensionCode) {
         return new IndicatorDimensionBinding(
             dimensionCode, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP), Set.of(FilterOperator.EQ, FilterOperator.IN), false
+        );
+    }
+
+    /** A single optional EQ-only filter dimension — no group usage. Used by goldOA/greenOA. */
+    private static IndicatorDimensionBinding filterOnlyBinding(String dimensionCode) {
+        return new IndicatorDimensionBinding(
+            dimensionCode, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), false
         );
     }
 
