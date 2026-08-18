@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import eu.openaire.observatory.indicator.IndicatorCodes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 import java.util.stream.StreamSupport;
@@ -145,31 +147,23 @@ class OpenAireQueryBuilderTest {
         assertThat(root.path("series").get(1)).isEqualTo(second);
     }
 
-    @Test
-    void resultCountSubQueryWithDatasetResultTypeFiltersByDatasetInsteadOfPublication() {
-        ObjectNode subQuery = builder.resultCountSubQuery(
-            2023, List.of(), DimensionFilters.NONE, OpenAireQueryBuilder.RESULT_TYPE_DATASET);
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"dataset", "software"})
+    void resultCountSubQueryFiltersByTheGivenResultType(String resultType) {
+        ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), DimensionFilters.NONE, resultType);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.type")).containsExactly("dataset");
+        assertThat(fieldValues(filters, "result.type")).containsExactly(resultType);
     }
 
-    @Test
-    void resultCountSubQueryWithSoftwareResultTypeFiltersBySoftwareInsteadOfPublication() {
-        ObjectNode subQuery = builder.resultCountSubQuery(
-            2023, List.of(), DimensionFilters.NONE, OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE);
-
-        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.type")).containsExactly("software");
-    }
-
-    @Test
-    void resultCountByGroupSubQueryForSoftwareFiltersBySoftware() {
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"dataset", "software"})
+    void resultCountByGroupSubQueryFiltersByTheGivenResultType(String resultType) {
         ObjectNode subQuery = builder.resultCountByGroupSubQuery(
-            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
+            2023, List.of(), resultType, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.type")).containsExactly("software");
+        assertThat(fieldValues(filters, "result.type")).containsExactly(resultType);
     }
 
     @Test
@@ -190,15 +184,6 @@ class OpenAireQueryBuilderTest {
 
         List<JsonNode> select = toList(subQuery.path("query").path("select"));
         assertThat(select.get(1).path("field").asText()).isEqualTo("result.result_fos.lvl1");
-    }
-
-    @Test
-    void resultCountByGroupSubQueryForDatasetsFiltersByDataset() {
-        ObjectNode subQuery = builder.resultCountByGroupSubQuery(
-            2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_DATASET, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
-
-        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.type")).containsExactly("dataset");
     }
 
     @Test

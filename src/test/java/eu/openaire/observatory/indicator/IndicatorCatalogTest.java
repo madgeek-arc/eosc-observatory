@@ -4,6 +4,8 @@ import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.RenderHint;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Set;
 
@@ -116,25 +118,10 @@ class IndicatorCatalogTest {
             .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
     }
 
-    @Test
-    void datasetsCountIsCountryAndClassificationFilterableAndGroupableButNotFieldOfScience() {
-        var definition = catalog.get(IndicatorCodes.DATASETS_COUNT);
-        assertThat(definition.executionBinding().handlerKey()).isEqualTo("openaire-stats-tool");
-
-        var bindings = definition.dimensionBindings();
-        assertThat(bindings).extracting("dimensionCode")
-            .containsExactlyInAnyOrder(
-                IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION
-            );
-        assertThat(bindings)
-            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.CLASSIFICATION_DIMENSION))
-            .extracting("usages")
-            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
-    }
-
-    @Test
-    void softwareCountIsCountryAndClassificationFilterableAndGroupableButNotFieldOfScience() {
-        var definition = catalog.get(IndicatorCodes.SOFTWARE_COUNT);
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.DATASETS_COUNT, IndicatorCodes.SOFTWARE_COUNT})
+    void entityCountIsCountryAndClassificationFilterableAndGroupableButNotFieldOfScience(String indicatorCode) {
+        var definition = catalog.get(indicatorCode);
         assertThat(definition.executionBinding().handlerKey()).isEqualTo("openaire-stats-tool");
 
         var bindings = definition.dimensionBindings();

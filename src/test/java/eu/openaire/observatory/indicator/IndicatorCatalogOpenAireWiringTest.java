@@ -11,8 +11,13 @@ import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
 import eu.openaire.observatory.indicator.validation.MissingRequiredFilterException;
 import eu.openaire.observatory.indicator.validation.UnsupportedDimensionException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -137,23 +142,20 @@ class IndicatorCatalogOpenAireWiringTest {
         assertThat(plan.groupBy()).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
-    @Test
-    void bothPublicationIndicatorsRouteToTheRealOpenAireHandler() {
-        assertThat(catalog.get(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE).executionBinding().handlerKey())
-            .isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
-        assertThat(catalog.get(IndicatorCodes.PUBLICATIONS_COUNT).executionBinding().handlerKey())
-            .isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
-    }
-
-    @Test
-    void datasetsCountRoutesToTheRealOpenAireHandler() {
-        assertThat(catalog.get(IndicatorCodes.DATASETS_COUNT).executionBinding().handlerKey())
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {
+        IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.PUBLICATIONS_COUNT,
+        IndicatorCodes.DATASETS_COUNT, IndicatorCodes.SOFTWARE_COUNT
+    })
+    void allFourOpenAireIndicatorsRouteToTheRealHandler(String indicatorCode) {
+        assertThat(catalog.get(indicatorCode).executionBinding().handlerKey())
             .isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
     }
 
-    @Test
-    void datasetsCountAcceptsCountryAndClassificationGroupBy() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.DATASETS_COUNT)
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.DATASETS_COUNT, IndicatorCodes.SOFTWARE_COUNT})
+    void entityCountAcceptsCountryAndClassificationGroupBy(String indicatorCode) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
             .build();
 
@@ -162,9 +164,10 @@ class IndicatorCatalogOpenAireWiringTest {
         assertThat(plan.groupBy()).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
-    @Test
-    void datasetsCountAcceptsAnOptionalAccessStatusFilter() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.DATASETS_COUNT)
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.DATASETS_COUNT, IndicatorCodes.SOFTWARE_COUNT})
+    void entityCountAcceptsAnOptionalAccessStatusFilter(String indicatorCode) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withFilters(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")))
             .build();
 
@@ -199,69 +202,29 @@ class IndicatorCatalogOpenAireWiringTest {
         assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(IndicatorCodes.CLASSIFICATION_DIMENSION);
     }
 
-    @Test
-    void datasetsCountAcceptsAClassificationFilter() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.DATASETS_COUNT)
-            .withFilters(new IndicatorFilter(IndicatorCodes.CLASSIFICATION_DIMENSION, FilterOperator.IN, List.of("Dataset", "Collection")))
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("entityCountClassificationFilterValues")
+    void entityCountAcceptsAClassificationFilter(String indicatorCode, List<Object> classificationValues) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
+            .withFilters(new IndicatorFilter(IndicatorCodes.CLASSIFICATION_DIMENSION, FilterOperator.IN, classificationValues))
             .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
-        assertThat(plan.filters().get(0).values()).containsExactly("Dataset", "Collection");
+        assertThat(plan.filters().get(0).values()).containsExactlyElementsOf(classificationValues);
     }
 
-    @Test
-    void datasetsCountDoesNotHaveAFieldOfScienceBinding() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.DATASETS_COUNT)
-            .withGroupBy(IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION)
-            .build();
-
-        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
-            .isInstanceOf(UnsupportedDimensionException.class);
+    private static Stream<Arguments> entityCountClassificationFilterValues() {
+        return Stream.of(
+            Arguments.of(IndicatorCodes.DATASETS_COUNT, List.<Object>of("Dataset", "Collection")),
+            Arguments.of(IndicatorCodes.SOFTWARE_COUNT, List.<Object>of("Software", "Review"))
+        );
     }
 
-    @Test
-    void softwareCountRoutesToTheRealOpenAireHandler() {
-        assertThat(catalog.get(IndicatorCodes.SOFTWARE_COUNT).executionBinding().handlerKey())
-            .isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
-    }
-
-    @Test
-    void softwareCountAcceptsCountryAndClassificationGroupBy() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.SOFTWARE_COUNT)
-            .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
-            .build();
-
-        var plan = validator.compile(query, ALLOW_ALL);
-
-        assertThat(plan.groupBy()).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
-    }
-
-    @Test
-    void softwareCountAcceptsAnOptionalAccessStatusFilter() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.SOFTWARE_COUNT)
-            .withFilters(new IndicatorFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")))
-            .build();
-
-        var plan = validator.compile(query, ALLOW_ALL);
-
-        assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(IndicatorCodes.ACCESS_STATUS_DIMENSION);
-    }
-
-    @Test
-    void softwareCountAcceptsAClassificationFilter() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.SOFTWARE_COUNT)
-            .withFilters(new IndicatorFilter(IndicatorCodes.CLASSIFICATION_DIMENSION, FilterOperator.IN, List.of("Software", "Review")))
-            .build();
-
-        var plan = validator.compile(query, ALLOW_ALL);
-
-        assertThat(plan.filters().get(0).values()).containsExactly("Software", "Review");
-    }
-
-    @Test
-    void softwareCountDoesNotHaveAFieldOfScienceBinding() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.SOFTWARE_COUNT)
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.DATASETS_COUNT, IndicatorCodes.SOFTWARE_COUNT})
+    void entityCountDoesNotHaveAFieldOfScienceBinding(String indicatorCode) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withGroupBy(IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION)
             .build();
 
