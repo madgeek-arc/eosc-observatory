@@ -15,7 +15,10 @@ import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
+import gr.uoa.di.madgik.registry.domain.Browsing;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
+import org.json.simple.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -171,6 +174,115 @@ class SurveyServiceImplTest {
         HistoryDTO result = service.getHistory("sa-1");
 
         assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("unknown");
+    }
+
+    // getQuestionAnswersByCountry — local equivalent of the survey-stats-tool's
+    // "eosc.sb.<year>.<questionCode>" named-query row fetch (jsonb path answer.*.<code>.<code>-0)
+
+    @Test
+    void getQuestionAnswersByCountryReadsValueNestedUnderQuestionCodeInAnySection() {
+        SurveyAnswer answer = validatedAnswer("sa-1", "sh-1", sectionWithQuestion("Question6", "Yes"));
+
+        mockSurveyAnswers(answer);
+        mockStakeholders(stakeholder("sh-1", "GR"));
+
+        List<List<String>> rows = service.getQuestionAnswersByCountry("m-eosc-sb-2024", "Question6");
+
+        assertThat(rows).containsExactly(List.of("GR", "Yes"));
+    }
+
+    @Test
+    void getQuestionAnswersByCountryReturnsNullWhenQuestionSubfieldMissing() {
+        JSONObject question = new JSONObject();
+        JSONObject section = new JSONObject();
+        section.put("Question6", question); // no "Question6-0" entry
+        SurveyAnswer answer = validatedAnswer("sa-1", "sh-1", section);
+
+        mockSurveyAnswers(answer);
+        mockStakeholders(stakeholder("sh-1", "DE"));
+
+        List<List<String>> rows = service.getQuestionAnswersByCountry("m-eosc-sb-2024", "Question6");
+
+        assertThat(rows.get(0).get(0)).isEqualTo("DE");
+        assertThat(rows.get(0).get(1)).isNull();
+    }
+
+    @Test
+    void getQuestionAnswersByCountryReturnsNullWhenQuestionNotPresentInAnySection() {
+        SurveyAnswer answer = validatedAnswer("sa-1", "sh-1", sectionWithQuestion("Question7", "No"));
+
+        mockSurveyAnswers(answer);
+        mockStakeholders(stakeholder("sh-1", "FR"));
+
+        List<List<String>> rows = service.getQuestionAnswersByCountry("m-eosc-sb-2024", "Question6");
+
+        assertThat(rows.get(0).get(0)).isEqualTo("FR");
+        assertThat(rows.get(0).get(1)).isNull();
+    }
+
+    @Test
+    void getQuestionAnswersByCountryReturnsOneRowPerValidatedAnswer() {
+        SurveyAnswer answer1 = validatedAnswer("sa-1", "sh-1", sectionWithQuestion("Question6", "Yes"));
+        SurveyAnswer answer2 = validatedAnswer("sa-2", "sh-2", sectionWithQuestion("Question6", "No"));
+
+        mockSurveyAnswers(answer1, answer2);
+        mockStakeholders(stakeholder("sh-1", "GR"), stakeholder("sh-2", "DE"));
+
+        List<List<String>> rows = service.getQuestionAnswersByCountry("m-eosc-sb-2024", "Question6");
+
+        assertThat(rows).containsExactlyInAnyOrder(List.of("GR", "Yes"), List.of("DE", "No"));
+    }
+
+    @Test
+    void getQuestionAnswersByCountryFetchesStakeholdersOnceRegardlessOfAnswerCount() {
+        SurveyAnswer answer1 = validatedAnswer("sa-1", "sh-1", sectionWithQuestion("Question6", "Yes"));
+        SurveyAnswer answer2 = validatedAnswer("sa-2", "sh-2", sectionWithQuestion("Question6", "No"));
+
+        mockSurveyAnswers(answer1, answer2);
+        mockStakeholders(stakeholder("sh-1", "GR"), stakeholder("sh-2", "DE"));
+
+        service.getQuestionAnswersByCountry("m-eosc-sb-2024", "Question6");
+
+        verify(stakeholderCrudService, times(1)).getAll(any(FacetFilter.class));
+        verify(stakeholderCrudService, never()).get(anyString());
+    }
+
+    private void mockSurveyAnswers(SurveyAnswer... answers) {
+        when(surveyAnswerCrudService.getAll(any(FacetFilter.class)))
+                .thenReturn(new Browsing<>(answers.length, 0, answers.length, List.of(answers), List.of()));
+    }
+
+    private void mockStakeholders(Stakeholder... stakeholders) {
+        when(stakeholderCrudService.getAll(any(FacetFilter.class)))
+                .thenReturn(new Browsing<>(stakeholders.length, 0, stakeholders.length, List.of(stakeholders), List.of()));
+    }
+
+    private static Stakeholder stakeholder(String id, String country) {
+        Stakeholder stakeholder = new Stakeholder();
+        stakeholder.setId(id);
+        stakeholder.setCountry(country);
+        return stakeholder;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static JSONObject sectionWithQuestion(String questionCode, String value) {
+        JSONObject question = new JSONObject();
+        question.put(questionCode + "-0", value);
+        JSONObject section = new JSONObject();
+        section.put(questionCode, question);
+        return section;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static SurveyAnswer validatedAnswer(String id, String stakeholderId, JSONObject section) {
+        SurveyAnswer answer = new SurveyAnswer();
+        answer.setId(id);
+        answer.setStakeholderId(stakeholderId);
+        answer.setValidated(true);
+        JSONObject root = new JSONObject();
+        root.put("section1", section);
+        answer.setAnswer(root);
+        return answer;
     }
 
     private static HistoryDTO historyWithEditors(EditorDTO... editors) {

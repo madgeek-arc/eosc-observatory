@@ -107,4 +107,17 @@ public interface SurveyService {
      * @return a list of country codes
      */
     List<String> getCountriesWithValidatedAnswer(String surveyId);
+
+    /**
+     * Fetches the given survey question's answer value per country, for all validated answers of
+     * the given survey. Local, DB-only equivalent of a remote survey-stats-tool named-query row
+     * fetch (e.g. "eosc.sb.2024.Question6") — one [country, rawValue] row per validated answer,
+     * rawValue null when that question wasn't answered.
+     *
+     * @param surveyId the survey id (e.g. "m-eosc-sb-2024") to check
+     * @param questionCode the question code (e.g. "Question6") as it appears as a key inside the
+     *                     answer JSON
+     * @return one [country, rawValue] row per validated answer
+     */
+    List<List<String>> getQuestionAnswersByCountry(String surveyId, String questionCode);
 }

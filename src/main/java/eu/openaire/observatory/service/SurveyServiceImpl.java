@@ -747,6 +747,55 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     @Override
+    public List<List<String>> getQuestionAnswersByCountry(String surveyId, String questionCode) {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        filter.addFilter("surveyId", surveyId);
+        filter.addFilter("validated", true);
+        List<SurveyAnswer> answers = surveyAnswerCrudService.getAll(filter).getResults();
+
+        // One batch fetch of all stakeholders instead of one CrudService.get() per answer —
+        // stakeholders are a small, bounded set (one per country), so this beats N sequential
+        // round-trips regardless of respondent count.
+        FacetFilter stakeholderFilter = new FacetFilter();
+        stakeholderFilter.setQuantity(10000);
+        Map<String, String> countryByStakeholderId = stakeholderCrudService
+                .getAll(stakeholderFilter)
+                .getResults()
+                .stream()
+                .collect(Collectors.toMap(Stakeholder::getId, Stakeholder::getCountry, (a, b) -> a));
+
+        return answers.stream()
+                .map(a -> Arrays.asList(
+                        countryByStakeholderId.get(a.getStakeholderId()),
+                        extractAnswerValue(a.getAnswer(), questionCode)))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Reads a single question's value out of a survey answer's JSON, mirroring the jsonb path
+     * {@code $.answer.*.<questionCode>.<questionCode>-0} — <questionCode> is a key inside
+     * whichever section of {@code answer} the question belongs to (sections aren't named
+     * consistently, hence the wildcard scan), and its value is nested one level deeper under
+     * "<questionCode>-0". Returns null when the question isn't present or wasn't answered.
+     */
+    private static String extractAnswerValue(JSONObject answer, String questionCode) {
+        if (answer == null) {
+            return null;
+        }
+        for (Object sectionValue : answer.values()) {
+            if (sectionValue instanceof Map<?, ?> section && section.containsKey(questionCode)) {
+                Object questionValue = section.get(questionCode);
+                if (questionValue instanceof Map<?, ?> questionFields) {
+                    Object value = questionFields.get(questionCode + "-0");
+                    return value == null ? null : value.toString();
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
     public SurveyAnswer restore(String surveyAnswerId, String versionId) {
         return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRestoreHistory(a, versionId));
     }
