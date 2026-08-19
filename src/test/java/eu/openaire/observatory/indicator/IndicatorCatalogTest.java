@@ -28,32 +28,46 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void financialInvestmentIsCountryFilterableAndGroupable() {
+    void financialInvestmentIsCountryFilterableAndGroupableAndRequiresSurveyYearFilter() {
         var bindings = catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).dimensionBindings();
-        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
             .extracting("usages")
             .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
-    }
-
-    @Test
-    void countryInitiativeStatusRequiresInitiativeTypeFilter() {
-        var bindings = catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).dimensionBindings();
-        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
         assertThat(bindings)
-            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION))
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")
             .containsExactly(true);
     }
 
     @Test
-    void euCountryCoverageRequiresInitiativeTypeFilterAndUsesEntityMapRenderHint() {
+    void countryInitiativeStatusRequiresInitiativeTypeAndSurveyYearFilters() {
+        var bindings = catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+    }
+
+    @Test
+    void euCountryCoverageRequiresInitiativeTypeAndSurveyYearFilters() {
         var definition = catalog.get(IndicatorCodes.EU_COUNTRY_COVERAGE);
         assertThat(definition.dimensionBindings()).extracting("dimensionCode")
-            .containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+            .containsExactlyInAnyOrder(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
         assertThat(definition.dimensionBindings())
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+        assertThat(definition.dimensionBindings())
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")
             .containsExactly(true);
     }
@@ -173,23 +187,33 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void longTermPreservationCountIsCountryFilterableAndGroupable() {
+    void longTermPreservationCountIsCountryFilterableAndGroupableAndRequiresSurveyYearFilter() {
         var bindings = catalog.get(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT).dimensionBindings();
-        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
             .extracting("usages")
             .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
     }
 
     @Test
-    void citizenScienceNewProjectsCountIsCountryFilterableAndGroupable() {
+    void citizenScienceNewProjectsCountIsCountryFilterableAndGroupableAndRequiresSurveyYearFilter() {
         var bindings = catalog.get(IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT).dimensionBindings();
-        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
             .extracting("usages")
             .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
     }
 
     @Test
@@ -208,14 +232,21 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void tenDefinitionsSupportTimeSeriesButTheTwoLocalRegistryOnesDoNot() {
+    void onlyTheFiveOpenAireBackedDefinitionsSupportTimeSeries() {
+        Set<String> openAireBacked = Set.of(
+            IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
+            IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT
+        );
+
         assertThat(catalog.getAll())
-            .filteredOn(definition -> !definition.code().equals(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS)
-                && !definition.code().equals(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT))
+            .filteredOn(definition -> openAireBacked.contains(definition.code()))
+            .hasSize(5)
             .allMatch(definition -> definition.timePolicy().supported());
 
-        assertThat(catalog.get(IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS).timePolicy().supported()).isFalse();
-        assertThat(catalog.get(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT).timePolicy().supported()).isFalse();
+        assertThat(catalog.getAll())
+            .filteredOn(definition -> !openAireBacked.contains(definition.code()))
+            .hasSize(7)
+            .noneMatch(definition -> definition.timePolicy().supported());
     }
 
     @Test
@@ -229,6 +260,7 @@ class IndicatorCatalogTest {
         assertThat(catalog.dimension("accessStatus")).isNotNull();
         assertThat(catalog.dimension("initiativeType")).isNotNull();
         assertThat(catalog.dimension("surveyId")).isNotNull();
+        assertThat(catalog.dimension("surveyYear")).isNotNull();
         assertThat(catalog.dimension("classification")).isNotNull();
         assertThat(catalog.dimension("fieldOfScience")).isNotNull();
         assertThat(catalog.dimension("goldOA")).isNotNull();

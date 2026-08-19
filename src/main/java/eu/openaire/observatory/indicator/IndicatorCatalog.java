@@ -52,6 +52,7 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_OA_L
 import static eu.openaire.observatory.indicator.IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_ID_DIMENSION;
+import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_YEAR_DIMENSION;
 
 /**
  * In-memory catalog of real indicator definitions. Not a stand-in for a future persistence layer
@@ -59,12 +60,11 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_ID_DIMENSI
  * (OpenAIRE data — publications.oa_license_status_count is the europe_monitor-profiled outlier of
  * the 5, the other 4 use the default openaire_stats profile), 5 route to
  * SurveyStatsToolIndicatorQueryHandler (survey stats-tool data, scoped to survey years 2022+ — see
- * that handler's Javadoc and docs/INDICATOR_ROADMAP.md for why 2021 is excluded), and 2 route to
+ * that handler's Javadoc for why 2021 is excluded), and 2 route to
  * LocalRegistryIndicatorQueryHandler (no external HTTP call at all — wraps
  * SurveyService/StakeholderService directly). It previously also held 3 synthetic mock indicators
  * with the same codes as the 3 original survey ones; those were removed and later replaced with
- * real implementations — see docs/INDICATOR_ROADMAP.md for the design history and remaining
- * backlog beyond today's 12.
+ * real implementations.
  */
 @Service
 public class IndicatorCatalog {
@@ -108,6 +108,10 @@ public class IndicatorCatalog {
             SURVEY_ID_DIMENSION, "Survey", DimensionType.STRING,
             true, false, false, Set.of(FilterOperator.EQ), null
         );
+        DimensionDefinition surveyYearDimension = new DimensionDefinition(
+            SURVEY_YEAR_DIMENSION, "Survey Year", DimensionType.INTEGER,
+            true, false, false, Set.of(FilterOperator.EQ), null
+        );
         DimensionDefinition classificationDimension = new DimensionDefinition(
             CLASSIFICATION_DIMENSION, "Classification", DimensionType.STRING,
             true, true, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
@@ -133,6 +137,7 @@ public class IndicatorCatalog {
             Map.entry(ACCESS_STATUS_DIMENSION, accessStatusDimension),
             Map.entry(INITIATIVE_TYPE_DIMENSION, initiativeTypeDimension),
             Map.entry(SURVEY_ID_DIMENSION, surveyIdDimension),
+            Map.entry(SURVEY_YEAR_DIMENSION, surveyYearDimension),
             Map.entry(CLASSIFICATION_DIMENSION, classificationDimension),
             Map.entry(FIELD_OF_SCIENCE_DIMENSION, fieldOfScienceDimension),
             Map.entry(GOLD_OA_DIMENSION, goldOaDimension),
@@ -323,7 +328,8 @@ public class IndicatorCatalog {
      * Legacy id 69 — "Financial investments in OA Publication". Survey Question56, in millions of
      * euros; SurveyStatsToolIndicatorQueryHandler applies the ×1,000,000 scale so the returned
      * value is in euros. Filterable/groupable by country (absent country filter aggregates all
-     * countries with an answer, per the requested AggregationPolicy — SUM by default).
+     * countries with an answer, per the requested AggregationPolicy — SUM by default). A single
+     * survey year, not a real time series — the required surveyYear filter picks it.
      */
     private static IndicatorDefinition financialInvestment() {
         return definition(
@@ -335,8 +341,8 @@ public class IndicatorCatalog {
             GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
-            Set.of(countryBinding()),
-            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(countryBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
+            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
@@ -345,7 +351,8 @@ public class IndicatorCatalog {
      * behind a required initiativeType filter (fixed 4-value enum — see
      * InitiativeTypeDimensionMemberProvider). Per-country Yes/No, always one row per answering
      * country — country grouping is mandatory for this indicator to render, not optional, so
-     * there is no country dimension binding at all (unlike the MEASURE/RATIO indicators above).
+     * there is no country dimension binding at all (unlike the MEASURE/RATIO indicators above). A
+     * single survey year, not a real time series — the required surveyYear filter picks it.
      */
     private static IndicatorDefinition countryInitiativeStatus() {
         return definition(
@@ -356,8 +363,8 @@ public class IndicatorCatalog {
             GROUP_LABEL, IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
-            Set.of(requiredEqFilterBinding(INITIATIVE_TYPE_DIMENSION)),
-            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(requiredEqFilterBinding(INITIATIVE_TYPE_DIMENSION), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
+            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
@@ -366,7 +373,8 @@ public class IndicatorCatalog {
      * Monitoring on OA Publication", collapsed behind a required initiativeType filter. Two views
      * over the same per-country fact as countryInitiativeStatus() — the handler shares one
      * data-access call between them. Intrinsically EU-aggregate-only: no country binding, unlike
-     * publications.access_status_share.
+     * publications.access_status_share. A single survey year, not a real time series — the
+     * required surveyYear filter picks it.
      */
     private static IndicatorDefinition euCountryCoverage() {
         return definition(
@@ -379,8 +387,8 @@ public class IndicatorCatalog {
             GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
             NO_AGGREGATION_POLICY,
             new RatioPolicy(ZeroDenominatorHandling.NULL),
-            Set.of(requiredEqFilterBinding(INITIATIVE_TYPE_DIMENSION)),
-            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(requiredEqFilterBinding(INITIATIVE_TYPE_DIMENSION), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
+            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
@@ -388,7 +396,8 @@ public class IndicatorCatalog {
      * Survey Question89: "How many repositories offered long-term data preservation in your
      * country?" — plain per-country integer count, structurally identical to financialInvestment()
      * apart from having no unit scale. Question code confirmed live against the real survey
-     * stats-tool (see docs/INDICATOR_ROADMAP.md).
+     * stats-tool. A single survey year, not a real time series — the required surveyYear filter
+     * picks it.
      */
     private static IndicatorDefinition longTermPreservationCount() {
         return definition(
@@ -399,16 +408,16 @@ public class IndicatorCatalog {
             "Data Preservation", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
-            Set.of(countryBinding()),
-            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(countryBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
+            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
     /**
      * Survey Question101: "How many projects with a citizen science dimension were started in
      * your country?" — plain per-country integer count, same shape as longTermPreservationCount().
-     * Question code confirmed live against the real survey stats-tool (see
-     * docs/INDICATOR_ROADMAP.md).
+     * Question code confirmed live against the real survey stats-tool. A single survey year, not
+     * a real time series — the required surveyYear filter picks it.
      */
     private static IndicatorDefinition citizenScienceNewProjectsCount() {
         return definition(
@@ -419,8 +428,8 @@ public class IndicatorCatalog {
             "Citizen Science", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
-            Set.of(countryBinding()),
-            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(countryBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
+            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 

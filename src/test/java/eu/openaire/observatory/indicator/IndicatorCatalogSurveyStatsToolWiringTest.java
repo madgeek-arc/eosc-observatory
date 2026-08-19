@@ -4,13 +4,17 @@ import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
+import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
 import eu.openaire.observatory.indicator.survey.SurveyStatsToolIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizationService;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
 import eu.openaire.observatory.indicator.validation.MissingRequiredFilterException;
+import eu.openaire.observatory.indicator.validation.TimeSeriesNotSupportedException;
 import eu.openaire.observatory.indicator.validation.UnsupportedDimensionException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
@@ -23,9 +27,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * (there is no meaningful value without picking which initiative the Yes/No/percentage refers
  * to); repositories.long_term_preservation_count and citizen_science.new_projects_count are
  * plain country-filterable/groupable counts, the same shape as oa.financial_investment. All 5
- * route to the survey handler, not the OpenAIRE one.
+ * route to the survey handler, not the OpenAIRE one, and all 5 also require a surveyYear filter
+ * (there's no "latest survey" concept to default to) and reject timeSeries outright.
  */
 class IndicatorCatalogSurveyStatsToolWiringTest {
+
+    private static final IndicatorFilter SURVEY_YEAR_2023 =
+        new IndicatorFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2023"));
 
     private final IndicatorCatalog catalog = new IndicatorCatalog();
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
@@ -36,7 +44,9 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void countryInitiativeStatusRequiresTheInitiativeTypeFilter() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).build();
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.COUNTRY_INITIATIVE_STATUS)
+            .withFilters(SURVEY_YEAR_2023)
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(MissingRequiredFilterException.class);
@@ -44,7 +54,9 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
 
     @Test
     void euCountryCoverageRequiresTheInitiativeTypeFilter() {
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE).build();
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
+            .withFilters(SURVEY_YEAR_2023)
+            .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(MissingRequiredFilterException.class);
@@ -53,7 +65,11 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     @Test
     void euCountryCoverageCountryIsNotClientFilterable() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
-            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")))
+            .withFilters(
+                new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")),
+                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
+                SURVEY_YEAR_2023
+            )
             .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
@@ -61,15 +77,59 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     }
 
     @Test
-    void countryInitiativeStatusWithInitiativeTypeFilterValidates() {
+    void countryInitiativeStatusWithInitiativeTypeAndSurveyYearFiltersValidates() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.COUNTRY_INITIATIVE_STATUS)
-            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
+            .withFilters(
+                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
+                SURVEY_YEAR_2023
+            )
             .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
-        assertThat(plan.filters()).hasSize(1);
-        assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+        assertThat(plan.filters()).hasSize(2);
+        assertThat(plan.filters()).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {
+        IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
+        IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT
+    })
+    void surveyYearFilterIsRequiredOnAllFiveSurveyIndicators(String indicatorCode) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode).build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(MissingRequiredFilterException.class);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {
+        IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
+        IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT
+    })
+    void timeSeriesIsRejectedOnAllFiveSurveyIndicators(String indicatorCode) {
+        // All required filters must be present too, so the query reaches timeSeries validation
+        // instead of failing earlier on a missing required filter.
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
+            .withFilters(requiredFiltersFor(indicatorCode))
+            .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(TimeSeriesNotSupportedException.class);
+    }
+
+    private static IndicatorFilter[] requiredFiltersFor(String indicatorCode) {
+        boolean needsInitiativeType = indicatorCode.equals(IndicatorCodes.COUNTRY_INITIATIVE_STATUS)
+            || indicatorCode.equals(IndicatorCodes.EU_COUNTRY_COVERAGE);
+        return needsInitiativeType
+            ? new IndicatorFilter[]{
+                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
+                SURVEY_YEAR_2023
+            }
+            : new IndicatorFilter[]{SURVEY_YEAR_2023};
     }
 
     @Test
@@ -89,28 +149,29 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     @Test
     void financialInvestmentAcceptsAnOptionalCountryFilter() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.FINANCIAL_INVESTMENT)
-            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")))
+            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")), SURVEY_YEAR_2023)
             .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
-        assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(plan.filters()).extracting("dimensionCode").contains(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
     @Test
     void longTermPreservationCountAcceptsAnOptionalCountryFilter() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT)
-            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("PL")))
+            .withFilters(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("PL")), SURVEY_YEAR_2023)
             .build();
 
         var plan = validator.compile(query, ALLOW_ALL);
 
-        assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(plan.filters()).extracting("dimensionCode").contains(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
     @Test
     void citizenScienceNewProjectsCountAcceptsAnOptionalCountryGroupBy() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT)
+            .withFilters(SURVEY_YEAR_2023)
             .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
             .build();
 

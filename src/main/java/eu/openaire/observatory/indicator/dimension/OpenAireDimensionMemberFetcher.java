@@ -16,7 +16,7 @@ import java.util.List;
  * OpenAireStatsToolIndicatorQueryHandler uses for the equivalent query's GROUP usage, then caches
  * the result — the stats-tool times out (confirmed live, 90s) if the mandatory year filter is
  * omitted to ask for "every year", so this queries one fixed recent year as a proxy for the full
- * vocabulary, same tradeoff as SurveyStatsToolIndicatorQueryHandler.DEFAULT_YEAR. Cached with a
+ * vocabulary. Cached with a
  * daily TTL (unlike this codebase's only other CacheService usage,
  * SurveyAnswerCrudService/SurveyServiceImpl, which never expires) — these vocabularies change
  * rarely, but daily refresh means a newly-added classification/field-of-science value shows up
