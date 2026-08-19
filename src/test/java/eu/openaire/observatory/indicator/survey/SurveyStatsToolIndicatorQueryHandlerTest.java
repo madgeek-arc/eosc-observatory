@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * No live network: the outbound WebClient call is stubbed, same pattern as
  * OpenAireStatsToolIndicatorQueryHandlerTest. Response fixtures are shaped exactly like the
- * envelope confirmed live against http://dl123.madgik.di.uoa.gr:8080/stats-api (see
+ * envelope confirmed against a live deployment (see
  * SurveyRawResponse's Javadoc), with real observed values, not guessed ones.
  */
 class SurveyStatsToolIndicatorQueryHandlerTest {

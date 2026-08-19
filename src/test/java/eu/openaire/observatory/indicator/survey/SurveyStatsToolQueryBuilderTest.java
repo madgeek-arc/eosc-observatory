@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pure, network-free: asserts the named-query DSL shape confirmed live against
- * http://dl123.madgik.di.uoa.gr:8080/stats-api and observatory-ui's DataService (e.g.
- * getQuestion6()/getQuestion7()) — a different shape from OpenAireQueryBuilder's filter-tree DSL.
+ * Pure, network-free: asserts the named-query DSL shape confirmed against a live deployment
+ * and observatory-ui's DataService (e.g. getQuestion6()/getQuestion7()) — a different shape
+ * from OpenAireQueryBuilder's filter-tree DSL.
  */
 class SurveyStatsToolQueryBuilderTest {
 
