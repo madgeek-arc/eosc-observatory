@@ -19,8 +19,10 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.NotificationPreferences;
 import eu.openaire.observatory.domain.Stakeholder;
+import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveySettings;
 import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.domain.UserGroup;
 import freemarker.template.Configuration;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
 import gr.athenarc.messaging.mailer.service.Mailer;
@@ -52,6 +54,8 @@ public class EmailSurveyService {
     private final SurveyService surveyService;
     private final UserService userService;
     private final SurveySettingsService surveyNotificationSettingsService;
+    private final CoordinatorService coordinatorService;
+    private final AdministratorService administratorService;
     private final Configuration freemarkerConfig;
     private final String emailFrom;
     private final ApplicationProperties applicationProperties;
@@ -62,6 +66,8 @@ public class EmailSurveyService {
                               @Lazy SurveyService surveyService,
                               UserService userService,
                               SurveySettingsService surveyNotificationSettingsService,
+                              CoordinatorService coordinatorService,
+                              AdministratorService administratorService,
                               Configuration freemarkerConfig,
                               @Value("${mailer.from}") String emailFrom,
                               ApplicationProperties applicationProperties) {
@@ -71,6 +77,8 @@ public class EmailSurveyService {
         this.surveyService = surveyService;
         this.userService = userService;
         this.surveyNotificationSettingsService = surveyNotificationSettingsService;
+        this.coordinatorService = coordinatorService;
+        this.administratorService = administratorService;
         this.freemarkerConfig = freemarkerConfig;
         this.emailFrom = emailFrom;
         this.applicationProperties = applicationProperties;
@@ -185,6 +193,70 @@ public class EmailSurveyService {
         }
     }
 
+    /**
+     * <p>Notifies the users of every {@link eu.openaire.observatory.domain.Coordinator Coordinator} and
+     * {@link eu.openaire.observatory.domain.Administrator Administrator} group matching the answer's type
+     * that a {@link SurveyAnswer} has been validated and is ready for review.</p>
+     *
+     * @param answer      the validated survey answer
+     * @param validatedBy the id (email) of the user who validated the answer; excluded from the recipients
+     */
+    public void notifyAnswerValidated(SurveyAnswer answer, String validatedBy) {
+        try {
+            if (answer.getType() == null) {
+                logger.warn("Cannot resolve Coordinators/Administrators for an answer without a type [answerId={}]", answer.getId());
+                return;
+            }
+
+            Model survey = modelService.get(answer.getSurveyId());
+            Stakeholder stakeholder = stakeholderCrudService.get(answer.getStakeholderId());
+            String subject = stakeholder.getName() + " validated their answer: " + survey.getName();
+
+            Set<String> alreadyNotified = new HashSet<>();
+            if (validatedBy != null) {
+                alreadyNotified.add(validatedBy.toLowerCase());
+            }
+
+            // Coordinators first, so a user belonging to both groups gets the Coordinator email only.
+            notifyGroups(coordinatorService.getWithFilter("type", answer.getType()),
+                    answer, survey, stakeholder, subject, validatedBy, alreadyNotified);
+            notifyGroups(administratorService.getWithFilter("type", answer.getType()),
+                    answer, survey, stakeholder, subject, validatedBy, alreadyNotified);
+        } catch (Exception e) {
+            logger.error("Failed to send answer validated notification [answerId={}]", answer.getId(), e);
+        }
+    }
+
+    /**
+     * <p>Sends one BCC email per group, each carrying a review link scoped to that group's dashboard.</p>
+     * <p>The frontend review route is keyed to the recipient's own group id, so a single mail to both
+     * audiences could not carry a link that works for both.</p>
+     * <p>Users already mailed by an earlier group are skipped, so nobody receives two emails.</p>
+     */
+    private void notifyGroups(Set<? extends UserGroup> groups, SurveyAnswer answer, Model survey,
+                              Stakeholder stakeholder, String subject, String validatedBy,
+                              Set<String> alreadyNotified) {
+        for (UserGroup group : groups) {
+            Set<String> groupUsers = new HashSet<>(group.getUsers());
+            groupUsers.removeAll(alreadyNotified);
+            if (groupUsers.isEmpty()) continue;
+
+            Set<String> recipients = filterByEmailPreference(groupUsers);
+            if (recipients.isEmpty()) continue;
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("surveyName", survey.getName());
+            data.put("stakeholderName", stakeholder.getName());
+            data.put("validatedBy", resolveDisplayName(validatedBy));
+            data.put("date", DATE_FORMAT.format(new Date()));
+            data.put("url", buildReviewUrl(group.getId(), answer));
+
+            String body = renderTemplate("emails/inlined-css/survey_answer_validated.ftlh", data);
+            sendBcc(subject, body, recipients);
+            alreadyNotified.addAll(groupUsers);
+        }
+    }
+
     @Scheduled(cron = "${observatory.surveySchedulerCron}")
     public void checkSurveyDates() {
         logger.info("Running daily survey date check");
@@ -250,6 +322,19 @@ public class EmailSurveyService {
         return filterByEmailPreference(emails);
     }
 
+    private String resolveDisplayName(String userId) {
+        if (userId == null) return "";
+        try {
+            User user = userService.getUser(userId);
+            if (user != null && user.getFullname() != null && !user.getFullname().isBlank()) {
+                return user.getFullname();
+            }
+        } catch (Exception e) {
+            logger.warn("Could not resolve display name for [{}]: {}", userId, e.getMessage());
+        }
+        return userId;
+    }
+
     private Set<String> filterByEmailPreference(Set<String> emailAddresses) {
         Set<String> preferred = new HashSet<>();
         for (String email : emailAddresses) {
@@ -299,5 +384,18 @@ public class EmailSurveyService {
 
     private String buildSurveyUrl(String surveyId) {
         return applicationProperties.getLoginRedirect() + "/mySurveys/" + surveyId;
+    }
+
+    /**
+     * <p>Builds the frontend review link for a Coordinator/Administrator.</p>
+     * <p>The route is scoped to the recipient's own group, matching how the coordinator dashboard
+     * links to a stakeholder's answer: {@code contributions/:id/stakeholder/:stakeholderId/survey/:surveyId/view}.</p>
+     */
+    private String buildReviewUrl(String groupId, SurveyAnswer answer) {
+        return applicationProperties.getLoginRedirect()
+                + "/contributions/" + groupId
+                + "/stakeholder/" + answer.getStakeholderId()
+                + "/survey/" + answer.getSurveyId()
+                + "/view";
     }
 }

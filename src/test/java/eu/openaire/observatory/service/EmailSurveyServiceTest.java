@@ -2,10 +2,14 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.configuration.MailDebugConfig;
+import eu.openaire.observatory.domain.Administrator;
+import eu.openaire.observatory.domain.Coordinator;
 import eu.openaire.observatory.domain.NotificationPreferences;
 import eu.openaire.observatory.domain.Settings;
 import eu.openaire.observatory.domain.Stakeholder;
+import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.domain.UserGroup;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
@@ -41,6 +45,8 @@ class EmailSurveyServiceTest {
     @Mock private SurveyService surveyService;
     @Mock private UserService userService;
     @Mock private SurveySettingsService surveyNotificationSettingsService;
+    @Mock private CoordinatorService coordinatorService;
+    @Mock private AdministratorService administratorService;
     @Mock private Configuration freemarkerConfig;
     @Mock private Template template;
     @Mock private ApplicationProperties applicationProperties;
@@ -56,6 +62,8 @@ class EmailSurveyServiceTest {
                 surveyService,
                 userService,
                 surveyNotificationSettingsService,
+                coordinatorService,
+                administratorService,
                 freemarkerConfig,
                 "no-reply@openaire.eu",
                 applicationProperties
@@ -297,6 +305,224 @@ class EmailSurveyServiceTest {
         assertEquals(1, captured.size());
         assertTrue(captured.get(0).getSubject().contains("7 days"));
         captured.forEach(e -> System.out.println("[checkSurveyDates-approaching] Subject: " + e.getSubject() + " | BCC: " + e.getBcc()));
+    }
+
+    // ── notifyAnswerValidated ────────────────────────────────────────────────
+
+    private SurveyAnswer answer(String id, String surveyId, String stakeholderId, String type) {
+        SurveyAnswer a = new SurveyAnswer();
+        a.setId(id);
+        a.setSurveyId(surveyId);
+        a.setStakeholderId(stakeholderId);
+        a.setType(type);
+        return a;
+    }
+
+    private <T extends UserGroup> T group(T g, String id, String type, Set<String> admins, Set<String> members) {
+        g.setId(id);
+        g.setType(type);
+        g.setAdmins(new TreeSet<>(admins));
+        g.setMembers(new TreeSet<>(members));
+        return g;
+    }
+
+    /** The review link the frontend expects, scoped to the recipient's own group. */
+    private String reviewUrl(String groupId) {
+        return "http://localhost:4200/contributions/" + groupId + "/stakeholder/sh-country-gr/survey/s1/view";
+    }
+
+    private EmailMessage emailContaining(List<EmailMessage> captured, String recipient) {
+        return captured.stream()
+                .filter(e -> e.getBcc().contains(recipient))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no email sent to " + recipient));
+    }
+
+    /** Stubs the survey, the stakeholder and the coordinator/administrator groups for a validated answer. */
+    private void stubValidationContext(SurveyAnswer a, String surveyName, String stakeholderName,
+                                       Set<Coordinator> coordinators, Set<Administrator> administrators) {
+        Model s = survey(a.getSurveyId(), surveyName, a.getType());
+        when(modelService.get(a.getSurveyId())).thenReturn(s);
+
+        Stakeholder sh = new Stakeholder();
+        sh.setId(a.getStakeholderId());
+        sh.setName(stakeholderName);
+        sh.setType(a.getType());
+        when(stakeholderCrudService.get(a.getStakeholderId())).thenReturn(sh);
+
+        when(coordinatorService.getWithFilter("type", a.getType())).thenReturn(coordinators);
+        when(administratorService.getWithFilter("type", a.getType())).thenReturn(administrators);
+    }
+
+    @Test
+    void notifyAnswerValidated_sendsOneEmailPerGroupWithItsOwnReviewLink() {
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country",
+                        Set.of("co-admin@test.com"), Set.of("co-member@test.com"))),
+                Set.of(group(new Administrator(), "admin-country", "country",
+                        Set.of("ad-admin@test.com"), Set.of("ad-member@test.com"))));
+
+        service.notifyAnswerValidated(a, "manager@test.com");
+
+        List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
+        assertEquals(2, captured.size(), "expected one email per group");
+
+        // admins AND members of each group, and the two groups kept apart
+        List<String> coordinatorBcc = emailContaining(captured, "co-admin@test.com").getBcc();
+        assertTrue(coordinatorBcc.contains("co-member@test.com"));
+        assertEquals(2, coordinatorBcc.size());
+
+        List<String> administratorBcc = emailContaining(captured, "ad-admin@test.com").getBcc();
+        assertTrue(administratorBcc.contains("ad-member@test.com"));
+        assertEquals(2, administratorBcc.size());
+
+        captured.forEach(e -> {
+            assertTrue(e.getSubject().contains("Greece"));
+            assertTrue(e.getSubject().contains("National Survey"));
+            System.out.println("[notifyAnswerValidated] Subject: " + e.getSubject() + " | BCC: " + e.getBcc());
+        });
+    }
+
+    @Test
+    void notifyAnswerValidated_excludesTheValidatingUser() {
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country",
+                        Set.of("boss@test.com"), Set.of("other@test.com"))),
+                Set.of());
+
+        // the validating user is passed with different casing than stored
+        service.notifyAnswerValidated(a, "BOSS@test.com");
+
+        List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
+        assertEquals(1, captured.size());
+        assertFalse(captured.get(0).getBcc().contains("boss@test.com"));
+        assertTrue(captured.get(0).getBcc().contains("other@test.com"));
+    }
+
+    @Test
+    void notifyAnswerValidated_sendsOnlyOneEmailToAUserInBothGroups() {
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country",
+                        Set.of(), Set.of("both@test.com"))),
+                Set.of(group(new Administrator(), "admin-country", "country",
+                        Set.of(), Set.of("both@test.com"))));
+
+        service.notifyAnswerValidated(a, "manager@test.com");
+
+        List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
+        assertEquals(1, captured.size(), "a user in both groups must not be mailed twice");
+        // coordinators are processed first, so they get the coordinator dashboard link
+        assertTrue(captured.get(0).getBcc().contains("both@test.com"));
+    }
+
+    @Test
+    void notifyAnswerValidated_stillSendsToTheOtherGroupWhenOneHasNoEligibleRecipients() {
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country", Set.of(), Set.of())),
+                Set.of(group(new Administrator(), "admin-country", "country",
+                        Set.of("ad-admin@test.com"), Set.of())));
+
+        service.notifyAnswerValidated(a, "manager@test.com");
+
+        List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
+        assertEquals(1, captured.size());
+        assertTrue(captured.get(0).getBcc().contains("ad-admin@test.com"));
+    }
+
+    @Test
+    void notifyAnswerValidated_doesNotSendWhenNoCoordinatorsOrAdministrators() {
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        when(coordinatorService.getWithFilter("type", "country")).thenReturn(Set.of());
+        when(administratorService.getWithFilter("type", "country")).thenReturn(Set.of());
+
+        service.notifyAnswerValidated(a, "manager@test.com");
+
+        assertTrue(mailDebugConfig.getCapturedEmails().isEmpty());
+    }
+
+    @Test
+    void notifyAnswerValidated_skipsOptedOutUsers() {
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country", Set.of("optout@test.com"), Set.of())),
+                Set.of());
+
+        User user = new User();
+        NotificationPreferences prefs = new NotificationPreferences();
+        prefs.setSurveyEmailNotifications(false);
+        Settings settings = new Settings();
+        settings.setNotificationPreferences(prefs);
+        user.setSettings(settings);
+        when(userService.getUser("optout@test.com")).thenReturn(user);
+
+        service.notifyAnswerValidated(a, "manager@test.com");
+
+        assertTrue(mailDebugConfig.getCapturedEmails().isEmpty());
+    }
+
+    @Test
+    void notifyAnswerValidated_usesForwardEmails() {
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country", Set.of("co@test.com"), Set.of())),
+                Set.of());
+
+        User user = new User();
+        NotificationPreferences prefs = new NotificationPreferences();
+        prefs.setForwardEmails(List.of("forwarded@test.com"));
+        Settings settings = new Settings();
+        settings.setNotificationPreferences(prefs);
+        user.setSettings(settings);
+        when(userService.getUser("co@test.com")).thenReturn(user);
+
+        service.notifyAnswerValidated(a, "manager@test.com");
+
+        List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
+        assertEquals(1, captured.size());
+        assertEquals(List.of("forwarded@test.com"), captured.get(0).getBcc());
+    }
+
+    @Test
+    void notifyAnswerValidated_rendersTheRealTemplate() throws Exception {
+        Configuration realConfig = new Configuration(Configuration.getVersion());
+        realConfig.setClassLoaderForTemplateLoading(getClass().getClassLoader(), "templates");
+
+        EmailSurveyService realTemplateService = new EmailSurveyService(
+                mailDebugConfig.mailer(), stakeholderCrudService, modelService, surveyService, userService,
+                surveyNotificationSettingsService, coordinatorService, administratorService,
+                realConfig, "no-reply@openaire.eu", applicationProperties);
+
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country", Set.of("co@test.com"), Set.of())),
+                Set.of(group(new Administrator(), "admin-country", "country", Set.of("ad@test.com"), Set.of())));
+        User validator = new User();
+        validator.setEmail("manager@test.com");
+        validator.setFullname("Maria Papadopoulou");
+        when(userService.getUser("manager@test.com")).thenReturn(validator);
+
+        realTemplateService.notifyAnswerValidated(a, "manager@test.com");
+
+        List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
+        assertEquals(2, captured.size());
+
+        for (EmailMessage email : captured) {
+            String body = email.getText();
+            assertNotNull(body);
+            assertFalse(body.isBlank(), "template rendered an empty body");
+            assertTrue(body.contains("Greece"));
+            assertTrue(body.contains("National Survey"));
+            assertTrue(body.contains("Maria Papadopoulou"));
+            assertTrue(body.contains("Review answer"));
+        }
+
+        // each group's email links into that group's own dashboard
+        assertTrue(emailContaining(captured, "co@test.com").getText().contains(reviewUrl("co-country")));
+        assertTrue(emailContaining(captured, "ad@test.com").getText().contains(reviewUrl("admin-country")));
     }
 
     private Date futureDate(int daysFromNow) {
