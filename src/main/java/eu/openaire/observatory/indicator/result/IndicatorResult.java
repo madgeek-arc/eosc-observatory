@@ -7,6 +7,18 @@ public record IndicatorResult(
     IndicatorMetadata metadata,
     List<String> dimensions,
     List<IndicatorDataPoint> data,
-    QueryExecutionMetadata execution
+    QueryExecutionMetadata execution,
+    // Whole-series summary statistics (e.g. AVG/MEDIAN across every period in the queried range) —
+    // see TimeSeriesAggregationCalculator. Empty unless the query set seriesAggregations; never
+    // replaces `data`.
+    List<IndicatorDataPoint> summary
 ) {
+    public IndicatorResult {
+        summary = summary != null ? summary : List.of();
+    }
+
+    public IndicatorResult(IndicatorMetadata metadata, List<String> dimensions, List<IndicatorDataPoint> data,
+                            QueryExecutionMetadata execution) {
+        this(metadata, dimensions, data, execution, List.of());
+    }
 }

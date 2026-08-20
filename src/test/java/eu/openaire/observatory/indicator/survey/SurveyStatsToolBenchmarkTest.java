@@ -195,7 +195,7 @@ class SurveyStatsToolBenchmarkTest {
         );
         return new IndicatorExecutionPlan(
             countryInitiativeStatusDefinition(), AggregationType.NONE, filters, List.of(), null,
-            null, QuerySecurityScope.unrestricted(), 1000
+            null, QuerySecurityScope.unrestricted(), 1000, List.of()
         );
     }
 

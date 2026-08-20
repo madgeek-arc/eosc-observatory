@@ -18,6 +18,7 @@ public record IndicatorExecutionPlan(
     ResolvedTimeRange timeRange, // nullable
     ComparisonMode comparisonMode, // nullable; only meaningful alongside timeRange
     QuerySecurityScope securityScope, // trusted, server-derived; never from the client request
-    int limit
+    int limit,
+    List<AggregationType> seriesAggregations
 ) {
 }

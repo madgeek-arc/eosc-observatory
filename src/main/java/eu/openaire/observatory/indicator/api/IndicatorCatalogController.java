@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(path = "indicators", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "indicators/definitions", produces = MediaType.APPLICATION_JSON_VALUE)
 public class IndicatorCatalogController {
 
     private final IndicatorCatalog catalog;

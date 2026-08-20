@@ -19,6 +19,7 @@ public final class IndicatorQueryBuilder {
     private ComparisonMode comparisonMode;
     private List<SortRequest> sort = List.of();
     private Integer limit;
+    private List<AggregationType> seriesAggregations = List.of();
 
     private IndicatorQueryBuilder(String indicatorCode) {
         this.indicatorCode = indicatorCode;
@@ -63,7 +64,14 @@ public final class IndicatorQueryBuilder {
         return this;
     }
 
+    public IndicatorQueryBuilder withSeriesAggregations(AggregationType... seriesAggregations) {
+        this.seriesAggregations = List.of(seriesAggregations);
+        return this;
+    }
+
     public IndicatorQuery build() {
-        return new IndicatorQuery(indicatorCode, aggregation, filters, groupBy, timeSeries, comparisonMode, sort, limit);
+        return new IndicatorQuery(
+            indicatorCode, aggregation, filters, groupBy, timeSeries, comparisonMode, sort, limit, seriesAggregations
+        );
     }
 }

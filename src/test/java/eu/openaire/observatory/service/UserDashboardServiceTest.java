@@ -247,7 +247,7 @@ class UserDashboardServiceTest {
         DashboardItem item = new DashboardItem();
         item.setId(id);
         item.setChartType(ChartType.BAR);
-        item.setQuery(new IndicatorQuery("publications.count", null, null, null, null, null, null, null));
+        item.setQuery(new IndicatorQuery("publications.count", null, null, null, null, null, null, null, null));
         return item;
     }
 }

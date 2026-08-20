@@ -351,6 +351,22 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void publicationsCountFilteredByCountryGroupedByCountryCombinesBoth() {
+        var handler = handlerReturning("{\"data\":[[[\"18400\",\"BE\"],[\"4210\",\"GR\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("BE", "GR")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(countDefinition(), filters, groupBy, null));
+
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION))
+            .containsExactlyInAnyOrder("BE", "GR");
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"field\":\"result.organization.country\"");
+        assertThat(request).contains("\"field\":\"result.organization.country.code\"").contains("\"BE\"").contains("\"GR\"");
+    }
+
+    @Test
     void publicationsCountGroupedByClassificationReturnsOneRowPerClassification() {
         var handler = handlerReturning("{\"data\":[[[\"1985015\",\"Article\"],[\"66287\",\"Book\"]]]}");
         var groupBy = List.of(new ResolvedDimension(IndicatorCodes.CLASSIFICATION_DIMENSION));
@@ -603,7 +619,7 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     private static IndicatorExecutionPlan plan(IndicatorDefinition definition, List<ResolvedFilter> filters,
                                                 List<ResolvedDimension> groupBy, ResolvedTimeRange timeRange) {
         return new IndicatorExecutionPlan(
-            definition, null, filters, groupBy, timeRange, null, QuerySecurityScope.unrestricted(), 1000
+            definition, null, filters, groupBy, timeRange, null, QuerySecurityScope.unrestricted(), 1000, List.of()
         );
     }
 

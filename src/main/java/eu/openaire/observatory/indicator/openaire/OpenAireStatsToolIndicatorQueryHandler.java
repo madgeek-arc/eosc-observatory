@@ -156,19 +156,21 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
     /**
      * Shared by publications.count and datasets.count — same query shape, just entity=publication vs
      * entity=dataset. At most one of country/classification/fieldOfScience is treated as the active
-     * "fan out into one row per value" breakdown (whichever appears first in BREAKDOWN_DIMENSIONS);
-     * a country filter still narrows the results even when a different dimension is the breakdown
-     * (confirmed live: country-filtered fieldOfScience/classification groupBy both work). The
-     * accessStatus cross-product (one sub-query per requested access mode) composes independently,
-     * same as before this method also handled non-country breakdowns.
+     * "fan out into one row per value" breakdown (whichever appears first in BREAKDOWN_DIMENSIONS).
+     * A filter on any of the 3 always narrows the results, regardless of whether that same dimension
+     * is also the active breakdown — filtering and grouping the same dimension composes exactly like
+     * any other filter (narrows which values the breakdown fans out over), same as
+     * country-filtered fieldOfScience/classification groupBy already did. The accessStatus
+     * cross-product (one sub-query per requested access mode) composes independently, same as before
+     * this method also handled non-country breakdowns.
      */
     private IndicatorResult queryResultCount(IndicatorExecutionPlan plan, String resultType) {
         List<String> groupByCodes = plan.groupBy().stream().map(ResolvedDimension::dimensionCode).toList();
         List<OpenAireAccessMode> accessModes = resolveAccessModeGroupValues(plan, groupByCodes);
         String breakdownDimension = BREAKDOWN_DIMENSIONS.stream().filter(groupByCodes::contains).findFirst().orElse(null);
-        List<String> countryCodes = COUNTRY_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, COUNTRY_DIMENSION);
-        List<String> classificationCodes = CLASSIFICATION_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, CLASSIFICATION_DIMENSION);
-        List<String> fieldOfScienceCodes = FIELD_OF_SCIENCE_DIMENSION.equals(breakdownDimension) ? List.of() : filterValues(plan, FIELD_OF_SCIENCE_DIMENSION);
+        List<String> countryCodes = filterValues(plan, COUNTRY_DIMENSION);
+        List<String> classificationCodes = filterValues(plan, CLASSIFICATION_DIMENSION);
+        List<String> fieldOfScienceCodes = filterValues(plan, FIELD_OF_SCIENCE_DIMENSION);
         List<String> goldOaLiterals = filterValues(plan, GOLD_OA_DIMENSION).stream()
             .map(code -> OpenAireBooleanFlag.fromCatalogCode(code).openAireLiteral()).toList();
         List<String> greenOaLiterals = filterValues(plan, GREEN_OA_DIMENSION).stream()

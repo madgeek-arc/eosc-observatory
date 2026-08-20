@@ -58,7 +58,7 @@ public class ComparisonCalculator {
         dimensions.add(FROM_PERIOD_DIMENSION);
         dimensions.add(TO_PERIOD_DIMENSION);
 
-        return new IndicatorResult(result.metadata(), dimensions, compared, result.execution());
+        return new IndicatorResult(result.metadata(), dimensions, compared, result.execution(), result.summary());
     }
 
     private List<int[]> pairsFor(ComparisonMode mode, ResolvedTimeRange timeRange) {

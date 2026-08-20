@@ -67,9 +67,11 @@ public class IndicatorQueryValidator {
         ComparisonMode comparisonMode = resolveComparisonMode(definition, query, timeRange);
 
         int limit = query.limit() != null ? query.limit() : DEFAULT_LIMIT;
+        List<AggregationType> seriesAggregations = resolveSeriesAggregations(definition, query);
 
         return new IndicatorExecutionPlan(
-            definition, aggregation, filters, groupBy, timeRange, comparisonMode, securityScope, limit
+            definition, aggregation, filters, groupBy, timeRange, comparisonMode, securityScope, limit,
+            seriesAggregations
         );
     }
 
@@ -84,6 +86,25 @@ public class IndicatorQueryValidator {
         }
 
         return aggregation;
+    }
+
+    /**
+     * Summary aggregation(s) across the whole time series — a different axis from the primary
+     * {@code aggregation} (which collapses per-dimension values within a single period). {@code NONE}
+     * is always rejected here regardless of semantic type or policy: unlike the primary aggregation,
+     * it has no meaning as a summary statistic.
+     */
+    private List<AggregationType> resolveSeriesAggregations(IndicatorDefinition definition, IndicatorQuery query) {
+        for (AggregationType type : query.seriesAggregations()) {
+            if (type == AggregationType.NONE) {
+                throw new InvalidAggregationException(definition.code(), type);
+            }
+            if (definition.semanticType() != IndicatorSemanticType.RATIO
+                    && !definition.aggregationPolicy().allowedAggregations().contains(type)) {
+                throw new InvalidAggregationException(definition.code(), type);
+            }
+        }
+        return query.seriesAggregations();
     }
 
     private ResolvedFilter resolveFilter(IndicatorDefinition definition, IndicatorFilter filter) {

@@ -14,16 +14,19 @@ public class IndicatorQueryService {
     private final IndicatorQueryValidator validator;
     private final IndicatorQueryHandlerRegistry handlers;
     private final TimeSeriesNormalizer normalizer;
+    private final TimeSeriesAggregationCalculator seriesAggregationCalculator;
     private final ComparisonCalculator comparisonCalculator;
 
     public IndicatorQueryService(
             IndicatorQueryValidator validator,
             IndicatorQueryHandlerRegistry handlers,
             TimeSeriesNormalizer normalizer,
+            TimeSeriesAggregationCalculator seriesAggregationCalculator,
             ComparisonCalculator comparisonCalculator) {
         this.validator = validator;
         this.handlers = handlers;
         this.normalizer = normalizer;
+        this.seriesAggregationCalculator = seriesAggregationCalculator;
         this.comparisonCalculator = comparisonCalculator;
     }
 
@@ -32,6 +35,7 @@ public class IndicatorQueryService {
         var handler = handlers.getRequired(plan.definition().executionBinding().handlerKey());
         IndicatorResult result = handler.execute(plan);
         result = normalizer.normalize(result, plan.timeRange());
+        result = seriesAggregationCalculator.summarize(result, plan.seriesAggregations());
         return comparisonCalculator.compare(result, plan.comparisonMode(), plan.timeRange(), plan.definition().semanticType());
     }
 }

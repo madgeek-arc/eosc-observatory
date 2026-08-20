@@ -124,6 +124,46 @@ class IndicatorQueryValidatorTest {
     }
 
     @Test
+    void compileDefaultsSeriesAggregationsToEmptyListWhenOmitted() {
+        var query = baseQuery(COUNT_CODE);
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.seriesAggregations()).isEmpty();
+    }
+
+    @Test
+    void compileResolvesSeriesAggregationsOntoThePlan() {
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withSeriesAggregations(AggregationType.AVG, AggregationType.MAX)
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.seriesAggregations()).containsExactly(AggregationType.AVG, AggregationType.MAX);
+    }
+
+    @Test
+    void compileThrowsInvalidAggregationExceptionWhenSeriesAggregationNotAllowed() {
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withSeriesAggregations(AggregationType.MEDIAN)
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidAggregationException.class);
+    }
+
+    @Test
+    void compileThrowsInvalidAggregationExceptionWhenSeriesAggregationIsNone() {
+        var query = IndicatorQueryBuilder.forIndicator(RATIO_CODE)
+            .withSeriesAggregations(AggregationType.NONE)
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidAggregationException.class);
+    }
+
+    @Test
     void compileThrowsUnsupportedDimensionExceptionForUnknownGroupByDimension() {
         var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
             .withGroupBy("publicationType")

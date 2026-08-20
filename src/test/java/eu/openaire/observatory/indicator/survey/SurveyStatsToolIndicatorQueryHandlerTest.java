@@ -307,7 +307,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
                                                 List<ResolvedDimension> groupBy, ResolvedTimeRange timeRange,
                                                 AggregationType aggregation) {
         return new IndicatorExecutionPlan(
-            definition, aggregation, filters, groupBy, timeRange, null, QuerySecurityScope.unrestricted(), 1000
+            definition, aggregation, filters, groupBy, timeRange, null, QuerySecurityScope.unrestricted(), 1000, List.of()
         );
     }
 

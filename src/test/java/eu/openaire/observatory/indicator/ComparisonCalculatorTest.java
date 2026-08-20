@@ -131,6 +131,24 @@ class ComparisonCalculatorTest {
     }
 
     @Test
+    void preservesSummaryFromTheInputResultUnchanged() {
+        var summary = List.of(new IndicatorDataPoint(Map.of("aggregation", "AVG"), 1115.0));
+        var result = new IndicatorResult(
+            new IndicatorMetadata("publications.count", "label", null, null, null),
+            List.of(TimeSeriesNormalizer.PERIOD_DIMENSION),
+            List.of(new IndicatorDataPoint(Map.of(TimeSeriesNormalizer.PERIOD_DIMENSION, "2020"), 1000),
+                new IndicatorDataPoint(Map.of(TimeSeriesNormalizer.PERIOD_DIMENSION, "2022"), 1230)),
+            new QueryExecutionMetadata(Instant.now(), false),
+            summary
+        );
+        var range = new ResolvedTimeRange(2020, 2022, null);
+
+        var compared = calculator.compare(result, ComparisonMode.TWO_POINT, range, IndicatorSemanticType.MEASURE);
+
+        assertThat(compared.summary()).isEqualTo(summary);
+    }
+
+    @Test
     void resultDimensionsSwapPeriodForFromAndToPeriod() {
         var result = resultWithPeriods(Map.of("2020", 100, "2022", 150));
         var range = new ResolvedTimeRange(2020, 2022, null);
