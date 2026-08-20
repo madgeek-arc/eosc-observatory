@@ -711,19 +711,43 @@ public class SurveyServiceImpl implements SurveyService {
     private HistoryEntryDTO createHistoryEntry(Object object) {
         HistoryEntryDTO entry = new HistoryEntryDTO();
         if (object instanceof SurveyAnswer) {
-            User user;
-            String userId = ((SurveyAnswer) object).getMetadata().getModifiedBy();
-            try {
-                userId = userId.split(",", 2)[0];
-                user = userService.get(userId);
-            } catch (ResourceNotFoundException e) {
-                user = new User();
-                user.setId(userId);
-            }
             List<HistoryEntry> historyEntryList = ((SurveyAnswer) object).getHistory().getEntries();
-            entry = HistoryEntryDTO.of(historyEntryList.get(historyEntryList.size() - 1), user);
+            HistoryEntry latest = historyEntryList.get(historyEntryList.size() - 1);
+            entry = HistoryEntryDTO.of(latest, resolveLatestEditor(latest));
         }
         return entry;
+    }
+
+    /**
+     * Resolves the identity behind a history entry, for the deprecated flat fields on
+     * {@link HistoryEntryDTO}. Reads the structured editor list rather than parsing
+     * {@code metadata.modifiedBy}: that field carries a comma-joined list of everyone who edited
+     * during a session, so the previous {@code userId.split(",", 2)[0]} reported whoever edited
+     * <em>first</em> and silently dropped the rest. Taking the last editor reports the most recent
+     * one instead, and is multi-editor correct by construction.
+     *
+     * <p>Falls back to the deprecated {@link HistoryEntry#getUserId()} for rows that predate the
+     * editors list. Also removes a latent NPE: a null {@code modifiedBy} used to throw inside a
+     * {@code try} that only caught {@link ResourceNotFoundException}.
+     */
+    private User resolveLatestEditor(HistoryEntry historyEntry) {
+        String userId = null;
+        if (historyEntry.getEditors() != null && !historyEntry.getEditors().isEmpty()) {
+            userId = historyEntry.getEditors().get(historyEntry.getEditors().size() - 1).getUser();
+        }
+        if (userId == null) {
+            userId = historyEntry.getUserId();
+        }
+        if (userId == null) {
+            return new User();
+        }
+        try {
+            return userService.get(userId);
+        } catch (ResourceNotFoundException e) {
+            User user = new User();
+            user.setId(userId);
+            return user;
+        }
     }
 
     @Override
