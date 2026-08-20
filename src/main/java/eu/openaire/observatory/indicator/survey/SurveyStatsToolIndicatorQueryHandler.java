@@ -67,18 +67,28 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
 
     private static final String LONG_TERM_PRESERVATION_QUESTION_CODE = "Question89";
     private static final String CITIZEN_SCIENCE_NEW_PROJECTS_QUESTION_CODE = "Question101";
+    private static final String SOFTWARE_OPEN_SOURCE_SETS_QUESTION_CODE = "Question73";
 
     /** The 3 values a country_initiative_status data point can carry — see IndicatorCatalog.countryInitiativeStatus(). */
     public static final String STATUS_YES = "YES";
     public static final String STATUS_NO = "NO";
     public static final String STATUS_AWAITING_DATA = "AWAITING_DATA";
 
+    /** The 4 values a country_policy_status data point can carry — see IndicatorCatalog.countryPolicyStatus(). */
+    public static final String POLICY_STATUS_MANDATORY = "MANDATORY";
+    public static final String POLICY_STATUS_NON_MANDATORY = "NON_MANDATORY";
+    public static final String POLICY_STATUS_NO_POLICY = "NO_POLICY";
+    public static final String POLICY_STATUS_AWAITING_DATA = STATUS_AWAITING_DATA;
+
     /**
      * One survey question per fixed initiativeType member — confirmed live, cross-referenced
      * against observatory-ui's report-chart.configuration.ts (OA_PUBLICATION_POLICY/
-     * IMMEDIATE_OA_POLICY/FINANCIAL_STRATEGY/MONITORING_INITIATIVE) and, for the Open Data/FAIR Data
-     * members, against the real m-eosc-sb-2022/2023/2024/2025 registry survey models directly (same
-     * question numbering confirmed stable across all 4 years) plus a live raw?json= call per code.
+     * IMMEDIATE_OA_POLICY/FINANCIAL_STRATEGY/MONITORING_INITIATIVE) and, for every other member,
+     * against the real m-eosc-sb-2022/2023/2024/2025 registry survey models directly (same question
+     * numbering confirmed stable across all 4 years) plus a live raw?json= call per code against both
+     * the 2022 and 2023 survey years (the years this catalog actually serves). Every "*_POLICY"
+     * member's mandatory sub-question is derivable as questionCode + ".1" (e.g. Question18 ->
+     * Question18.1) — see {@link #mandatoryQuestionCode}, same live-verified.
      */
     private static final Map<String, String> QUESTION_CODE_BY_INITIATIVE_TYPE = Map.ofEntries(
         Map.entry("OA_PUBLICATION_POLICY", "Question6"),
@@ -90,19 +100,53 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         Map.entry("OPEN_DATA_MONITORING_INITIATIVE", "Question66"),
         Map.entry("FAIR_DATA_POLICY", "Question14"),
         Map.entry("FAIR_DATA_FINANCIAL_STRATEGY", "Question15"),
-        Map.entry("FAIR_DATA_MONITORING_INITIATIVE", "Question62")
+        Map.entry("FAIR_DATA_MONITORING_INITIATIVE", "Question62"),
+        Map.entry("DATA_MANAGEMENT_POLICY", "Question10"),
+        Map.entry("DATA_MANAGEMENT_FINANCIAL_STRATEGY", "Question11"),
+        Map.entry("DATA_MANAGEMENT_MONITORING_INITIATIVE", "Question58"),
+        Map.entry("CITIZEN_SCIENCE_POLICY", "Question50"),
+        Map.entry("CITIZEN_SCIENCE_FINANCIAL_STRATEGY", "Question51"),
+        Map.entry("CITIZEN_SCIENCE_MONITORING_INITIATIVE", "Question98"),
+        Map.entry("REPOSITORIES_CONNECT_POLICY", "Question30"),
+        Map.entry("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY", "Question31"),
+        Map.entry("REPOSITORIES_CONNECT_MONITORING_INITIATIVE", "Question78"),
+        Map.entry("REPOSITORIES_PRESERVATION_POLICY", "Question38"),
+        Map.entry("REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE", "Question86"),
+        Map.entry("TRAINING_POLICY", "Question42"),
+        Map.entry("TRAINING_FINANCIAL_STRATEGY", "Question43"),
+        Map.entry("TRAINING_MONITORING_INITIATIVE", "Question90"),
+        Map.entry("SOFTWARE_POLICY", "Question22"),
+        Map.entry("SOFTWARE_FINANCIAL_STRATEGY", "Question23"),
+        Map.entry("SOFTWARE_MONITORING_INITIATIVE", "Question70")
     );
 
     /**
      * One survey question per investmentArea member — a separate numeric ("in millions of Euros")
      * question series from QUESTION_CODE_BY_INITIATIVE_TYPE's Yes/No ones. Confirmed live against
      * the real m-eosc-sb-2022/2023/2024/2025 registry survey models (same numbering across all 4
-     * years) plus a live raw?json= call per code.
+     * years) plus a live raw?json= call per code against both the 2022 and 2023 survey years.
      */
-    private static final Map<String, String> QUESTION_CODE_BY_INVESTMENT_AREA = Map.of(
-        "OA_PUBLICATION", "Question56",
-        "OPEN_DATA", "Question68",
-        "FAIR_DATA", "Question64"
+    /**
+     * The 9 real topic areas (independent of the initiativeType/investmentArea dimension's own
+     * finer-grained naming, e.g. "IMMEDIATE_OA_POLICY" is a Publications-topic variant, not its own
+     * topic area) — used only by {@link #queryAreasCount} to build each topic's "*_POLICY"/
+     * "*_MONITORING_INITIATIVE" key without double-counting variants or picking up unrelated
+     * "*_FINANCIAL_STRATEGY" keys via naive suffix matching.
+     */
+    private static final List<String> TOPIC_AREAS = List.of(
+        "OA_PUBLICATION", "OPEN_DATA", "FAIR_DATA", "DATA_MANAGEMENT", "CITIZEN_SCIENCE",
+        "REPOSITORIES_CONNECT", "REPOSITORIES_PRESERVATION", "TRAINING", "SOFTWARE"
+    );
+
+    private static final Map<String, String> QUESTION_CODE_BY_INVESTMENT_AREA = Map.ofEntries(
+        Map.entry("OA_PUBLICATION", "Question56"),
+        Map.entry("OPEN_DATA", "Question68"),
+        Map.entry("FAIR_DATA", "Question64"),
+        Map.entry("DATA_MANAGEMENT", "Question60"),
+        Map.entry("CITIZEN_SCIENCE", "Question100"),
+        Map.entry("REPOSITORIES_CONNECT", "Question80"),
+        Map.entry("TRAINING", "Question92"),
+        Map.entry("SOFTWARE", "Question72")
     );
 
     private final SurveyStatsToolQueryBuilder queryBuilder;
@@ -130,35 +174,144 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             case IndicatorCodes.FINANCIAL_INVESTMENT -> queryFinancialInvestment(plan);
             case IndicatorCodes.COUNTRY_INITIATIVE_STATUS -> queryCountryInitiativeStatus(plan);
             case IndicatorCodes.EU_COUNTRY_COVERAGE -> queryEuCountryCoverage(plan);
+            case IndicatorCodes.COUNTRY_POLICY_STATUS -> queryCountryPolicyStatus(plan);
+            case IndicatorCodes.MONITORED_AREAS_COUNT -> queryAreasCount(plan, "_MONITORING_INITIATIVE");
+            case IndicatorCodes.POLICY_AREAS_COUNT -> queryAreasCount(plan, "_POLICY");
             case IndicatorCodes.LONG_TERM_PRESERVATION_COUNT -> queryCountByQuestion(plan, LONG_TERM_PRESERVATION_QUESTION_CODE);
             case IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT -> queryCountByQuestion(plan, CITIZEN_SCIENCE_NEW_PROJECTS_QUESTION_CODE);
+            case IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT -> queryCountByQuestion(plan, SOFTWARE_OPEN_SOURCE_SETS_QUESTION_CODE);
             default -> throw new IllegalStateException(
                 "SurveyStatsToolIndicatorQueryHandler has no logic for providerIndicatorKey: " + providerIndicatorKey);
         };
     }
 
-    /** One row per country that answered; country grouping is inherent to this indicator's meaning, not driven by plan.groupBy(). */
+    /**
+     * One row per (country, initiativeType) that answered. Country grouping is always present,
+     * inherent to this indicator's meaning; initiativeType additionally fans out into its own
+     * dimension when the plan groups by it (e.g. the "National Monitoring/Policies of Open Science by
+     * Countries and Areas" country x area matrix — a flat list of (country, initiativeType, status)
+     * triples the caller pivots into a matrix, needing no dedicated matrix RenderHint). Otherwise
+     * initiativeType must resolve to exactly one value (the original single-type snapshot shape).
+     */
     private IndicatorResult queryCountryInitiativeStatus(IndicatorExecutionPlan plan) {
-        String questionCode = questionCodeForInitiativeType(requiredFilterValue(plan, INITIATIVE_TYPE_DIMENSION));
-        InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(resolveYear(plan), questionCode);
+        List<String> types = filterValues(plan, INITIATIVE_TYPE_DIMENSION);
+        boolean byType = groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION);
+        int year = resolveYear(plan);
 
-        List<IndicatorDataPoint> data = byCountryDataPoints(fetch.byCountry());
-        return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), data);
+        List<IndicatorDataPoint> data = new ArrayList<>();
+        for (String type : types) {
+            InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(year, questionCodeForInitiativeType(type));
+            fetch.byCountry().forEach((country, status) -> {
+                Map<String, Object> dimensions = new LinkedHashMap<>();
+                dimensions.put(COUNTRY_DIMENSION, country);
+                if (byType) {
+                    dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
+                }
+                data.add(new IndicatorDataPoint(dimensions, status));
+            });
+        }
+        List<String> dimensionKeys = byType
+            ? List.of(COUNTRY_DIMENSION, INITIATIVE_TYPE_DIMENSION) : List.of(COUNTRY_DIMENSION);
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
     }
 
     /**
      * Denominator is that year's raw survey respondent count for this question (matching
      * observatory-ui's own calculatePercentage exactly) — a country with no answer still counts
-     * toward the denominator, it's just not counted as adopting.
+     * toward the denominator, it's just not counted as adopting. Supports a real multi-year trend
+     * (one point per year, like financialInvestment) and — like queryCountryInitiativeStatus — fans
+     * out into one point per initiativeType when the plan groups by it (e.g. "Trends in National Open
+     * Science Policies by Areas": one %-per-year series per policy area, in a single query).
      */
     private IndicatorResult queryEuCountryCoverage(IndicatorExecutionPlan plan) {
+        List<String> types = filterValues(plan, INITIATIVE_TYPE_DIMENSION);
+        boolean byType = groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION);
+
+        List<IndicatorDataPoint> data = new ArrayList<>();
+        for (int year : resolveYears(plan)) {
+            Map<String, Object> periodDimensions = periodDimensions(plan, year);
+            for (String type : types) {
+                InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(year, questionCodeForInitiativeType(type));
+                long adopted = fetch.byCountry().values().stream().filter(STATUS_YES::equals).count();
+                Object value = RatioPercentage.of(adopted, fetch.totalRespondents());
+
+                Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
+                if (byType) {
+                    dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
+                }
+                data.add(new IndicatorDataPoint(dimensions, value));
+            }
+        }
+        List<String> dimensionKeys = byType ? List.of(INITIATIVE_TYPE_DIMENSION) : List.of();
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
+    }
+
+    /**
+     * 4-state (MANDATORY/NON_MANDATORY/NO_POLICY/AWAITING_DATA) counterpart to
+     * queryCountryInitiativeStatus, valid only for "*_POLICY" initiativeType members — combines two
+     * survey answers per country: the base Yes/No policy question, and (only asked when the base
+     * answer was Yes) a nested Yes/No "is this policy mandatory?" question at questionCode + ".1"
+     * (see {@link #mandatoryQuestionCode}). A country that answered No to the base question is
+     * NO_POLICY outright — the mandatory sub-question is skip-logic'd for them in the survey itself,
+     * so a missing answer there does not mean AWAITING_DATA.
+     */
+    private IndicatorResult queryCountryPolicyStatus(IndicatorExecutionPlan plan) {
         String questionCode = questionCodeForInitiativeType(requiredFilterValue(plan, INITIATIVE_TYPE_DIMENSION));
-        InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(resolveYear(plan), questionCode);
+        int year = resolveYear(plan);
 
-        long adopted = fetch.byCountry().values().stream().filter(STATUS_YES::equals).count();
-        Object value = RatioPercentage.of(adopted, fetch.totalRespondents());
+        Map<String, String> baseByCountry = fetchInitiativeStatusByCountry(year, questionCode).byCountry();
+        Map<String, String> mandatoryByCountry = fetchInitiativeStatusByCountry(year, mandatoryQuestionCode(questionCode)).byCountry();
 
-        return buildResult(plan, dimensionKeysFor(List.of(), plan), List.of(new IndicatorDataPoint(Map.of(), value)));
+        List<IndicatorDataPoint> data = baseByCountry.entrySet().stream()
+            .map(entry -> {
+                String country = entry.getKey();
+                String status = switch (entry.getValue()) {
+                    case STATUS_NO -> POLICY_STATUS_NO_POLICY;
+                    case STATUS_AWAITING_DATA -> POLICY_STATUS_AWAITING_DATA;
+                    case STATUS_YES -> switch (mandatoryByCountry.getOrDefault(country, STATUS_AWAITING_DATA)) {
+                        case STATUS_YES -> POLICY_STATUS_MANDATORY;
+                        case STATUS_NO -> POLICY_STATUS_NON_MANDATORY;
+                        default -> POLICY_STATUS_AWAITING_DATA;
+                    };
+                    default -> throw new IllegalStateException("Unexpected base policy status: " + entry.getValue());
+                };
+                return new IndicatorDataPoint(Map.of(COUNTRY_DIMENSION, country), status);
+            })
+            .toList();
+        return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), data);
+    }
+
+    /**
+     * Cross-topic composite for the "National Monitoring (number of monitored areas per country)" /
+     * "National Policies (number of policy areas per country)" rows: for one country, how many of
+     * the 9 real topic areas' "*_MONITORING_INITIATIVE" (or "*_POLICY") initiativeType member did it
+     * answer Yes to — built from {@link #TOPIC_AREAS}, not a naive suffix scan over every
+     * initiativeType member, since e.g. "IMMEDIATE_OA_POLICY" is a Publications-topic variant that
+     * would otherwise double-count that one topic. memberSuffix selects Monitoring vs Policy —
+     * mixing the two into one count wouldn't be a meaningful number. A country not answering a given
+     * area's question simply doesn't contribute a Yes for that area (same "no answer" handling as
+     * everywhere else in this handler) rather than being excluded from the result outright.
+     */
+    private IndicatorResult queryAreasCount(IndicatorExecutionPlan plan, String memberSuffix) {
+        List<String> types = TOPIC_AREAS.stream()
+            .map(topic -> areaMemberKey(topic, memberSuffix))
+            .filter(QUESTION_CODE_BY_INITIATIVE_TYPE::containsKey)
+            .toList();
+        int year = resolveYear(plan);
+
+        Map<String, Long> countByCountry = new LinkedHashMap<>();
+        for (String type : types) {
+            InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(year, questionCodeForInitiativeType(type));
+            fetch.byCountry().forEach((country, status) -> {
+                if (STATUS_YES.equals(status)) {
+                    countByCountry.merge(country, 1L, Long::sum);
+                } else {
+                    countByCountry.putIfAbsent(country, 0L);
+                }
+            });
+        }
+        List<IndicatorDataPoint> data = byCountryDataPoints(countByCountry);
+        return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), data);
     }
 
     /**
@@ -196,30 +349,74 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
      * afterward. One data point per year when a timeSeries range was requested (mirrors
      * OpenAireStatsToolIndicatorQueryHandler's own period-per-year loop), otherwise a single point
      * for the year picked by an explicit surveyYear filter.
+     *
+     * <p>investmentArea is optional: omitted, every area's investment is summed together first
+     * (per country, then across countries per the requested aggregation) — "Total amount of
+     * investments in EOSC and Open Science". Grouping by investmentArea instead fans out into one
+     * point per area — "Investments in EOSC and Open Science (by Open Science area)". Both compose
+     * with country grouping (area x country) the same way country grouping alone already did.
      */
     private IndicatorResult queryFinancialInvestment(IndicatorExecutionPlan plan) {
-        String questionCode = questionCodeForInvestmentArea(requiredFilterValue(plan, INVESTMENT_AREA_DIMENSION));
+        List<String> areas = filterValues(plan, INVESTMENT_AREA_DIMENSION);
+        if (areas.isEmpty()) {
+            areas = List.copyOf(QUESTION_CODE_BY_INVESTMENT_AREA.keySet());
+        }
         boolean byCountry = groupByCodes(plan).contains(COUNTRY_DIMENSION);
+        boolean byArea = groupByCodes(plan).contains(INVESTMENT_AREA_DIMENSION);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
         for (int year : resolveYears(plan)) {
-            Map<String, Double> millionsByCountry = fetchDoublesByCountry(year, questionCode);
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
 
-            if (byCountry) {
-                millionsByCountry.forEach((country, millions) -> {
+            Map<String, Map<String, Double>> millionsByCountryPerArea = new LinkedHashMap<>();
+            Map<String, Double> millionsByCountryAllAreas = new LinkedHashMap<>();
+            for (String area : areas) {
+                Map<String, Double> millionsByCountry = fetchDoublesByCountry(year, questionCodeForInvestmentArea(area));
+                millionsByCountryPerArea.put(area, millionsByCountry);
+                millionsByCountry.forEach((country, millions) -> millionsByCountryAllAreas.merge(country, millions, Double::sum));
+            }
+
+            if (byArea) {
+                for (String area : areas) {
+                    Map<String, Double> millionsByCountry = millionsByCountryPerArea.get(area);
+                    if (byCountry) {
+                        millionsByCountry.forEach((country, millions) -> {
+                            Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
+                            dimensions.put(INVESTMENT_AREA_DIMENSION, area);
+                            dimensions.put(COUNTRY_DIMENSION, country);
+                            data.add(new IndicatorDataPoint(dimensions, toEuros(millions)));
+                        });
+                    } else {
+                        Object aggregated = aggregatedEuros(plan, millionsByCountry);
+                        Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
+                        dimensions.put(INVESTMENT_AREA_DIMENSION, area);
+                        data.add(new IndicatorDataPoint(dimensions, aggregated));
+                    }
+                }
+            } else if (byCountry) {
+                millionsByCountryAllAreas.forEach((country, millions) -> {
                     Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                     dimensions.put(COUNTRY_DIMENSION, country);
                     data.add(new IndicatorDataPoint(dimensions, toEuros(millions)));
                 });
             } else {
-                Double aggregatedMillions = (Double) aggregateNumbers(
-                    plan.aggregation(), selectedValues(plan, millionsByCountry), Double::sum, "oa.financial_investment");
-                Object aggregated = aggregatedMillions == null ? null : toEuros(aggregatedMillions);
-                data.add(new IndicatorDataPoint(periodDimensions, aggregated));
+                data.add(new IndicatorDataPoint(periodDimensions, aggregatedEuros(plan, millionsByCountryAllAreas)));
             }
         }
-        return buildResult(plan, dimensionKeysFor(byCountry ? List.of(COUNTRY_DIMENSION) : List.of(), plan), data);
+        List<String> dimensionKeys = new ArrayList<>();
+        if (byArea) {
+            dimensionKeys.add(INVESTMENT_AREA_DIMENSION);
+        }
+        if (byCountry) {
+            dimensionKeys.add(COUNTRY_DIMENSION);
+        }
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
+    }
+
+    private Object aggregatedEuros(IndicatorExecutionPlan plan, Map<String, Double> millionsByCountry) {
+        Double aggregatedMillions = (Double) aggregateNumbers(
+            plan.aggregation(), selectedValues(plan, millionsByCountry), Double::sum, "oa.financial_investment");
+        return aggregatedMillions == null ? null : toEuros(aggregatedMillions);
     }
 
     private Map<String, Double> fetchDoublesByCountry(int year, String questionCode) {
@@ -280,6 +477,19 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             }
         }
         return byCountry;
+    }
+
+    /**
+     * OA_PUBLICATION's monitoring member predates the topic-prefixed naming convention every other
+     * topic uses ("MONITORING_INITIATIVE", not "OA_PUBLICATION_MONITORING_INITIATIVE") — kept as-is
+     * rather than renamed, since that vocabulary is already live elsewhere (dimension search,
+     * observatory-ui). This maps a topic + suffix to the initiativeType key that actually exists.
+     */
+    private static String areaMemberKey(String topic, String suffix) {
+        if (topic.equals("OA_PUBLICATION") && suffix.equals("_MONITORING_INITIATIVE")) {
+            return "MONITORING_INITIATIVE";
+        }
+        return topic + suffix;
     }
 
     private static List<String> groupByCodes(IndicatorExecutionPlan plan) {
@@ -348,6 +558,16 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             throw new IllegalStateException("No survey question mapped for initiativeType: " + initiativeType);
         }
         return questionCode;
+    }
+
+    /**
+     * A "*_POLICY" initiativeType member's nested "Is this policy mandatory?" sub-question is always
+     * questionCode + ".1" (e.g. Question18 -> Question18.1, Question6 -> Question6.1) — confirmed
+     * live for every "*_POLICY" member against both the 2022 and 2023 survey years. Only meaningful
+     * for policy questions — callers are expected to only pass a "*_POLICY" member's questionCode.
+     */
+    private static String mandatoryQuestionCode(String policyQuestionCode) {
+        return policyQuestionCode + ".1";
     }
 
     private String questionCodeForInvestmentArea(String investmentArea) {

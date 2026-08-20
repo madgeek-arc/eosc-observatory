@@ -279,12 +279,19 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     private SurveyStatsToolIndicatorQueryHandler handlerReturning(String responseJson) {
+        return handlerReturningEachInTurn(List.of(responseJson));
+    }
+
+    /** Each call to the stubbed client returns the next response in order — for tests needing distinct answers per fetch (e.g. countryPolicyStatus's base + mandatory sub-question). The last response repeats once the list is exhausted. */
+    private SurveyStatsToolIndicatorQueryHandler handlerReturningEachInTurn(List<String> responseJsonInOrder) {
+        List<String> queue = new ArrayList<>(responseJsonInOrder);
         WebClient.Builder builder = WebClient.builder().exchangeFunction(request -> {
             String rawJson = request.url().getRawQuery().substring("json=".length());
             capturedRequests.add(URLDecoder.decode(rawJson, StandardCharsets.UTF_8));
+            String body = queue.size() > 1 ? queue.remove(0) : queue.get(0);
             ClientResponse response = ClientResponse.create(HttpStatus.OK)
                 .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                .body(responseJson)
+                .body(body)
                 .build();
             return Mono.just(response);
         });
@@ -328,18 +335,20 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         );
     }
 
+    private static IndicatorDimensionBinding initiativeTypeFilterGroupBinding() {
+        return new IndicatorDimensionBinding(
+            IndicatorCodes.INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+            Set.of(FilterOperator.EQ, FilterOperator.IN), true
+        );
+    }
+
     private static IndicatorDefinition countryInitiativeStatusDefinition() {
         return new IndicatorDefinition(
             UUID.randomUUID(), IndicatorCodes.COUNTRY_INITIATIVE_STATUS, "Country Initiative Status", "desc", "Publications",
-            IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
-            Set.of(
-                new IndicatorDimensionBinding(
-                    IndicatorCodes.INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
-                ),
-                surveyYearBinding()
-            ),
+            Set.of(initiativeTypeFilterGroupBinding(), surveyYearBinding()),
             timePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.COUNTRY_INITIATIVE_STATUS),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
@@ -352,6 +361,19 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
+            Set.of(initiativeTypeFilterGroupBinding(), optionalSurveyYearBinding()),
+            trendTimePolicy(),
+            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.EU_COUNTRY_COVERAGE),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    private static IndicatorDefinition countryPolicyStatusDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), IndicatorCodes.COUNTRY_POLICY_STATUS, "Country Policy Status", "desc", "Publications",
+            IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            null,
             Set.of(
                 new IndicatorDimensionBinding(
                     IndicatorCodes.INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
@@ -359,9 +381,39 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
                 surveyYearBinding()
             ),
             timePolicy(),
-            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.EU_COUNTRY_COVERAGE),
+            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.COUNTRY_POLICY_STATUS),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
+    }
+
+    private static IndicatorDefinition monitoredAreasCountDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), IndicatorCodes.MONITORED_AREAS_COUNT, "Monitored Areas Count", "desc", "National Monitoring",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.ENTITY_MAP,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            null,
+            Set.of(surveyYearBinding()),
+            timePolicy(),
+            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.MONITORED_AREAS_COUNT),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    private static IndicatorDefinition policyAreasCountDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), IndicatorCodes.POLICY_AREAS_COUNT, "Policy Areas Count", "desc", "Open Science Policies",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.ENTITY_MAP,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            null,
+            Set.of(surveyYearBinding()),
+            timePolicy(),
+            new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.POLICY_AREAS_COUNT),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    private static IndicatorDefinition softwareOpenSourceSetsCountDefinition() {
+        return countByQuestionDefinition(IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT, "Open-Source Software Sets Published");
     }
 
     private static IndicatorDefinition financialInvestmentDefinition() {
@@ -381,7 +433,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
                 ),
                 optionalSurveyYearBinding(),
                 new IndicatorDimensionBinding(
-                    IndicatorCodes.INVESTMENT_AREA_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
+                    IndicatorCodes.INVESTMENT_AREA_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
                 )
             ),
             trendTimePolicy(),
@@ -468,5 +521,139 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION), List.of(), null, AggregationType.MEDIAN));
 
         assertThat(result.data().get(0).value()).isEqualTo(20_000_000.0);
+    }
+
+    @Test
+    void financialInvestmentWithoutInvestmentAreaSumsEveryArea() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}");
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
+
+        // 8 investmentArea members, each contributing FI=10M from the stubbed response -> 80M summed.
+        assertThat(capturedRequests).hasSize(8);
+        assertThat(result.dimensions()).isEmpty();
+        assertThat(result.data().get(0).value()).isEqualTo(80_000_000.0);
+    }
+
+    @Test
+    void financialInvestmentGroupedByInvestmentAreaReturnsOnePointPerArea() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.INVESTMENT_AREA_DIMENSION));
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.INVESTMENT_AREA_DIMENSION, FilterOperator.IN, List.of("OA_PUBLICATION", "OPEN_DATA")),
+            SURVEY_YEAR_2023
+        );
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), filters, groupBy, null, AggregationType.SUM));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.INVESTMENT_AREA_DIMENSION);
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).allSatisfy(dp -> assertThat(dp.value()).isEqualTo(10_000_000.0));
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.INVESTMENT_AREA_DIMENSION))
+            .containsExactlyInAnyOrder("OA_PUBLICATION", "OPEN_DATA");
+    }
+
+    @Test
+    void countryInitiativeStatusGroupedByInitiativeTypeReturnsOneRowPerCountryPerType() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION));
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.IN, List.of("OA_PUBLICATION_POLICY", "OPEN_DATA_POLICY")),
+            SURVEY_YEAR_2023
+        );
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, groupBy, null, AggregationType.NONE));
+
+        assertThat(capturedRequests).hasSize(2);
+        assertThat(result.dimensions()).containsExactlyInAnyOrder(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+        assertThat(result.data()).hasSize(4);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+            assertThat(dp.dimensions().get(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)).isEqualTo("OPEN_DATA_POLICY");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_YES);
+        });
+    }
+
+    @Test
+    void euCountryCoverageGroupedByInitiativeTypeAndTrendedReturnsOnePercentPerYearPerType() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION));
+        var filters = List.of(new ResolvedFilter(
+            IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.IN, List.of("OA_PUBLICATION_POLICY", "OPEN_DATA_POLICY")));
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.ZERO_FILL);
+
+        var result = handler.execute(plan(euCountryCoverageDefinition(), filters, groupBy, timeRange, AggregationType.NONE));
+
+        assertThat(capturedRequests).hasSize(4);
+        assertThat(result.dimensions()).containsExactlyInAnyOrder("period", IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+        assertThat(result.data()).hasSize(4);
+        assertThat(result.data()).allSatisfy(dp -> assertThat(dp.value()).isEqualTo(50.0));
+    }
+
+    @Test
+    void countryPolicyStatusCombinesBaseAndMandatoryAnswers() {
+        // GR: Yes+Yes -> MANDATORY. DE: Yes+No -> NON_MANDATORY. FR: No (mandatory not asked) -> NO_POLICY. IT: no answer -> AWAITING_DATA.
+        var handler = handlerReturningEachInTurn(List.of(
+            "{\"datasets\":[{\"series\":{\"result\":["
+                + "{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"Yes\"]},{\"row\":[\"FR\",\"No\"]},{\"row\":[\"IT\",null]}"
+                + "]}}]}",
+            "{\"datasets\":[{\"series\":{\"result\":["
+                + "{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}"
+                + "]}}]}"
+        ));
+        var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023);
+
+        var result = handler.execute(plan(countryPolicyStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(capturedRequests).hasSize(2);
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question6\"");
+        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.2023.Question6.1\"");
+        assertThat(result.data()).hasSize(4);
+        assertThat(valueFor(result, "GR")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_MANDATORY);
+        assertThat(valueFor(result, "DE")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NON_MANDATORY);
+        assertThat(valueFor(result, "FR")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NO_POLICY);
+        assertThat(valueFor(result, "IT")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_AWAITING_DATA);
+    }
+
+    private static Object valueFor(eu.openaire.observatory.indicator.result.IndicatorResult result, String country) {
+        return result.data().stream()
+            .filter(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION).equals(country))
+            .findFirst().orElseThrow().value();
+    }
+
+    @Test
+    void monitoredAreasCountSumsYesAnswersAcrossEveryMonitoringMember() {
+        // Every request returns the same GR=Yes/DE=No pair regardless of which monitoring question was asked.
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+
+        var result = handler.execute(plan(monitoredAreasCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.NONE));
+
+        // 9 real topic areas each have a "*_MONITORING_INITIATIVE" member -> GR answers Yes to all 9, DE to none.
+        assertThat(capturedRequests).hasSize(9);
+        assertThat(valueFor(result, "GR")).isEqualTo(9L);
+        assertThat(valueFor(result, "DE")).isEqualTo(0L);
+    }
+
+    @Test
+    void policyAreasCountSumsYesAnswersAcrossEveryPolicyMember() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+
+        var result = handler.execute(plan(policyAreasCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.NONE));
+
+        // 9 real topic areas each have a "*_POLICY" member (IMMEDIATE_OA_POLICY is a Publications
+        // variant, not counted separately) -> GR answers Yes to all 9, DE to none.
+        assertThat(capturedRequests).hasSize(9);
+        assertThat(valueFor(result, "GR")).isEqualTo(9L);
+        assertThat(valueFor(result, "DE")).isEqualTo(0L);
+    }
+
+    @Test
+    void softwareOpenSourceSetsCountUsesQuestion73() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"14\"]}]}}]}");
+
+        handler.execute(plan(softwareOpenSourceSetsCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
+
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question73\"");
     }
 }

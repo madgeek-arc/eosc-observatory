@@ -20,7 +20,12 @@ public class InvestmentAreaDimensionMemberProvider implements DimensionMemberPro
     private static final List<DimensionMember> MEMBERS = List.of(
         new DimensionMember("OA_PUBLICATION", "Financial Investment in OA Publication"),
         new DimensionMember("OPEN_DATA", "Financial Investment in Open Data"),
-        new DimensionMember("FAIR_DATA", "Financial Investment in FAIR Data")
+        new DimensionMember("FAIR_DATA", "Financial Investment in FAIR Data"),
+        new DimensionMember("DATA_MANAGEMENT", "Financial Investment in Data Management"),
+        new DimensionMember("CITIZEN_SCIENCE", "Financial Investment in Citizen Science"),
+        new DimensionMember("REPOSITORIES_CONNECT", "Financial Investment in Connecting Repositories to EOSC"),
+        new DimensionMember("TRAINING", "Financial Investment in Skills/Training for Open Science"),
+        new DimensionMember("SOFTWARE", "Financial Investment in Open-Source Software")
     );
 
     @Override

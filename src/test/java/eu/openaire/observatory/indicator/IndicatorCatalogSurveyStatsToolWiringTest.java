@@ -22,14 +22,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Confirms the catalog wiring for the 5 survey-stats-tool-backed indicators:
- * oa.country_initiative_status and oa.eu_country_coverage both require an initiativeType filter
- * (there is no meaningful value without picking which initiative the Yes/No/percentage refers
- * to); repositories.long_term_preservation_count and citizen_science.new_projects_count are
- * plain country-filterable/groupable counts, the same shape as oa.financial_investment. All 5
- * route to the survey handler, not the OpenAIRE one. oa.country_initiative_status and
- * oa.eu_country_coverage require a surveyYear filter (there's no "latest survey" concept to
- * default to) and reject timeSeries outright; the other 3 support a real multi-year trend, so
+ * Confirms the catalog wiring for the survey-stats-tool-backed indicators: oa.country_initiative_status,
+ * oa.eu_country_coverage, and oa.country_policy_status all require an initiativeType filter (there
+ * is no meaningful value without picking which initiative the status/percentage refers to);
+ * repositories.long_term_preservation_count, citizen_science.new_projects_count, and
+ * software.open_source_sets_count are plain country-filterable/groupable counts, the same shape as
+ * oa.financial_investment. oa.country_initiative_status and oa.country_policy_status require a
+ * surveyYear filter (there's no "latest survey" concept to default to) and reject timeSeries
+ * outright; oa.eu_country_coverage and the 3 count indicators support a real multi-year trend, so
  * surveyYear is optional for them and timeSeries is accepted instead.
  */
 class IndicatorCatalogSurveyStatsToolWiringTest {
@@ -95,8 +95,8 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE})
-    void surveyYearFilterIsRequiredOnTheTwoNonTrendSurveyIndicators(String indicatorCode) {
+    @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS})
+    void surveyYearFilterIsRequiredOnTheTwoNonTrendPerCountryIndicators(String indicatorCode) {
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
             .build();
@@ -106,8 +106,11 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT})
-    void surveyYearFilterIsOptionalOnTheTwoTrendCapableCountIndicators(String indicatorCode) {
+    @ValueSource(strings = {
+        IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
+        IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT
+    })
+    void surveyYearFilterIsOptionalOnTheThreeTrendCapableCountIndicators(String indicatorCode) {
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
             .build();
@@ -119,26 +122,39 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     }
 
     @Test
-    void surveyYearFilterIsOptionalButInvestmentAreaIsRequiredOnFinancialInvestment() {
-        var missingInvestmentArea = IndicatorQueryBuilder.forIndicator(IndicatorCodes.FINANCIAL_INVESTMENT)
+    void euCountryCoverageSurveyYearFilterIsOptionalAndTimeSeriesIsAccepted() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
+            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
             .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
             .build();
-        assertThatThrownBy(() -> validator.compile(missingInvestmentArea, ALLOW_ALL))
-            .isInstanceOf(MissingRequiredFilterException.class);
 
-        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.FINANCIAL_INVESTMENT)
-            .withFilters(new IndicatorFilter(IndicatorCodes.INVESTMENT_AREA_DIMENSION, FilterOperator.EQ, List.of("OPEN_DATA")))
-            .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
-            .build();
         var plan = validator.compile(query, ALLOW_ALL);
 
-        assertThat(plan.filters()).extracting("dimensionCode").containsExactly(IndicatorCodes.INVESTMENT_AREA_DIMENSION);
         assertThat(plan.timeRange()).isNotNull();
     }
 
+    @Test
+    void investmentAreaIsOptionalOnFinancialInvestment() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.FINANCIAL_INVESTMENT)
+            .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
+            .build();
+        var plan = validator.compile(query, ALLOW_ALL);
+        assertThat(plan.filters()).isEmpty();
+        assertThat(plan.timeRange()).isNotNull();
+
+        var scopedQuery = IndicatorQueryBuilder.forIndicator(IndicatorCodes.FINANCIAL_INVESTMENT)
+            .withFilters(new IndicatorFilter(IndicatorCodes.INVESTMENT_AREA_DIMENSION, FilterOperator.EQ, List.of("OPEN_DATA")))
+            .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
+            .build();
+        var scopedPlan = validator.compile(scopedQuery, ALLOW_ALL);
+
+        assertThat(scopedPlan.filters()).extracting("dimensionCode").containsExactly(IndicatorCodes.INVESTMENT_AREA_DIMENSION);
+        assertThat(scopedPlan.timeRange()).isNotNull();
+    }
+
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE})
-    void timeSeriesIsRejectedOnTheTwoNonTrendSurveyIndicators(String indicatorCode) {
+    @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS})
+    void timeSeriesIsRejectedOnTheTwoNonTrendPerCountryIndicators(String indicatorCode) {
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withFilters(
                 new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
@@ -152,8 +168,11 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT})
-    void timeSeriesIsAcceptedOnTheTwoTrendCapableCountIndicators(String indicatorCode) {
+    @ValueSource(strings = {
+        IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
+        IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT
+    })
+    void timeSeriesIsAcceptedOnTheThreeTrendCapableCountIndicators(String indicatorCode) {
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
             .build();
@@ -165,17 +184,16 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     }
 
     @Test
-    void allFiveSurveyIndicatorsRouteToTheSurveyStatsToolHandler() {
-        assertThat(catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).executionBinding().handlerKey())
-            .isEqualTo(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY);
-        assertThat(catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).executionBinding().handlerKey())
-            .isEqualTo(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY);
-        assertThat(catalog.get(IndicatorCodes.EU_COUNTRY_COVERAGE).executionBinding().handlerKey())
-            .isEqualTo(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY);
-        assertThat(catalog.get(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT).executionBinding().handlerKey())
-            .isEqualTo(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY);
-        assertThat(catalog.get(IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT).executionBinding().handlerKey())
-            .isEqualTo(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY);
+    void allSurveyIndicatorsRouteToTheSurveyStatsToolHandler() {
+        for (String code : List.of(
+                IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
+                IndicatorCodes.COUNTRY_POLICY_STATUS, IndicatorCodes.MONITORED_AREAS_COUNT, IndicatorCodes.POLICY_AREAS_COUNT,
+                IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
+                IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT)) {
+            assertThat(catalog.get(code).executionBinding().handlerKey())
+                .as("handler for %s", code)
+                .isEqualTo(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY);
+        }
     }
 
     @Test

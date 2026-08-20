@@ -16,19 +16,21 @@ class IndicatorCatalogTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
 
     @Test
-    void containsAllThirteenRealDefinitions() {
-        assertThat(catalog.getAll()).hasSize(13);
+    void containsAllSeventeenRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(17);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
             IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT, IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE,
             IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
+            IndicatorCodes.COUNTRY_POLICY_STATUS, IndicatorCodes.MONITORED_AREAS_COUNT, IndicatorCodes.POLICY_AREAS_COUNT,
             IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
+            IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT,
             IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT
         );
     }
 
     @Test
-    void financialInvestmentIsCountryFilterableAndGroupableWithOptionalSurveyYearFilterAndRequiredInvestmentAreaFilter() {
+    void financialInvestmentIsCountryAndInvestmentAreaFilterableAndGroupableWithOptionalSurveyYearFilter() {
         var bindings = catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
             .containsExactlyInAnyOrder(
@@ -45,8 +47,45 @@ class IndicatorCatalogTest {
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INVESTMENT_AREA_DIMENSION))
             .extracting("requiredFilter")
-            .containsExactly(true);
+            .containsExactly(false);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INVESTMENT_AREA_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
         assertThat(catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).timePolicy().supported()).isTrue();
+    }
+
+    @Test
+    void countryPolicyStatusRequiresInitiativeTypeAndSurveyYearFilters() {
+        var bindings = catalog.get(IndicatorCodes.COUNTRY_POLICY_STATUS).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode")
+            .containsExactlyInAnyOrder(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+        assertThat(catalog.get(IndicatorCodes.COUNTRY_POLICY_STATUS).timePolicy().supported()).isFalse();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.MONITORED_AREAS_COUNT, IndicatorCodes.POLICY_AREAS_COUNT})
+    void areaCountIndicatorsRequireOnlySurveyYearFilter(String indicatorCode) {
+        var bindings = catalog.get(indicatorCode).dimensionBindings();
+        assertThat(bindings).extracting("dimensionCode").containsExactly(IndicatorCodes.SURVEY_YEAR_DIMENSION);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(true);
+        assertThat(catalog.get(indicatorCode).renderHint()).isEqualTo(RenderHint.ENTITY_MAP);
+    }
+
+    @Test
+    void softwareOpenSourceSetsCountIsDistinctFromSoftwareCount() {
+        assertThat(catalog.get(IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT)).isNotNull();
+        assertThat(catalog.get(IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT).executionBinding().handlerKey())
+            .isEqualTo("survey-stats-tool");
+        assertThat(catalog.get(IndicatorCodes.SOFTWARE_COUNT).executionBinding().handlerKey())
+            .isEqualTo("openaire-stats-tool");
     }
 
     @Test
@@ -65,7 +104,7 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void euCountryCoverageRequiresInitiativeTypeAndSurveyYearFilters() {
+    void euCountryCoverageRequiresInitiativeTypeFilterWithOptionalSurveyYearFilter() {
         var definition = catalog.get(IndicatorCodes.EU_COUNTRY_COVERAGE);
         assertThat(definition.dimensionBindings()).extracting("dimensionCode")
             .containsExactlyInAnyOrder(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
@@ -74,9 +113,14 @@ class IndicatorCatalogTest {
             .extracting("requiredFilter")
             .containsExactly(true);
         assertThat(definition.dimensionBindings())
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
+        assertThat(definition.dimensionBindings())
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")
-            .containsExactly(true);
+            .containsExactly(false);
+        assertThat(definition.timePolicy().supported()).isTrue();
     }
 
     @Test
@@ -241,22 +285,22 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void nineDefinitionsSupportTimeSeries() {
+    void elevenDefinitionsSupportTimeSeries() {
         Set<String> timeSeriesCapable = Set.of(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
             IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT, IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE,
-            IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.LONG_TERM_PRESERVATION_COUNT,
-            IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT
+            IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.EU_COUNTRY_COVERAGE, IndicatorCodes.LONG_TERM_PRESERVATION_COUNT,
+            IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT
         );
 
         assertThat(catalog.getAll())
             .filteredOn(definition -> timeSeriesCapable.contains(definition.code()))
-            .hasSize(9)
+            .hasSize(11)
             .allMatch(definition -> definition.timePolicy().supported());
 
         assertThat(catalog.getAll())
             .filteredOn(definition -> !timeSeriesCapable.contains(definition.code()))
-            .hasSize(4)
+            .hasSize(6)
             .noneMatch(definition -> definition.timePolicy().supported());
     }
 

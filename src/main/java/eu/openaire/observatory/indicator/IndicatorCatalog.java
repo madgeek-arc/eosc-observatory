@@ -37,6 +37,7 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.CLASSIFICATION_DI
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_INITIATIVE_STATUS;
+import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_POLICY_STATUS;
 import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.EU_COUNTRY_COVERAGE;
@@ -47,10 +48,13 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.GREEN_OA_DIMENSIO
 import static eu.openaire.observatory.indicator.IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.INVESTMENT_AREA_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.LONG_TERM_PRESERVATION_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.MONITORED_AREAS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.OA_LICENSE_STATUS_DIMENSION;
+import static eu.openaire.observatory.indicator.IndicatorCodes.POLICY_AREAS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_ID_DIMENSION;
@@ -58,9 +62,9 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_YEAR_DIMEN
 
 /**
  * In-memory catalog of real indicator definitions. Not a stand-in for a future persistence layer
- * — the 13 definitions it holds today are all real: 6 route to OpenAireStatsToolIndicatorQueryHandler
+ * — the 17 definitions it holds today are all real: 6 route to OpenAireStatsToolIndicatorQueryHandler
  * (OpenAIRE data — publications.oa_license_status_count is the europe_monitor-profiled outlier of
- * the 6, the other 5 use the default openaire_stats profile), 5 route to
+ * the 6, the other 5 use the default openaire_stats profile), 9 route to
  * SurveyStatsToolIndicatorQueryHandler (survey stats-tool data, scoped to survey years 2022+ — see
  * that handler's Javadoc for why 2021 is excluded), and 2 route to
  * LocalRegistryIndicatorQueryHandler (no external HTTP call at all — wraps
@@ -175,8 +179,9 @@ public class IndicatorCatalog {
         return List.of(
             publicationsCount(), publicationsAccessStatusShare(), datasetsCount(), softwareCount(),
             publicationsOaLicenseStatusCount(), datasetsAccessStatusShare(),
-            financialInvestment(), countryInitiativeStatus(), euCountryCoverage(),
-            longTermPreservationCount(), citizenScienceNewProjectsCount(),
+            financialInvestment(), countryInitiativeStatus(), euCountryCoverage(), countryPolicyStatus(),
+            monitoredAreasCount(), policyAreasCount(),
+            longTermPreservationCount(), citizenScienceNewProjectsCount(), softwareOpenSourceSetsCount(),
             countriesWithValidatedAnswers(), stakeholderParticipatingCountriesCount()
         );
     }
@@ -359,55 +364,123 @@ public class IndicatorCatalog {
     }
 
     /**
-     * Legacy id 69 — "Financial investments in OA Publication", generalized to a required
-     * investmentArea filter so the same indicator serves every topic area's financial-investment
-     * question (survey Question56/68/64 for OA_PUBLICATION/OPEN_DATA/FAIR_DATA — see
-     * SurveyStatsToolIndicatorQueryHandler.QUESTION_CODE_BY_INVESTMENT_AREA) rather than being
-     * OA-Publication-only. SurveyStatsToolIndicatorQueryHandler applies the ×1,000,000 scale so the
-     * returned value is in euros. Filterable/groupable by country (absent country filter aggregates
-     * all countries with an answer, per the requested AggregationPolicy — SUM by default). Supports
-     * a real multi-year trend: a timeSeries request fetches one point per year; without one, the
-     * (optional, not required) surveyYear filter picks a single year.
+     * Legacy id 69 — "Financial investments in OA Publication", generalized to an optional,
+     * groupable investmentArea filter so the same indicator serves every topic area's
+     * financial-investment question (survey Question56/68/64/60/100/80/92/72 for
+     * OA_PUBLICATION/OPEN_DATA/FAIR_DATA/DATA_MANAGEMENT/CITIZEN_SCIENCE/REPOSITORIES_CONNECT/
+     * TRAINING/SOFTWARE — see SurveyStatsToolIndicatorQueryHandler.QUESTION_CODE_BY_INVESTMENT_AREA)
+     * rather than being OA-Publication-only. SurveyStatsToolIndicatorQueryHandler applies the
+     * ×1,000,000 scale so the returned value is in euros. Filterable/groupable by country (absent
+     * country filter aggregates all countries with an answer, per the requested AggregationPolicy —
+     * SUM by default). Also filterable/groupable by investmentArea: an absent filter sums every
+     * area together first ("Total amount of investments in EOSC and Open Science" — legacy id 63),
+     * grouping by it instead fans out into one point per area ("...by Open Science area" — legacy id
+     * 64); both compose with country grouping the same way country grouping alone already did.
+     * Supports a real multi-year trend: a timeSeries request fetches one point per year; without
+     * one, the (optional) surveyYear filter picks a single year.
      */
     private static IndicatorDefinition financialInvestment() {
         return definition(
             FINANCIAL_INVESTMENT, "Financial Investment",
-            "Reported financial investment in the given topic area (survey Question56/68/64 for "
-                + "OA_PUBLICATION/OPEN_DATA/FAIR_DATA), in euros. Survey values are collected in "
-                + "millions of euros — this indicator applies an explicit x1,000,000 scale before "
-                + "returning a value, so the returned number is already in euros, not millions. The "
-                + "investmentArea filter is required — there is no meaningful value without "
-                + "specifying which topic area's investment to measure.",
+            "Reported financial investment in the given topic area(s), in euros. Survey values are "
+                + "collected in millions of euros — this indicator applies an explicit x1,000,000 "
+                + "scale before returning a value, so the returned number is already in euros, not "
+                + "millions. The investmentArea filter is optional: omitted, every area's investment "
+                + "is summed together; grouping by investmentArea instead returns one point per area.",
             GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
-            Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION), requiredEqFilterBinding(INVESTMENT_AREA_DIMENSION)),
+            Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION), filterableGroupableBinding(INVESTMENT_AREA_DIMENSION)),
             TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
     /**
      * Legacy ids 73/74 — "National policy"/"National monitoring on OA Publication", collapsed
-     * behind a required initiativeType filter (fixed 4-value enum — see
-     * InitiativeTypeDimensionMemberProvider). Per-country status, always one row per answering
-     * country — country grouping is mandatory for this indicator to render, not optional, so
-     * there is no country dimension binding at all (unlike the MEASURE/RATIO indicators above). A
-     * single survey year, not a real time series — the required surveyYear filter picks it.
+     * behind a required initiativeType filter (EQ for a single area, IN for several — fixed enum,
+     * see InitiativeTypeDimensionMemberProvider). Per-country status, always one row per
+     * answering country; grouping by initiativeType additionally fans out one row per (country,
+     * initiativeType) pair — this is how the "National Monitoring/Policies of Open Science by
+     * Countries and Areas" country x area matrix (legacy ids 68/74) is served: a flat list of
+     * triples the caller pivots into a matrix table, no dedicated matrix RenderHint needed. A single
+     * survey year, not a real time series — the required surveyYear filter picks it.
      *
      * <p>Three-valued (YES/NO/AWAITING_DATA), not boolean: the underlying survey question is a flat
      * Yes/No radio field with no richer status, so a country that hasn't answered is reported as
      * AWAITING_DATA rather than silently dropped — see
      * SurveyStatsToolIndicatorQueryHandler.fetchInitiativeStatusByCountry. This does not stretch to
-     * a 4-state Mandatory/Policy-but-not-mandatory/No-policy/Awaiting-data model — that distinction
-     * does not exist anywhere in the source survey data.
+     * a 4-state Mandatory/Policy-but-not-mandatory/No-policy/Awaiting-data model for "*_POLICY"
+     * members — see countryPolicyStatus() for that.
      */
     private static IndicatorDefinition countryInitiativeStatus() {
         return definition(
             COUNTRY_INITIATIVE_STATUS, "Country Initiative Status",
             "Per-country adoption status (YES, NO, or AWAITING_DATA for a country that hasn't "
-                + "answered yet) of a national OA initiative, for a given initiativeType (survey "
-                + "Question6/Question6.3/Question7/Question54, one per initiativeType value). No "
-                + "aggregation — always one status per answering-or-pending country.",
+                + "answered yet) of a national initiative, for the given initiativeType(s) — one "
+                + "status per (country, initiativeType) pair when grouped by initiativeType, "
+                + "otherwise a single initiativeType is required. No aggregation — always one status "
+                + "per answering-or-pending country.",
+            GROUP_LABEL, IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            NO_AGGREGATION_POLICY,
+            null,
+            Set.of(initiativeTypeFilterGroupBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
+            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * Legacy ids 68/70/71/72 — "EU Countries with Policy/Immediate-OA-Policy/Financial-Strategy/
+     * Monitoring on OA Publication", collapsed behind a required initiativeType filter (EQ for a
+     * single area, IN for several). Two views over the same per-country fact as
+     * countryInitiativeStatus() — the handler shares one data-access call between them.
+     * Intrinsically EU-aggregate-only: no country binding, unlike publications.access_status_share.
+     *
+     * <p>Supports a real multi-year trend (a timeSeries request fetches one point per year, like
+     * financialInvestment; the surveyYear filter is optional, not required) and fans out one point
+     * per initiativeType when grouped by it — combined, this is how "Trends in National Open Science
+     * Policies/Financial-Strategy by Areas" (legacy ids 59/60/69/70) is served: one %-per-year series
+     * per area, in a single query.
+     */
+    private static IndicatorDefinition euCountryCoverage() {
+        return definition(
+            EU_COUNTRY_COVERAGE, "EU Country Coverage",
+            "Percentage of that year's survey respondents with a Yes on the given initiativeType's "
+                + "national initiative question, out of all respondents to that question that year "
+                + "(matches observatory-ui's own calculation exactly, including any non-EU "
+                + "respondents present in the survey). A country with no answer to this specific "
+                + "question still counts toward the denominator, just not as a Yes. One point per "
+                + "initiativeType when grouped by it; a real multi-year trend when a timeSeries range "
+                + "is requested.",
+            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            NO_AGGREGATION_POLICY,
+            new RatioPolicy(ZeroDenominatorHandling.NULL),
+            Set.of(initiativeTypeFilterGroupBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * 4-state (MANDATORY/NON_MANDATORY/NO_POLICY/AWAITING_DATA) counterpart to
+     * countryInitiativeStatus(), for the "National Policy on X" rows (legacy ids 7/15/22/28/35/42/
+     * 44/50/57/72) that ask for a Mandatory/Policy-but-not-mandatory/No-policy/Awaiting-data
+     * breakdown — unlike the original assessment (a now-deleted planning doc found only flat Yes/No
+     * policy questions), every "*_POLICY" initiativeType member does carry a nested "Is this policy
+     * mandatory?" sub-question, live-verified against both the 2022 and 2023 survey years — see
+     * SurveyStatsToolIndicatorQueryHandler.queryCountryPolicyStatus. Only valid for "*_POLICY"
+     * members — passing a "*_FINANCIAL_STRATEGY"/"*_MONITORING_INITIATIVE" member has no mandatory
+     * sub-question to combine with and is a caller error, not validated here (same as
+     * countryInitiativeStatus() trusting its initiativeType filter value).
+     */
+    private static IndicatorDefinition countryPolicyStatus() {
+        return definition(
+            COUNTRY_POLICY_STATUS, "Country Policy Status",
+            "Per-country policy status (MANDATORY, NON_MANDATORY, NO_POLICY, or AWAITING_DATA for a "
+                + "country that hasn't answered yet) for the given \"*_POLICY\" initiativeType. "
+                + "Combines that policy's base Yes/No question with its nested \"is this policy "
+                + "mandatory?\" sub-question — a country with no policy is NO_POLICY outright (the "
+                + "mandatory sub-question is skip-logic'd for them in the survey itself, not a "
+                + "missing answer). No aggregation — always one status per answering-or-pending "
+                + "country.",
             GROUP_LABEL, IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
@@ -417,25 +490,41 @@ public class IndicatorCatalog {
     }
 
     /**
-     * Legacy ids 68/70/71/72 — "EU Countries with Policy/Immediate-OA-Policy/Financial-Strategy/
-     * Monitoring on OA Publication", collapsed behind a required initiativeType filter. Two views
-     * over the same per-country fact as countryInitiativeStatus() — the handler shares one
-     * data-access call between them. Intrinsically EU-aggregate-only: no country binding, unlike
-     * publications.access_status_share. A single survey year, not a real time series — the
-     * required surveyYear filter picks it.
+     * Legacy id 66 — "National Monitoring (number of monitored areas per country)": for one
+     * country, how many of every "*_MONITORING_INITIATIVE" initiativeType member did it answer Yes
+     * to, out of all 9 topic areas. No initiativeType filter — the subset is fixed by this
+     * indicator's own code, unlike countryInitiativeStatus()/euCountryCoverage(). Always one row
+     * per country, same as countryInitiativeStatus() — no aggregation.
      */
-    private static IndicatorDefinition euCountryCoverage() {
+    private static IndicatorDefinition monitoredAreasCount() {
         return definition(
-            EU_COUNTRY_COVERAGE, "EU Country Coverage",
-            "Percentage of that year's survey respondents with a Yes on the given initiativeType's "
-                + "national initiative question, out of all respondents to that question that year "
-                + "(matches observatory-ui's own calculation exactly, including any non-EU "
-                + "respondents present in the survey). A country with no answer to this specific "
-                + "question still counts toward the denominator, just not as a Yes.",
-            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            MONITORED_AREAS_COUNT, "Monitored Areas Count",
+            "Per-country count of topic areas (out of every \"*_MONITORING_INITIATIVE\" "
+                + "initiativeType member) with a Yes national-monitoring-initiative answer that "
+                + "year. No aggregation — always one count per country.",
+            "National Monitoring", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
-            new RatioPolicy(ZeroDenominatorHandling.NULL),
-            Set.of(requiredEqFilterBinding(INITIATIVE_TYPE_DIMENSION), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
+            null,
+            Set.of(requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
+            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * Legacy id 71 — "National Policies (number of policy areas per country)", the policy-side
+     * counterpart to monitoredAreasCount(): for one country, how many of every "*_POLICY"
+     * initiativeType member did it answer Yes to.
+     */
+    private static IndicatorDefinition policyAreasCount() {
+        return definition(
+            POLICY_AREAS_COUNT, "Policy Areas Count",
+            "Per-country count of topic areas (out of every \"*_POLICY\" initiativeType member) "
+                + "with a Yes national-policy answer that year. No aggregation — always one count "
+                + "per country.",
+            "Open Science Policies", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.ENTITY_MAP,
+            NO_AGGREGATION_POLICY,
+            null,
+            Set.of(requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
             NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
@@ -473,6 +562,32 @@ public class IndicatorCatalog {
                 + "Question101). Filterable/groupable by country (absent country filter aggregates "
                 + "all countries with an answer, per the requested AggregationPolicy — SUM by default).",
             "Citizen Science", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            SUM_AGGREGATION_POLICY,
+            null,
+            Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * Survey Question73: "How many Open-Source software sets were published in your country?" —
+     * plain per-country integer count, same shape as longTermPreservationCount()/
+     * citizenScienceNewProjectsCount(). Distinct from software.count, which counts OpenAIRE-indexed
+     * software records — this is the survey's self-reported per-country figure instead, a genuinely
+     * different data source kept separate rather than collapsed into software.count (see
+     * IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT). Question code confirmed live against the real
+     * survey stats-tool for both 2022 and 2023. Supports a real multi-year trend, same as
+     * financialInvestment().
+     */
+    private static IndicatorDefinition softwareOpenSourceSetsCount() {
+        return definition(
+            SOFTWARE_OPEN_SOURCE_SETS_COUNT, "Open-Source Software Sets Published",
+            "Number of open-source software sets published, per country, as self-reported in the "
+                + "national survey (survey Question73) — distinct from software.count, which counts "
+                + "OpenAIRE-indexed software records directly. Filterable/groupable by country "
+                + "(absent country filter aggregates all countries with an answer, per the requested "
+                + "AggregationPolicy — SUM by default).",
+            "Software", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
@@ -531,6 +646,19 @@ public class IndicatorCatalog {
     private static IndicatorDimensionBinding requiredEqFilterBinding(String dimensionCode) {
         return new IndicatorDimensionBinding(
             dimensionCode, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
+        );
+    }
+
+    /**
+     * Required EQ (single area) or IN (several) filter, also GROUP-usable — used by initiativeType
+     * on countryInitiativeStatus()/euCountryCoverage(): EQ picks one area for the original
+     * single-area shape, IN + a groupBy fans out one point per area (the country x area matrix /
+     * trend-by-area rows).
+     */
+    private static IndicatorDimensionBinding initiativeTypeFilterGroupBinding() {
+        return new IndicatorDimensionBinding(
+            INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+            Set.of(FilterOperator.EQ, FilterOperator.IN), true
         );
     }
 
