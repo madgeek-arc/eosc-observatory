@@ -1,0 +1,54 @@
+{
+  "indexFields": [
+    {
+      "multivalued": false,
+      "name": "resource_internal_id",
+      "path": "$.id",
+      "type": "java.lang.String",
+      "primaryKey": true
+    },
+    {
+      "multivalued": true,
+      "name": "indicatorCodes",
+      "label": "Indicator Codes",
+      "path": "$.items[*].query.indicatorCode",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "createdBy",
+      "label": "Created By",
+      "path": "$.metadata.createdBy",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "creationDate",
+      "label": "Creation Date",
+      "path": "$.metadata.creationDate",
+      "type": "java.util.Date"
+    },
+    {
+      "multivalued": false,
+      "name": "modifiedBy",
+      "label": "Modified By",
+      "path": "$.metadata.modifiedBy",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
+      "name": "modificationDate",
+      "label": "Modification Date",
+      "path": "$.metadata.modificationDate",
+      "type": "java.util.Date"
+    }
+  ],
+  "indexMapperClass": "gr.uoa.di.madgik.registry.index.DefaultIndexMapper",
+  "name": "user_dashboard",
+  "aliases": ["resourceTypes"],
+  "payloadType": "json",
+  "properties": {
+    "class": "eu.openaire.observatory.domain.UserDashboard"
+  },
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/\"\n}"
+}
