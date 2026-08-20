@@ -37,6 +37,7 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.CLASSIFICATION_DI
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_INITIATIVE_STATUS;
+import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.EU_COUNTRY_COVERAGE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION;
@@ -44,6 +45,7 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.FINANCIAL_INVESTM
 import static eu.openaire.observatory.indicator.IndicatorCodes.GOLD_OA_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.GREEN_OA_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
+import static eu.openaire.observatory.indicator.IndicatorCodes.INVESTMENT_AREA_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.LONG_TERM_PRESERVATION_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.OA_LICENSE_STATUS_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
@@ -56,9 +58,9 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_YEAR_DIMEN
 
 /**
  * In-memory catalog of real indicator definitions. Not a stand-in for a future persistence layer
- * — the 12 definitions it holds today are all real: 5 route to OpenAireStatsToolIndicatorQueryHandler
+ * — the 13 definitions it holds today are all real: 6 route to OpenAireStatsToolIndicatorQueryHandler
  * (OpenAIRE data — publications.oa_license_status_count is the europe_monitor-profiled outlier of
- * the 5, the other 4 use the default openaire_stats profile), 5 route to
+ * the 6, the other 5 use the default openaire_stats profile), 5 route to
  * SurveyStatsToolIndicatorQueryHandler (survey stats-tool data, scoped to survey years 2022+ — see
  * that handler's Javadoc for why 2021 is excluded), and 2 route to
  * LocalRegistryIndicatorQueryHandler (no external HTTP call at all — wraps
@@ -79,7 +81,7 @@ public class IndicatorCatalog {
     /** For MEASURE indicators summable across countries — publications.count and the 3 survey counts. */
     private static final AggregationPolicy SUM_AGGREGATION_POLICY = new AggregationPolicy(
         AggregationType.SUM,
-        Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
+        Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MEDIAN, AggregationType.MIN, AggregationType.MAX),
         NullHandling.EXCLUDE
     );
 
@@ -102,6 +104,10 @@ public class IndicatorCatalog {
         );
         DimensionDefinition initiativeTypeDimension = new DimensionDefinition(
             INITIATIVE_TYPE_DIMENSION, "Initiative type", DimensionType.ENUM,
+            true, true, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
+        );
+        DimensionDefinition investmentAreaDimension = new DimensionDefinition(
+            INVESTMENT_AREA_DIMENSION, "Investment area", DimensionType.ENUM,
             true, true, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
         );
         DimensionDefinition surveyIdDimension = new DimensionDefinition(
@@ -136,6 +142,7 @@ public class IndicatorCatalog {
             Map.entry(COUNTRY_DIMENSION, countryDimension),
             Map.entry(ACCESS_STATUS_DIMENSION, accessStatusDimension),
             Map.entry(INITIATIVE_TYPE_DIMENSION, initiativeTypeDimension),
+            Map.entry(INVESTMENT_AREA_DIMENSION, investmentAreaDimension),
             Map.entry(SURVEY_ID_DIMENSION, surveyIdDimension),
             Map.entry(SURVEY_YEAR_DIMENSION, surveyYearDimension),
             Map.entry(CLASSIFICATION_DIMENSION, classificationDimension),
@@ -167,7 +174,7 @@ public class IndicatorCatalog {
     private static List<IndicatorDefinition> allDefinitions() {
         return List.of(
             publicationsCount(), publicationsAccessStatusShare(), datasetsCount(), softwareCount(),
-            publicationsOaLicenseStatusCount(),
+            publicationsOaLicenseStatusCount(), datasetsAccessStatusShare(),
             financialInvestment(), countryInitiativeStatus(), euCountryCoverage(),
             longTermPreservationCount(), citizenScienceNewProjectsCount(),
             countriesWithValidatedAnswers(), stakeholderParticipatingCountriesCount()
@@ -325,42 +332,83 @@ public class IndicatorCatalog {
     }
 
     /**
-     * Legacy id 69 — "Financial investments in OA Publication". Survey Question56, in millions of
-     * euros; SurveyStatsToolIndicatorQueryHandler applies the ×1,000,000 scale so the returned
-     * value is in euros. Filterable/groupable by country (absent country filter aggregates all
-     * countries with an answer, per the requested AggregationPolicy — SUM by default). A single
-     * survey year, not a real time series — the required surveyYear filter picks it.
+     * Open Data page counterpart to publicationsAccessStatusShare() — same shape and upstream
+     * (OpenAireStatsToolIndicatorQueryHandler, scoped to continent=Europe), just entity=dataset
+     * instead of entity=publication. Satisfies "Open Data in Europe (Open vs Closed)".
+     */
+    private static IndicatorDefinition datasetsAccessStatusShare() {
+        return definition(
+            DATASETS_ACCESS_STATUS_SHARE, "Datasets by Access Status (Share)",
+            "Percentage share of datasets matching the given access status filter, out of all "
+                + "datasets. Same shape as publications.access_status_share, scoped to entity=dataset "
+                + "instead of entity=publication. The accessStatus filter is required — there is no "
+                + "meaningful value without specifying which status(es) to measure as a share of the "
+                + "total.",
+            "Open Data", IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            NO_AGGREGATION_POLICY,
+            new RatioPolicy(ZeroDenominatorHandling.NULL),
+            Set.of(
+                new IndicatorDimensionBinding(
+                    ACCESS_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN, FilterOperator.NOT_EQ, FilterOperator.NOT_IN), true
+                ),
+                countryBinding()
+            ),
+            TIME_POLICY, OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * Legacy id 69 — "Financial investments in OA Publication", generalized to a required
+     * investmentArea filter so the same indicator serves every topic area's financial-investment
+     * question (survey Question56/68/64 for OA_PUBLICATION/OPEN_DATA/FAIR_DATA — see
+     * SurveyStatsToolIndicatorQueryHandler.QUESTION_CODE_BY_INVESTMENT_AREA) rather than being
+     * OA-Publication-only. SurveyStatsToolIndicatorQueryHandler applies the ×1,000,000 scale so the
+     * returned value is in euros. Filterable/groupable by country (absent country filter aggregates
+     * all countries with an answer, per the requested AggregationPolicy — SUM by default). Supports
+     * a real multi-year trend: a timeSeries request fetches one point per year; without one, the
+     * (optional, not required) surveyYear filter picks a single year.
      */
     private static IndicatorDefinition financialInvestment() {
         return definition(
-            FINANCIAL_INVESTMENT, "Financial Investment in OA Publication",
-            "Reported financial investment in Open Access publication (survey Question56), in euros. "
-                + "Survey values are collected in millions of euros — this indicator applies an "
-                + "explicit x1,000,000 scale before returning a value, so the returned number is "
-                + "already in euros, not millions.",
+            FINANCIAL_INVESTMENT, "Financial Investment",
+            "Reported financial investment in the given topic area (survey Question56/68/64 for "
+                + "OA_PUBLICATION/OPEN_DATA/FAIR_DATA), in euros. Survey values are collected in "
+                + "millions of euros — this indicator applies an explicit x1,000,000 scale before "
+                + "returning a value, so the returned number is already in euros, not millions. The "
+                + "investmentArea filter is required — there is no meaningful value without "
+                + "specifying which topic area's investment to measure.",
             GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
-            Set.of(countryBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
-            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION), requiredEqFilterBinding(INVESTMENT_AREA_DIMENSION)),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
     /**
      * Legacy ids 73/74 — "National policy"/"National monitoring on OA Publication", collapsed
      * behind a required initiativeType filter (fixed 4-value enum — see
-     * InitiativeTypeDimensionMemberProvider). Per-country Yes/No, always one row per answering
+     * InitiativeTypeDimensionMemberProvider). Per-country status, always one row per answering
      * country — country grouping is mandatory for this indicator to render, not optional, so
      * there is no country dimension binding at all (unlike the MEASURE/RATIO indicators above). A
      * single survey year, not a real time series — the required surveyYear filter picks it.
+     *
+     * <p>Three-valued (YES/NO/AWAITING_DATA), not boolean: the underlying survey question is a flat
+     * Yes/No radio field with no richer status, so a country that hasn't answered is reported as
+     * AWAITING_DATA rather than silently dropped — see
+     * SurveyStatsToolIndicatorQueryHandler.fetchInitiativeStatusByCountry. This does not stretch to
+     * a 4-state Mandatory/Policy-but-not-mandatory/No-policy/Awaiting-data model — that distinction
+     * does not exist anywhere in the source survey data.
      */
     private static IndicatorDefinition countryInitiativeStatus() {
         return definition(
             COUNTRY_INITIATIVE_STATUS, "Country Initiative Status",
-            "Per-country adoption status (Yes/No) of a national OA initiative, for a given "
-                + "initiativeType (survey Question6/Question6.3/Question7/Question54, one per "
-                + "initiativeType value). No aggregation — always one boolean per answering country.",
-            GROUP_LABEL, IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            "Per-country adoption status (YES, NO, or AWAITING_DATA for a country that hasn't "
+                + "answered yet) of a national OA initiative, for a given initiativeType (survey "
+                + "Question6/Question6.3/Question7/Question54, one per initiativeType value). No "
+                + "aggregation — always one status per answering-or-pending country.",
+            GROUP_LABEL, IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
             Set.of(requiredEqFilterBinding(INITIATIVE_TYPE_DIMENSION), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
@@ -396,8 +444,7 @@ public class IndicatorCatalog {
      * Survey Question89: "How many repositories offered long-term data preservation in your
      * country?" — plain per-country integer count, structurally identical to financialInvestment()
      * apart from having no unit scale. Question code confirmed live against the real survey
-     * stats-tool. A single survey year, not a real time series — the required surveyYear filter
-     * picks it.
+     * stats-tool. Supports a real multi-year trend, same as financialInvestment().
      */
     private static IndicatorDefinition longTermPreservationCount() {
         return definition(
@@ -408,16 +455,16 @@ public class IndicatorCatalog {
             "Data Preservation", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
-            Set.of(countryBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
-            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
     /**
      * Survey Question101: "How many projects with a citizen science dimension were started in
      * your country?" — plain per-country integer count, same shape as longTermPreservationCount().
-     * Question code confirmed live against the real survey stats-tool. A single survey year, not
-     * a real time series — the required surveyYear filter picks it.
+     * Question code confirmed live against the real survey stats-tool. Supports a real multi-year
+     * trend, same as financialInvestment().
      */
     private static IndicatorDefinition citizenScienceNewProjectsCount() {
         return definition(
@@ -428,8 +475,8 @@ public class IndicatorCatalog {
             "Citizen Science", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
-            Set.of(countryBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
-            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 

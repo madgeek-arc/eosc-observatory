@@ -23,12 +23,13 @@ import java.util.Map;
 
 /**
  * Real handler for OpenAIRE-sourced indicators, serving
- * publications.access_status_share (RATIO, requires an accessStatus filter to pick which share is
- * returned — a single EQ value returns that exact status's share; NOT_EQ or a multi-value IN
- * aggregates several statuses together, e.g. NOT_EQ OA for the full non-open share),
+ * publications.access_status_share and datasets.access_status_share (both RATIO, requiring an
+ * accessStatus filter to pick which share is returned — a single EQ value returns that exact
+ * status's share; NOT_EQ or a multi-value IN aggregates several statuses together, e.g. NOT_EQ OA
+ * for the full non-open share; same query shape, just entity=publication vs entity=dataset),
  * publications.count, datasets.count, and software.count (all MEASURE, optionally filtered/grouped
  * by accessStatus — the three are otherwise identical, just entity=publication vs entity=dataset vs
- * entity=software). All four support country either as an EQ/IN filter (one or more countries OR'd
+ * entity=software). All five support country either as an EQ/IN filter (one or more countries OR'd
  * together; absent means all-EU, matching the always-applied continent=Europe scope) or as a groupBy
  * (fans out into one row per country in a single extra sub-query, via OpenAireQueryBuilder's native
  * groupBy queries — not a query-per-country loop). publications.count/datasets.count/software.count
@@ -39,7 +40,8 @@ import java.util.Map;
  * access-mode values (OA/Closed/Embargoed/Restricted, OR'd together), matching observatory-ui's own
  * OAPublicationVSClosed exactly — confirmed live against a 2023 mismatch where an unrestricted count
  * (no access-mode filter at all) pulled in ~21% more results than the legacy UI's definition of
- * "total", producing a materially wrong share.
+ * "total", producing a materially wrong share. datasets.access_status_share reuses the exact same
+ * denominator scoping, just entity=dataset.
  */
 @Service
 public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQueryHandler
@@ -81,7 +83,8 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
     public IndicatorResult query(IndicatorExecutionPlan plan) {
         String providerIndicatorKey = plan.definition().executionBinding().providerIndicatorKey();
         return switch (providerIndicatorKey) {
-            case IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE -> queryAccessStatusShare(plan);
+            case IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE -> queryAccessStatusShare(plan, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
+            case IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE -> queryAccessStatusShare(plan, OpenAireQueryBuilder.RESULT_TYPE_DATASET);
             case IndicatorCodes.PUBLICATIONS_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
             case IndicatorCodes.DATASETS_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_DATASET);
             case IndicatorCodes.SOFTWARE_COUNT -> queryResultCount(plan, OpenAireQueryBuilder.RESULT_TYPE_SOFTWARE);
@@ -91,20 +94,20 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
         };
     }
 
-    private IndicatorResult queryAccessStatusShare(IndicatorExecutionPlan plan) {
+    private IndicatorResult queryAccessStatusShare(IndicatorExecutionPlan plan, String resultType) {
         List<OpenAireAccessMode> numeratorModes = resolveNumeratorModes(plan);
         List<String> groupByCodes = plan.groupBy().stream().map(ResolvedDimension::dimensionCode).toList();
         List<Period> periods = resolvePeriods(plan);
 
         if (groupByCodes.contains(COUNTRY_DIMENSION)) {
-            return queryAccessStatusShareByCountry(plan, numeratorModes, periods, groupByCodes);
+            return queryAccessStatusShareByCountry(plan, numeratorModes, periods, groupByCodes, resultType);
         }
 
-        List<String> countryCodes = filterValues(plan, COUNTRY_DIMENSION);
+        DimensionFilters filters = DimensionFilters.ofCountry(filterValues(plan, COUNTRY_DIMENSION));
         List<ObjectNode> subQueries = new ArrayList<>();
         for (Period period : periods) {
-            subQueries.add(queryBuilder.publicationCountSubQuery(period.year(), numeratorModes, countryCodes));
-            subQueries.add(queryBuilder.publicationCountSubQuery(period.year(), List.of(OpenAireAccessMode.values()), countryCodes));
+            subQueries.add(queryBuilder.resultCountSubQuery(period.year(), numeratorModes, filters, resultType));
+            subQueries.add(queryBuilder.resultCountSubQuery(period.year(), List.of(OpenAireAccessMode.values()), filters, resultType));
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
 
@@ -120,11 +123,14 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
     }
 
     private IndicatorResult queryAccessStatusShareByCountry(
-            IndicatorExecutionPlan plan, List<OpenAireAccessMode> numeratorModes, List<Period> periods, List<String> groupByCodes) {
+            IndicatorExecutionPlan plan, List<OpenAireAccessMode> numeratorModes, List<Period> periods,
+            List<String> groupByCodes, String resultType) {
         List<ObjectNode> subQueries = new ArrayList<>();
         for (Period period : periods) {
-            subQueries.add(queryBuilder.publicationCountByCountrySubQuery(period.year(), numeratorModes));
-            subQueries.add(queryBuilder.publicationCountByCountrySubQuery(period.year(), List.of(OpenAireAccessMode.values())));
+            subQueries.add(queryBuilder.resultCountByGroupSubQuery(
+                period.year(), numeratorModes, resultType, COUNTRY_DIMENSION, DimensionFilters.NONE));
+            subQueries.add(queryBuilder.resultCountByGroupSubQuery(
+                period.year(), List.of(OpenAireAccessMode.values()), resultType, COUNTRY_DIMENSION, DimensionFilters.NONE));
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
 

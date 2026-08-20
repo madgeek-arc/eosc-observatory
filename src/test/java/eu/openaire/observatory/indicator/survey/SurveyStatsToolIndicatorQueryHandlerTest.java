@@ -54,11 +54,13 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2023"));
     private static final ResolvedFilter INITIATIVE_TYPE_OA_PUBLICATION_POLICY = new ResolvedFilter(
         IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_POLICY"));
+    private static final ResolvedFilter INVESTMENT_AREA_OA_PUBLICATION = new ResolvedFilter(
+        IndicatorCodes.INVESTMENT_AREA_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION"));
 
     private final List<String> capturedRequests = new ArrayList<>();
 
     @Test
-    void countryInitiativeStatusMapsYesNoToBooleanPerCountry() {
+    void countryInitiativeStatusMapsYesNoToStatusPerCountry() {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
         var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023);
@@ -69,11 +71,11 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         assertThat(result.data()).hasSize(2);
         assertThat(result.data()).anySatisfy(dp -> {
             assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
-            assertThat(dp.value()).isEqualTo(true);
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_YES);
         });
         assertThat(result.data()).anySatisfy(dp -> {
             assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("DE");
-            assertThat(dp.value()).isEqualTo(false);
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_NO);
         });
     }
 
@@ -91,7 +93,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
-    void countryInitiativeStatusSkipsCountriesWithNoAnswer() {
+    void countryInitiativeStatusReportsNoAnswerCountriesAsAwaitingData() {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":["
                 + "{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"IT\",null]},{\"row\":[\"MT\",\"null\"]},{\"row\":[\"PT\",\"\"]}"
@@ -100,8 +102,15 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
 
-        assertThat(result.data()).hasSize(1);
-        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+        assertThat(result.data()).hasSize(4);
+        assertThat(result.data())
+            .filteredOn(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION).equals("GR"))
+            .extracting("value")
+            .containsExactly(SurveyStatsToolIndicatorQueryHandler.STATUS_YES);
+        assertThat(result.data())
+            .filteredOn(dp -> List.of("IT", "MT", "PT").contains(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)))
+            .extracting("value")
+            .containsOnly(SurveyStatsToolIndicatorQueryHandler.STATUS_AWAITING_DATA);
     }
 
     @Test
@@ -154,7 +163,10 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     @Test
     void financialInvestmentUsesTheRequestedSurveyYearAndNeverStampsAPeriod() {
         var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"26.94\"]}]}}]}");
-        var filters = List.of(new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2022")));
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2022")),
+            INVESTMENT_AREA_OA_PUBLICATION
+        );
 
         var result = handler.execute(plan(financialInvestmentDefinition(), filters, List.of(), null, AggregationType.SUM));
 
@@ -169,7 +181,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"26.94\"]},{\"row\":[\"FR\",\"30\"]}]}}]}");
 
-        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
+        var result = handler.execute(plan(
+            financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION), List.of(), null, AggregationType.SUM));
 
         assertThat(result.data()).hasSize(1);
         assertThat(result.data().get(0).value()).isEqualTo(56_940_000.0);
@@ -180,7 +193,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"26.94\"]},{\"row\":[\"FR\",\"30\"]}]}}]}");
 
-        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.AVG));
+        var result = handler.execute(plan(
+            financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION), List.of(), null, AggregationType.AVG));
 
         assertThat(result.data().get(0).value()).isEqualTo(28_470_000.0);
     }
@@ -192,7 +206,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
                 + "{\"row\":[\"FI\",\"26.94\"]},{\"row\":[\"MT\",\"null\"]},{\"row\":[\"PT\",null]},{\"row\":[\"GR\",\"\"]}"
                 + "]}}]}");
 
-        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
+        var result = handler.execute(plan(
+            financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION), List.of(), null, AggregationType.SUM));
 
         assertThat(result.data().get(0).value()).isEqualTo(26_940_000.0);
     }
@@ -203,7 +218,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"26.94\"]},{\"row\":[\"FR\",\"30\"]}]}}]}");
         var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
 
-        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023), groupBy, null, AggregationType.SUM));
+        var result = handler.execute(plan(
+            financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION), groupBy, null, AggregationType.SUM));
 
         assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
         assertThat(result.data()).hasSize(2);
@@ -294,9 +310,21 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         );
     }
 
+    /** For the 3 trend-capable indicators (financialInvestment/longTermPreservationCount/citizenScienceNewProjectsCount). */
+    private static TimePolicy trendTimePolicy() {
+        return new TimePolicy(true, MissingPeriodHandling.ZERO_FILL);
+    }
+
     private static IndicatorDimensionBinding surveyYearBinding() {
         return new IndicatorDimensionBinding(
             IndicatorCodes.SURVEY_YEAR_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
+        );
+    }
+
+    /** For the 3 trend-capable indicators — surveyYear is filter-only and optional, since a timeSeries range is the alternative way to pick years. */
+    private static IndicatorDimensionBinding optionalSurveyYearBinding() {
+        return new IndicatorDimensionBinding(
+            IndicatorCodes.SURVEY_YEAR_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), false
         );
     }
 
@@ -338,10 +366,11 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition financialInvestmentDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.FINANCIAL_INVESTMENT, "Financial Investment in OA Publication", "desc", "Publications",
+            UUID.randomUUID(), IndicatorCodes.FINANCIAL_INVESTMENT, "Financial Investment", "desc", "Publications",
             IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
             new AggregationPolicy(
-                AggregationType.SUM, Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
+                AggregationType.SUM,
+                Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MEDIAN, AggregationType.MIN, AggregationType.MAX),
                 NullHandling.EXCLUDE
             ),
             null,
@@ -350,9 +379,12 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
                     IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
                     Set.of(FilterOperator.EQ, FilterOperator.IN), false
                 ),
-                surveyYearBinding()
+                optionalSurveyYearBinding(),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.INVESTMENT_AREA_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
+                )
             ),
-            timePolicy(),
+            trendTimePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.FINANCIAL_INVESTMENT),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
@@ -380,11 +412,61 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
                     IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
                     Set.of(FilterOperator.EQ, FilterOperator.IN), false
                 ),
-                surveyYearBinding()
+                optionalSurveyYearBinding()
             ),
-            timePolicy(),
+            trendTimePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, code),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
+    }
+
+    @Test
+    void financialInvestmentWithTimeSeriesReturnsOnePointPerYear() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}");
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.ZERO_FILL);
+
+        var result = handler.execute(plan(
+            financialInvestmentDefinition(), List.of(INVESTMENT_AREA_OA_PUBLICATION), List.of(), timeRange, AggregationType.SUM));
+
+        assertThat(capturedRequests).hasSize(2);
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2022.Question56\"");
+        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.2023.Question56\"");
+        assertThat(result.dimensions()).containsExactly("period");
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).allSatisfy(dp -> assertThat(dp.value()).isEqualTo(10_000_000.0));
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get("period"))
+            .containsExactlyInAnyOrder("2022", "2023");
+    }
+
+    @Test
+    void countByQuestionWithTimeSeriesAndCountryGroupByReturnsOnePointPerYearPerCountry() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"PL\",\"68\"]}]}}]}");
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.ZERO_FILL);
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(
+            plan(longTermPreservationCountDefinition(), List.of(), groupBy, timeRange, AggregationType.SUM));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION, "period");
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).allSatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("PL");
+            assertThat(dp.value()).isEqualTo(68L);
+        });
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get("period"))
+            .containsExactlyInAnyOrder("2022", "2023");
+    }
+
+    @Test
+    void financialInvestmentMediansWhenMedianAggregationRequested() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]},{\"row\":[\"FR\",\"20\"]},{\"row\":[\"GR\",\"30\"]}]}}]}");
+
+        var result = handler.execute(plan(
+            financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION), List.of(), null, AggregationType.MEDIAN));
+
+        assertThat(result.data().get(0).value()).isEqualTo(20_000_000.0);
     }
 }

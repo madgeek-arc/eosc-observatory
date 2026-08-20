@@ -107,6 +107,19 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void datasetsAccessStatusShareUsesDatasetEntityTypeInsteadOfPublication() {
+        var handler = handlerReturning("{\"data\":[[[\"30\"]],[[\"120\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")));
+
+        var result = handler.execute(plan(datasetsAccessStatusShareDefinition(), filters, List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(25.0);
+        String numeratorQuery = firstSubQuery(capturedRequests.get(0));
+        assertThat(numeratorQuery).contains("\"values\":[\"dataset\"]");
+        assertThat(numeratorQuery).doesNotContain("\"values\":[\"publication\"]");
+    }
+
+    @Test
     void accessStatusShareInFilterAggregatesGivenStatuses() {
         var handler = handlerReturning("{\"data\":[[[\"90\"]],[[\"120\"]]]}");
         var filters = List.of(new ResolvedFilter(
@@ -247,6 +260,21 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
             assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("DE");
             assertThat(dp.value()).isEqualTo(0.0);
         });
+    }
+
+    @Test
+    void datasetsAccessStatusShareGroupedByCountryUsesDatasetEntityType() {
+        var handler = handlerReturning(
+            "{\"data\":[[[\"10\",\"GR\"]],[[\"40\",\"GR\"]]]}"
+        );
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(datasetsAccessStatusShareDefinition(), filters, groupBy, null));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).value()).isEqualTo(25.0);
+        assertThat(capturedRequests.get(0)).contains("\"values\":[\"dataset\"]");
     }
 
     @Test
@@ -605,6 +633,31 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
             timePolicy(),
             new IndicatorExecutionBinding(
                 OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE
+            ),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
+    }
+
+    private static IndicatorDefinition datasetsAccessStatusShareDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE,
+            "Datasets by Access Status (Share)", "desc", "Open Data",
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            new RatioPolicy(ZeroDenominatorHandling.NULL),
+            Set.of(
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.ACCESS_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN, FilterOperator.NOT_EQ, FilterOperator.NOT_IN), true
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                )
+            ),
+            timePolicy(),
+            new IndicatorExecutionBinding(
+                OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE
             ),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );

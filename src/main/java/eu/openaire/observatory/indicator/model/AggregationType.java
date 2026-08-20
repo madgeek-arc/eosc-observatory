@@ -13,6 +13,7 @@ package eu.openaire.observatory.indicator.model;
 public enum AggregationType {
     SUM,
     AVG,
+    MEDIAN,
     MIN,
     MAX,
     FIRST,

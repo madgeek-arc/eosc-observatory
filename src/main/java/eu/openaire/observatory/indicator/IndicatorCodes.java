@@ -12,6 +12,7 @@ public final class IndicatorCodes {
 
     public static final String COUNTRY_DIMENSION = "country";
     public static final String INITIATIVE_TYPE_DIMENSION = "initiativeType";
+    public static final String INVESTMENT_AREA_DIMENSION = "investmentArea";
     public static final String ACCESS_STATUS_DIMENSION = "accessStatus";
     public static final String SURVEY_ID_DIMENSION = "surveyId";
     public static final String SURVEY_YEAR_DIMENSION = "surveyYear";
@@ -25,8 +26,10 @@ public final class IndicatorCodes {
     public static final String DATASETS_COUNT = "datasets.count";
     public static final String SOFTWARE_COUNT = "software.count";
     public static final String PUBLICATIONS_ACCESS_STATUS_SHARE = "publications.access_status_share";
+    public static final String DATASETS_ACCESS_STATUS_SHARE = "datasets.access_status_share";
     public static final String PUBLICATIONS_OA_LICENSE_STATUS_COUNT = "publications.oa_license_status_count";
-    // Routed to SurveyStatsToolIndicatorQueryHandler.
+    // Routed to SurveyStatsToolIndicatorQueryHandler. Cross-topic despite the "oa." prefix — see
+    // IndicatorCatalog.countryInitiativeStatus()/euCountryCoverage()/financialInvestment() javadoc.
     public static final String FINANCIAL_INVESTMENT = "oa.financial_investment";
     public static final String COUNTRY_INITIATIVE_STATUS = "oa.country_initiative_status";
     public static final String EU_COUNTRY_COVERAGE = "oa.eu_country_coverage";

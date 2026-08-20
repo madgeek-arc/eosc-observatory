@@ -80,27 +80,29 @@ public class LocalSurveyStatsIndicatorQueryHandler extends AbstractIndicatorQuer
         String questionCode = questionCodeForInitiativeType(requiredFilterValue(plan, INITIATIVE_TYPE_DIMENSION));
         InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(resolveYear(plan), questionCode);
 
-        long adopted = fetch.byCountry().values().stream().filter(Boolean::booleanValue).count();
+        long adopted = fetch.byCountry().values().stream()
+            .filter(SurveyStatsToolIndicatorQueryHandler.STATUS_YES::equals).count();
         Object value = RatioPercentage.of(adopted, fetch.totalRespondents());
 
         return buildResult(plan, dimensionKeysFor(List.of(), plan), List.of(new IndicatorDataPoint(Map.of(), value)));
     }
 
-    /** Fetches the raw per-country Yes/No rows locally, once; shared by both query methods. */
+    /**
+     * Fetches the raw per-country Yes/No/no-answer rows locally, once; shared by both query
+     * methods. Non-respondent countries are reported as AWAITING_DATA rather than dropped, matching
+     * SurveyStatsToolIndicatorQueryHandler's own 3-state behavior.
+     */
     private InitiativeStatusFetch fetchInitiativeStatusByCountry(int year, String questionCode) {
         String surveyId = SURVEY_ID_PREFIX + year;
         List<List<String>> rows = surveyService.getQuestionAnswersByCountry(surveyId, questionCode);
 
-        Map<String, Boolean> byCountry = new LinkedHashMap<>();
+        Map<String, String> byCountry = new LinkedHashMap<>();
         for (List<String> row : rows) {
             String country = row.get(0);
             String rawValue = row.size() > 1 ? row.get(1) : null;
-            if (isNoAnswer(rawValue)) {
-                continue;
-            }
-            byCountry.put(country, switch (rawValue) {
-                case "Yes" -> true;
-                case "No" -> false;
+            byCountry.put(country, isNoAnswer(rawValue) ? SurveyStatsToolIndicatorQueryHandler.STATUS_AWAITING_DATA : switch (rawValue) {
+                case "Yes" -> SurveyStatsToolIndicatorQueryHandler.STATUS_YES;
+                case "No" -> SurveyStatsToolIndicatorQueryHandler.STATUS_NO;
                 default -> throw new SurveyStatsToolQueryException(
                     "Unexpected value for %s/%s: %s".formatted(questionCode, country, rawValue));
             });
@@ -108,7 +110,7 @@ public class LocalSurveyStatsIndicatorQueryHandler extends AbstractIndicatorQuer
         return new InitiativeStatusFetch(byCountry, rows.size());
     }
 
-    private record InitiativeStatusFetch(Map<String, Boolean> byCountry, int totalRespondents) {
+    private record InitiativeStatusFetch(Map<String, String> byCountry, int totalRespondents) {
     }
 
     private List<IndicatorDataPoint> byCountryDataPoints(Map<String, ?> valueByCountry) {

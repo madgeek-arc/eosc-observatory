@@ -16,11 +16,11 @@ class IndicatorCatalogTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
 
     @Test
-    void containsAllTwelveRealDefinitions() {
-        assertThat(catalog.getAll()).hasSize(12);
+    void containsAllThirteenRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(13);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
-            IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT,
+            IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT, IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE,
             IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
             IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
             IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT
@@ -28,10 +28,12 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void financialInvestmentIsCountryFilterableAndGroupableAndRequiresSurveyYearFilter() {
+    void financialInvestmentIsCountryFilterableAndGroupableWithOptionalSurveyYearFilterAndRequiredInvestmentAreaFilter() {
         var bindings = catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
-            .containsExactlyInAnyOrder(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
+            .containsExactlyInAnyOrder(
+                IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION, IndicatorCodes.INVESTMENT_AREA_DIMENSION
+            );
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
             .extracting("usages")
@@ -39,7 +41,12 @@ class IndicatorCatalogTest {
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")
+            .containsExactly(false);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INVESTMENT_AREA_DIMENSION))
+            .extracting("requiredFilter")
             .containsExactly(true);
+        assertThat(catalog.get(IndicatorCodes.FINANCIAL_INVESTMENT).timePolicy().supported()).isTrue();
     }
 
     @Test
@@ -187,7 +194,7 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void longTermPreservationCountIsCountryFilterableAndGroupableAndRequiresSurveyYearFilter() {
+    void longTermPreservationCountIsCountryFilterableAndGroupableWithOptionalSurveyYearFilter() {
         var bindings = catalog.get(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
             .containsExactlyInAnyOrder(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
@@ -198,11 +205,12 @@ class IndicatorCatalogTest {
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")
-            .containsExactly(true);
+            .containsExactly(false);
+        assertThat(catalog.get(IndicatorCodes.LONG_TERM_PRESERVATION_COUNT).timePolicy().supported()).isTrue();
     }
 
     @Test
-    void citizenScienceNewProjectsCountIsCountryFilterableAndGroupableAndRequiresSurveyYearFilter() {
+    void citizenScienceNewProjectsCountIsCountryFilterableAndGroupableWithOptionalSurveyYearFilter() {
         var bindings = catalog.get(IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
             .containsExactlyInAnyOrder(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.SURVEY_YEAR_DIMENSION);
@@ -213,7 +221,8 @@ class IndicatorCatalogTest {
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")
-            .containsExactly(true);
+            .containsExactly(false);
+        assertThat(catalog.get(IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT).timePolicy().supported()).isTrue();
     }
 
     @Test
@@ -232,20 +241,22 @@ class IndicatorCatalogTest {
     }
 
     @Test
-    void onlyTheFiveOpenAireBackedDefinitionsSupportTimeSeries() {
-        Set<String> openAireBacked = Set.of(
+    void nineDefinitionsSupportTimeSeries() {
+        Set<String> timeSeriesCapable = Set.of(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
-            IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT
+            IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT, IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE,
+            IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.LONG_TERM_PRESERVATION_COUNT,
+            IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT
         );
 
         assertThat(catalog.getAll())
-            .filteredOn(definition -> openAireBacked.contains(definition.code()))
-            .hasSize(5)
+            .filteredOn(definition -> timeSeriesCapable.contains(definition.code()))
+            .hasSize(9)
             .allMatch(definition -> definition.timePolicy().supported());
 
         assertThat(catalog.getAll())
-            .filteredOn(definition -> !openAireBacked.contains(definition.code()))
-            .hasSize(7)
+            .filteredOn(definition -> !timeSeriesCapable.contains(definition.code()))
+            .hasSize(4)
             .noneMatch(definition -> definition.timePolicy().supported());
     }
 
@@ -259,6 +270,7 @@ class IndicatorCatalogTest {
         assertThat(catalog.dimension("country")).isNotNull();
         assertThat(catalog.dimension("accessStatus")).isNotNull();
         assertThat(catalog.dimension("initiativeType")).isNotNull();
+        assertThat(catalog.dimension("investmentArea")).isNotNull();
         assertThat(catalog.dimension("surveyId")).isNotNull();
         assertThat(catalog.dimension("surveyYear")).isNotNull();
         assertThat(catalog.dimension("classification")).isNotNull();
