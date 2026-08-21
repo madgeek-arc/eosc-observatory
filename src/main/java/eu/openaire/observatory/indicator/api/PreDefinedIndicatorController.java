@@ -7,6 +7,8 @@ import eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorDefinitio
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.ActorContext;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(path = "indicators/pre-defined", produces = MediaType.APPLICATION_JSON_VALUE)
+@Tag(name = "Indicators")
 public class PreDefinedIndicatorController {
 
     private final PreDefinedIndicatorCatalog preDefinedCatalog;
@@ -34,12 +37,14 @@ public class PreDefinedIndicatorController {
         this.actorContext = actorContext;
     }
 
+    @Operation(summary = "List all pre-defined dashboard widgets")
     @GetMapping
     public ResponseEntity<PreDefinedIndicatorResponse> getPreDefinedIndicators() {
         var items = preDefinedCatalog.getAll().stream().map(definition -> PreDefinedIndicatorItem.from(definition, catalog)).toList();
         return ResponseEntity.ok(new PreDefinedIndicatorResponse(items));
     }
 
+    @Operation(summary = "Get a single pre-defined dashboard widget")
     @GetMapping("{id}")
     public ResponseEntity<PreDefinedIndicatorItem> getPreDefinedIndicator(@PathVariable String id) {
         PreDefinedIndicatorDefinition definition = preDefinedCatalog.get(id);
@@ -50,6 +55,7 @@ public class PreDefinedIndicatorController {
     }
 
     /** {@code request.indicatorCode()} is ignored — the widget's own indicatorCode always wins. */
+    @Operation(summary = "Run a pre-defined widget's query")
     @PostMapping("{id}/query")
     public ResponseEntity<IndicatorResult> queryPreDefinedIndicator(@PathVariable String id, @RequestBody IndicatorQuery request) {
         PreDefinedIndicatorDefinition definition = preDefinedCatalog.get(id);

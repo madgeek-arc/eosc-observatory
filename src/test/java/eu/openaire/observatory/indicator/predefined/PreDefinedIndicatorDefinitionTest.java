@@ -23,7 +23,7 @@ class PreDefinedIndicatorDefinitionTest {
     private static PreDefinedIndicatorDefinition widget(Map<String, List<String>> presetFilters) {
         return new PreDefinedIndicatorDefinition(
             "oa-1", "OA Publication in Europe", WidgetGroup.OPEN_ACCESS_PUBLICATIONS,
-            ChartType.SCALAR, true,
+            ChartType.SCALAR, List.of(AggregationType.AVG, AggregationType.MEDIAN),
             "publications.access_status_share", presetFilters
         );
     }

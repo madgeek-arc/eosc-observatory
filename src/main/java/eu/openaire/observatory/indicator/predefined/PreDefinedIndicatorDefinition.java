@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator.predefined;
 
+import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
@@ -22,7 +23,7 @@ public record PreDefinedIndicatorDefinition(
     String label,
     WidgetGroup group,
     ChartType chartType,
-    boolean hasAverage,
+    List<AggregationType> allowedSeriesAggregations, // the seriesAggregations values meaningful for this widget's query — empty if none
     String indicatorCode, // must resolve in IndicatorCatalog — validated at startup, see PreDefinedIndicatorCatalog
     Map<String, List<String>> presetFilters // dimensionCode -> values; empty when the indicator needs no disambiguating filter
 ) {

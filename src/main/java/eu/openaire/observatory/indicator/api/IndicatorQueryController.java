@@ -4,6 +4,8 @@ import eu.openaire.observatory.indicator.IndicatorQueryService;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.ActorContext;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(path = "indicator-queries", produces = MediaType.APPLICATION_JSON_VALUE)
+@Tag(name = "Indicators")
 public class IndicatorQueryController {
 
     private final IndicatorQueryService queryService;
@@ -23,6 +26,7 @@ public class IndicatorQueryController {
         this.actorContext = actorContext;
     }
 
+    @Operation(summary = "Execute an ad-hoc indicator query")
     @PostMapping
     public ResponseEntity<IndicatorResult> query(@RequestBody IndicatorQuery query) {
         return ResponseEntity.ok(queryService.execute(query, actorContext));

@@ -3,6 +3,7 @@ package eu.openaire.observatory.indicator.api;
 import eu.openaire.observatory.indicator.IndicatorCatalog;
 import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.local.LocalRegistryIndicatorQueryHandler;
+import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.openaire.OpenAireStatsToolIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorDefinition;
@@ -10,6 +11,7 @@ import eu.openaire.observatory.indicator.predefined.WidgetGroup;
 import eu.openaire.observatory.indicator.survey.SurveyStatsToolIndicatorQueryHandler;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,7 +52,7 @@ class PreDefinedIndicatorItemTest {
     void serializesKindAndFormatToTheirWireValues() {
         var definition = new PreDefinedIndicatorDefinition(
             "od-4", "National Policy on Open Data", WidgetGroup.OPEN_DATA,
-            ChartType.MAP, false,
+            ChartType.MAP, List.of(),
             IndicatorCodes.COUNTRY_INITIATIVE_STATUS, Map.of()
         );
 
@@ -61,6 +63,21 @@ class PreDefinedIndicatorItemTest {
         assertThat(item.id()).isEqualTo("od-4");
         assertThat(item.label()).isEqualTo("National Policy on Open Data");
         assertThat(item.group()).isEqualTo("Open Data");
+        assertThat(item.allowedSeriesAggregations()).isEmpty();
+        assertThat(item.supportsTrend()).isFalse();
+        assertThat(item.supportsMap()).isTrue();
+    }
+
+    @Test
+    void scalarTimeSeriesBackedWidgetSupportsTrendButNotMap() {
+        var definition = widget(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, Map.of());
+
+        var item = PreDefinedIndicatorItem.from(definition, catalog);
+
+        assertThat(item.chartType()).isEqualTo("SCALAR");
+        assertThat(item.allowedSeriesAggregations()).containsExactly(AggregationType.AVG, AggregationType.MEDIAN);
+        assertThat(item.supportsTrend()).isTrue();
+        assertThat(item.supportsMap()).isFalse();
     }
 
     @Test
@@ -75,7 +92,7 @@ class PreDefinedIndicatorItemTest {
     private static PreDefinedIndicatorDefinition widget(String indicatorCode, Map<String, java.util.List<String>> presetFilters) {
         return new PreDefinedIndicatorDefinition(
             "widget-id", "Widget Label", WidgetGroup.OPEN_DATA,
-            ChartType.SCALAR, false,
+            ChartType.SCALAR, List.of(AggregationType.AVG, AggregationType.MEDIAN),
             indicatorCode, presetFilters
         );
     }
