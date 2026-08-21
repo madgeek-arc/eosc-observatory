@@ -30,7 +30,7 @@ public class CountryDimensionMemberProvider implements DimensionMemberProvider {
     @Override
     public DimensionMembers search(String indicatorCode, String searchText, int limit) {
         List<DimensionMember> members = stakeholderService.getAllCountryCodes().stream()
-            .map(code -> new DimensionMember(code, new Locale("", code).getDisplayCountry(Locale.ENGLISH)))
+            .map(code -> new DimensionMember(code, Locale.of("", code).getDisplayCountry(Locale.ENGLISH)))
             .toList();
 
         return DimensionMemberSearch.filter(members, searchText, limit, true);
