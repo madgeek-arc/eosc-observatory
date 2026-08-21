@@ -1,9 +1,11 @@
 package eu.openaire.observatory.indicator.validation;
 
+import eu.openaire.observatory.indicator.dimension.DimensionMemberProviderRegistry;
 import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.handler.SupportsComparisonQueries;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
+import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Year;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Compiles a raw IndicatorQuery into a validated IndicatorExecutionPlan, checking it against the
@@ -24,21 +27,26 @@ public class IndicatorQueryValidator {
 
     private static final int DEFAULT_LIMIT = 1000;
     private static final int EARLIEST_SUPPORTED_YEAR = 2015;
+    private static final Set<FilterOperator> VALUE_CHECKABLE_OPERATORS =
+        Set.of(FilterOperator.EQ, FilterOperator.NOT_EQ, FilterOperator.IN, FilterOperator.NOT_IN);
 
     private final IndicatorDefinitionLookup definitions;
     private final DimensionDefinitionLookup dimensions;
     private final IndicatorAuthorizationService authorization;
     private final IndicatorQueryHandlerRegistry handlers;
+    private final DimensionMemberProviderRegistry memberProviders;
 
     public IndicatorQueryValidator(
             IndicatorDefinitionLookup definitions,
             DimensionDefinitionLookup dimensions,
             IndicatorAuthorizationService authorization,
-            IndicatorQueryHandlerRegistry handlers) {
+            IndicatorQueryHandlerRegistry handlers,
+            DimensionMemberProviderRegistry memberProviders) {
         this.definitions = definitions;
         this.dimensions = dimensions;
         this.authorization = authorization;
         this.handlers = handlers;
+        this.memberProviders = memberProviders;
     }
 
     public IndicatorExecutionPlan compile(IndicatorQuery query, ActorContext actor) {
@@ -116,7 +124,27 @@ public class IndicatorQueryValidator {
             throw new UnsupportedOperatorException(filter.dimension(), filter.operator());
         }
 
+        validateFilterValues(definition.code(), filter);
+
         return new ResolvedFilter(filter.dimension(), filter.operator(), filter.values());
+    }
+
+    /**
+     * Rejects filter values that aren't a real member of their dimension, for any dimension with a
+     * registered {@code DimensionMemberProvider} — nothing to validate against otherwise.
+     */
+    private void validateFilterValues(String indicatorCode, IndicatorFilter filter) {
+        if (!VALUE_CHECKABLE_OPERATORS.contains(filter.operator())) {
+            return;
+        }
+        memberProviders.find(filter.dimension()).ifPresent(provider -> {
+            Set<String> validCodes = provider.validCodes(indicatorCode);
+            for (Object value : filter.values()) {
+                if (!validCodes.contains(String.valueOf(value))) {
+                    throw new InvalidFilterValueException(filter.dimension(), value);
+                }
+            }
+        });
     }
 
     private void requireMandatoryFilters(IndicatorDefinition definition, List<ResolvedFilter> filters) {

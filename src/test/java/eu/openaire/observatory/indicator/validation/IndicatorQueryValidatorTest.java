@@ -1,6 +1,10 @@
 package eu.openaire.observatory.indicator.validation;
 
 import eu.openaire.observatory.indicator.IndicatorFixtures;
+import eu.openaire.observatory.indicator.dimension.DimensionMember;
+import eu.openaire.observatory.indicator.dimension.DimensionMemberProvider;
+import eu.openaire.observatory.indicator.dimension.DimensionMemberProviderRegistry;
+import eu.openaire.observatory.indicator.dimension.DimensionMembers;
 import eu.openaire.observatory.indicator.handler.IndicatorQueryHandler;
 import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.handler.SupportsComparisonQueries;
@@ -35,6 +39,7 @@ class IndicatorQueryValidatorTest {
     private static final String COMPARABLE_RATIO_CODE = "publications.access_status_share";
     private static final String COMPARABLE_ATTRIBUTE_CODE = "country.name.timeseries";
     private static final String NON_COMPARABLE_COUNT_CODE = "publications.count.no_comparison_handler";
+    private static final String STATUS_FILTERABLE_CODE = "publications.count.status_filterable";
 
     private final IndicatorDefinition countIndicator = IndicatorFixtures.countIndicator(COUNT_CODE);
     private final IndicatorDefinition ratioIndicator = IndicatorFixtures.ratioIndicator(RATIO_CODE);
@@ -45,11 +50,12 @@ class IndicatorQueryValidatorTest {
     private final IndicatorDefinition comparableAttributeIndicator =
         IndicatorFixtures.timeSeriesAttributeIndicator(COMPARABLE_ATTRIBUTE_CODE);
     private final IndicatorDefinition nonComparableCountIndicator = IndicatorFixtures.countIndicator(NON_COMPARABLE_COUNT_CODE);
+    private final IndicatorDefinition statusFilterableIndicator = IndicatorFixtures.statusFilterableIndicator(STATUS_FILTERABLE_CODE);
     private final DimensionDefinition countryDimension = IndicatorFixtures.countryDimension();
 
     private final Map<String, IndicatorDefinition> definitionsByCode = List.of(
         countIndicator, ratioIndicator, nonTimeSeriesIndicator, restrictedIndicator, requiredFilterIndicator,
-        comparableRatioIndicator, comparableAttributeIndicator, nonComparableCountIndicator
+        comparableRatioIndicator, comparableAttributeIndicator, nonComparableCountIndicator, statusFilterableIndicator
     ).stream().collect(Collectors.toMap(IndicatorDefinition::code, d -> d));
 
     private final IndicatorDefinitionLookup definitionLookup = code -> {
@@ -60,12 +66,40 @@ class IndicatorQueryValidatorTest {
         return definition;
     };
 
+    private final DimensionDefinition statusDimension = IndicatorFixtures.statusDimension();
+
     private final DimensionDefinitionLookup dimensionLookup = code -> {
         if (IndicatorFixtures.COUNTRY_DIMENSION.equals(code)) {
             return countryDimension;
         }
+        if (IndicatorFixtures.STATUS_DIMENSION.equals(code)) {
+            return statusDimension;
+        }
         throw new IllegalStateException("unexpected dimension in test: " + code);
     };
+
+    /**
+     * Fixture provider: only ACTIVE/INACTIVE are valid "status" filter values. Doesn't override
+     * validCodes() — exercises DimensionMemberProvider's default implementation (derived from
+     * search()) through the validator, not just a hand-rolled test double.
+     */
+    private static final class StatusDimensionMemberProvider implements DimensionMemberProvider {
+        @Override
+        public String dimensionCode() {
+            return IndicatorFixtures.STATUS_DIMENSION;
+        }
+
+        @Override
+        public DimensionMembers search(String indicatorCode, String searchText, int limit) {
+            return new DimensionMembers(List.of(
+                new DimensionMember("ACTIVE", "Active"),
+                new DimensionMember("INACTIVE", "Inactive")
+            ));
+        }
+    }
+
+    private final DimensionMemberProviderRegistry memberProviders =
+        new DimensionMemberProviderRegistry(List.of(new StatusDimensionMemberProvider()));
 
     /** handlerKey defaults to the indicator's own code (IndicatorFixtures), so each handler below is keyed by code. */
     private final IndicatorQueryHandlerRegistry handlers = new IndicatorQueryHandlerRegistry(List.of(
@@ -76,7 +110,7 @@ class IndicatorQueryValidatorTest {
     ));
 
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
-        definitionLookup, dimensionLookup, new AllowAllIndicatorAuthorizationService(), handlers
+        definitionLookup, dimensionLookup, new AllowAllIndicatorAuthorizationService(), handlers, memberProviders
     );
 
     private static final ActorContext ALLOW_ALL = level -> true;
@@ -181,6 +215,51 @@ class IndicatorQueryValidatorTest {
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(UnsupportedOperatorException.class);
+    }
+
+    @Test
+    void compileThrowsInvalidFilterValueExceptionForUnknownValueOnClosedEnumerationDimension() {
+        var query = IndicatorQueryBuilder.forIndicator(STATUS_FILTERABLE_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.STATUS_DIMENSION, FilterOperator.EQ, List.of("NOT_A_REAL_STATUS")))
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidFilterValueException.class);
+    }
+
+    @Test
+    void compileThrowsInvalidFilterValueExceptionWhenOneOfSeveralInValuesIsUnknown() {
+        var query = IndicatorQueryBuilder.forIndicator(STATUS_FILTERABLE_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.STATUS_DIMENSION, FilterOperator.IN, List.of("ACTIVE", "NOT_A_REAL_STATUS")))
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidFilterValueException.class);
+    }
+
+    @Test
+    void compileSucceedsForKnownValueOnClosedEnumerationDimension() {
+        var query = IndicatorQueryBuilder.forIndicator(STATUS_FILTERABLE_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.STATUS_DIMENSION, FilterOperator.EQ, List.of("ACTIVE")))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.filters()).hasSize(1);
+    }
+
+    @Test
+    void compileDoesNotValidateFilterValuesWhenNoDimensionMemberProviderIsRegistered() {
+        // "country" has no registered DimensionMemberProvider in this test's minimal registry (unlike
+        // production, where CountryDimensionMemberProvider IS registered and would validate this) —
+        // there's nothing to check a value against, so it must not be rejected.
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("NOT_A_REAL_COUNTRY")))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.filters()).hasSize(1);
     }
 
     @Test

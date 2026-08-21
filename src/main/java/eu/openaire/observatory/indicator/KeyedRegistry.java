@@ -2,6 +2,7 @@ package eu.openaire.observatory.indicator;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -25,5 +26,9 @@ public final class KeyedRegistry<K, V> {
             throw notFoundException.apply(key);
         }
         return value;
+    }
+
+    public Optional<V> find(K key) {
+        return Optional.ofNullable(byKey.get(key));
     }
 }

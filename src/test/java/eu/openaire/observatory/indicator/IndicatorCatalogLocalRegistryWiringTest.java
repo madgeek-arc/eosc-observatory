@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator;
 
+import eu.openaire.observatory.indicator.dimension.DimensionMemberProviderRegistry;
 import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.local.LocalRegistryIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.model.FilterOperator;
@@ -29,7 +30,8 @@ class IndicatorCatalogLocalRegistryWiringTest {
     private final IndicatorCatalog catalog = new IndicatorCatalog();
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
         new CatalogIndicatorDefinitionLookup(catalog), new CatalogDimensionDefinitionLookup(catalog),
-        new AllowAllIndicatorAuthorizationService(), new IndicatorQueryHandlerRegistry(List.of())
+        new AllowAllIndicatorAuthorizationService(), new IndicatorQueryHandlerRegistry(List.of()),
+        new DimensionMemberProviderRegistry(List.of())
     );
     private static final ActorContext ALLOW_ALL = level -> true;
 

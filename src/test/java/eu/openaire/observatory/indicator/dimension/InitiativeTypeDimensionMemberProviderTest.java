@@ -43,4 +43,9 @@ class InitiativeTypeDimensionMemberProviderTest {
             "TRAINING_MONITORING_INITIATIVE", "SOFTWARE_MONITORING_INITIATIVE"
         );
     }
+
+    @Test
+    void validCodesReturnsAllTwentySevenFixedInitiativeTypes() {
+        assertThat(provider.validCodes(null)).hasSize(27).contains("OA_PUBLICATION_POLICY", "SOFTWARE_MONITORING_INITIATIVE");
+    }
 }

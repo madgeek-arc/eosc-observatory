@@ -41,4 +41,19 @@ class DimensionMemberProviderRegistryTest {
         assertThatThrownBy(() -> registry.search("industry", null, "", 100))
             .isInstanceOf(UnknownDimensionException.class);
     }
+
+    @Test
+    void findReturnsTheProviderRegisteredForTheDimensionCode() {
+        var countryProvider = providerFor("country", new DimensionMember("GR", "Greece"));
+        var registry = new DimensionMemberProviderRegistry(List.of(countryProvider));
+
+        assertThat(registry.find("country")).contains(countryProvider);
+    }
+
+    @Test
+    void findIsEmptyForAnUnregisteredDimensionCode() {
+        var registry = new DimensionMemberProviderRegistry(List.of(providerFor("country")));
+
+        assertThat(registry.find("industry")).isEmpty();
+    }
 }

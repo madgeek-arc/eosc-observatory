@@ -22,4 +22,9 @@ class AccessStatusDimensionMemberProviderTest {
 
         assertThat(page.members()).extracting("code").containsExactly("CLOSED");
     }
+
+    @Test
+    void validCodesReturnsTheFourFixedAccessStatuses() {
+        assertThat(provider.validCodes(null)).containsExactlyInAnyOrder("OA", "CLOSED", "EMBARGOED", "RESTRICTED");
+    }
 }

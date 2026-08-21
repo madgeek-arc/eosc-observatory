@@ -32,6 +32,8 @@ public final class IndicatorFixtures {
     }
 
     public static final String COUNTRY_DIMENSION = "country";
+    /** A closed-enumeration dimension (ACTIVE/INACTIVE), for filter-value-validation coverage. */
+    public static final String STATUS_DIMENSION = "status";
 
     public static DimensionDefinition countryDimension() {
         return new DimensionDefinition(
@@ -42,6 +44,19 @@ public final class IndicatorFixtures {
             true,
             true,
             Set.of(FilterOperator.EQ, FilterOperator.IN),
+            null
+        );
+    }
+
+    public static DimensionDefinition statusDimension() {
+        return new DimensionDefinition(
+            STATUS_DIMENSION,
+            "Status",
+            DimensionType.ENUM,
+            true,
+            false,
+            false,
+            Set.of(FilterOperator.EQ, FilterOperator.IN, FilterOperator.NOT_EQ, FilterOperator.NOT_IN),
             null
         );
     }
@@ -72,6 +87,38 @@ public final class IndicatorFixtures {
             )),
             new TimePolicy(true, MissingPeriodHandling.ZERO_FILL),
             new IndicatorExecutionBinding(code, code), // handlerKey defaults to the indicator code; override per-test as needed
+            IndicatorAccessLevel.PUBLIC,
+            IndicatorStatus.ACTIVE,
+            1
+        );
+    }
+
+    /** A MEASURE indicator filterable by the closed-enumeration "status" dimension, for filter-value-validation coverage. */
+    public static IndicatorDefinition statusFilterableIndicator(String code) {
+        return new IndicatorDefinition(
+            UUID.randomUUID(),
+            code,
+            "Publications",
+            "Number of published works",
+            IndicatorValueType.INTEGER,
+            IndicatorSemanticType.MEASURE,
+            UnitType.COUNT,
+            IndicatorFormat.NUMBER,
+            RenderHint.SCALAR,
+            new AggregationPolicy(
+                AggregationType.SUM,
+                Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
+                NullHandling.EXCLUDE
+            ),
+            null,
+            Set.of(new IndicatorDimensionBinding(
+                STATUS_DIMENSION,
+                Set.of(DimensionUsage.FILTER),
+                Set.of(FilterOperator.EQ, FilterOperator.IN, FilterOperator.NOT_EQ, FilterOperator.NOT_IN),
+                false
+            )),
+            new TimePolicy(true, MissingPeriodHandling.ZERO_FILL),
+            new IndicatorExecutionBinding(code, code),
             IndicatorAccessLevel.PUBLIC,
             IndicatorStatus.ACTIVE,
             1
