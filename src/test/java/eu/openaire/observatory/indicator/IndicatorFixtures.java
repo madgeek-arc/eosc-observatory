@@ -10,6 +10,7 @@ import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
 import eu.openaire.observatory.indicator.model.IndicatorStatus;
 import eu.openaire.observatory.indicator.model.IndicatorValueType;
@@ -52,10 +53,10 @@ public final class IndicatorFixtures {
             code,
             "Publications",
             "Number of published works",
-            null,
             IndicatorValueType.INTEGER,
             IndicatorSemanticType.MEASURE,
             UnitType.COUNT,
+            IndicatorFormat.NUMBER,
             RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.SUM,
@@ -84,10 +85,10 @@ public final class IndicatorFixtures {
             code,
             "Acceptance rate",
             "Accepted / submitted publications",
-            null,
             IndicatorValueType.DECIMAL,
             IndicatorSemanticType.RATIO,
             UnitType.PERCENT,
+            IndicatorFormat.PERCENTAGE,
             RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.NONE,
@@ -111,10 +112,10 @@ public final class IndicatorFixtures {
             code,
             "Country name",
             "Country display name",
-            null,
             IndicatorValueType.TEXT,
             IndicatorSemanticType.ATTRIBUTE,
             UnitType.NONE,
+            IndicatorFormat.CATEGORY,
             RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
             null,
@@ -134,10 +135,10 @@ public final class IndicatorFixtures {
             code,
             "Requires a filter",
             "A measure that cannot be queried without filtering by country",
-            null,
             IndicatorValueType.INTEGER,
             IndicatorSemanticType.MEASURE,
             UnitType.COUNT,
+            IndicatorFormat.NUMBER,
             RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
             null,
@@ -162,10 +163,10 @@ public final class IndicatorFixtures {
             code,
             "Access status share",
             "Percentage share of publications matching a given access status",
-            null,
             IndicatorValueType.DECIMAL,
             IndicatorSemanticType.RATIO,
             UnitType.PERCENT,
+            IndicatorFormat.PERCENTAGE,
             RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
@@ -185,10 +186,10 @@ public final class IndicatorFixtures {
             code,
             "Country name",
             "Country display name",
-            null,
             IndicatorValueType.TEXT,
             IndicatorSemanticType.ATTRIBUTE,
             UnitType.NONE,
+            IndicatorFormat.CATEGORY,
             RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
             null,
@@ -204,8 +205,8 @@ public final class IndicatorFixtures {
     public static IndicatorDefinition restrictedIndicator(String code) {
         IndicatorDefinition base = countIndicator(code);
         return new IndicatorDefinition(
-            base.id(), base.code(), base.label(), base.description(), base.groupLabel(), base.valueType(),
-            base.semanticType(), base.unit(), base.renderHint(), base.aggregationPolicy(), base.ratioPolicy(),
+            base.id(), base.code(), base.label(), base.description(), base.valueType(),
+            base.semanticType(), base.unit(), base.format(), base.renderHint(), base.aggregationPolicy(), base.ratioPolicy(),
             base.dimensionBindings(), base.timePolicy(), base.executionBinding(), IndicatorAccessLevel.RESTRICTED,
             base.status(), base.version()
         );

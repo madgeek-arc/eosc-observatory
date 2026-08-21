@@ -8,6 +8,7 @@ import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
@@ -344,8 +345,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition countryInitiativeStatusDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.COUNTRY_INITIATIVE_STATUS, "Country Initiative Status", "desc", "Publications",
-            IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            UUID.randomUUID(), IndicatorCodes.COUNTRY_INITIATIVE_STATUS, "Country Initiative Status", "desc",
+            IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.YES_NO, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
             Set.of(initiativeTypeFilterGroupBinding(), surveyYearBinding()),
@@ -357,8 +358,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition euCountryCoverageDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.EU_COUNTRY_COVERAGE, "EU Country Coverage", "desc", "Publications",
-            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            UUID.randomUUID(), IndicatorCodes.EU_COUNTRY_COVERAGE, "EU Country Coverage", "desc",
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, IndicatorFormat.PERCENTAGE, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(initiativeTypeFilterGroupBinding(), optionalSurveyYearBinding()),
@@ -370,8 +371,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition countryPolicyStatusDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.COUNTRY_POLICY_STATUS, "Country Policy Status", "desc", "Publications",
-            IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            UUID.randomUUID(), IndicatorCodes.COUNTRY_POLICY_STATUS, "Country Policy Status", "desc",
+            IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.YES_NO, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
             Set.of(
@@ -388,8 +389,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition monitoredAreasCountDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.MONITORED_AREAS_COUNT, "Monitored Areas Count", "desc", "National Monitoring",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.ENTITY_MAP,
+            UUID.randomUUID(), IndicatorCodes.MONITORED_AREAS_COUNT, "Monitored Areas Count", "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
             Set.of(surveyYearBinding()),
@@ -401,8 +402,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition policyAreasCountDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.POLICY_AREAS_COUNT, "Policy Areas Count", "desc", "Open Science Policies",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.ENTITY_MAP,
+            UUID.randomUUID(), IndicatorCodes.POLICY_AREAS_COUNT, "Policy Areas Count", "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
             Set.of(surveyYearBinding()),
@@ -418,8 +419,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition financialInvestmentDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.FINANCIAL_INVESTMENT, "Financial Investment", "desc", "Publications",
-            IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
+            UUID.randomUUID(), IndicatorCodes.FINANCIAL_INVESTMENT, "Financial Investment", "desc",
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, IndicatorFormat.CURRENCY, RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.SUM,
                 Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MEDIAN, AggregationType.MIN, AggregationType.MAX),
@@ -453,8 +454,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition countByQuestionDefinition(String code, String label) {
         return new IndicatorDefinition(
-            UUID.randomUUID(), code, label, "desc", "Data Preservation",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            UUID.randomUUID(), code, label, "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             new AggregationPolicy(
                 AggregationType.SUM, Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MIN, AggregationType.MAX),
                 NullHandling.EXCLUDE

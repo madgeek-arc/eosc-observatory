@@ -3,10 +3,10 @@ package eu.openaire.observatory.indicator.api;
 import eu.openaire.observatory.indicator.IndicatorCatalog;
 import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.local.LocalRegistryIndicatorQueryHandler;
+import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.openaire.OpenAireStatsToolIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorDefinition;
-import eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorFormat;
-import eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorKind;
+import eu.openaire.observatory.indicator.predefined.WidgetGroup;
 import eu.openaire.observatory.indicator.survey.SurveyStatsToolIndicatorQueryHandler;
 import org.junit.jupiter.api.Test;
 
@@ -49,14 +49,14 @@ class PreDefinedIndicatorItemTest {
     @Test
     void serializesKindAndFormatToTheirWireValues() {
         var definition = new PreDefinedIndicatorDefinition(
-            "od-4", "National Policy on Open Data", "Open Data",
-            PreDefinedIndicatorKind.MAP, PreDefinedIndicatorFormat.YES_NO, false,
+            "od-4", "National Policy on Open Data", WidgetGroup.OPEN_DATA,
+            ChartType.MAP, false,
             IndicatorCodes.COUNTRY_INITIATIVE_STATUS, Map.of()
         );
 
         var item = PreDefinedIndicatorItem.from(definition, catalog);
 
-        assertThat(item.kind()).isEqualTo("map");
+        assertThat(item.chartType()).isEqualTo("MAP");
         assertThat(item.format()).isEqualTo("yes-no");
         assertThat(item.id()).isEqualTo("od-4");
         assertThat(item.label()).isEqualTo("National Policy on Open Data");
@@ -74,8 +74,8 @@ class PreDefinedIndicatorItemTest {
 
     private static PreDefinedIndicatorDefinition widget(String indicatorCode, Map<String, java.util.List<String>> presetFilters) {
         return new PreDefinedIndicatorDefinition(
-            "widget-id", "Widget Label", "Widget Group",
-            PreDefinedIndicatorKind.INDICATOR, PreDefinedIndicatorFormat.NUMBER, false,
+            "widget-id", "Widget Label", WidgetGroup.OPEN_DATA,
+            ChartType.SCALAR, false,
             indicatorCode, presetFilters
         );
     }

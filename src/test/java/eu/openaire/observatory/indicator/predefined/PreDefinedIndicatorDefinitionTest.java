@@ -1,6 +1,7 @@
 package eu.openaire.observatory.indicator.predefined;
 
 import eu.openaire.observatory.indicator.model.AggregationType;
+import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.query.ComparisonMode;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
@@ -21,8 +22,8 @@ class PreDefinedIndicatorDefinitionTest {
 
     private static PreDefinedIndicatorDefinition widget(Map<String, List<String>> presetFilters) {
         return new PreDefinedIndicatorDefinition(
-            "oa-1", "OA Publication in Europe", "Open Access Publications",
-            PreDefinedIndicatorKind.INDICATOR, PreDefinedIndicatorFormat.PERCENTAGE, true,
+            "oa-1", "OA Publication in Europe", WidgetGroup.OPEN_ACCESS_PUBLICATIONS,
+            ChartType.SCALAR, true,
             "publications.access_status_share", presetFilters
         );
     }

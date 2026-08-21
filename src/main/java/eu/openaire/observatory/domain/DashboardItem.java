@@ -1,5 +1,6 @@
 package eu.openaire.observatory.domain;
 
+import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 
 public class DashboardItem {

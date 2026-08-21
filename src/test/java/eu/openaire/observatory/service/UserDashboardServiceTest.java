@@ -1,9 +1,9 @@
 package eu.openaire.observatory.service;
 
-import eu.openaire.observatory.domain.ChartType;
 import eu.openaire.observatory.domain.DashboardItem;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.UserDashboard;
+import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;

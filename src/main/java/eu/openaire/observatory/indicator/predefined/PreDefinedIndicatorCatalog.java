@@ -1,6 +1,7 @@
 package eu.openaire.observatory.indicator.predefined;
 
 import eu.openaire.observatory.indicator.IndicatorCatalog;
+import eu.openaire.observatory.indicator.model.ChartType;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -19,14 +20,18 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.INVESTMENT_AREA_D
 import static eu.openaire.observatory.indicator.IndicatorCodes.LONG_TERM_PRESERVATION_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT;
-import static eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorFormat.CATEGORY;
-import static eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorFormat.CURRENCY;
-import static eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorFormat.NUMBER;
-import static eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorFormat.PERCENTAGE;
-import static eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorFormat.YES_NO;
-import static eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorKind.INDICATOR;
-import static eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorKind.MAP;
-import static eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorKind.TREND;
+import static eu.openaire.observatory.indicator.model.ChartType.LINE;
+import static eu.openaire.observatory.indicator.model.ChartType.MAP;
+import static eu.openaire.observatory.indicator.model.ChartType.POLICY;
+import static eu.openaire.observatory.indicator.model.ChartType.SCALAR;
+import static eu.openaire.observatory.indicator.predefined.WidgetGroup.CITIZEN_SCIENCE;
+import static eu.openaire.observatory.indicator.predefined.WidgetGroup.DATA_MANAGEMENT;
+import static eu.openaire.observatory.indicator.predefined.WidgetGroup.FAIR_DATA;
+import static eu.openaire.observatory.indicator.predefined.WidgetGroup.OPEN_ACCESS_PUBLICATIONS;
+import static eu.openaire.observatory.indicator.predefined.WidgetGroup.OPEN_DATA;
+import static eu.openaire.observatory.indicator.predefined.WidgetGroup.OPEN_SCIENCE_TRAINING;
+import static eu.openaire.observatory.indicator.predefined.WidgetGroup.OPEN_SOFTWARE;
+import static eu.openaire.observatory.indicator.predefined.WidgetGroup.REPOSITORIES;
 
 /**
  * Fixed catalog of concrete dashboard widgets for an Explore-style page — one row per widget, each
@@ -79,139 +84,139 @@ public class PreDefinedIndicatorCatalog {
     private static List<PreDefinedIndicatorDefinition> allDefinitions() {
         return List.of(
             // ---- Open Access Publications --------------------------------------------------------
-            widget("oa-1", "OA Publication in Europe (OA vs Closed)", "Open Access Publications",
-                INDICATOR, PERCENTAGE, true, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA")),
-            widget("oa-2", "Trend of Open Access Publications", "Open Access Publications",
-                TREND, PERCENTAGE, true, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA")),
-            widget("oa-3", "EU Countries with Policy on OA Publication", "Open Access Publications",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("OA_PUBLICATION_POLICY")),
-            widget("oa-4", "National Policy on Open Access Publications", "Open Access Publications",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("OA_PUBLICATION_POLICY")),
-            widget("oa-5", "EU Countries with National OA Publication Monitoring Initiatives", "Open Access Publications",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("MONITORING_INITIATIVE")),
-            widget("oa-6", "National Monitoring on Open Access Publications", "Open Access Publications",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("MONITORING_INITIATIVE")),
-            widget("oa-7", "EU Countries with Financial Strategy on OA Publication", "Open Access Publications",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("FINANCIAL_STRATEGY")),
-            widget("oa-8", "National Financial Strategy on Open Access Publications", "Open Access Publications",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("FINANCIAL_STRATEGY")),
-            widget("oa-9", "EU countries with Policy on Immediate OA Publications", "Open Access Publications",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("IMMEDIATE_OA_POLICY")),
-            widget("oa-10", "Financial investments in OA Publication", "Open Access Publications",
-                INDICATOR, CURRENCY, true, FINANCIAL_INVESTMENT, investmentArea("OA_PUBLICATION")),
+            widget("oa-1", "OA Publication in Europe (OA vs Closed)", OPEN_ACCESS_PUBLICATIONS,
+                SCALAR, true, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA")),
+            widget("oa-2", "Trend of Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                LINE, true, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA")),
+            widget("oa-3", "EU Countries with Policy on OA Publication", OPEN_ACCESS_PUBLICATIONS,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("OA_PUBLICATION_POLICY")),
+            widget("oa-4", "National Policy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("OA_PUBLICATION_POLICY")),
+            widget("oa-5", "EU Countries with National OA Publication Monitoring Initiatives", OPEN_ACCESS_PUBLICATIONS,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("MONITORING_INITIATIVE")),
+            widget("oa-6", "National Monitoring on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("MONITORING_INITIATIVE")),
+            widget("oa-7", "EU Countries with Financial Strategy on OA Publication", OPEN_ACCESS_PUBLICATIONS,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("FINANCIAL_STRATEGY")),
+            widget("oa-8", "National Financial Strategy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("FINANCIAL_STRATEGY")),
+            widget("oa-9", "EU countries with Policy on Immediate OA Publications", OPEN_ACCESS_PUBLICATIONS,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("IMMEDIATE_OA_POLICY")),
+            widget("oa-10", "Financial investments in OA Publication", OPEN_ACCESS_PUBLICATIONS,
+                SCALAR, true, FINANCIAL_INVESTMENT, investmentArea("OA_PUBLICATION")),
 
             // ---- Open Data -------------------------------------------------------------------------
-            widget("od-1", "Open Data in Europe (Open vs Closed)", "Open Data",
-                INDICATOR, PERCENTAGE, true, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA")),
-            widget("od-2", "Trend of Open Data", "Open Data",
-                TREND, PERCENTAGE, true, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA")),
-            widget("od-3", "EU Countries with Policy on Open Data", "Open Data",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_POLICY")),
-            widget("od-4", "National Policy on Open Data", "Open Data",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("OPEN_DATA_POLICY")),
-            widget("od-5", "EU Countries with National Open Data Monitoring Initiatives", "Open Data",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_MONITORING_INITIATIVE")),
-            widget("od-6", "National Monitoring on Open Data", "Open Data",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_MONITORING_INITIATIVE")),
-            widget("od-7", "EU Countries with Financial Strategy on Open Data", "Open Data",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY")),
-            widget("od-8", "National Financial Strategy on Open Data", "Open Data",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY")),
-            widget("od-9", "Financial investments in Open Data", "Open Data",
-                INDICATOR, CURRENCY, true, FINANCIAL_INVESTMENT, investmentArea("OPEN_DATA")),
+            widget("od-1", "Open Data in Europe (Open vs Closed)", OPEN_DATA,
+                SCALAR, true, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA")),
+            widget("od-2", "Trend of Open Data", OPEN_DATA,
+                LINE, true, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA")),
+            widget("od-3", "EU Countries with Policy on Open Data", OPEN_DATA,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_POLICY")),
+            widget("od-4", "National Policy on Open Data", OPEN_DATA,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("OPEN_DATA_POLICY")),
+            widget("od-5", "EU Countries with National Open Data Monitoring Initiatives", OPEN_DATA,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_MONITORING_INITIATIVE")),
+            widget("od-6", "National Monitoring on Open Data", OPEN_DATA,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_MONITORING_INITIATIVE")),
+            widget("od-7", "EU Countries with Financial Strategy on Open Data", OPEN_DATA,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY")),
+            widget("od-8", "National Financial Strategy on Open Data", OPEN_DATA,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY")),
+            widget("od-9", "Financial investments in Open Data", OPEN_DATA,
+                SCALAR, true, FINANCIAL_INVESTMENT, investmentArea("OPEN_DATA")),
 
             // ---- FAIR Data -------------------------------------------------------------------------
-            widget("fair-1", "EU Countries with Policy on FAIR Data", "FAIR Data",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_POLICY")),
-            widget("fair-2", "National Policy on FAIR Data", "FAIR Data",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("FAIR_DATA_POLICY")),
-            widget("fair-3", "EU Countries with National FAIR Data Monitoring Initiatives", "FAIR Data",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_MONITORING_INITIATIVE")),
-            widget("fair-4", "National Monitoring on FAIR Data", "FAIR Data",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_MONITORING_INITIATIVE")),
-            widget("fair-5", "EU Countries with Financial Strategy on FAIR Data", "FAIR Data",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY")),
-            widget("fair-6", "National Financial Strategy on FAIR Data", "FAIR Data",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY")),
-            widget("fair-7", "Financial investments in FAIR Data", "FAIR Data",
-                INDICATOR, CURRENCY, true, FINANCIAL_INVESTMENT, investmentArea("FAIR_DATA")),
+            widget("fair-1", "EU Countries with Policy on FAIR Data", FAIR_DATA,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_POLICY")),
+            widget("fair-2", "National Policy on FAIR Data", FAIR_DATA,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("FAIR_DATA_POLICY")),
+            widget("fair-3", "EU Countries with National FAIR Data Monitoring Initiatives", FAIR_DATA,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_MONITORING_INITIATIVE")),
+            widget("fair-4", "National Monitoring on FAIR Data", FAIR_DATA,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_MONITORING_INITIATIVE")),
+            widget("fair-5", "EU Countries with Financial Strategy on FAIR Data", FAIR_DATA,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY")),
+            widget("fair-6", "National Financial Strategy on FAIR Data", FAIR_DATA,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY")),
+            widget("fair-7", "Financial investments in FAIR Data", FAIR_DATA,
+                SCALAR, true, FINANCIAL_INVESTMENT, investmentArea("FAIR_DATA")),
 
             // ---- Data Management --------------------------------------------------------------------
-            widget("dm-1", "EU Countries with Policy on Data Management", "Data Management",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_POLICY")),
-            widget("dm-2", "National Policy on Data Management", "Data Management",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("DATA_MANAGEMENT_POLICY")),
-            widget("dm-3", "EU Countries with National Data Management Monitoring Initiatives", "Data Management",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE")),
-            widget("dm-4", "National Monitoring on Data Management", "Data Management",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE")),
-            widget("dm-5", "EU Countries with Financial Strategy on Data Management", "Data Management",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY")),
-            widget("dm-6", "National Financial Strategy on Data Management", "Data Management",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY")),
-            widget("dm-7", "Financial investments in Data Management", "Data Management",
-                INDICATOR, CURRENCY, true, FINANCIAL_INVESTMENT, investmentArea("DATA_MANAGEMENT")),
+            widget("dm-1", "EU Countries with Policy on Data Management", DATA_MANAGEMENT,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_POLICY")),
+            widget("dm-2", "National Policy on Data Management", DATA_MANAGEMENT,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("DATA_MANAGEMENT_POLICY")),
+            widget("dm-3", "EU Countries with National Data Management Monitoring Initiatives", DATA_MANAGEMENT,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE")),
+            widget("dm-4", "National Monitoring on Data Management", DATA_MANAGEMENT,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE")),
+            widget("dm-5", "EU Countries with Financial Strategy on Data Management", DATA_MANAGEMENT,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY")),
+            widget("dm-6", "National Financial Strategy on Data Management", DATA_MANAGEMENT,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY")),
+            widget("dm-7", "Financial investments in Data Management", DATA_MANAGEMENT,
+                SCALAR, true, FINANCIAL_INVESTMENT, investmentArea("DATA_MANAGEMENT")),
 
             // ---- Citizen Science ---------------------------------------------------------------------
-            widget("cs-1", "New Citizen Science projects in EU Countries", "Citizen Science",
-                INDICATOR, NUMBER, true, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS),
-            widget("cs-2", "EU Countries with Policy on Citizen Science", "Citizen Science",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_POLICY")),
-            widget("cs-3", "National Policy on Citizen Science", "Citizen Science",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("CITIZEN_SCIENCE_POLICY")),
-            widget("cs-4", "EU Countries with Citizen Science Monitoring Initiatives", "Citizen Science",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE")),
-            widget("cs-5", "National Monitoring on Citizen Science", "Citizen Science",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE")),
-            widget("cs-6", "EU Countries with Financial Strategy on Citizen Science", "Citizen Science",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY")),
-            widget("cs-7", "National Financial Strategy on Citizen Science", "Citizen Science",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY")),
-            widget("cs-8", "Financial investments in Citizen Science", "Citizen Science",
-                INDICATOR, CURRENCY, true, FINANCIAL_INVESTMENT, investmentArea("CITIZEN_SCIENCE")),
+            widget("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE,
+                SCALAR, true, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS),
+            widget("cs-2", "EU Countries with Policy on Citizen Science", CITIZEN_SCIENCE,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_POLICY")),
+            widget("cs-3", "National Policy on Citizen Science", CITIZEN_SCIENCE,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("CITIZEN_SCIENCE_POLICY")),
+            widget("cs-4", "EU Countries with Citizen Science Monitoring Initiatives", CITIZEN_SCIENCE,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE")),
+            widget("cs-5", "National Monitoring on Citizen Science", CITIZEN_SCIENCE,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE")),
+            widget("cs-6", "EU Countries with Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY")),
+            widget("cs-7", "National Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY")),
+            widget("cs-8", "Financial investments in Citizen Science", CITIZEN_SCIENCE,
+                SCALAR, true, FINANCIAL_INVESTMENT, investmentArea("CITIZEN_SCIENCE")),
 
             // ---- Repositories (covers both Connecting Repositories to EOSC and Long-term Data
             //      Preservation sub-topics) ------------------------------------------------------------
-            widget("repo-1", "Repositories offering long-term preservation in EU Countries", "Repositories",
-                INDICATOR, NUMBER, true, LONG_TERM_PRESERVATION_COUNT, NO_FILTERS),
-            widget("repo-2", "EU Countries with Policy on Connecting Repositories to EOSC", "Repositories",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_POLICY")),
-            widget("repo-3", "National Policy on Connecting Repositories to EOSC", "Repositories",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_CONNECT_POLICY")),
-            widget("repo-4", "EU Countries with Monitoring Initiatives on Connecting Repositories to EOSC", "Repositories",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE")),
-            widget("repo-5", "National Monitoring on Connecting Repositories to EOSC", "Repositories",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE")),
-            widget("repo-6", "EU Countries with Financial Strategy on Connecting Repositories to EOSC", "Repositories",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY")),
-            widget("repo-7", "National Financial Strategy on Connecting Repositories to EOSC", "Repositories",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY")),
-            widget("repo-8", "Financial investments in connecting repositories to EOSC", "Repositories",
-                INDICATOR, CURRENCY, true, FINANCIAL_INVESTMENT, investmentArea("REPOSITORIES_CONNECT")),
-            widget("repo-9", "National Policy on Long-term Data Preservation", "Repositories",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_PRESERVATION_POLICY")),
-            widget("repo-10", "National Monitoring on Long-term Data Preservation", "Repositories",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE")),
+            widget("repo-1", "Repositories offering long-term preservation in EU Countries", REPOSITORIES,
+                SCALAR, true, LONG_TERM_PRESERVATION_COUNT, NO_FILTERS),
+            widget("repo-2", "EU Countries with Policy on Connecting Repositories to EOSC", REPOSITORIES,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_POLICY")),
+            widget("repo-3", "National Policy on Connecting Repositories to EOSC", REPOSITORIES,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_CONNECT_POLICY")),
+            widget("repo-4", "EU Countries with Monitoring Initiatives on Connecting Repositories to EOSC", REPOSITORIES,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE")),
+            widget("repo-5", "National Monitoring on Connecting Repositories to EOSC", REPOSITORIES,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE")),
+            widget("repo-6", "EU Countries with Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY")),
+            widget("repo-7", "National Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY")),
+            widget("repo-8", "Financial investments in connecting repositories to EOSC", REPOSITORIES,
+                SCALAR, true, FINANCIAL_INVESTMENT, investmentArea("REPOSITORIES_CONNECT")),
+            widget("repo-9", "National Policy on Long-term Data Preservation", REPOSITORIES,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_PRESERVATION_POLICY")),
+            widget("repo-10", "National Monitoring on Long-term Data Preservation", REPOSITORIES,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE")),
             // repo-11 ("National Financial Strategy on Long-term Data Preservation", Question39) and
             // repo-12 ("Financial investments in Long-term Data Preservation", Question88) are omitted —
             // see the class javadoc: no REPOSITORIES_PRESERVATION_FINANCIAL_STRATEGY/REPOSITORIES_PRESERVATION
             // member exists yet.
 
             // ---- Open Science Training -----------------------------------------------------------
-            widget("train-1", "EU Countries with Policy on skills/training for Open Science", "Open Science Training",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_POLICY")),
-            widget("train-2", "National Policy on Skills/Training in Open Science", "Open Science Training",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("TRAINING_POLICY")),
-            widget("train-3", "EU Countries with Monitoring Initiatives on skills/training in Open Science", "Open Science Training",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_MONITORING_INITIATIVE")),
-            widget("train-4", "National Monitoring on Skills/Training in Open Science", "Open Science Training",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_MONITORING_INITIATIVE")),
-            widget("train-5", "EU Countries with Financial Strategy on skills/training in Open Science", "Open Science Training",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_FINANCIAL_STRATEGY")),
-            widget("train-6", "National Financial Strategy on Skills/Training in Open Science", "Open Science Training",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_FINANCIAL_STRATEGY")),
-            widget("train-7", "Financial investments in skills/training for Open Science", "Open Science Training",
-                INDICATOR, CURRENCY, true, FINANCIAL_INVESTMENT, investmentArea("TRAINING")),
+            widget("train-1", "EU Countries with Policy on skills/training for Open Science", OPEN_SCIENCE_TRAINING,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_POLICY")),
+            widget("train-2", "National Policy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("TRAINING_POLICY")),
+            widget("train-3", "EU Countries with Monitoring Initiatives on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_MONITORING_INITIATIVE")),
+            widget("train-4", "National Monitoring on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_MONITORING_INITIATIVE")),
+            widget("train-5", "EU Countries with Financial Strategy on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_FINANCIAL_STRATEGY")),
+            widget("train-6", "National Financial Strategy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_FINANCIAL_STRATEGY")),
+            widget("train-7", "Financial investments in skills/training for Open Science", OPEN_SCIENCE_TRAINING,
+                SCALAR, true, FINANCIAL_INVESTMENT, investmentArea("TRAINING")),
 
             // ---- Open Software ----------------------------------------------------------------------
             // sw-1 ("Open Software sets published in EU Countries") was ambiguous in the legacy UI
@@ -219,33 +224,33 @@ public class PreDefinedIndicatorCatalog {
             // comment) — resolved to the survey-backed software.open_source_sets_count, which was
             // built specifically for this self-reported per-country figure, distinct from
             // software.count's OpenAIRE-indexed record count (see docs/INDICATOR_INVENTORY_STATUS.md).
-            widget("sw-1", "Open Software sets published in EU Countries", "Open Software",
-                INDICATOR, NUMBER, false, SOFTWARE_OPEN_SOURCE_SETS_COUNT, NO_FILTERS),
-            widget("sw-2", "EU Countries with Policy on Open Software", "Open Software",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_POLICY")),
-            widget("sw-3", "National Policy on Open Source Software", "Open Software",
-                MAP, CATEGORY, false, COUNTRY_POLICY_STATUS, initiativeType("SOFTWARE_POLICY")),
-            widget("sw-4", "EU Countries with Monitoring Initiatives on Open Software", "Open Software",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_MONITORING_INITIATIVE")),
-            widget("sw-5", "National Monitoring on Open Source Software", "Open Software",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_MONITORING_INITIATIVE")),
-            widget("sw-6", "EU Countries with Financial Strategy on Open Software", "Open Software",
-                INDICATOR, PERCENTAGE, false, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_FINANCIAL_STRATEGY")),
-            widget("sw-7", "National Financial Strategy on Open Software", "Open Software",
-                MAP, YES_NO, false, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_FINANCIAL_STRATEGY")),
-            widget("sw-8", "Financial investments in Open Software", "Open Software",
-                INDICATOR, CURRENCY, true, FINANCIAL_INVESTMENT, investmentArea("SOFTWARE")),
+            widget("sw-1", "Open Software sets published in EU Countries", OPEN_SOFTWARE,
+                SCALAR, true, SOFTWARE_OPEN_SOURCE_SETS_COUNT, NO_FILTERS),
+            widget("sw-2", "EU Countries with Policy on Open Software", OPEN_SOFTWARE,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_POLICY")),
+            widget("sw-3", "National Policy on Open Source Software", OPEN_SOFTWARE,
+                POLICY, false, COUNTRY_POLICY_STATUS, initiativeType("SOFTWARE_POLICY")),
+            widget("sw-4", "EU Countries with Monitoring Initiatives on Open Software", OPEN_SOFTWARE,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_MONITORING_INITIATIVE")),
+            widget("sw-5", "National Monitoring on Open Source Software", OPEN_SOFTWARE,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_MONITORING_INITIATIVE")),
+            widget("sw-6", "EU Countries with Financial Strategy on Open Software", OPEN_SOFTWARE,
+                SCALAR, false, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_FINANCIAL_STRATEGY")),
+            widget("sw-7", "National Financial Strategy on Open Software", OPEN_SOFTWARE,
+                MAP, false, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_FINANCIAL_STRATEGY")),
+            widget("sw-8", "Financial investments in Open Software", OPEN_SOFTWARE,
+                SCALAR, true, FINANCIAL_INVESTMENT, investmentArea("SOFTWARE")),
 
             // ---- Financial Investment (Investments in EOSC page) -------------------------------------
-            widget("fin-1", "Total amount of investments in EOSC and Open Science", "Financial Investment",
-                INDICATOR, CURRENCY, false, FINANCIAL_INVESTMENT, NO_FILTERS)
+            widget("fin-1", "Total amount of investments in EOSC and Open Science", WidgetGroup.FINANCIAL_INVESTMENT,
+                SCALAR, true, FINANCIAL_INVESTMENT, NO_FILTERS)
         );
     }
 
     private static PreDefinedIndicatorDefinition widget(
-            String id, String label, String group, PreDefinedIndicatorKind kind, PreDefinedIndicatorFormat format,
+            String id, String label, WidgetGroup group, ChartType chartType,
             boolean hasAverage, String indicatorCode, Map<String, List<String>> presetFilters) {
-        return new PreDefinedIndicatorDefinition(id, label, group, kind, format, hasAverage, indicatorCode, presetFilters);
+        return new PreDefinedIndicatorDefinition(id, label, group, chartType, hasAverage, indicatorCode, presetFilters);
     }
 
     private static Map<String, List<String>> accessStatus(String value) {

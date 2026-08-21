@@ -10,6 +10,7 @@ import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
 import eu.openaire.observatory.indicator.model.IndicatorStatus;
 import eu.openaire.observatory.indicator.model.IndicatorValueType;
@@ -74,8 +75,6 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_YEAR_DIMEN
  */
 @Service
 public class IndicatorCatalog {
-
-    private static final String GROUP_LABEL = "Publications";
 
     private static final TimePolicy TIME_POLICY = new TimePolicy(true, MissingPeriodHandling.ZERO_FILL);
 
@@ -204,7 +203,7 @@ public class IndicatorCatalog {
                 + "publications.access_status_share), by country, by classification, or by "
                 + "fieldOfScience. Also filterable (not groupable) by goldOA/greenOA, two "
                 + "independent YES/NO flags.",
-            GROUP_LABEL, IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(
@@ -239,7 +238,7 @@ public class IndicatorCatalog {
                 + "The oaLicenseStatus filter is required — there is no meaningful value without "
                 + "specifying which status to measure. Routed to the europe_monitor stats-tool "
                 + "profile, unlike every other OpenAIRE-routed indicator in this catalog.",
-            GROUP_LABEL, IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(
@@ -263,7 +262,7 @@ public class IndicatorCatalog {
                 + "Closed, Embargoed, or Restricted), by country, or by classification. Same shape "
                 + "and upstream as publications.count, scoped to entity=dataset instead of "
                 + "entity=publication.",
-            "Datasets", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(
@@ -291,7 +290,7 @@ public class IndicatorCatalog {
                 + "Closed, Embargoed, or Restricted), by country, or by classification. Same shape "
                 + "and upstream as publications.count/datasets.count, scoped to entity=software "
                 + "instead of entity=publication/dataset.",
-            "Software", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(
@@ -322,7 +321,7 @@ public class IndicatorCatalog {
                 + "NOT_EQ OA for the full non-open share). The accessStatus filter is required — "
                 + "there is no meaningful value without specifying which status(es) to measure as a "
                 + "share of the total.",
-            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, IndicatorFormat.PERCENTAGE, RenderHint.SCALAR,
             NO_AGGREGATION_POLICY,
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(
@@ -349,7 +348,7 @@ public class IndicatorCatalog {
                 + "instead of entity=publication. The accessStatus filter is required — there is no "
                 + "meaningful value without specifying which status(es) to measure as a share of the "
                 + "total.",
-            "Open Data", IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, IndicatorFormat.PERCENTAGE, RenderHint.SCALAR,
             NO_AGGREGATION_POLICY,
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(
@@ -387,7 +386,7 @@ public class IndicatorCatalog {
                 + "scale before returning a value, so the returned number is already in euros, not "
                 + "millions. The investmentArea filter is optional: omitted, every area's investment "
                 + "is summed together; grouping by investmentArea instead returns one point per area.",
-            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, RenderHint.SCALAR,
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.CURRENCY, IndicatorFormat.CURRENCY, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION), filterableGroupableBinding(INVESTMENT_AREA_DIMENSION)),
@@ -420,7 +419,7 @@ public class IndicatorCatalog {
                 + "status per (country, initiativeType) pair when grouped by initiativeType, "
                 + "otherwise a single initiativeType is required. No aggregation — always one status "
                 + "per answering-or-pending country.",
-            GROUP_LABEL, IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.YES_NO, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
             Set.of(initiativeTypeFilterGroupBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
@@ -451,7 +450,7 @@ public class IndicatorCatalog {
                 + "question still counts toward the denominator, just not as a Yes. One point per "
                 + "initiativeType when grouped by it; a real multi-year trend when a timeSeries range "
                 + "is requested.",
-            GROUP_LABEL, IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, IndicatorFormat.PERCENTAGE, RenderHint.SCALAR,
             NO_AGGREGATION_POLICY,
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(initiativeTypeFilterGroupBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
@@ -481,7 +480,7 @@ public class IndicatorCatalog {
                 + "mandatory sub-question is skip-logic'd for them in the survey itself, not a "
                 + "missing answer). No aggregation — always one status per answering-or-pending "
                 + "country.",
-            GROUP_LABEL, IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.CATEGORY, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
             Set.of(requiredEqFilterBinding(INITIATIVE_TYPE_DIMENSION), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
@@ -502,7 +501,7 @@ public class IndicatorCatalog {
             "Per-country count of topic areas (out of every \"*_MONITORING_INITIATIVE\" "
                 + "initiativeType member) with a Yes national-monitoring-initiative answer that "
                 + "year. No aggregation — always one count per country.",
-            "National Monitoring", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.ENTITY_MAP,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
             Set.of(requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
@@ -521,7 +520,7 @@ public class IndicatorCatalog {
             "Per-country count of topic areas (out of every \"*_POLICY\" initiativeType member) "
                 + "with a Yes national-policy answer that year. No aggregation — always one count "
                 + "per country.",
-            "Open Science Policies", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.ENTITY_MAP,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
             Set.of(requiredEqFilterBinding(SURVEY_YEAR_DIMENSION)),
@@ -541,7 +540,7 @@ public class IndicatorCatalog {
             "Number of repositories offering long-term data preservation, per country (survey "
                 + "Question89). Filterable/groupable by country (absent country filter aggregates "
                 + "all countries with an answer, per the requested AggregationPolicy — SUM by default).",
-            "Data Preservation", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
@@ -561,7 +560,7 @@ public class IndicatorCatalog {
             "Number of new projects with a citizen science dimension started, per country (survey "
                 + "Question101). Filterable/groupable by country (absent country filter aggregates "
                 + "all countries with an answer, per the requested AggregationPolicy — SUM by default).",
-            "Citizen Science", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
@@ -587,7 +586,7 @@ public class IndicatorCatalog {
                 + "OpenAIRE-indexed software records directly. Filterable/groupable by country "
                 + "(absent country filter aggregates all countries with an answer, per the requested "
                 + "AggregationPolicy — SUM by default).",
-            "Software", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(countryBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION)),
@@ -607,7 +606,7 @@ public class IndicatorCatalog {
             "Number of distinct countries with at least one validated answer for the given survey. "
                 + "The surveyId filter is required — there is no meaningful value without "
                 + "specifying which survey.",
-            "Survey", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             NO_AGGREGATION_POLICY,
             null,
             Set.of(requiredEqFilterBinding(SURVEY_ID_DIMENSION)),
@@ -625,7 +624,7 @@ public class IndicatorCatalog {
         return definition(
             STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT, "Participating Countries",
             "Number of distinct countries with an EOSC Steering Board stakeholder registered.",
-            "Stakeholders", IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             NO_AGGREGATION_POLICY,
             null,
             Set.of(),
@@ -681,13 +680,13 @@ public class IndicatorCatalog {
      * always equal to the indicator's own code, and the fixed PUBLIC/ACTIVE/version-1 trailer.
      */
     private static IndicatorDefinition definition(
-            String code, String label, String description, String groupLabel,
-            IndicatorValueType valueType, IndicatorSemanticType semanticType, UnitType unit, RenderHint renderHint,
+            String code, String label, String description,
+            IndicatorValueType valueType, IndicatorSemanticType semanticType, UnitType unit, IndicatorFormat format, RenderHint renderHint,
             AggregationPolicy aggregationPolicy, RatioPolicy ratioPolicy,
             Set<IndicatorDimensionBinding> dimensionBindings, TimePolicy timePolicy, String handlerKey) {
         return new IndicatorDefinition(
-            UUID.randomUUID(), code, label, description, groupLabel,
-            valueType, semanticType, unit, renderHint,
+            UUID.randomUUID(), code, label, description,
+            valueType, semanticType, unit, format, renderHint,
             aggregationPolicy, ratioPolicy, dimensionBindings, timePolicy,
             new IndicatorExecutionBinding(handlerKey, code),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1

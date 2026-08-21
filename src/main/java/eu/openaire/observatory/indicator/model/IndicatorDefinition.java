@@ -12,10 +12,10 @@ public record IndicatorDefinition(
     String code, // stable external identifier, e.g. "publications.count"
     String label,
     String description,
-    String groupLabel, // nullable; category label for a UI picker, e.g. "Publications"
     IndicatorValueType valueType,
     IndicatorSemanticType semanticType,
     UnitType unit,
+    IndicatorFormat format,
     RenderHint renderHint,
     AggregationPolicy aggregationPolicy,
     RatioPolicy ratioPolicy, // nullable; meaningful only when semanticType == RATIO

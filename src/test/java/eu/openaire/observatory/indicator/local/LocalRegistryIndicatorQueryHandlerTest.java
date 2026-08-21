@@ -8,6 +8,7 @@ import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
@@ -114,8 +115,8 @@ class LocalRegistryIndicatorQueryHandlerTest {
     private static IndicatorDefinition countriesWithValidatedAnswersDefinition() {
         return new IndicatorDefinition(
             UUID.randomUUID(), IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS,
-            "Countries with Validated Survey Answers", "desc", "Survey",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            "Countries with Validated Survey Answers", "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
             Set.of(new IndicatorDimensionBinding(
@@ -130,8 +131,8 @@ class LocalRegistryIndicatorQueryHandlerTest {
     private static IndicatorDefinition stakeholderParticipatingCountriesCountDefinition() {
         return new IndicatorDefinition(
             UUID.randomUUID(), IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT,
-            "Participating Countries", "desc", "Stakeholders",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            "Participating Countries", "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
             Set.of(),

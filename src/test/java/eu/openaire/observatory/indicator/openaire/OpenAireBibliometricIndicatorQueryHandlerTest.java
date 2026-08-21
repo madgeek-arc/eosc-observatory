@@ -8,6 +8,7 @@ import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
@@ -632,8 +633,8 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     private static IndicatorDefinition accessStatusShareDefinition() {
         return new IndicatorDefinition(
             UUID.randomUUID(), IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE,
-            "Publications by Access Status (Share)", "desc", "Publications",
-            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            "Publications by Access Status (Share)", "desc",
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, IndicatorFormat.PERCENTAGE, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(
@@ -657,8 +658,8 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     private static IndicatorDefinition datasetsAccessStatusShareDefinition() {
         return new IndicatorDefinition(
             UUID.randomUUID(), IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE,
-            "Datasets by Access Status (Share)", "desc", "Open Data",
-            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, RenderHint.SCALAR,
+            "Datasets by Access Status (Share)", "desc",
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, IndicatorFormat.PERCENTAGE, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             new RatioPolicy(ZeroDenominatorHandling.NULL),
             Set.of(
@@ -681,8 +682,8 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition countDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.PUBLICATIONS_COUNT, "Publications", "desc", "Publications",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            UUID.randomUUID(), IndicatorCodes.PUBLICATIONS_COUNT, "Publications", "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
             null,
             Set.of(
@@ -711,8 +712,8 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition datasetsCountDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.DATASETS_COUNT, "Datasets", "desc", "Datasets",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            UUID.randomUUID(), IndicatorCodes.DATASETS_COUNT, "Datasets", "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
             null,
             Set.of(
@@ -737,8 +738,8 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
 
     private static IndicatorDefinition softwareCountDefinition() {
         return new IndicatorDefinition(
-            UUID.randomUUID(), IndicatorCodes.SOFTWARE_COUNT, "Software", "desc", "Software",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            UUID.randomUUID(), IndicatorCodes.SOFTWARE_COUNT, "Software", "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
             null,
             Set.of(
@@ -764,8 +765,8 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     private static IndicatorDefinition oaLicenseStatusCountDefinition() {
         return new IndicatorDefinition(
             UUID.randomUUID(), IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT,
-            "Publications by OA License Status", "desc", "Publications",
-            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, RenderHint.SCALAR,
+            "Publications by OA License Status", "desc",
+            IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
             null,
             Set.of(

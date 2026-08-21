@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator.predefined;
 
+import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
@@ -19,9 +20,8 @@ import java.util.Map;
 public record PreDefinedIndicatorDefinition(
     String id,
     String label,
-    String group,
-    PreDefinedIndicatorKind kind,
-    PreDefinedIndicatorFormat format,
+    WidgetGroup group,
+    ChartType chartType,
     boolean hasAverage,
     String indicatorCode, // must resolve in IndicatorCatalog — validated at startup, see PreDefinedIndicatorCatalog
     Map<String, List<String>> presetFilters // dimensionCode -> values; empty when the indicator needs no disambiguating filter

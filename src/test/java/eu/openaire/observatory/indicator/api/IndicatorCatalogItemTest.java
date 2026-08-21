@@ -8,6 +8,7 @@ import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
 import eu.openaire.observatory.indicator.model.IndicatorStatus;
 import eu.openaire.observatory.indicator.model.IndicatorValueType;
@@ -65,18 +66,19 @@ class IndicatorCatalogItemTest {
     }
 
     @Test
-    void mapRenderHintProducesMapFormat() {
+    void entityMapRenderHintIsExposedSeparatelyFromFormat() {
         var definition = mapIndicator("oa.country_initiative_status");
 
         var item = IndicatorCatalogItem.from(definition, dimensionLookup);
 
-        assertThat(item.format()).isEqualTo("map");
+        assertThat(item.renderHint()).isEqualTo("ENTITY_MAP");
+        assertThat(item.format()).isEqualTo("yes-no");
     }
 
     private static IndicatorDefinition mapIndicator(String code) {
         return new IndicatorDefinition(
-            UUID.randomUUID(), code, "National OA Initiative Status", "desc", "Publications",
-            IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, RenderHint.ENTITY_MAP,
+            UUID.randomUUID(), code, "National OA Initiative Status", "desc",
+            IndicatorValueType.BOOLEAN, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.YES_NO, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.PRESERVE),
             null,
             Set.of(),
