@@ -33,9 +33,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * groupBy (for a per-country map). publications.access_status_share's accessStatus filter also
  * accepts NOT_EQ/IN/NOT_IN, not just EQ, to aggregate several statuses together.
  */
-class IndicatorCatalogOpenAireWiringTest {
+class IndicatorDefinitionCatalogOpenAireWiringTest {
 
-    private final IndicatorCatalog catalog = new IndicatorCatalog();
+    private final IndicatorDefinitionCatalog catalog = new IndicatorDefinitionCatalog();
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
         new CatalogIndicatorDefinitionLookup(catalog), new CatalogDimensionDefinitionLookup(catalog),
         new AllowAllIndicatorAuthorizationService(), new IndicatorQueryHandlerRegistry(List.of()),
@@ -282,7 +282,7 @@ class IndicatorCatalogOpenAireWiringTest {
     }
 
     @Test
-    void oaLicenseStatusCountAcceptsClassificationAsAGroupByOnly() {
+    void oaLicenseStatusCountAcceptsClassificationAsAGroupBy() {
         var groupQuery = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT)
             .withFilters(new IndicatorFilter(
                 IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED")
@@ -292,5 +292,26 @@ class IndicatorCatalogOpenAireWiringTest {
 
         assertThat(validator.compile(groupQuery, ALLOW_ALL).groupBy())
             .extracting("dimensionCode").containsExactly(IndicatorCodes.CLASSIFICATION_DIMENSION);
+    }
+
+    @Test
+    void oaLicenseStatusCountAcceptsAnOptionalCountryFilterAndGroupBy() {
+        var filterQuery = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT)
+            .withFilters(
+                new IndicatorFilter(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED")),
+                new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))
+            )
+            .build();
+        var groupQuery = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT)
+            .withFilters(new IndicatorFilter(
+                IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED")
+            ))
+            .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
+            .build();
+
+        assertThat(validator.compile(filterQuery, ALLOW_ALL).filters())
+            .extracting("dimensionCode").contains(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(validator.compile(groupQuery, ALLOW_ALL).groupBy())
+            .extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 }

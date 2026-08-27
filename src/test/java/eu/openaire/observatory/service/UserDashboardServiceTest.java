@@ -3,7 +3,28 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.domain.DashboardItem;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.UserDashboard;
+import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
+import eu.openaire.observatory.indicator.IndicatorCodes;
+import eu.openaire.observatory.indicator.model.AggregationPolicy;
+import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.ChartType;
+import eu.openaire.observatory.indicator.model.DimensionUsage;
+import eu.openaire.observatory.indicator.model.FilterOperator;
+import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
+import eu.openaire.observatory.indicator.model.IndicatorDefinition;
+import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
+import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
+import eu.openaire.observatory.indicator.model.IndicatorStatus;
+import eu.openaire.observatory.indicator.model.IndicatorValueType;
+import eu.openaire.observatory.indicator.model.NullHandling;
+import eu.openaire.observatory.indicator.model.RenderHint;
+import eu.openaire.observatory.indicator.model.TimePolicy;
+import eu.openaire.observatory.indicator.model.UnitType;
+import eu.openaire.observatory.indicator.Indicator;
+import eu.openaire.observatory.indicator.model.IndicatorGroup;
+import eu.openaire.observatory.indicator.IndicatorCatalog;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
@@ -21,6 +42,9 @@ import org.springframework.security.core.Authentication;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,9 +55,13 @@ import static org.mockito.Mockito.*;
 class UserDashboardServiceTest {
 
     private static final String EMAIL = "user@example.com";
+    private static final String TREND_WIDGET_ID = "widget-trend";
+    private static final String NON_TREND_WIDGET_ID = "widget-non-trend";
 
     @Mock IndicatorQueryValidator indicatorQueryValidator;
     @Mock ActorContext actorContext;
+    @Mock IndicatorCatalog presetCatalog;
+    @Mock IndicatorDefinitionCatalog definitionCatalog;
     @Mock ResourceTypeService resourceTypeService;
     @Mock ResourceService resourceService;
     @Mock SearchService searchService;
@@ -44,13 +72,35 @@ class UserDashboardServiceTest {
     private UserDashboardService service;
     private Authentication authentication;
 
+    private Indicator trendDefinition;
+    private IndicatorDefinition trendIndicator;
+    private Indicator nonTrendDefinition;
+    private IndicatorDefinition nonTrendIndicator;
+
     @BeforeEach
     void setUp() {
         service = spy(new UserDashboardService(
-                indicatorQueryValidator, actorContext,
+                indicatorQueryValidator, actorContext, presetCatalog, definitionCatalog,
                 resourceTypeService, resourceService, searchService,
                 versionService, parserService, validator));
         authentication = OidcTestUtils.oidcAuthentication(EMAIL);
+
+        trendDefinition = new Indicator(
+                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, ChartType.SCALAR,
+                List.of(AggregationType.AVG, AggregationType.MEDIAN), "indicator.trend", Map.of());
+        trendIndicator = indicatorDefinition("indicator.trend", true,
+                Set.of(new IndicatorDimensionBinding(
+                        IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ, FilterOperator.IN), false)));
+
+        nonTrendDefinition = new Indicator(
+                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, ChartType.POLICY,
+                List.of(), "indicator.non-trend", Map.of());
+        nonTrendIndicator = indicatorDefinition("indicator.non-trend", false, Set.of());
+
+        lenient().when(presetCatalog.get(TREND_WIDGET_ID)).thenReturn(trendDefinition);
+        lenient().when(definitionCatalog.get("indicator.trend")).thenReturn(trendIndicator);
+        lenient().when(presetCatalog.get(NON_TREND_WIDGET_ID)).thenReturn(nonTrendDefinition);
+        lenient().when(definitionCatalog.get("indicator.non-trend")).thenReturn(nonTrendIndicator);
     }
 
     // --- createId ---
@@ -69,7 +119,7 @@ class UserDashboardServiceTest {
     void getOrCreateForCurrentUser_returnsExistingWhenPresent() {
         UserDashboard existing = new UserDashboard();
         existing.setId(EMAIL);
-        existing.setItems(List.of(item("i-1")));
+        existing.setItems(List.of(dashboardItem("i-1", TREND_WIDGET_ID)));
         doReturn(existing).when(service).get(EMAIL);
 
         UserDashboard result = service.getOrCreateForCurrentUser(authentication);
@@ -115,9 +165,9 @@ class UserDashboardServiceTest {
     void save_createsNewDashboardWhenNoneExists() {
         doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
         doReturn(new UserDashboard()).when(service).add(any());
-        DashboardItem item = item("i-1");
+        DashboardItem item = dashboardItem("i-1", TREND_WIDGET_ID);
 
-        service.save(authentication, List.of(item));
+        service.save(authentication, trendRequest(item));
 
         var captor = org.mockito.ArgumentCaptor.forClass(UserDashboard.class);
         verify(service).add(captor.capture());
@@ -140,7 +190,7 @@ class UserDashboardServiceTest {
         doReturn(existing).when(service).get(EMAIL);
         doReturn(new UserDashboard()).when(service).update(eq(EMAIL), any());
 
-        service.save(authentication, List.of(item("i-1")));
+        service.save(authentication, trendRequest(dashboardItem("i-1", TREND_WIDGET_ID)));
 
         var captor = org.mockito.ArgumentCaptor.forClass(UserDashboard.class);
         verify(service).update(eq(EMAIL), captor.capture());
@@ -158,7 +208,7 @@ class UserDashboardServiceTest {
         doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
         doReturn(new UserDashboard()).when(service).add(any());
 
-        service.save(EMAIL, adminAuth, List.of(item("i-1")));
+        service.save(EMAIL, adminAuth, trendRequest(dashboardItem("i-1", TREND_WIDGET_ID)));
 
         var captor = org.mockito.ArgumentCaptor.forClass(UserDashboard.class);
         verify(service).add(captor.capture());
@@ -180,48 +230,207 @@ class UserDashboardServiceTest {
         doReturn(existing).when(service).get(EMAIL);
         doReturn(new UserDashboard()).when(service).update(eq(EMAIL), any());
 
-        service.save(EMAIL, adminAuth, List.of(item("i-1")));
+        service.save(EMAIL, adminAuth, trendRequest(dashboardItem("i-1", TREND_WIDGET_ID)));
 
         var captor = org.mockito.ArgumentCaptor.forClass(UserDashboard.class);
         verify(service).update(eq(EMAIL), captor.capture());
         assertEquals(adminEmail, captor.getValue().getMetadata().getModifiedBy());
     }
 
-    // --- validation ---
+    // --- validation: indicatorId ---
 
     @Test
-    void save_rejectsNullChartType() {
-        DashboardItem item = item("i-1");
-        item.setChartType(null);
+    void save_rejectsNullIndicatorId() {
+        DashboardItem item = dashboardItem("i-1", TREND_WIDGET_ID);
+        item.setIndicatorId(null);
 
-        assertThrows(ValidationException.class, () -> service.save(authentication, List.of(item)));
+        assertThrows(ValidationException.class, () -> service.save(authentication, trendRequest(item)));
         verifyNoInteractions(resourceService);
     }
 
     @Test
-    void save_rejectsNullQuery() {
-        DashboardItem item = item("i-1");
-        item.setQuery(null);
+    void save_rejectsUnknownIndicatorId() {
+        DashboardItem item = dashboardItem("i-1", "does-not-exist");
 
-        assertThrows(ValidationException.class, () -> service.save(authentication, List.of(item)));
+        assertThrows(ValidationException.class, () -> service.save(authentication, trendRequest(item)));
         verifyNoInteractions(resourceService);
     }
+
+    // --- validation: year range (dashboard-level, shared across items) ---
+
+    @Test
+    void save_rejectsMissingYearTo() {
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), null, 2022, null, null);
+
+        assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void save_rejectsMissingYearFromForTrendCapableWidget() {
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), null, null, 2023, null);
+
+        assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void save_allowsMissingYearFromForNonTrendWidget() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", NON_TREND_WIDGET_ID)), null, null, 2023, null);
+
+        assertDoesNotThrow(() -> service.save(authentication, request));
+    }
+
+    @Test
+    void save_rejectsYearFromAfterYearTo() {
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), null, 2023, 2022, null);
+
+        assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void save_appliesSharedYearRangeDifferentlyPerItemTimePolicy() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        UserDashboard request = dashboardRequest(
+                List.of(dashboardItem("i-1", TREND_WIDGET_ID), dashboardItem("i-2", NON_TREND_WIDGET_ID)),
+                null, 2022, 2023, null);
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator, times(2)).compile(captor.capture(), eq(actorContext));
+        List<IndicatorQuery> queries = captor.getAllValues();
+        assertNotNull(queries.get(0).timeSeries(), "trend widget gets a real timeSeries range");
+        assertNull(queries.get(1).timeSeries(), "non-trend widget gets no timeSeries");
+        assertTrue(queries.get(1).filters().stream()
+                .anyMatch(f -> f.dimension().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION) && f.values().equals(List.of(2023))));
+    }
+
+    // --- query construction: dashboard-level filters applied to every item ---
+
+    @Test
+    void save_appliesCountryFilterWhenCountriesGiven() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), List.of("GR", "DE"), 2022, 2023, null);
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
+        assertTrue(captor.getValue().filters().stream().anyMatch(f -> f.dimension().equals(IndicatorCodes.COUNTRY_DIMENSION)));
+    }
+
+    @Test
+    void save_omitsCountryFilterWhenNoCountriesGiven() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", NON_TREND_WIDGET_ID)), null, null, 2023, null);
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
+        assertTrue(captor.getValue().filters().stream().noneMatch(f -> f.dimension().equals(IndicatorCodes.COUNTRY_DIMENSION)));
+    }
+
+    @Test
+    void save_nonTrendWidgetProducesSurveyYearFilterInsteadOfTimeSeries() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", NON_TREND_WIDGET_ID)), null, null, 2023, null);
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
+        assertNull(captor.getValue().timeSeries());
+        assertTrue(captor.getValue().filters().stream()
+                .anyMatch(f -> f.dimension().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION) && f.values().equals(List.of(2023))));
+    }
+
+    // --- validation: seriesAggregations (dashboard-level, checked per item's own allowed set) ---
+
+    @Test
+    void save_passesThroughAllowedSeriesAggregations() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), null, 2022, 2023, List.of(AggregationType.AVG));
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
+        assertEquals(List.of(AggregationType.AVG), captor.getValue().seriesAggregations());
+    }
+
+    @Test
+    void save_rejectsSeriesAggregationNotAllowedForWidget() {
+        // nonTrendDefinition.allowedSeriesAggregations() is empty for this widget
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", NON_TREND_WIDGET_ID)), null, null, 2023, List.of(AggregationType.AVG));
+
+        assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void save_rejectsSharedSeriesAggregationInvalidForOneOfMultipleWidgets() {
+        UserDashboard request = dashboardRequest(
+                List.of(dashboardItem("i-1", TREND_WIDGET_ID), dashboardItem("i-2", NON_TREND_WIDGET_ID)),
+                null, 2022, 2023, List.of(AggregationType.AVG));
+
+        ValidationException ex = assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        assertTrue(ex.getMessage().contains(NON_TREND_WIDGET_ID));
+        verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void save_omittedSeriesAggregationsDefaultsToEmpty() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), null, 2022, 2023, null);
+
+        assertDoesNotThrow(() -> service.save(authentication, request));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
+        assertEquals(List.of(), captor.getValue().seriesAggregations());
+    }
+
+    // --- validation: item ids ---
 
     @Test
     void save_rejectsDuplicateItemIds() {
-        ValidationException ex = assertThrows(ValidationException.class,
-                () -> service.save(authentication, List.of(item("dup"), item("dup"))));
+        UserDashboard request = trendRequest(dashboardItem("dup", TREND_WIDGET_ID), dashboardItem("dup", TREND_WIDGET_ID));
+
+        ValidationException ex = assertThrows(ValidationException.class, () -> service.save(authentication, request));
         assertTrue(ex.getMessage().contains("dup"));
         verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void save_allowsSameIndicatorIdTwice() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        UserDashboard request = trendRequest(dashboardItem("i-1", TREND_WIDGET_ID), dashboardItem("i-2", TREND_WIDGET_ID));
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(UserDashboard.class);
+        verify(service).add(captor.capture());
+        assertEquals(2, captor.getValue().getItems().size());
     }
 
     @Test
     void save_assignsIdsToItemsMissingIds() {
         doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
         doReturn(new UserDashboard()).when(service).add(any());
-        DashboardItem item = item(null);
 
-        service.save(authentication, List.of(item));
+        service.save(authentication, trendRequest(dashboardItem(null, TREND_WIDGET_ID)));
 
         var captor = org.mockito.ArgumentCaptor.forClass(UserDashboard.class);
         verify(service).add(captor.capture());
@@ -234,20 +443,46 @@ class UserDashboardServiceTest {
     void save_validatesEachItemsQueryThroughIndicatorQueryValidator() {
         doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
         doReturn(new UserDashboard()).when(service).add(any());
-        DashboardItem item = item("i-1");
 
-        service.save(authentication, List.of(item));
+        service.save(authentication, trendRequest(dashboardItem("i-1", TREND_WIDGET_ID)));
 
-        verify(indicatorQueryValidator).compile(item.getQuery(), actorContext);
+        verify(indicatorQueryValidator).compile(any(IndicatorQuery.class), eq(actorContext));
     }
 
     // --- helpers ---
 
-    private DashboardItem item(String id) {
+    private DashboardItem dashboardItem(String id, String indicatorId) {
         DashboardItem item = new DashboardItem();
         item.setId(id);
-        item.setChartType(ChartType.BAR);
-        item.setQuery(new IndicatorQuery("publications.count", null, null, null, null, null, null, null, null));
+        item.setIndicatorId(indicatorId);
         return item;
+    }
+
+    /** Dashboard request with a default trend-widget-compatible year range (2022-2023), no other filters. */
+    private UserDashboard trendRequest(DashboardItem... items) {
+        return dashboardRequest(List.of(items), null, 2022, 2023, null);
+    }
+
+    private UserDashboard dashboardRequest(List<DashboardItem> items, List<String> countries, Integer yearFrom,
+                                            Integer yearTo, List<AggregationType> seriesAggregations) {
+        UserDashboard request = new UserDashboard();
+        request.setItems(items);
+        request.setCountries(countries);
+        request.setYearFrom(yearFrom);
+        request.setYearTo(yearTo);
+        request.setSeriesAggregations(seriesAggregations);
+        return request;
+    }
+
+    private IndicatorDefinition indicatorDefinition(String code, boolean timeSeriesSupported, Set<IndicatorDimensionBinding> dimensionBindings) {
+        return new IndicatorDefinition(
+                UUID.randomUUID(), code, "Label", "Description",
+                IndicatorValueType.DECIMAL, IndicatorSemanticType.MEASURE, UnitType.COUNT,
+                IndicatorFormat.NUMBER, RenderHint.SCALAR,
+                new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM, AggregationType.AVG, AggregationType.MEDIAN), NullHandling.EXCLUDE),
+                null, dimensionBindings,
+                new TimePolicy(timeSeriesSupported, timeSeriesSupported ? eu.openaire.observatory.indicator.model.MissingPeriodHandling.ZERO_FILL : eu.openaire.observatory.indicator.model.MissingPeriodHandling.OMIT),
+                new IndicatorExecutionBinding("test-handler", code),
+                IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1);
     }
 }

@@ -29,22 +29,22 @@ public final class IndicatorCodes {
     public static final String DATASETS_ACCESS_STATUS_SHARE = "datasets.access_status_share";
     public static final String PUBLICATIONS_OA_LICENSE_STATUS_COUNT = "publications.oa_license_status_count";
     // Routed to SurveyStatsToolIndicatorQueryHandler. Cross-topic despite the "oa." prefix — see
-    // IndicatorCatalog.countryInitiativeStatus()/euCountryCoverage()/financialInvestment() javadoc.
+    // IndicatorDefinitionCatalog.countryInitiativeStatus()/euCountryCoverage()/financialInvestment() javadoc.
     public static final String FINANCIAL_INVESTMENT = "oa.financial_investment";
     public static final String COUNTRY_INITIATIVE_STATUS = "oa.country_initiative_status";
     public static final String EU_COUNTRY_COVERAGE = "oa.eu_country_coverage";
     // 4-state (MANDATORY/NON_MANDATORY/NO_POLICY/AWAITING_DATA) counterpart to
     // COUNTRY_INITIATIVE_STATUS, valid only for "*_POLICY" initiativeType members — see
-    // IndicatorCatalog.countryPolicyStatus() javadoc.
+    // IndicatorDefinitionCatalog.countryPolicyStatus() javadoc.
     public static final String COUNTRY_POLICY_STATUS = "oa.country_policy_status";
     // Cross-topic composites summing Yes-answers across every "*_MONITORING_INITIATIVE"/"*_POLICY"
-    // initiativeType member for one country — see IndicatorCatalog.monitoredAreasCount()/policyAreasCount().
+    // initiativeType member for one country — see IndicatorDefinitionCatalog.monitoredAreasCount()/policyAreasCount().
     public static final String MONITORED_AREAS_COUNT = "oa.monitored_areas_count";
     public static final String POLICY_AREAS_COUNT = "oa.policy_areas_count";
     public static final String LONG_TERM_PRESERVATION_COUNT = "repositories.long_term_preservation_count";
     public static final String CITIZEN_SCIENCE_NEW_PROJECTS_COUNT = "citizen_science.new_projects_count";
     // Self-reported per-country count (survey Question73), distinct from software.count's OpenAIRE
-    // record count — see IndicatorCatalog.softwareOpenSourceSetsCount() javadoc.
+    // record count — see IndicatorDefinitionCatalog.softwareOpenSourceSetsCount() javadoc.
     public static final String SOFTWARE_OPEN_SOURCE_SETS_COUNT = "software.open_source_sets_count";
     // Routed to LocalRegistryIndicatorQueryHandler — no external HTTP call.
     public static final String COUNTRIES_WITH_VALIDATED_ANSWERS = "survey.countries_with_validated_answers";

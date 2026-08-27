@@ -1,7 +1,7 @@
-package eu.openaire.observatory.indicator.predefined;
+package eu.openaire.observatory.indicator.model;
 
-/** Topic-area grouping of a pre-defined dashboard widget, used to section an Explore-style page. */
-public enum WidgetGroup {
+/** Topic-area grouping of a preset indicator. */
+public enum IndicatorGroup {
     OPEN_ACCESS_PUBLICATIONS("Open Access Publications"),
     OPEN_DATA("Open Data"),
     FAIR_DATA("FAIR Data"),
@@ -14,7 +14,7 @@ public enum WidgetGroup {
 
     private final String wireValue;
 
-    WidgetGroup(String wireValue) {
+    IndicatorGroup(String wireValue) {
         this.wireValue = wireValue;
     }
 

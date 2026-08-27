@@ -132,6 +132,97 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void countryInitiativeStatusNarrowsToRequestedCountries() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]},{\"row\":[\"FR\",\"Yes\"]}]}}]}");
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))
+        );
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+    }
+
+    @Test
+    void countryInitiativeStatusIgnoresARequestedCountryWithNoData() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "XX"))
+        );
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+    }
+
+    @Test
+    void countryPolicyStatusNarrowsToRequestedCountries() {
+        var handler = handlerReturningEachInTurn(List.of(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}",
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}"
+        ));
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))
+        );
+
+        var result = handler.execute(plan(countryPolicyStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+    }
+
+    @Test
+    void monitoredAreasCountNarrowsToRequestedCountries() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+        var filters = List.of(
+            SURVEY_YEAR_2023, new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))
+        );
+
+        var result = handler.execute(plan(monitoredAreasCountDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+    }
+
+    @Test
+    void euCountryCoverageNarrowsPercentageToRequestedCountries() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]},{\"row\":[\"FR\",\"Yes\"]}]}}]}");
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "DE"))
+        );
+
+        var result = handler.execute(plan(euCountryCoverageDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        // Scoped to GR (Yes) + DE (No) only: 1/2 = 50.0%, not 2/3 over all three respondents.
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).value()).isEqualTo(50.0);
+    }
+
+    @Test
+    void euCountryCoverageGroupedByCountryReturnsOnePercentRowPerCountry() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+        var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023);
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(euCountryCoverageDefinition(), filters, groupBy, null, AggregationType.NONE));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(result.data()).hasSize(2);
+        assertThat(valueFor(result, "GR")).isEqualTo(100.0);
+        assertThat(valueFor(result, "DE")).isEqualTo(0.0);
+    }
+
+    @Test
     void euCountryCoverageDenominatorIncludesNoAnswerRows() {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":["

@@ -574,6 +574,43 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void oaLicenseStatusCountPassesTheCountryFilterThrough() {
+        var handler = handlerReturning("{\"data\":[[[\"120\",\"Article\"]]]}");
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED")),
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR"))
+        );
+
+        handler.execute(plan(oaLicenseStatusCountDefinition(), filters, List.of(), null));
+
+        assertThat(capturedRequests.get(0)).contains("\"field\":\"result.organization.country.code\"");
+        assertThat(capturedRequests.get(0)).contains("\"values\":[\"GR\"]");
+    }
+
+    @Test
+    void oaLicenseStatusCountGroupedByCountryReturnsOneRowPerClassificationPerCountry() {
+        var handler = handlerReturning("{\"data\":[[[\"2\",\"Article\",\"AD\"],[\"177\",\"Article\",\"AL\"],[\"5\",\"Book\",\"AL\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(oaLicenseStatusCountDefinition(), filters, groupBy, null));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.CLASSIFICATION_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(result.data()).hasSize(3);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.CLASSIFICATION_DIMENSION)).isEqualTo("Article");
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("AD");
+            assertThat(dp.value()).isEqualTo(2L);
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.CLASSIFICATION_DIMENSION)).isEqualTo("Book");
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("AL");
+            assertThat(dp.value()).isEqualTo(5L);
+        });
+        assertThat(capturedRequests.get(0)).contains("\"field\":\"result.organization.country\"");
+    }
+
+    @Test
     void oaLicenseStatusCountWithLicenseReturnsMultipleClassificationRows() {
         var handler = handlerReturning(
             "{\"data\":[[[\"1030508\",\"Article\"],[\"10649\",\"Book\"],[\"88822\",\"Conference object\"]]]}"

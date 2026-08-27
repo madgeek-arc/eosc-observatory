@@ -1,8 +1,9 @@
-package eu.openaire.observatory.indicator.predefined;
+package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.model.FilterOperator;
+import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.query.ComparisonMode;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
@@ -10,6 +11,7 @@ import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
 import eu.openaire.observatory.indicator.query.SortDirection;
 import eu.openaire.observatory.indicator.query.SortRequest;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
+import eu.openaire.observatory.indicator.validation.PresetFilterConflictException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -18,11 +20,11 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class PreDefinedIndicatorDefinitionTest {
+class IndicatorTest {
 
-    private static PreDefinedIndicatorDefinition widget(Map<String, List<String>> presetFilters) {
-        return new PreDefinedIndicatorDefinition(
-            "oa-1", "OA Publication in Europe", WidgetGroup.OPEN_ACCESS_PUBLICATIONS,
+    private static Indicator preset(Map<String, List<String>> presetFilters) {
+        return new Indicator(
+            "oa-1", "OA Publication in Europe", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
             ChartType.SCALAR, List.of(AggregationType.AVG, AggregationType.MEDIAN),
             "publications.access_status_share", presetFilters
         );
@@ -30,7 +32,7 @@ class PreDefinedIndicatorDefinitionTest {
 
     @Test
     void singleValuePresetFilterBecomesEq() {
-        var definition = widget(Map.of("accessStatus", List.of("OA")));
+        var definition = preset(Map.of("accessStatus", List.of("OA")));
 
         var query = definition.toIndicatorQuery(IndicatorQueryBuilder.forIndicator("ignored").build());
 
@@ -39,7 +41,7 @@ class PreDefinedIndicatorDefinitionTest {
 
     @Test
     void multiValuePresetFilterBecomesIn() {
-        var definition = widget(Map.of("initiativeType", List.of("OPEN_DATA_POLICY", "OA_PUBLICATION_POLICY")));
+        var definition = preset(Map.of("initiativeType", List.of("OPEN_DATA_POLICY", "OA_PUBLICATION_POLICY")));
 
         var query = definition.toIndicatorQuery(IndicatorQueryBuilder.forIndicator("ignored").build());
 
@@ -52,7 +54,7 @@ class PreDefinedIndicatorDefinitionTest {
 
     @Test
     void presetFiltersPrependedToRequestFilters() {
-        var definition = widget(Map.of("accessStatus", List.of("OA")));
+        var definition = preset(Map.of("accessStatus", List.of("OA")));
         var requestFilter = new IndicatorFilter("surveyYear", FilterOperator.EQ, List.of("2023"));
         var request = IndicatorQueryBuilder.forIndicator("ignored").withFilters(requestFilter).build();
 
@@ -64,8 +66,8 @@ class PreDefinedIndicatorDefinitionTest {
     }
 
     @Test
-    void widgetsOwnIndicatorCodeAlwaysWinsOverTheRequests() {
-        var definition = widget(Map.of());
+    void presetsOwnIndicatorCodeAlwaysWinsOverTheRequests() {
+        var definition = preset(Map.of());
         var request = IndicatorQueryBuilder.forIndicator("some.other.code").build();
 
         var query = definition.toIndicatorQuery(request);
@@ -75,7 +77,7 @@ class PreDefinedIndicatorDefinitionTest {
 
     @Test
     void everyOtherFieldPassesThroughUnchanged() {
-        var definition = widget(Map.of());
+        var definition = preset(Map.of());
         var timeSeries = new TimeSeriesRequest(2022, 2023, null);
         var sort = new SortRequest("period", SortDirection.ASC);
         var request = IndicatorQueryBuilder.forIndicator("ignored")
@@ -101,7 +103,7 @@ class PreDefinedIndicatorDefinitionTest {
 
     @Test
     void throwsPresetFilterConflictExceptionWhenRequestFiltersAPresetDimension() {
-        var definition = widget(Map.of("accessStatus", List.of("OA")));
+        var definition = preset(Map.of("accessStatus", List.of("OA")));
         var request = IndicatorQueryBuilder.forIndicator("ignored")
             .withFilters(new IndicatorFilter("accessStatus", FilterOperator.EQ, List.of("Closed")))
             .build();

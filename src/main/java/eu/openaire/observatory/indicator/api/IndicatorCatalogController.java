@@ -1,6 +1,6 @@
 package eu.openaire.observatory.indicator.api;
 
-import eu.openaire.observatory.indicator.IndicatorCatalog;
+import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.validation.DimensionDefinitionLookup;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,10 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Indicators")
 public class IndicatorCatalogController {
 
-    private final IndicatorCatalog catalog;
+    private final IndicatorDefinitionCatalog catalog;
     private final DimensionDefinitionLookup dimensionLookup;
 
-    public IndicatorCatalogController(IndicatorCatalog catalog, DimensionDefinitionLookup dimensionLookup) {
+    public IndicatorCatalogController(IndicatorDefinitionCatalog catalog, DimensionDefinitionLookup dimensionLookup) {
         this.catalog = catalog;
         this.dimensionLookup = dimensionLookup;
     }

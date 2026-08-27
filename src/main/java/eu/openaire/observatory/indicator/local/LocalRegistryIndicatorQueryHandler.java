@@ -58,21 +58,36 @@ public class LocalRegistryIndicatorQueryHandler extends AbstractIndicatorQueryHa
         };
     }
 
-    /** Deduplicated — getCountriesWithValidatedAnswer returns one entry per validated answer, not per distinct country. */
+    /**
+     * Deduplicated — getCountriesWithValidatedAnswer returns one entry per validated answer, not per
+     * distinct country. An optional country filter narrows the count to just the requested
+     * country/countries that are among the validated ones.
+     */
     private IndicatorResult queryCountriesWithValidatedAnswers(IndicatorExecutionPlan plan) {
         String surveyId = requiredFilterValue(plan, IndicatorCodes.SURVEY_ID_DIMENSION);
-        long count = surveyService.getCountriesWithValidatedAnswer(surveyId).stream().distinct().count();
+        List<String> validatedCountries = surveyService.getCountriesWithValidatedAnswer(surveyId).stream().distinct().toList();
+        long count = countMatchingRequestedCountries(plan, validatedCountries);
         return flatResult(plan, count);
     }
 
+    /** An optional country filter narrows the count to just the requested country/countries among the participating ones. */
     private IndicatorResult queryParticipatingCountriesCount(IndicatorExecutionPlan plan) {
         Set<Stakeholder> stakeholders = stakeholderService.getWithFilter("type", EOSC_SB_STAKEHOLDER_TYPE);
-        long count = stakeholders == null ? 0 : stakeholders.stream()
+        List<String> participatingCountries = stakeholders == null ? List.of() : stakeholders.stream()
             .map(Stakeholder::getCountry)
             .filter(Objects::nonNull)
             .distinct()
-            .count();
+            .toList();
+        long count = countMatchingRequestedCountries(plan, participatingCountries);
         return flatResult(plan, count);
+    }
+
+    /** Narrows to the country filter's values (if any were given), else the full distinct-country count. */
+    private static long countMatchingRequestedCountries(IndicatorExecutionPlan plan, List<String> countries) {
+        List<String> requestedCountries = filterValues(plan, IndicatorCodes.COUNTRY_DIMENSION);
+        return requestedCountries.isEmpty()
+            ? countries.size()
+            : requestedCountries.stream().filter(countries::contains).count();
     }
 
     private static IndicatorResult flatResult(IndicatorExecutionPlan plan, long value) {

@@ -8,9 +8,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class CatalogIndicatorDefinitionLookup implements IndicatorDefinitionLookup {
 
-    private final IndicatorCatalog catalog;
+    private final IndicatorDefinitionCatalog catalog;
 
-    public CatalogIndicatorDefinitionLookup(IndicatorCatalog catalog) {
+    public CatalogIndicatorDefinitionLookup(IndicatorDefinitionCatalog catalog) {
         this.catalog = catalog;
     }
 

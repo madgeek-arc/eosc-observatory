@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CatalogDimensionDefinitionLookupTest {
 
-    private final CatalogDimensionDefinitionLookup lookup = new CatalogDimensionDefinitionLookup(new IndicatorCatalog());
+    private final CatalogDimensionDefinitionLookup lookup = new CatalogDimensionDefinitionLookup(new IndicatorDefinitionCatalog());
 
     @Test
     void returnsTheRegisteredDimensionForAKnownCode() {

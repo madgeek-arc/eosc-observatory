@@ -219,30 +219,42 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
 
     /**
      * publications.oa_license_status_count: one query per period for the required oaLicenseStatus,
-     * always grouped by classification (its only groupable binding) — europe_monitor-profiled,
-     * confirmed live.
+     * always grouped by classification (its only mandatory groupable binding) — europe_monitor-profiled,
+     * confirmed live. An optional country filter narrows to one or more specific countries instead of
+     * all-Europe; an optional country groupBy additionally fans out into one row per (classification,
+     * country) pair — confirmed live as a genuine two-select-group-field query against the
+     * europe_monitor profile, returning {@code [count, classification, country]} rows.
      */
     private IndicatorResult queryOaLicenseStatusCount(IndicatorExecutionPlan plan) {
         OpenAireOaLicenseStatus status = OpenAireOaLicenseStatus.fromCatalogCode(requiredFilterValue(plan, OA_LICENSE_STATUS_DIMENSION));
+        List<String> countryCodes = filterValues(plan, COUNTRY_DIMENSION);
+        boolean byCountry = plan.groupBy().stream().map(ResolvedDimension::dimensionCode).toList().contains(COUNTRY_DIMENSION);
         List<Period> periods = resolvePeriods(plan);
 
         List<ObjectNode> subQueries = new ArrayList<>();
         for (Period period : periods) {
-            subQueries.add(queryBuilder.oaLicenseStatusSubQuery(period.year(), status));
+            subQueries.add(queryBuilder.oaLicenseStatusSubQuery(period.year(), status, countryCodes, byCountry));
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
 
         List<IndicatorDataPoint> data = new ArrayList<>();
         for (int i = 0; i < periods.size(); i++) {
-            for (Map.Entry<String, Long> entry : countsByBreakdownValue(raw.get(i)).entrySet()) {
+            for (List<String> row : raw.get(i)) {
                 Map<String, Object> dimensions = new LinkedHashMap<>();
-                dimensions.put(CLASSIFICATION_DIMENSION, entry.getKey());
+                dimensions.put(CLASSIFICATION_DIMENSION, row.get(1));
+                if (byCountry) {
+                    dimensions.put(COUNTRY_DIMENSION, row.get(2));
+                }
                 dimensions.putAll(periods.get(i).dimensions());
-                data.add(new IndicatorDataPoint(dimensions, entry.getValue()));
+                data.add(new IndicatorDataPoint(dimensions, Long.parseLong(row.get(0))));
             }
         }
 
-        return buildResult(plan, dimensionKeysFor(List.of(CLASSIFICATION_DIMENSION), plan), data);
+        List<String> dimensionKeys = new ArrayList<>(List.of(CLASSIFICATION_DIMENSION));
+        if (byCountry) {
+            dimensionKeys.add(COUNTRY_DIMENSION);
+        }
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
     }
 
     /** A matching EQ filter narrows to one value; a groupBy on accessStatus expands to all four; neither means unfiltered. */

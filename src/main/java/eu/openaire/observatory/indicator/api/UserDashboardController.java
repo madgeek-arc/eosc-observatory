@@ -1,6 +1,5 @@
 package eu.openaire.observatory.indicator.api;
 
-import eu.openaire.observatory.domain.DashboardItem;
 import eu.openaire.observatory.domain.UserDashboard;
 import eu.openaire.observatory.service.UserDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,8 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
@@ -35,9 +32,9 @@ public class UserDashboardController {
     @Operation(summary = "Save the current user's dashboard items")
     @PutMapping("dashboard")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UserDashboard> saveDashboard(@RequestBody List<DashboardItem> items,
+    public ResponseEntity<UserDashboard> saveDashboard(@RequestBody UserDashboard dashboard,
                                                         @Parameter(hidden = true) Authentication authentication) {
-        return ResponseEntity.ok(dashboardService.save(authentication, items));
+        return ResponseEntity.ok(dashboardService.save(authentication, dashboard));
     }
 
     // ADMIN / SUPPORT METHODS
@@ -53,8 +50,8 @@ public class UserDashboardController {
     @PutMapping("users/{id}/dashboard")
     @PreAuthorize("hasAuthority('ADMIN') or (isAuthenticated() and authentication.principal.getAttribute('email') == #userId)")
     public ResponseEntity<UserDashboard> saveUserDashboard(@PathVariable("id") String userId,
-                                                            @RequestBody List<DashboardItem> items,
+                                                            @RequestBody UserDashboard dashboard,
                                                             @Parameter(hidden = true) Authentication authentication) {
-        return ResponseEntity.ok(dashboardService.save(userId, authentication, items));
+        return ResponseEntity.ok(dashboardService.save(userId, authentication, dashboard));
     }
 }

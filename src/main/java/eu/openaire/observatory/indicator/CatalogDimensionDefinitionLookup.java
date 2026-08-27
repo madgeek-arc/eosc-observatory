@@ -8,9 +8,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class CatalogDimensionDefinitionLookup implements DimensionDefinitionLookup {
 
-    private final IndicatorCatalog catalog;
+    private final IndicatorDefinitionCatalog catalog;
 
-    public CatalogDimensionDefinitionLookup(IndicatorCatalog catalog) {
+    public CatalogDimensionDefinitionLookup(IndicatorDefinitionCatalog catalog) {
         this.catalog = catalog;
     }
 

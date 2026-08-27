@@ -147,19 +147,29 @@ public class OpenAireQueryBuilder {
     }
 
     /**
-     * One sub-query for publications.oa_license_status_count: European publication count for the
-     * given year and OA/license status, grouped by classification (narrowed to the fixed
-     * article/conference/chapter/book vocabulary) — confirmed live against the europe_monitor
-     * profile.
+     * One sub-query for publications.oa_license_status_count: European (or, if countryCodes is
+     * given, one or more specific countries') publication count for the given year and OA/license
+     * status, grouped by classification (narrowed to the fixed article/conference/chapter/book
+     * vocabulary), optionally also grouped by country — confirmed live against the europe_monitor
+     * profile, including the two-select-group-field shape (returns {@code [count, classification,
+     * country]} rows rather than {@code [count, classification]}), via a real {@code raw?json=} call.
+     * The optional country filter reuses the same {@code result.organization.country.code} field/leaf
+     * shape as every other sub-query in this class ({@link #countryFilter}).
      */
-    public ObjectNode oaLicenseStatusSubQuery(int year, OpenAireOaLicenseStatus status) {
+    public ObjectNode oaLicenseStatusSubQuery(
+            int year, OpenAireOaLicenseStatus status, List<String> countryCodes, boolean groupByCountry) {
         ObjectNode query = objectMapper.createObjectNode();
         query.putArray("parameters");
         ArrayNode select = query.putArray("select");
         select.addObject().put("field", ENTITY).put("aggregate", "count");
-        ObjectNode group = select.addObject();
-        group.put("field", GROUP_FIELD_BY_DIMENSION.get(IndicatorCodes.CLASSIFICATION_DIMENSION));
-        group.putNull("aggregate");
+        ObjectNode classificationGroup = select.addObject();
+        classificationGroup.put("field", GROUP_FIELD_BY_DIMENSION.get(IndicatorCodes.CLASSIFICATION_DIMENSION));
+        classificationGroup.putNull("aggregate");
+        if (groupByCountry) {
+            ObjectNode countryGroup = select.addObject();
+            countryGroup.put("field", COUNTRY_GROUP_FIELD);
+            countryGroup.putNull("aggregate");
+        }
 
         ArrayNode filterArray = query.putArray("filters");
         filterArray.add(classificationVocabularyFilter());
@@ -170,6 +180,9 @@ public class OpenAireQueryBuilder {
         }
         filterArray.add(groupFilter("result.organization.country.continent", "=", "Europe"));
         filterArray.add(groupFilter("result.year", "=", String.valueOf(year)));
+        if (countryCodes != null && !countryCodes.isEmpty()) {
+            filterArray.add(countryFilter(countryCodes));
+        }
 
         query.put("entity", ENTITY);
         query.put("profile", EUROPE_MONITOR_PROFILE);

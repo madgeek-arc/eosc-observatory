@@ -4,6 +4,12 @@ import eu.openaire.observatory.domain.DashboardItem;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.domain.UserDashboard;
+import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
+import eu.openaire.observatory.indicator.model.AggregationType;
+import eu.openaire.observatory.indicator.model.IndicatorDefinition;
+import eu.openaire.observatory.indicator.Indicator;
+import eu.openaire.observatory.indicator.IndicatorCatalog;
+import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
 import eu.openaire.observatory.utils.UserIds;
@@ -29,9 +35,13 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
 
     private final IndicatorQueryValidator indicatorQueryValidator;
     private final ActorContext actorContext;
+    private final IndicatorCatalog presetCatalog;
+    private final IndicatorDefinitionCatalog definitionCatalog;
 
     public UserDashboardService(IndicatorQueryValidator indicatorQueryValidator,
                                 ActorContext actorContext,
+                                IndicatorCatalog presetCatalog,
+                                IndicatorDefinitionCatalog definitionCatalog,
                                 ResourceTypeService resourceTypeService,
                                 ResourceService resourceService,
                                 SearchService searchService,
@@ -41,6 +51,8 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.indicatorQueryValidator = indicatorQueryValidator;
         this.actorContext = actorContext;
+        this.presetCatalog = presetCatalog;
+        this.definitionCatalog = definitionCatalog;
     }
 
     @Override
@@ -71,23 +83,21 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
         }
     }
 
-    /** Replaces the current user's full item list in one call. */
-    public UserDashboard save(Authentication authentication, List<DashboardItem> items) {
-        return save(User.getId(authentication), authentication, items);
+    /** Replaces the current user's full dashboard (items plus shared filters) in one call. */
+    public UserDashboard save(Authentication authentication, UserDashboard request) {
+        return save(User.getId(authentication), authentication, request);
     }
 
     /**
-     * Admin/support variant of {@link #save(Authentication, List)}: replaces {@code ownerId}'s
-     * dashboard on their behalf. {@code actor} (who may differ from {@code ownerId}) is recorded
-     * in the resource's audit metadata as the one who actually performed the write.
+     * Admin/support variant of {@link #save(Authentication, UserDashboard)} for {@code ownerId}.
+     * {@code actor} is recorded as the one who performed the write. {@code id}/{@code metadata} on
+     * {@code request} are ignored.
      */
-    public UserDashboard save(String ownerId, Authentication actor, List<DashboardItem> items) {
+    public UserDashboard save(String ownerId, Authentication actor, UserDashboard request) {
         String id = UserIds.normalize(ownerId);
-        List<DashboardItem> normalized = normalizeAndValidate(items);
 
-        UserDashboard dashboard = new UserDashboard();
+        UserDashboard dashboard = normalizeAndValidate(request);
         dashboard.setId(id);
-        dashboard.setItems(normalized);
 
         try {
             UserDashboard existing = get(id);
@@ -102,21 +112,57 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
         }
     }
 
-    private List<DashboardItem> normalizeAndValidate(List<DashboardItem> items) {
-        if (items == null) {
-            return List.of();
+    private UserDashboard normalizeAndValidate(UserDashboard request) {
+        List<DashboardItem> items = request.getItems() == null ? List.of() : request.getItems();
+        List<String> countries = request.getCountries();
+        Integer yearFrom = request.getYearFrom();
+        Integer yearTo = request.getYearTo();
+        List<AggregationType> seriesAggregations = request.getSeriesAggregations() == null
+                ? List.of() : request.getSeriesAggregations();
+
+        List<DashboardItem> resolvedItems = new ArrayList<>();
+        List<IndicatorDefinition> resolvedIndicators = new ArrayList<>();
+        for (DashboardItem item : items) {
+            if (item.getIndicatorId() == null || item.getIndicatorId().isBlank()) {
+                throw new ValidationException("Dashboard item indicatorId must not be null");
+            }
+            Indicator preset = presetCatalog.get(item.getIndicatorId());
+            if (preset == null) {
+                throw new ValidationException("Unknown indicator id: " + item.getIndicatorId());
+            }
+            resolvedItems.add(item);
+            resolvedIndicators.add(definitionCatalog.get(preset.indicatorCode()));
         }
 
-        List<DashboardItem> normalized = new ArrayList<>();
+        if (!items.isEmpty()) {
+            if (yearTo == null) {
+                throw new ValidationException("Dashboard yearTo must not be null");
+            }
+            boolean anyTrendCapable = resolvedIndicators.stream().anyMatch(indicator -> indicator.timePolicy().supported());
+            if (anyTrendCapable && yearFrom == null) {
+                throw new ValidationException("Dashboard yearFrom must not be null: at least one item is trend-capable");
+            }
+            if (yearFrom != null && yearFrom > yearTo) {
+                throw new ValidationException("Dashboard yearFrom must be <= yearTo");
+            }
+        }
+
         Set<String> seenIds = new HashSet<>();
-        for (DashboardItem item : items) {
-            if (item.getChartType() == null) {
-                throw new ValidationException("Dashboard item chartType must not be null");
+        List<DashboardItem> normalized = new ArrayList<>();
+        for (int i = 0; i < resolvedItems.size(); i++) {
+            DashboardItem item = resolvedItems.get(i);
+            Indicator preset = presetCatalog.get(item.getIndicatorId());
+            IndicatorDefinition indicator = resolvedIndicators.get(i);
+
+            for (AggregationType aggregation : seriesAggregations) {
+                if (!preset.allowedSeriesAggregations().contains(aggregation)) {
+                    throw new ValidationException(
+                        "Dashboard seriesAggregations value " + aggregation + " is not allowed for indicator: " + item.getIndicatorId());
+                }
             }
-            if (item.getQuery() == null) {
-                throw new ValidationException("Dashboard item query must not be null");
-            }
-            indicatorQueryValidator.compile(item.getQuery(), actorContext);
+
+            IndicatorQuery query = preset.toIndicatorQuery(indicator, countries, yearFrom, yearTo, seriesAggregations);
+            indicatorQueryValidator.compile(query, actorContext);
 
             String itemId = (item.getId() == null || item.getId().isBlank())
                     ? UUID.randomUUID().toString()
@@ -127,6 +173,13 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
             item.setId(itemId);
             normalized.add(item);
         }
-        return normalized;
+
+        UserDashboard dashboard = new UserDashboard();
+        dashboard.setItems(normalized);
+        dashboard.setCountries(countries);
+        dashboard.setYearFrom(yearFrom);
+        dashboard.setYearTo(yearTo);
+        dashboard.setSeriesAggregations(request.getSeriesAggregations());
+        return dashboard;
     }
 }

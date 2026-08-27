@@ -68,6 +68,21 @@ class LocalRegistryIndicatorQueryHandlerTest {
     }
 
     @Test
+    void countriesWithValidatedAnswersNarrowsToRequestedCountries() {
+        when(surveyService.getCountriesWithValidatedAnswer("m-eosc-sb-2023"))
+            .thenReturn(List.of("GR", "DE", "FR"));
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.SURVEY_ID_DIMENSION, FilterOperator.EQ, List.of("m-eosc-sb-2023")),
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "XX"))
+        );
+
+        var result = handler.execute(plan(countriesWithValidatedAnswersDefinition(), filters));
+
+        // Only GR matches — XX isn't among the validated countries, so it doesn't count.
+        assertThat(result.data().get(0).value()).isEqualTo(1L);
+    }
+
+    @Test
     void countriesWithValidatedAnswersThrowsWhenSurveyIdFilterMissing() {
         assertThatThrownBy(() -> handler.execute(plan(countriesWithValidatedAnswersDefinition(), List.of())))
             .isInstanceOf(IllegalStateException.class);
@@ -91,6 +106,22 @@ class LocalRegistryIndicatorQueryHandlerTest {
         assertThat(result.data()).hasSize(1);
         assertThat(result.data().get(0).value()).isEqualTo(2L);
         verify(stakeholderService).getWithFilter("type", "eosc-sb");
+    }
+
+    @Test
+    void participatingCountriesCountNarrowsToRequestedCountries() {
+        Stakeholder gr = new Stakeholder();
+        gr.setId("gr-stakeholder");
+        gr.setCountry("GR");
+        Stakeholder de = new Stakeholder();
+        de.setId("de-stakeholder");
+        de.setCountry("DE");
+        when(stakeholderService.getWithFilter("type", "eosc-sb")).thenReturn(Set.of(gr, de));
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")));
+
+        var result = handler.execute(plan(stakeholderParticipatingCountriesCountDefinition(), filters));
+
+        assertThat(result.data().get(0).value()).isEqualTo(1L);
     }
 
     @Test

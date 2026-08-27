@@ -1,14 +1,10 @@
 package eu.openaire.observatory.domain;
 
-import eu.openaire.observatory.indicator.model.ChartType;
-import eu.openaire.observatory.indicator.query.IndicatorQuery;
-
+/** A reference to one {@code Indicator} on a user's dashboard. */
 public class DashboardItem {
 
     private String id;
-    private String title;
-    private ChartType chartType;
-    private IndicatorQuery query;
+    private String indicatorId;
 
     public DashboardItem() {
     }
@@ -21,27 +17,11 @@ public class DashboardItem {
         this.id = id;
     }
 
-    public String getTitle() {
-        return title;
+    public String getIndicatorId() {
+        return indicatorId;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public ChartType getChartType() {
-        return chartType;
-    }
-
-    public void setChartType(ChartType chartType) {
-        this.chartType = chartType;
-    }
-
-    public IndicatorQuery getQuery() {
-        return query;
-    }
-
-    public void setQuery(IndicatorQuery query) {
-        this.query = query;
+    public void setIndicatorId(String indicatorId) {
+        this.indicatorId = indicatorId;
     }
 }

@@ -19,7 +19,7 @@ import java.util.Map;
  * {@code oa.country_initiative_status}/{@code oa.eu_country_coverage} logic, reading the same
  * {@code survey_answer} data straight from this app's own registry via {@link SurveyService}
  * instead of a remote survey-stats-tool named query. Built to benchmark against the existing
- * remote handler — deliberately NOT wired into {@code IndicatorCatalog}, so it serves no live
+ * remote handler — deliberately NOT wired into {@code IndicatorDefinitionCatalog}, so it serves no live
  * traffic and {@link SurveyStatsToolIndicatorQueryHandler} is untouched and remains the real
  * handler for these indicators.
  *

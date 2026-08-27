@@ -296,7 +296,7 @@ class OpenAireQueryBuilderTest {
     @ParameterizedTest(name = "{0}")
     @EnumSource(OpenAireOaLicenseStatus.class)
     void oaLicenseStatusSubQueryUsesTheEuropeMonitorProfile(OpenAireOaLicenseStatus status) {
-        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, status);
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, status, List.of(), false);
 
         assertThat(subQuery.path("query").path("profile").asText()).isEqualTo("europe_monitor");
         assertThat(subQuery.path("query").path("limit").asText()).isEqualTo("0");
@@ -305,7 +305,7 @@ class OpenAireQueryBuilderTest {
     @ParameterizedTest(name = "{0}")
     @EnumSource(OpenAireOaLicenseStatus.class)
     void oaLicenseStatusSubQueryFiltersByTheStatusAccessMode(OpenAireOaLicenseStatus status) {
-        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, status);
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, status, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
         assertThat(fieldValues(filters, "result.access mode")).containsExactly(status.accessMode().openAireLiteral());
@@ -316,7 +316,7 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void oaLicenseStatusSubQueryForWithLicenseAddsTheLicenseFlagFilter() {
-        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.OA_WITH_LICENSE);
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.OA_WITH_LICENSE, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
         assertThat(fieldValues(filters, "result.indi_result_oa_with_license.oa_with_license")).containsExactly("1");
@@ -324,7 +324,7 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void oaLicenseStatusSubQueryForWithoutLicenseAddsTheOtherLicenseFlagFilter() {
-        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.OA_WITHOUT_LICENSE);
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.OA_WITHOUT_LICENSE, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
         assertThat(fieldValues(filters, "result.indi_result_oa_without_license.oa_without_license")).containsExactly("1");
@@ -332,7 +332,7 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void oaLicenseStatusSubQueryForClosedOmitsAnyLicenseFlagFilter() {
-        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED);
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
         assertThat(filters.stream().map(this::fieldOf))
@@ -342,7 +342,7 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void oaLicenseStatusSubQueryNarrowsClassificationToTheFixedVocabulary() {
-        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED);
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
         assertThat(opOf(filters, "result.classification")).isEqualTo("OR");
@@ -354,11 +354,55 @@ class OpenAireQueryBuilderTest {
 
     @Test
     void oaLicenseStatusSubQueryGroupsByClassificationField() {
-        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED);
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
 
         List<JsonNode> select = toList(subQuery.path("query").path("select"));
         assertThat(select.get(1).path("field").asText()).isEqualTo("result.classification");
         assertThat(select.get(1).path("aggregate").isNull()).isTrue();
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryWithCountryCodesAddsCountryFilter() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of("GR", "DE"), false);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(opOf(filters, "result.organization.country.code")).isEqualTo("OR");
+        assertThat(fieldValues(filters, "result.organization.country.code")).containsExactlyInAnyOrder("GR", "DE");
+        // Country given still keeps the continent scope — narrowing, not replacing it.
+        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryWithoutCountryCodesOmitsCountryFilter() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.organization.country.code");
+    }
+
+    /**
+     * Confirmed live against the real europe_monitor endpoint: a second simultaneous select-group
+     * field (classification + country) is accepted and returns {@code [count, classification,
+     * country]} rows, e.g. {@code {"data":[[["346231","Article"],...` becomes
+     * {@code [["2","Article","AD"],["177","Article","AL"],...]}.
+     */
+    @Test
+    void oaLicenseStatusSubQueryWithGroupByCountryAddsASecondSelectGroupField() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), true);
+
+        List<JsonNode> select = toList(subQuery.path("query").path("select"));
+        assertThat(select).hasSize(3);
+        assertThat(select.get(1).path("field").asText()).isEqualTo("result.classification");
+        assertThat(select.get(2).path("field").asText()).isEqualTo("result.organization.country");
+        assertThat(select.get(2).path("aggregate").isNull()).isTrue();
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryWithoutGroupByCountryOmitsTheSecondSelectGroupField() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
+
+        List<JsonNode> select = toList(subQuery.path("query").path("select"));
+        assertThat(select).hasSize(2);
     }
 
     private List<JsonNode> toList(JsonNode arrayNode) {

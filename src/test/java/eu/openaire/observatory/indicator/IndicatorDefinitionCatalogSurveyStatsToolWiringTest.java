@@ -12,7 +12,6 @@ import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizati
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
 import eu.openaire.observatory.indicator.validation.MissingRequiredFilterException;
 import eu.openaire.observatory.indicator.validation.TimeSeriesNotSupportedException;
-import eu.openaire.observatory.indicator.validation.UnsupportedDimensionException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -33,12 +32,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * outright; oa.eu_country_coverage and the 3 count indicators support a real multi-year trend, so
  * surveyYear is optional for them and timeSeries is accepted instead.
  */
-class IndicatorCatalogSurveyStatsToolWiringTest {
+class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
 
     private static final IndicatorFilter SURVEY_YEAR_2023 =
         new IndicatorFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2023"));
 
-    private final IndicatorCatalog catalog = new IndicatorCatalog();
+    private final IndicatorDefinitionCatalog catalog = new IndicatorDefinitionCatalog();
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
         new CatalogIndicatorDefinitionLookup(catalog), new CatalogDimensionDefinitionLookup(catalog),
         new AllowAllIndicatorAuthorizationService(), new IndicatorQueryHandlerRegistry(List.of()),
@@ -67,7 +66,7 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
     }
 
     @Test
-    void euCountryCoverageCountryIsNotClientFilterable() {
+    void euCountryCoverageAcceptsAnOptionalCountryFilter() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
             .withFilters(
                 new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")),
@@ -76,8 +75,21 @@ class IndicatorCatalogSurveyStatsToolWiringTest {
             )
             .build();
 
-        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
-            .isInstanceOf(UnsupportedDimensionException.class);
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.filters()).extracting("dimensionCode").contains(IndicatorCodes.COUNTRY_DIMENSION);
+    }
+
+    @Test
+    void euCountryCoverageAcceptsAnOptionalCountryGroupBy() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
+            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")), SURVEY_YEAR_2023)
+            .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.groupBy()).extracting("dimensionCode").containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
     @Test

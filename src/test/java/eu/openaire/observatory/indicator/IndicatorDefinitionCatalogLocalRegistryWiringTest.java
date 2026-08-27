@@ -25,9 +25,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * dimension). Both route to LocalRegistryIndicatorQueryHandler, not the OpenAIRE or survey
  * stats-tool handlers.
  */
-class IndicatorCatalogLocalRegistryWiringTest {
+class IndicatorDefinitionCatalogLocalRegistryWiringTest {
 
-    private final IndicatorCatalog catalog = new IndicatorCatalog();
+    private final IndicatorDefinitionCatalog catalog = new IndicatorDefinitionCatalog();
     private final IndicatorQueryValidator validator = new IndicatorQueryValidator(
         new CatalogIndicatorDefinitionLookup(catalog), new CatalogDimensionDefinitionLookup(catalog),
         new AllowAllIndicatorAuthorizationService(), new IndicatorQueryHandlerRegistry(List.of()),

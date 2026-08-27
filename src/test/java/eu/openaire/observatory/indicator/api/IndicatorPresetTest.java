@@ -1,13 +1,13 @@
 package eu.openaire.observatory.indicator.api;
 
-import eu.openaire.observatory.indicator.IndicatorCatalog;
+import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
 import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.local.LocalRegistryIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.openaire.OpenAireStatsToolIndicatorQueryHandler;
-import eu.openaire.observatory.indicator.predefined.PreDefinedIndicatorDefinition;
-import eu.openaire.observatory.indicator.predefined.WidgetGroup;
+import eu.openaire.observatory.indicator.Indicator;
+import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.survey.SurveyStatsToolIndicatorQueryHandler;
 import org.junit.jupiter.api.Test;
 
@@ -17,46 +17,46 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class PreDefinedIndicatorItemTest {
+class IndicatorPresetTest {
 
-    private final IndicatorCatalog catalog = new IndicatorCatalog();
+    private final IndicatorDefinitionCatalog catalog = new IndicatorDefinitionCatalog();
 
     @Test
     void derivesSourceFromTheOpenAireHandler() {
-        var definition = widget(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, Map.of());
+        var definition = preset(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, Map.of());
 
-        var item = PreDefinedIndicatorItem.from(definition, catalog);
+        var item = IndicatorPreset.from(definition, catalog);
 
         assertThat(item.source()).isEqualTo(OpenAireStatsToolIndicatorQueryHandler.HANDLER_KEY);
     }
 
     @Test
     void derivesSourceFromTheSurveyHandler() {
-        var definition = widget(IndicatorCodes.FINANCIAL_INVESTMENT, Map.of());
+        var definition = preset(IndicatorCodes.FINANCIAL_INVESTMENT, Map.of());
 
-        var item = PreDefinedIndicatorItem.from(definition, catalog);
+        var item = IndicatorPreset.from(definition, catalog);
 
         assertThat(item.source()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY);
     }
 
     @Test
     void derivesSourceFromTheLocalRegistryHandler() {
-        var definition = widget(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT, Map.of());
+        var definition = preset(IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT, Map.of());
 
-        var item = PreDefinedIndicatorItem.from(definition, catalog);
+        var item = IndicatorPreset.from(definition, catalog);
 
         assertThat(item.source()).isEqualTo(LocalRegistryIndicatorQueryHandler.HANDLER_KEY);
     }
 
     @Test
     void serializesKindAndFormatToTheirWireValues() {
-        var definition = new PreDefinedIndicatorDefinition(
-            "od-4", "National Policy on Open Data", WidgetGroup.OPEN_DATA,
+        var definition = new Indicator(
+            "od-4", "National Policy on Open Data", IndicatorGroup.OPEN_DATA,
             ChartType.MAP, List.of(),
             IndicatorCodes.COUNTRY_INITIATIVE_STATUS, Map.of()
         );
 
-        var item = PreDefinedIndicatorItem.from(definition, catalog);
+        var item = IndicatorPreset.from(definition, catalog);
 
         assertThat(item.chartType()).isEqualTo("MAP");
         assertThat(item.format()).isEqualTo("yes-no");
@@ -64,34 +64,30 @@ class PreDefinedIndicatorItemTest {
         assertThat(item.label()).isEqualTo("National Policy on Open Data");
         assertThat(item.group()).isEqualTo("Open Data");
         assertThat(item.allowedSeriesAggregations()).isEmpty();
-        assertThat(item.supportsTrend()).isFalse();
-        assertThat(item.supportsMap()).isTrue();
     }
 
     @Test
-    void scalarTimeSeriesBackedWidgetSupportsTrendButNotMap() {
-        var definition = widget(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, Map.of());
+    void scalarPresetExposesItsAllowedSeriesAggregations() {
+        var definition = preset(IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, Map.of());
 
-        var item = PreDefinedIndicatorItem.from(definition, catalog);
+        var item = IndicatorPreset.from(definition, catalog);
 
         assertThat(item.chartType()).isEqualTo("SCALAR");
         assertThat(item.allowedSeriesAggregations()).containsExactly(AggregationType.AVG, AggregationType.MEDIAN);
-        assertThat(item.supportsTrend()).isTrue();
-        assertThat(item.supportsMap()).isFalse();
     }
 
     @Test
     void throwsWhenTheReferencedIndicatorCodeDoesNotExist() {
-        var definition = widget("does.not.exist", Map.of());
+        var definition = preset("does.not.exist", Map.of());
 
-        assertThatThrownBy(() -> PreDefinedIndicatorItem.from(definition, catalog))
+        assertThatThrownBy(() -> IndicatorPreset.from(definition, catalog))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("does.not.exist");
     }
 
-    private static PreDefinedIndicatorDefinition widget(String indicatorCode, Map<String, java.util.List<String>> presetFilters) {
-        return new PreDefinedIndicatorDefinition(
-            "widget-id", "Widget Label", WidgetGroup.OPEN_DATA,
+    private static Indicator preset(String indicatorCode, Map<String, java.util.List<String>> presetFilters) {
+        return new Indicator(
+            "preset-id", "Preset Label", IndicatorGroup.OPEN_DATA,
             ChartType.SCALAR, List.of(AggregationType.AVG, AggregationType.MEDIAN),
             indicatorCode, presetFilters
         );
