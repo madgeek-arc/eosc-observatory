@@ -1,5 +1,7 @@
 package eu.openaire.observatory.indicator.model;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Display format of an indicator's value — a richer, per-indicator vocabulary distinguishing
  * currency, category (multi-value per-country status, e.g. oa.country_policy_status), and yes-no
@@ -19,6 +21,7 @@ public enum IndicatorFormat {
         this.wireValue = wireValue;
     }
 
+    @JsonValue
     public String wireValue() {
         return wireValue;
     }

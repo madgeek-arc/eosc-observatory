@@ -1,9 +1,8 @@
 package eu.openaire.observatory.indicator.api;
 
-import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
+import eu.openaire.observatory.indicator.IndicatorPreset;
+import eu.openaire.observatory.indicator.IndicatorPresetCatalog;
 import eu.openaire.observatory.indicator.IndicatorQueryService;
-import eu.openaire.observatory.indicator.IndicatorCatalog;
-import eu.openaire.observatory.indicator.Indicator;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.ActorContext;
@@ -23,16 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Indicators")
 public class IndicatorPresetController {
 
-    private final IndicatorCatalog presetCatalog;
-    private final IndicatorDefinitionCatalog definitionCatalog;
+    private final IndicatorPresetCatalog presetCatalog;
     private final IndicatorQueryService queryService;
     private final ActorContext actorContext;
 
     public IndicatorPresetController(
-            IndicatorCatalog presetCatalog, IndicatorDefinitionCatalog definitionCatalog,
-            IndicatorQueryService queryService, ActorContext actorContext) {
+            IndicatorPresetCatalog presetCatalog, IndicatorQueryService queryService, ActorContext actorContext) {
         this.presetCatalog = presetCatalog;
-        this.definitionCatalog = definitionCatalog;
         this.queryService = queryService;
         this.actorContext = actorContext;
     }
@@ -40,25 +36,24 @@ public class IndicatorPresetController {
     @Operation(summary = "List all indicator presets")
     @GetMapping
     public ResponseEntity<IndicatorPresetResponse> getPresets() {
-        var items = presetCatalog.getAll().stream().map(preset -> IndicatorPreset.from(preset, definitionCatalog)).toList();
-        return ResponseEntity.ok(new IndicatorPresetResponse(items));
+        return ResponseEntity.ok(new IndicatorPresetResponse(presetCatalog.getAll()));
     }
 
     @Operation(summary = "Get a single indicator preset")
     @GetMapping("{id}")
     public ResponseEntity<IndicatorPreset> getPreset(@PathVariable String id) {
-        Indicator preset = presetCatalog.get(id);
+        IndicatorPreset preset = presetCatalog.get(id);
         if (preset == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(IndicatorPreset.from(preset, definitionCatalog));
+        return ResponseEntity.ok(preset);
     }
 
     /** {@code request.indicatorCode()} is ignored — the preset's own indicatorCode always wins. */
     @Operation(summary = "Run an indicator preset's query")
     @PostMapping("{id}/query")
     public ResponseEntity<IndicatorResult> queryPreset(@PathVariable String id, @RequestBody IndicatorQuery request) {
-        Indicator preset = presetCatalog.get(id);
+        IndicatorPreset preset = presetCatalog.get(id);
         if (preset == null) {
             return ResponseEntity.notFound().build();
         }

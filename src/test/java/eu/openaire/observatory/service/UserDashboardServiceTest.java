@@ -22,9 +22,9 @@ import eu.openaire.observatory.indicator.model.NullHandling;
 import eu.openaire.observatory.indicator.model.RenderHint;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
-import eu.openaire.observatory.indicator.Indicator;
+import eu.openaire.observatory.indicator.IndicatorPreset;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
-import eu.openaire.observatory.indicator.IndicatorCatalog;
+import eu.openaire.observatory.indicator.IndicatorPresetCatalog;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
@@ -60,7 +60,7 @@ class UserDashboardServiceTest {
 
     @Mock IndicatorQueryValidator indicatorQueryValidator;
     @Mock ActorContext actorContext;
-    @Mock IndicatorCatalog presetCatalog;
+    @Mock IndicatorPresetCatalog presetCatalog;
     @Mock IndicatorDefinitionCatalog definitionCatalog;
     @Mock ResourceTypeService resourceTypeService;
     @Mock ResourceService resourceService;
@@ -72,9 +72,9 @@ class UserDashboardServiceTest {
     private UserDashboardService service;
     private Authentication authentication;
 
-    private Indicator trendDefinition;
+    private IndicatorPreset trendDefinition;
     private IndicatorDefinition trendIndicator;
-    private Indicator nonTrendDefinition;
+    private IndicatorPreset nonTrendDefinition;
     private IndicatorDefinition nonTrendIndicator;
 
     @BeforeEach
@@ -85,16 +85,16 @@ class UserDashboardServiceTest {
                 versionService, parserService, validator));
         authentication = OidcTestUtils.oidcAuthentication(EMAIL);
 
-        trendDefinition = new Indicator(
-                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, ChartType.SCALAR,
-                List.of(AggregationType.AVG, AggregationType.MEDIAN), "indicator.trend", Map.of());
+        trendDefinition = new IndicatorPreset(
+                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, ChartType.SCALAR, null,
+                List.of(AggregationType.AVG, AggregationType.MEDIAN), "indicator.trend", Map.of(), 10);
         trendIndicator = indicatorDefinition("indicator.trend", true,
                 Set.of(new IndicatorDimensionBinding(
                         IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ, FilterOperator.IN), false)));
 
-        nonTrendDefinition = new Indicator(
-                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, ChartType.POLICY,
-                List.of(), "indicator.non-trend", Map.of());
+        nonTrendDefinition = new IndicatorPreset(
+                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, ChartType.POLICY, null,
+                List.of(), "indicator.non-trend", Map.of(), 20);
         nonTrendIndicator = indicatorDefinition("indicator.non-trend", false, Set.of());
 
         lenient().when(presetCatalog.get(TREND_WIDGET_ID)).thenReturn(trendDefinition);

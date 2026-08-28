@@ -20,13 +20,13 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class IndicatorTest {
+class IndicatorPresetQueryTest {
 
-    private static Indicator preset(Map<String, List<String>> presetFilters) {
-        return new Indicator(
+    private static IndicatorPreset preset(Map<String, List<String>> presetFilters) {
+        return new IndicatorPreset(
             "oa-1", "OA Publication in Europe", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
-            ChartType.SCALAR, List.of(AggregationType.AVG, AggregationType.MEDIAN),
-            "publications.access_status_share", presetFilters
+            ChartType.SCALAR, null, List.of(AggregationType.AVG, AggregationType.MEDIAN),
+            "publications.access_status_share", presetFilters, 10
         );
     }
 

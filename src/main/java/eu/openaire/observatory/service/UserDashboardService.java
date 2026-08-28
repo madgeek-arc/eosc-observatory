@@ -7,8 +7,8 @@ import eu.openaire.observatory.domain.UserDashboard;
 import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
-import eu.openaire.observatory.indicator.Indicator;
-import eu.openaire.observatory.indicator.IndicatorCatalog;
+import eu.openaire.observatory.indicator.IndicatorPreset;
+import eu.openaire.observatory.indicator.IndicatorPresetCatalog;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
@@ -35,12 +35,12 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
 
     private final IndicatorQueryValidator indicatorQueryValidator;
     private final ActorContext actorContext;
-    private final IndicatorCatalog presetCatalog;
+    private final IndicatorPresetCatalog presetCatalog;
     private final IndicatorDefinitionCatalog definitionCatalog;
 
     public UserDashboardService(IndicatorQueryValidator indicatorQueryValidator,
                                 ActorContext actorContext,
-                                IndicatorCatalog presetCatalog,
+                                IndicatorPresetCatalog presetCatalog,
                                 IndicatorDefinitionCatalog definitionCatalog,
                                 ResourceTypeService resourceTypeService,
                                 ResourceService resourceService,
@@ -126,7 +126,7 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
             if (item.getIndicatorId() == null || item.getIndicatorId().isBlank()) {
                 throw new ValidationException("Dashboard item indicatorId must not be null");
             }
-            Indicator preset = presetCatalog.get(item.getIndicatorId());
+            IndicatorPreset preset = presetCatalog.get(item.getIndicatorId());
             if (preset == null) {
                 throw new ValidationException("Unknown indicator id: " + item.getIndicatorId());
             }
@@ -151,7 +151,7 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
         List<DashboardItem> normalized = new ArrayList<>();
         for (int i = 0; i < resolvedItems.size(); i++) {
             DashboardItem item = resolvedItems.get(i);
-            Indicator preset = presetCatalog.get(item.getIndicatorId());
+            IndicatorPreset preset = presetCatalog.get(item.getIndicatorId());
             IndicatorDefinition indicator = resolvedIndicators.get(i);
 
             for (AggregationType aggregation : seriesAggregations) {
