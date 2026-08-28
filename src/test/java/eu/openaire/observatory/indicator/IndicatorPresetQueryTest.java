@@ -1,7 +1,6 @@
 package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.AggregationType;
-import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.query.ComparisonMode;
@@ -25,7 +24,7 @@ class IndicatorPresetQueryTest {
     private static IndicatorPreset preset(Map<String, List<String>> presetFilters) {
         return new IndicatorPreset(
             "oa-1", "OA Publication in Europe", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
-            ChartType.SCALAR, null, List.of(AggregationType.AVG, AggregationType.MEDIAN),
+            List.of(), null, List.of(AggregationType.AVG, AggregationType.MEDIAN),
             "publications.access_status_share", presetFilters, 10
         );
     }

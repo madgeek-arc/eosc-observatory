@@ -51,10 +51,14 @@ denominator fix; see the note under `publications.access_status_share` below.
 |---|---|---|
 | `GET` | `/indicators/definitions` | List every generic indicator and its filter/group capabilities |
 | `GET` | `/indicators/definitions/{code}` | Same, for one indicator |
-| `GET` | `/indicators/pre-defined` | List every pre-defined dashboard widget (flat, one row per widget) |
-| `GET` | `/indicators/pre-defined/{id}` | Same, for one widget |
+| `GET` | `/indicators/presets` | List every indicator preset (flat, one row per preset) |
+| `GET` | `/indicators/presets/{id}` | Same, for one preset |
 | `GET` | `/dimensions/{code}/members?search=&limit=` | List a dimension's valid values (for building filter UIs) |
 | `POST` | `/indicator-queries` | Run a query against one indicator |
+| `GET` | `/dashboard` | Get the current user's saved dashboard |
+| `PUT` | `/dashboard` | Save the current user's dashboard items |
+| `GET` | `/users/{id}/dashboard` | Admin/support: get a specific user's dashboard |
+| `PUT` | `/users/{id}/dashboard` | Admin/support: save a specific user's dashboard items |
 
 ## Core concepts
 
@@ -152,104 +156,173 @@ how to format the value (`"percentage"`, `"number"`, `"currency"`, `"category"`,
 `GET /indicators/definitions/{code}` returns one such item directly (no `items` wrapper), or `404`
 if the code doesn't exist.
 
-### Pre-defined dashboard widgets
+### Indicator presets
 
-`GET /indicators/pre-defined` — a flat, one-row-per-widget list for a page (like Explore) that wants
+`GET /indicators/presets` — a flat, one-row-per-preset list for a page (like Explore) that wants
 to iterate a fixed set of dashboard cards directly, rather than build queries against the generic
 catalog above. Each row is a concrete instance of one of the generic indicators above, plus whatever
 filter value disambiguates it — e.g. `oa.country_initiative_status` alone serves close to a dozen
-different "National Monitoring on X" widgets here, one row per topic area. `GET
-/indicators/pre-defined/{id}` returns one such item directly, or `404` if the id doesn't exist.
+different "National Monitoring on X" presets here, one row per topic area. `GET
+/indicators/presets/{id}` returns one such item directly, or `404` if the id doesn't exist.
+
+`results` order is stable and meaningful: preset indicators come grouped by topic, the groups in a
+fixed sequence (Open Access Publications, Open Data, FAIR Data, Data Management, Citizen Science,
+Repositories, Open Science Training, Open Software, Financial Investment), and in a curated order
+within each group. A client can render the list top-to-bottom as received.
 
 ```json
 {
   "results": [
     {
-      "id": "od-4",
-      "label": "National Policy on Open Data",
-      "group": "Open Data",
-      "chartType": "POLICY",
-      "format": "yes-no",
-      "source": "survey-stats-tool",
-      "allowedSeriesAggregations": [],
-      "supportsTrend": false,
-      "supportsMap": true,
-      "indicatorCode": "oa.country_policy_status",
-      "presetFilters": {"initiativeType": ["OPEN_DATA_POLICY"]}
-    },
-    {
       "id": "oa-1",
       "label": "OA Publication in Europe (OA vs Closed)",
       "group": "Open Access Publications",
-      "chartType": "SCALAR",
+      "views": [
+        {"countryScope": "ALL_COUNTRIES", "timeScope": "SINGLE_YEAR", "renderStyle": "SCALAR"},
+        {"countryScope": "ALL_COUNTRIES", "timeScope": "TIME_RANGE", "renderStyle": "LINE_CHART"},
+        {"countryScope": "SELECTED_COUNTRIES", "timeScope": "SINGLE_YEAR", "renderStyle": "PROGRESS_BARS"},
+        {"countryScope": "SELECTED_COUNTRIES", "timeScope": "TIME_RANGE", "renderStyle": "MULTI_SERIES_LINE_CHART"}
+      ],
       "format": "percentage",
-      "source": "openaire-stats-tool",
       "allowedSeriesAggregations": ["AVG", "MEDIAN"],
-      "supportsTrend": true,
-      "supportsMap": false,
       "indicatorCode": "publications.access_status_share",
       "presetFilters": {"accessStatus": ["OA"]}
+    },
+    {
+      "id": "od-4",
+      "label": "National Policy on Open Data",
+      "group": "Open Data",
+      "views": [
+        {"countryScope": "ALL_COUNTRIES", "timeScope": "SINGLE_YEAR", "renderStyle": "MAP"},
+        {"countryScope": "ALL_COUNTRIES", "timeScope": "TIME_RANGE", "renderStyle": "MAP_WITH_CHANGE_COUNT"},
+        {"countryScope": "SELECTED_COUNTRIES", "timeScope": "SINGLE_YEAR", "renderStyle": "YES_NO"},
+        {"countryScope": "SELECTED_COUNTRIES", "timeScope": "TIME_RANGE", "renderStyle": "YES_NO_TIMELINE"}
+      ],
+      "format": "yes-no",
+      "allowedSeriesAggregations": [],
+      "indicatorCode": "oa.country_policy_status",
+      "presetFilters": {"initiativeType": ["OPEN_DATA_POLICY"]}
     }
   ]
 }
 ```
 
-- `chartType` — how to render the widget: `"SCALAR"` (single aggregate value/snapshot), `"LINE"`
-  (time series), `"MAP"` (binary/tri-state per-country breakdown), or `"POLICY"` (4-state per-country
-  policy breakdown — Mandatory/Non-mandatory/No-policy/Awaiting-data). The same enum used by
-  `DashboardItem.chartType`, so a client can copy this value straight onto a dashboard item built
-  from this widget. This is only the widget's *default* view — `supportsTrend`/`supportsMap` below
-  tell a client what else is available; which one actually gets saved onto `DashboardItem.chartType`
-  is entirely the UI's choice, not something the backend picks.
-- `format` — derived from the widget's underlying indicator (`IndicatorDefinition.format`), same
+- `views` — the renderings that make sense for this preset, one per cell of a
+  `countryScope × timeScope` 2×2. Each entry is `{countryScope, timeScope, renderStyle}`, plus an
+  optional `selector`:
+  - `countryScope` — `"ALL_COUNTRIES"` (EU-wide aggregate) or `"SELECTED_COUNTRIES"` (the actor
+    picked a subset; one row per country).
+  - `timeScope` — `"SINGLE_YEAR"` (`yearFrom == yearTo`, or no `yearFrom`) or `"TIME_RANGE"`.
+  - `renderStyle` — the chart/render style to draw. Current values in use: `"SCALAR"` (single
+    aggregate value; the unit — %, € millions, a plain count — comes from `format`), `"LINE_CHART"`,
+    `"PROGRESS_BARS"` (drawn without the bar when `format` isn't `percentage`), `"MULTI_SERIES_LINE_CHART"`,
+    `"YES_NO"`, `"YES_NO_TIMELINE"`, `"MAP"`, `"MAP_WITH_CHANGE_COUNT"`,
+    `"CHOROPLETH_MAP_MOST_ACTIVE_COUNTRIES"`, `"COLUMN_CHART"`, `"MULTI_SERIES_COLUMN_CHART"`. The
+    enum carries further styles (stacked columns, progress/multi-line charts) for indicators not
+    yet in the catalog. A breakdown dropdown is not a render style — it is the `selector` below.
+  - `selector` — present only on views that offer a breakdown dropdown; omitted otherwise.
+    `{dimension, label?, members?}`: `dimension` is a dimension code the backing indicator can be
+    grouped by (`groupable` in `GET /indicators/definitions`); when the actor picks a member the UI
+    appends `dimension` to the query's `groupBy`. `label` is nullable (fall back to the dimension's
+    own label); `members` is an optional curated subset — when empty, offer every member (fetchable
+    from `GET /indicators/{indicatorCode}/dimensions/{dimension}/members`).
+
+  The UI computes `countryScope`/`timeScope` from the actor's current filter state and renders the
+  matching entry's `renderStyle`. Rendering is entirely a UI decision: nothing about it (the
+  `selector` included) is persisted on a saved `DashboardItem` (see "User dashboards" below). An
+  entry may leave either axis `null` to match both values of that axis.
+- `format` — derived from the preset's underlying indicator (`IndicatorDefinition.format`), same
   vocabulary as `IndicatorCatalogItem.format`: `"percentage"`, `"number"`, `"currency"`,
   `"category"` (multi-value per-country status, e.g. a policy's Mandatory/Non-mandatory/No-policy
   breakdown), or `"yes-no"` (binary/3-state per-country status).
-- `source` — **not** a legacy question code. It's the handler that actually answers the widget's
-  underlying indicator: `"openaire-stats-tool"`, `"survey-stats-tool"`, or `"local-registry"` —
-  the same local-vs-proxied distinction documented under "Data sources" above, derived from the
-  linked indicator's own execution binding so it can't drift out of sync with which handler is
-  really wired up.
-- `allowedSeriesAggregations` — the exact `AggregationType` values meaningful for this widget's
-  query (e.g. `["AVG", "MEDIAN"]`, or `[]` for none); a curated list on the widget, not derived from
+  Which handler actually answers a preset (the local-vs-proxied distinction under "Data sources"
+  above) is an internal detail and is not exposed on any endpoint.
+- `allowedSeriesAggregations` — the exact `AggregationType` values meaningful for this preset's
+  query (e.g. `["AVG", "MEDIAN"]`, or `[]` for none); a curated list on the preset, not derived from
   the indicator's `AggregationPolicy`. Same type as `IndicatorQuery.seriesAggregations`, so a client
   can copy it straight across when building the query.
-- `supportsTrend` — whether this widget's underlying indicator supports time series, derived from
-  `IndicatorDefinition.timePolicy().supported()` (the same fact `IndicatorCatalogItem` exposes as
-  `supportsTimeRange`). A capability flag only — it tells the UI whether adding a `timeSeries` request
-  to the `IndicatorQuery` makes sense; it doesn't imply any particular chart type.
-- `supportsMap` — whether this widget's underlying indicator is a per-country breakdown, derived from
-  `IndicatorDefinition.renderHint() == ENTITY_MAP`. Also a capability flag only — the UI decides
-  whether to actually render it as a map.
 - `indicatorCode`/`presetFilters` — the same values `toIndicatorQuery` merges into a request
-  server-side; exposed so a client can build its own `IndicatorQuery` (and from it, a
-  `DashboardItem`) to save via `PUT /dashboard`, without a dedicated "add widget to dashboard"
-  endpoint.
+  server-side; exposed only so a client can preview a preset via `POST .../query` before saving it.
+  Saving a `DashboardItem` doesn't need them — see "User dashboards" below.
 - `id` — mostly `{topic}-{n}` (e.g. `oa-1`), sourced from the original indicator inventory. A handful
-  carry a `-x` suffix (e.g. `oa-8-x`) — these 8 "National Financial Strategy on X" widgets aren't in
+  carry a `-x` suffix (e.g. `oa-8-x`) — these 8 "National Financial Strategy on X" presets aren't in
   the source inventory; they were added for symmetry with the Policy/Monitoring pairs every topic
-  already has (see the `-x` id as the marker that this widget is a catalog addition, not an
+  already has (see the `-x` id as the marker that this preset is a catalog addition, not an
   inventory-backed one).
 
-`POST /indicators/pre-defined/{id}/query` — actually runs a widget. Body is a plain `IndicatorQuery`
-(same shape as `POST /indicator-queries` above) with `indicatorCode` **ignored** — the widget's own
+The response is the `IndicatorPreset` domain record serialized directly — there is no separate DTO
+layer. `format` is copied onto each preset from its linked `IndicatorDefinition` at startup; `group`
+and `format` serialize as their wire strings via `@JsonValue`.
+
+`POST /indicators/presets/{id}/query` — actually runs a preset. Body is a plain `IndicatorQuery`
+(same shape as `POST /indicator-queries` above) with `indicatorCode` **ignored** — the preset's own
 `indicatorCode` and preset filter(s) are always used, resolved from `{id}`. The request's own `filters`
 are appended after the preset ones; everything else (`aggregation`, `groupBy`, `timeSeries`,
 `comparisonMode`, `sort`, `limit`, `seriesAggregations`) passes straight through. `404` if `{id}`
 doesn't exist. Response is a plain `IndicatorResult`, identical to `/indicator-queries`.
 
 ```bash
-curl -X POST localhost:8280/api/indicators/pre-defined/oa-1/query \
+curl -X POST localhost:8280/api/indicators/presets/oa-1/query \
   -d '{"filters":[{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
 ```
 `oa-1` and `oa-2` ("OA Publication in Europe" / "Trend of Open Access Publications") share the same
 `indicatorCode`+preset filter — running `oa-2` instead is the same request with `"timeSeries":
 {"from":2022,"to":2023}` in place of the plain filter, since the only difference between the two
-widgets is whether the caller asks for a time series.
+presets is whether the caller asks for a time series.
 
-If `filters` names a dimension the widget already presets (e.g. `accessStatus` against `oa-1`, which
+If `filters` names a dimension the preset already fixes (e.g. `accessStatus` against `oa-1`, which
 *is* `accessStatus=OA`), the request 400s with `PresetFilterConflictException` rather than silently
 unioning or overriding the preset value — see the errors table below.
+
+### User dashboards
+
+> **Breaking change:** the dashboard API and persisted representation intentionally do not support
+> the former item-array payload (`title`, `chartType`, and `query`). Clients must send the full
+> dashboard object shown below, and existing saved dashboards must be recreated in this format.
+
+`GET /dashboard` — the current user's saved dashboard,
+`UserDashboard { id, items, countries, yearFrom, yearTo, seriesAggregations, metadata }`. Never
+persists on read; a user with no saved dashboard yet just sees `items: []`. `PUT /dashboard` replaces
+the full dashboard. `GET/PUT /users/{id}/dashboard` are the admin/support equivalents, operating on
+any user's dashboard by id.
+
+`countries`/`yearFrom`/`yearTo`/`seriesAggregations` are shared: one selection applied to every item on
+the dashboard, not per item.
+
+```json
+{
+  "countries": ["GR", "DE"],
+  "yearFrom": 2022,
+  "yearTo": 2023,
+  "seriesAggregations": ["AVG"],
+  "items": [
+    { "id": "item-1", "indicatorId": "oa-1" },
+    { "id": "item-2", "indicatorId": "oa-6" }
+  ]
+}
+```
+
+- `countries` — nullable/empty for no country filter. Every preset's underlying indicator accepts a
+  country filter, so this is always applied to every item when given.
+- `yearFrom`/`yearTo` — `yearTo` is required whenever the dashboard has any items. `yearFrom` is
+  required only if at least one item's preset is trend-capable (i.e. its `indicatorCode` resolves to
+  `supportsTimeRange: true` via `GET /indicators/definitions/{indicatorCode}`) — it becomes a real
+  `timeSeries` range for those items; for items whose preset isn't trend-capable, `yearFrom` is unused
+  for that item and `yearTo` alone becomes a single `surveyYear` EQ filter. `yearFrom` must be
+  `<= yearTo` when both are given. A dashboard may freely mix trend-capable and non-trend presets under
+  one shared `yearFrom`/`yearTo` pair.
+- `seriesAggregations` — nullable/empty for none; it's one shared list, but each value is still
+  validated against every item's own `allowedSeriesAggregations` (from `GET /indicators/presets`)
+  — a value valid for one preset but not another 400s, naming the offending indicator id.
+- Each `DashboardItem` is just `{ id, indicatorId }` — a reference, not a full
+  `IndicatorQuery`. `indicatorId` must resolve against `GET /indicators/presets`; unknown
+  ids 400 on save. `title`, `views`, and format are **not** stored — a client derives them by
+  joining `indicatorId` against `GET /indicators/presets`. Rendering (which `renderStyle`,
+  map vs. chart) is entirely a UI decision.
+
+Two items may reference the same `indicatorId` — allowed, though redundant now that filters
+are shared (it produces an identical query twice). Only duplicate item `id`s within one dashboard are
+rejected.
 
 `GET /dimensions/accessStatus/members` (fixed 4-value list, hardcoded — no backing storage):
 ```json
@@ -352,7 +425,7 @@ body; anything else falls through to the generic handler and returns HTTP 500.
 | `ComparisonRequiresTimeSeriesException` | `comparisonMode` given without `timeSeries` |
 | `InvalidComparisonRangeException` | `comparisonMode` given but `timeSeries.from == timeSeries.to` |
 | `ComparisonNotSupportedException` | `comparisonMode` given but the indicator is `ATTRIBUTE`-typed, or its handler doesn't fetch full ranges (e.g. survey-backed indicators) |
-| `PresetFilterConflictException` | `POST /indicators/pre-defined/{id}/query` only: request `filters` name a dimension the widget already presets |
+| `PresetFilterConflictException` | `POST /indicators/presets/{id}/query` only: request `filters` name a dimension the preset already fixes |
 
 ## Indicator reference
 

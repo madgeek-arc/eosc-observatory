@@ -7,7 +7,6 @@ import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
 import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.model.AggregationPolicy;
 import eu.openaire.observatory.indicator.model.AggregationType;
-import eu.openaire.observatory.indicator.model.ChartType;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
@@ -86,14 +85,14 @@ class UserDashboardServiceTest {
         authentication = OidcTestUtils.oidcAuthentication(EMAIL);
 
         trendDefinition = new IndicatorPreset(
-                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, ChartType.SCALAR, null,
+                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), null,
                 List.of(AggregationType.AVG, AggregationType.MEDIAN), "indicator.trend", Map.of(), 10);
         trendIndicator = indicatorDefinition("indicator.trend", true,
                 Set.of(new IndicatorDimensionBinding(
                         IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ, FilterOperator.IN), false)));
 
         nonTrendDefinition = new IndicatorPreset(
-                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, ChartType.POLICY, null,
+                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), null,
                 List.of(), "indicator.non-trend", Map.of(), 20);
         nonTrendIndicator = indicatorDefinition("indicator.non-trend", false, Set.of());
 

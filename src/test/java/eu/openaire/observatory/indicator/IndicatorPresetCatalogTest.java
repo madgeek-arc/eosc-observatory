@@ -1,7 +1,9 @@
 package eu.openaire.observatory.indicator;
 
+import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
+import eu.openaire.observatory.indicator.model.PresetView;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -49,6 +51,43 @@ class IndicatorPresetCatalogTest {
                     .as("preset indicator '" + preset.id() + "' filters dimension '" + presetDimension
                         + "' which " + preset.indicatorCode() + " doesn't bind")
                     .contains(presetDimension);
+            }
+        }
+    }
+
+    @Test
+    void everyPresetHasAFullTwoByTwoOfViews() {
+        for (IndicatorPreset preset : catalog.getAll()) {
+            assertThat(preset.views())
+                .as("views of preset indicator '" + preset.id() + "'")
+                .hasSize(4);
+            Set<String> cells = new HashSet<>();
+            for (PresetView view : preset.views()) {
+                assertThat(view.renderStyle()).as(preset.id() + " view render style").isNotNull();
+                assertThat(cells.add(view.countryScope() + "/" + view.timeScope()))
+                    .as("preset indicator '" + preset.id() + "' repeats the "
+                        + view.countryScope() + "/" + view.timeScope() + " cell")
+                    .isTrue();
+            }
+        }
+    }
+
+    @Test
+    void everyViewSelectorNamesADimensionTheIndicatorCanGroupBy() {
+        for (IndicatorPreset preset : catalog.getAll()) {
+            IndicatorDefinition indicator = definitionCatalog.get(preset.indicatorCode());
+            for (PresetView view : preset.views()) {
+                if (view.selector() == null) {
+                    continue;
+                }
+                boolean groupable = indicator.dimensionBindings().stream()
+                    .anyMatch(binding -> binding.dimensionCode().equals(view.selector().dimension())
+                        && binding.usages().contains(DimensionUsage.GROUP));
+                assertThat(groupable)
+                    .as("preset indicator '" + preset.id() + "' has a selector on '"
+                        + view.selector().dimension() + "' which " + preset.indicatorCode()
+                        + " can't group by")
+                    .isTrue();
             }
         }
     }
