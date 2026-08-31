@@ -2,6 +2,8 @@ package eu.openaire.observatory.indicator.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.util.Objects;
+
 /**
  * One selectable rendering of a preset indicator: the {@link RenderStyle} to draw when the
  * actor's filters fall in the {@code countryScope}/{@code timeScope} cell.
@@ -21,11 +23,8 @@ public record PresetView(
     RenderStyle renderStyle,
     @JsonInclude(JsonInclude.Include.NON_NULL) ViewSelector selector
 ) {
-    public PresetView(CountryScope countryScope, TimeScope timeScope, RenderStyle renderStyle, ViewSelector selector) {
-        this.countryScope = countryScope;
-        this.timeScope = timeScope;
-        this.renderStyle = java.util.Objects.requireNonNull(renderStyle, "renderStyle");
-        this.selector = selector;
+    public PresetView {
+        Objects.requireNonNull(renderStyle, "renderStyle cannot be null");
     }
 
     /** Most views have no selector. */
