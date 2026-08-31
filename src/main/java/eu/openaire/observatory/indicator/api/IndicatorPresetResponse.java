@@ -4,5 +4,5 @@ import eu.openaire.observatory.indicator.IndicatorPreset;
 
 import java.util.List;
 
-public record IndicatorPresetResponse(List<IndicatorPreset> results) {
+public record IndicatorPresetResponse(List<IndicatorPreset> indicatorPresets) {
 }
