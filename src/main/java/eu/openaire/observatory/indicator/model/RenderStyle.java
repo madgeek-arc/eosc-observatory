@@ -50,11 +50,11 @@ public enum RenderStyle {
     /** Small-multiples line charts. */
     MULTI_LINE_CHARTS,
 
-    /** Choropleth map highlighting the most active countries. */
-    CHOROPLETH_MAP_MOST_ACTIVE_COUNTRIES,
-
     /** Choropleth map, as already implemented in the EOSC Observatory. */
     CHOROPLETH_MAP,
+
+    /** Choropleth map highlighting the top 5 countries. */
+    CHOROPLETH_MAP_WITH_TOP_5,
 
     /** Single-series column chart. */
     COLUMN_CHART,

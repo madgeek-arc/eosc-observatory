@@ -64,7 +64,7 @@ public class IndicatorPresetCatalog {
      * views lean on a most-active-countries map and column charts rather than a single scalar.
      */
     private static final List<PresetView> OUTPUT_COUNT_VIEWS = List.of(
-        new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.CHOROPLETH_MAP_MOST_ACTIVE_COUNTRIES),
+        new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.CHOROPLETH_MAP_WITH_TOP_5),
         new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART),
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_BARS),
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_SERIES_COLUMN_CHART));
