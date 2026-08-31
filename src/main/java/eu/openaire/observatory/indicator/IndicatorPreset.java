@@ -54,7 +54,7 @@ public record IndicatorPreset(
      *
      * @throws PresetFilterConflictException if request.filters() names an already-preset dimension.
      */
-    public IndicatorQuery toIndicatorQuery(IndicatorQuery request) {
+    IndicatorQuery toIndicatorQuery(IndicatorQuery request) {
         List<IndicatorFilter> merged = new ArrayList<>();
         presetFilters.forEach((dimensionCode, values) -> {
             FilterOperator operator = values.size() == 1 ? FilterOperator.EQ : FilterOperator.IN;

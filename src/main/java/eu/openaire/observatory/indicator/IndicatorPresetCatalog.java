@@ -9,6 +9,8 @@ import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.model.ViewSelector;
+import eu.openaire.observatory.indicator.query.IndicatorQuery;
+import eu.openaire.observatory.indicator.validation.SeriesAggregationNotAllowedException;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -88,8 +90,10 @@ public class IndicatorPresetCatalog {
 
     private final Map<String, IndicatorPreset> presetsById;
     private final List<IndicatorPreset> ordered;
+    private final IndicatorDefinitionCatalog definitionCatalog;
 
     public IndicatorPresetCatalog(IndicatorDefinitionCatalog definitionCatalog) {
+        this.definitionCatalog = definitionCatalog;
         Map<String, IndicatorPreset> byId = new LinkedHashMap<>();
         Set<String> slots = new HashSet<>();
         for (IndicatorPreset preset : allPresets()) {
@@ -118,6 +122,26 @@ public class IndicatorPresetCatalog {
 
     public IndicatorPreset get(String id) {
         return presetsById.get(id);
+    }
+
+    /**
+     * Builds the execution query for {@code preset} from the dashboard-style parameters that vary
+     * at use time. Resolves the backing {@link IndicatorDefinition} and rejects any
+     * {@code seriesAggregations} value the preset does not advertise in
+     * {@link IndicatorPreset#allowedSeriesAggregations()}.
+     *
+     * @throws SeriesAggregationNotAllowedException if a requested series aggregation is not allowed
+     */
+    public IndicatorQuery toIndicatorQuery(IndicatorPreset preset, List<String> countries,
+            Integer yearFrom, Integer yearTo, List<AggregationType> seriesAggregations) {
+        List<AggregationType> requested = seriesAggregations == null ? List.of() : seriesAggregations;
+        for (AggregationType aggregation : requested) {
+            if (!preset.allowedSeriesAggregations().contains(aggregation)) {
+                throw new SeriesAggregationNotAllowedException(preset.id(), aggregation);
+            }
+        }
+        IndicatorDefinition definition = definitionCatalog.get(preset.indicatorCode());
+        return preset.toIndicatorQuery(definition, countries, yearFrom, yearTo, requested);
     }
 
     private static void validateViews(IndicatorPreset preset, IndicatorDefinition definition) {

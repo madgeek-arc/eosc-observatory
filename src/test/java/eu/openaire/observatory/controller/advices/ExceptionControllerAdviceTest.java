@@ -21,7 +21,7 @@ class ExceptionControllerAdviceTest {
 
     @Test
     void unknownIndicatorExceptionMapsToNotFound() {
-        when(request.getRequestURI()).thenReturn("/indicator-queries");
+        when(request.getRequestURI()).thenReturn("/indicators/query");
 
         ResponseEntity<ServerError> response = advice.handleException(request, new UnknownIndicatorException("does.not.exist"));
 
@@ -30,7 +30,7 @@ class ExceptionControllerAdviceTest {
 
     @Test
     void indicatorAccessDeniedExceptionMapsToForbidden() {
-        when(request.getRequestURI()).thenReturn("/indicator-queries");
+        when(request.getRequestURI()).thenReturn("/indicators/query");
 
         ResponseEntity<ServerError> response = advice.handleException(request, new IndicatorAccessDeniedException("publications.count"));
 
@@ -39,7 +39,7 @@ class ExceptionControllerAdviceTest {
 
     @Test
     void missingRequiredFilterExceptionMapsToBadRequest() {
-        when(request.getRequestURI()).thenReturn("/indicator-queries");
+        when(request.getRequestURI()).thenReturn("/indicators/query");
 
         ResponseEntity<ServerError> response = advice.handleException(request, new MissingRequiredFilterException("publications.count", "country"));
 
@@ -48,7 +48,7 @@ class ExceptionControllerAdviceTest {
 
     @Test
     void invalidTimeRangeExceptionMapsToBadRequest() {
-        when(request.getRequestURI()).thenReturn("/indicator-queries");
+        when(request.getRequestURI()).thenReturn("/indicators/query");
 
         ResponseEntity<ServerError> response = advice.handleException(request, new InvalidTimeRangeException(2010, 2020, 2026));
 
@@ -57,7 +57,7 @@ class ExceptionControllerAdviceTest {
 
     @Test
     void unannotatedExceptionStillFallsBackToInternalServerError() {
-        when(request.getRequestURI()).thenReturn("/indicator-queries");
+        when(request.getRequestURI()).thenReturn("/indicators/query");
 
         ResponseEntity<ServerError> response = advice.handleException(request, new RuntimeException("boom"));
 

@@ -1,9 +1,15 @@
 package eu.openaire.observatory.indicator;
 
+import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
+import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.model.PresetView;
+import eu.openaire.observatory.indicator.query.IndicatorFilter;
+import eu.openaire.observatory.indicator.query.IndicatorQuery;
+import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
+import eu.openaire.observatory.indicator.validation.SeriesAggregationNotAllowedException;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -11,6 +17,8 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class IndicatorPresetCatalogTest {
 
@@ -140,5 +148,48 @@ class IndicatorPresetCatalogTest {
         List<IndicatorPreset> all = catalog.getAll();
         assertThat(all.getFirst().id()).isEqualTo("oa-1");
         assertThat(all.getLast().id()).isEqualTo("fin-1");
+    }
+
+    @Test
+    void toIndicatorQueryBuildsACountryFilterFromSelectedCountries() {
+        IndicatorQuery query = catalog.toIndicatorQuery(
+            catalog.get("oa-1"), List.of("EL", "IT"), 2019, 2023, List.of());
+
+        assertThat(query.filters())
+            .contains(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("EL", "IT")));
+    }
+
+    @Test
+    void toIndicatorQueryTurnsTheYearRangeIntoATimeSeriesForATrendCapablePreset() {
+        IndicatorQuery query = catalog.toIndicatorQuery(
+            catalog.get("oa-1"), List.of(), 2019, 2023, List.of());
+
+        assertThat(query.timeSeries()).isEqualTo(new TimeSeriesRequest(2019, 2023, null));
+    }
+
+    @Test
+    void toIndicatorQueryTurnsYearToIntoASurveyYearFilterForASurveyPreset() {
+        IndicatorQuery query = catalog.toIndicatorQuery(
+            catalog.get("oa-6"), List.of(), 2019, 2023, List.of());
+
+        assertThat(query.timeSeries()).isNull();
+        assertThat(query.filters())
+            .contains(new IndicatorFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of(2023)));
+    }
+
+    @Test
+    void toIndicatorQueryRejectsASeriesAggregationThePresetDoesNotAllow() {
+        assertThatThrownBy(() -> catalog.toIndicatorQuery(
+                catalog.get("oa-1"), List.of(), 2019, 2023, List.of(AggregationType.SUM)))
+            .isInstanceOf(SeriesAggregationNotAllowedException.class)
+            .hasMessageContaining("oa-1")
+            .hasMessageContaining("SUM");
+    }
+
+    @Test
+    void toIndicatorQueryAcceptsAnAllowedSeriesAggregation() {
+        assertThatCode(() -> catalog.toIndicatorQuery(
+                catalog.get("oa-1"), List.of(), 2019, 2023, List.of(AggregationType.AVG, AggregationType.MEDIAN)))
+            .doesNotThrowAnyException();
     }
 }

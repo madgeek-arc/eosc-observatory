@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(path = "indicator-queries", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "indicators/query", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Indicators")
 public class IndicatorQueryController {
 

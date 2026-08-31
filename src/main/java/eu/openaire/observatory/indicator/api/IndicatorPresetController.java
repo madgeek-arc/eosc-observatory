@@ -49,14 +49,16 @@ public class IndicatorPresetController {
         return ResponseEntity.ok(preset);
     }
 
-    /** {@code request.indicatorCode()} is ignored — the preset's own indicatorCode always wins. */
     @Operation(summary = "Run an indicator preset's query")
     @PostMapping("{id}/query")
-    public ResponseEntity<IndicatorResult> queryPreset(@PathVariable String id, @RequestBody IndicatorQuery request) {
+    public ResponseEntity<IndicatorResult> queryPreset(
+            @PathVariable String id, @RequestBody IndicatorPresetQueryRequest request) {
         IndicatorPreset preset = presetCatalog.get(id);
         if (preset == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(queryService.execute(preset.toIndicatorQuery(request), actorContext));
+        IndicatorQuery query = presetCatalog.toIndicatorQuery(
+            preset, request.countries(), request.yearFrom(), request.yearTo(), request.seriesAggregations());
+        return ResponseEntity.ok(queryService.execute(query, actorContext));
     }
 }
