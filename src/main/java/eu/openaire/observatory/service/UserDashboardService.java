@@ -12,6 +12,7 @@ import eu.openaire.observatory.indicator.IndicatorPresetCatalog;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
+import eu.openaire.observatory.indicator.validation.PresetScopeValidation;
 import eu.openaire.observatory.utils.UserIds;
 import gr.uoa.di.madgik.catalogue.exception.ValidationException;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
@@ -134,19 +135,6 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
             resolvedIndicators.add(definitionCatalog.get(preset.indicatorCode()));
         }
 
-        if (!items.isEmpty()) {
-            if (yearTo == null) {
-                throw new ValidationException("Dashboard yearTo must not be null");
-            }
-            boolean anyTrendCapable = resolvedIndicators.stream().anyMatch(indicator -> indicator.timePolicy().supported());
-            if (anyTrendCapable && yearFrom == null) {
-                throw new ValidationException("Dashboard yearFrom must not be null: at least one item is trend-capable");
-            }
-            if (yearFrom != null && yearFrom > yearTo) {
-                throw new ValidationException("Dashboard yearFrom must be <= yearTo");
-            }
-        }
-
         Set<String> seenIds = new HashSet<>();
         List<DashboardItem> normalized = new ArrayList<>();
         for (int i = 0; i < resolvedItems.size(); i++) {
@@ -154,12 +142,8 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
             IndicatorPreset preset = presetCatalog.get(item.getIndicatorId());
             IndicatorDefinition indicator = resolvedIndicators.get(i);
 
-            for (AggregationType aggregation : seriesAggregations) {
-                if (!preset.allowedSeriesAggregations().contains(aggregation)) {
-                    throw new ValidationException(
-                        "Dashboard seriesAggregations value " + aggregation + " is not allowed for indicator: " + item.getIndicatorId());
-                }
-            }
+            PresetScopeValidation.validate(
+                preset, indicator.timePolicy().supported(), yearFrom, yearTo, seriesAggregations);
 
             IndicatorQuery query = preset.toIndicatorQuery(indicator, countries, yearFrom, yearTo, seriesAggregations);
             indicatorQueryValidator.compile(query, actorContext);

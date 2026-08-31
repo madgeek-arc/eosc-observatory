@@ -10,7 +10,7 @@ import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.model.ViewSelector;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
-import eu.openaire.observatory.indicator.validation.SeriesAggregationNotAllowedException;
+import eu.openaire.observatory.indicator.validation.PresetScopeValidation;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -126,21 +126,21 @@ public class IndicatorPresetCatalog {
 
     /**
      * Builds the execution query for {@code preset} from the dashboard-style parameters that vary
-     * at use time. Resolves the backing {@link IndicatorDefinition} and rejects any
-     * {@code seriesAggregations} value the preset does not advertise in
-     * {@link IndicatorPreset#allowedSeriesAggregations()}.
+     * at use time, applying {@link PresetScopeValidation} — the same country/year/seriesAggregation
+     * rules the {@code PUT /dashboard} save path enforces.
      *
-     * @throws SeriesAggregationNotAllowedException if a requested series aggregation is not allowed
+     * @throws eu.openaire.observatory.indicator.validation.SeriesAggregationNotAllowedException
+     *         if a requested series aggregation is not in the preset's allowed set
+     * @throws eu.openaire.observatory.indicator.validation.InvalidPresetScopeException
+     *         if {@code yearTo} is null, {@code yearFrom} is null for a time-series indicator, or
+     *         {@code yearFrom > yearTo}
      */
     public IndicatorQuery toIndicatorQuery(IndicatorPreset preset, List<String> countries,
             Integer yearFrom, Integer yearTo, List<AggregationType> seriesAggregations) {
-        List<AggregationType> requested = seriesAggregations == null ? List.of() : seriesAggregations;
-        for (AggregationType aggregation : requested) {
-            if (!preset.allowedSeriesAggregations().contains(aggregation)) {
-                throw new SeriesAggregationNotAllowedException(preset.id(), aggregation);
-            }
-        }
         IndicatorDefinition definition = definitionCatalog.get(preset.indicatorCode());
+        PresetScopeValidation.validate(
+            preset, definition.timePolicy().supported(), yearFrom, yearTo, seriesAggregations);
+        List<AggregationType> requested = seriesAggregations == null ? List.of() : seriesAggregations;
         return preset.toIndicatorQuery(definition, countries, yearFrom, yearTo, requested);
     }
 

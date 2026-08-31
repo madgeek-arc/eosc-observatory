@@ -2,11 +2,13 @@ package eu.openaire.observatory.indicator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import eu.openaire.observatory.indicator.model.AggregationType;
+import eu.openaire.observatory.indicator.model.CountryScope;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.model.PresetView;
+import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
@@ -79,6 +81,10 @@ public record IndicatorPreset(
      * {@code indicator.timePolicy().supported()}, the year range becomes a {@link TimeSeriesRequest};
      * otherwise {@code yearTo} becomes a single {@code surveyYear} EQ filter and {@code yearFrom} is
      * unused.
+     *
+     * <p>{@code groupBy} is derived from {@code views}: the backend computes the same
+     * {@code (countryScope, timeScope)} cell the UI would render and groups by country exactly when
+     * that view's {@link eu.openaire.observatory.indicator.model.RenderStyle#perCountryBreakdown()}.
      */
     public IndicatorQuery toIndicatorQuery(
             IndicatorDefinition indicator, List<String> countries, Integer yearFrom, Integer yearTo,
@@ -96,6 +102,21 @@ public record IndicatorPreset(
         }
         List<AggregationType> resolvedSeriesAggregations = seriesAggregations == null ? List.of() : seriesAggregations;
         return toIndicatorQuery(new IndicatorQuery(
-            indicatorCode, null, filters, List.of(), timeSeries, null, List.of(), null, resolvedSeriesAggregations));
+            indicatorCode, null, filters, groupByFor(countries, yearFrom, yearTo), timeSeries, null,
+            List.of(), null, resolvedSeriesAggregations));
+    }
+
+    private List<String> groupByFor(List<String> countries, Integer yearFrom, Integer yearTo) {
+        CountryScope countryScope = (countries == null || countries.isEmpty())
+            ? CountryScope.ALL_COUNTRIES : CountryScope.SELECTED_COUNTRIES;
+        TimeScope timeScope = (yearFrom == null || yearFrom.equals(yearTo))
+            ? TimeScope.SINGLE_YEAR : TimeScope.TIME_RANGE;
+        boolean perCountry = views.stream()
+            .filter(view -> (view.countryScope() == null || view.countryScope() == countryScope)
+                && (view.timeScope() == null || view.timeScope() == timeScope))
+            .findFirst()
+            .map(view -> view.renderStyle().perCountryBreakdown())
+            .orElse(false);
+        return perCountry ? List.of(IndicatorCodes.COUNTRY_DIMENSION) : List.of();
     }
 }

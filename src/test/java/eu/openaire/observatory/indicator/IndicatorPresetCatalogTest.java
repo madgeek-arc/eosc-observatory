@@ -9,6 +9,7 @@ import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
+import eu.openaire.observatory.indicator.validation.InvalidPresetScopeException;
 import eu.openaire.observatory.indicator.validation.SeriesAggregationNotAllowedException;
 import org.junit.jupiter.api.Test;
 
@@ -151,12 +152,46 @@ class IndicatorPresetCatalogTest {
     }
 
     @Test
-    void toIndicatorQueryBuildsACountryFilterFromSelectedCountries() {
+    void toIndicatorQueryBuildsACountryFilterAndGroupsByCountryForSelectedCountries() {
         IndicatorQuery query = catalog.toIndicatorQuery(
             catalog.get("oa-1"), List.of("EL", "IT"), 2019, 2023, List.of());
 
         assertThat(query.filters())
             .contains(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("EL", "IT")));
+        assertThat(query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+    }
+
+    @Test
+    void toIndicatorQueryDoesNotGroupByCountryForAnAllCountriesScalarView() {
+        // oa-1 ALL_COUNTRIES / SINGLE_YEAR view is SCALAR
+        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("oa-1"), List.of(), 2023, 2023, List.of());
+
+        assertThat(query.groupBy()).isEmpty();
+    }
+
+    @Test
+    void toIndicatorQueryDoesNotGroupByCountryForAnAllCountriesLineChartView() {
+        // oa-1 ALL_COUNTRIES / TIME_RANGE view is LINE_CHART
+        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("oa-1"), List.of(), 2019, 2023, List.of());
+
+        assertThat(query.groupBy()).isEmpty();
+    }
+
+    @Test
+    void toIndicatorQueryGroupsByCountryForAnAllCountriesChoroplethView() {
+        // cs-1 ALL_COUNTRIES / SINGLE_YEAR view is CHOROPLETH_MAP_WITH_TOP_5
+        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("cs-1"), List.of(), 2023, 2023, List.of());
+
+        assertThat(query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(query.filters()).noneMatch(f -> f.dimension().equals(IndicatorCodes.COUNTRY_DIMENSION));
+    }
+
+    @Test
+    void toIndicatorQueryGroupsByCountryForAnAllCountriesMapView() {
+        // oa-4 (NATIONAL_STATUS_VIEWS) ALL_COUNTRIES / SINGLE_YEAR view is MAP
+        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("oa-4"), List.of(), 2023, 2023, List.of());
+
+        assertThat(query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
     @Test
@@ -191,5 +226,26 @@ class IndicatorPresetCatalogTest {
         assertThatCode(() -> catalog.toIndicatorQuery(
                 catalog.get("oa-1"), List.of(), 2019, 2023, List.of(AggregationType.AVG, AggregationType.MEDIAN)))
             .doesNotThrowAnyException();
+    }
+
+    @Test
+    void toIndicatorQueryRejectsAMissingYearTo() {
+        assertThatThrownBy(() -> catalog.toIndicatorQuery(catalog.get("oa-1"), List.of(), 2019, null, List.of()))
+            .isInstanceOf(InvalidPresetScopeException.class)
+            .hasMessageContaining("yearTo");
+    }
+
+    @Test
+    void toIndicatorQueryRejectsAMissingYearFromForATrendCapablePreset() {
+        assertThatThrownBy(() -> catalog.toIndicatorQuery(catalog.get("oa-1"), List.of(), null, 2023, List.of()))
+            .isInstanceOf(InvalidPresetScopeException.class)
+            .hasMessageContaining("yearFrom");
+    }
+
+    @Test
+    void toIndicatorQueryRejectsYearFromAfterYearTo() {
+        assertThatThrownBy(() -> catalog.toIndicatorQuery(catalog.get("oa-1"), List.of(), 2024, 2023, List.of()))
+            .isInstanceOf(InvalidPresetScopeException.class)
+            .hasMessageContaining("yearFrom");
     }
 }

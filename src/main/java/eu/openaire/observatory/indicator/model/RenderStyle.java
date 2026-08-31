@@ -60,5 +60,23 @@ public enum RenderStyle {
     COLUMN_CHART,
 
     /** Column chart with multiple data series. */
-    MULTI_SERIES_COLUMN_CHART
+    MULTI_SERIES_COLUMN_CHART;
+
+    /**
+     * Whether drawing this style needs one value per country. It's what decides whether a preset
+     * query for the view matching the actor's {@code (countryScope, timeScope)} cell adds
+     * {@code groupBy: ["country"]} — maps, choropleths, progress bars, per-country yes/no and
+     * multi-series charts all need per-country rows; {@code SCALAR} / {@code LINE_CHART} want a
+     * single aggregate (for RATIO indicators the true EU value can't be recovered from per-country
+     * rows, so it must be computed without the grouping).
+     *
+     * <p>{@code COLUMN_CHART} counts as per-country — {@code OUTPUT_COUNT_VIEWS} uses it for
+     * "most-active-countries" charts. {@code STACKED_COLUMN} is category-over-time, not per-country.
+     */
+    public boolean perCountryBreakdown() {
+        return switch (this) {
+            case SCALAR, LINE_CHART, STACKED_COLUMN -> false;
+            default -> true;
+        };
+    }
 }

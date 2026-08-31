@@ -17,8 +17,12 @@ import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
 import eu.openaire.observatory.indicator.model.IndicatorStatus;
 import eu.openaire.observatory.indicator.model.IndicatorValueType;
+import eu.openaire.observatory.indicator.model.CountryScope;
 import eu.openaire.observatory.indicator.model.NullHandling;
+import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.model.RenderHint;
+import eu.openaire.observatory.indicator.model.RenderStyle;
+import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.IndicatorPreset;
@@ -27,6 +31,8 @@ import eu.openaire.observatory.indicator.IndicatorPresetCatalog;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
+import eu.openaire.observatory.indicator.validation.InvalidPresetScopeException;
+import eu.openaire.observatory.indicator.validation.SeriesAggregationNotAllowedException;
 import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.exception.ValidationException;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
@@ -261,7 +267,7 @@ class UserDashboardServiceTest {
     void save_rejectsMissingYearTo() {
         UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), null, 2022, null, null);
 
-        assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        assertThrows(InvalidPresetScopeException.class, () -> service.save(authentication, request));
         verifyNoInteractions(resourceService);
     }
 
@@ -269,7 +275,7 @@ class UserDashboardServiceTest {
     void save_rejectsMissingYearFromForTrendCapableWidget() {
         UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), null, null, 2023, null);
 
-        assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        assertThrows(InvalidPresetScopeException.class, () -> service.save(authentication, request));
         verifyNoInteractions(resourceService);
     }
 
@@ -286,7 +292,7 @@ class UserDashboardServiceTest {
     void save_rejectsYearFromAfterYearTo() {
         UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", TREND_WIDGET_ID)), null, 2023, 2022, null);
 
-        assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        assertThrows(InvalidPresetScopeException.class, () -> service.save(authentication, request));
         verifyNoInteractions(resourceService);
     }
 
@@ -322,6 +328,24 @@ class UserDashboardServiceTest {
         var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
         verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
         assertTrue(captor.getValue().filters().stream().anyMatch(f -> f.dimension().equals(IndicatorCodes.COUNTRY_DIMENSION)));
+    }
+
+    @Test
+    void save_derivesGroupByCountryFromThePresetsMatchingView() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        IndicatorPreset perCountryPreset = new IndicatorPreset(
+                "widget-map", "Map Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
+                List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MAP)),
+                null, List.of(), "indicator.trend", Map.of(), 30);
+        lenient().when(presetCatalog.get("widget-map")).thenReturn(perCountryPreset);
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", "widget-map")), null, 2023, 2023, null);
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
+        assertEquals(List.of(IndicatorCodes.COUNTRY_DIMENSION), captor.getValue().groupBy());
     }
 
     @Test
@@ -372,7 +396,7 @@ class UserDashboardServiceTest {
         // nonTrendDefinition.allowedSeriesAggregations() is empty for this widget
         UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", NON_TREND_WIDGET_ID)), null, null, 2023, List.of(AggregationType.AVG));
 
-        assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        assertThrows(SeriesAggregationNotAllowedException.class, () -> service.save(authentication, request));
         verifyNoInteractions(resourceService);
     }
 
@@ -382,7 +406,8 @@ class UserDashboardServiceTest {
                 List.of(dashboardItem("i-1", TREND_WIDGET_ID), dashboardItem("i-2", NON_TREND_WIDGET_ID)),
                 null, 2022, 2023, List.of(AggregationType.AVG));
 
-        ValidationException ex = assertThrows(ValidationException.class, () -> service.save(authentication, request));
+        SeriesAggregationNotAllowedException ex = assertThrows(
+                SeriesAggregationNotAllowedException.class, () -> service.save(authentication, request));
         assertTrue(ex.getMessage().contains(NON_TREND_WIDGET_ID));
         verifyNoInteractions(resourceService);
     }
