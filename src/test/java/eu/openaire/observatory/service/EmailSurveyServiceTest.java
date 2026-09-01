@@ -2,6 +2,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.configuration.MailDebugConfig;
+import eu.openaire.observatory.messaging.mailer.MailDeliveryException;
 import eu.openaire.observatory.domain.Administrator;
 import eu.openaire.observatory.domain.Coordinator;
 import eu.openaire.observatory.domain.NotificationPreferences;
@@ -13,6 +14,7 @@ import eu.openaire.observatory.domain.UserGroup;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
+import gr.athenarc.messaging.mailer.service.Mailer;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.registry.domain.Browsing;
@@ -26,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -431,6 +434,61 @@ class EmailSurveyServiceTest {
         List<EmailMessage> captured = mailDebugConfig.getCapturedEmails();
         assertEquals(1, captured.size());
         assertTrue(captured.get(0).getBcc().contains("ad-admin@test.com"));
+    }
+
+    @Test
+    void notifyAnswerValidated_stillNotifiesAdministratorsWhenTheCoordinatorSendFails() {
+        // Coordinators are processed first — make that first send throw and assert the
+        // administrator group is still notified (previously one throw aborted the whole method).
+        List<EmailMessage> sent = new ArrayList<>();
+        AtomicInteger calls = new AtomicInteger();
+        Mailer flaky = email -> {
+            if (calls.getAndIncrement() == 0) {
+                throw new MailDeliveryException("coordinator send fails", new RuntimeException("mailer down"));
+            }
+            sent.add(email);
+        };
+        EmailSurveyService svc = new EmailSurveyService(flaky, stakeholderCrudService, modelService,
+                surveyService, userService, surveyNotificationSettingsService, coordinatorService,
+                administratorService, freemarkerConfig, "no-reply@openaire.eu", applicationProperties);
+
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country", Set.of(), Set.of("co-member@test.com"))),
+                Set.of(group(new Administrator(), "admin-country", "country", Set.of(), Set.of("ad-member@test.com"))));
+
+        svc.notifyAnswerValidated(a, "manager@test.com");
+
+        assertEquals(1, sent.size(), "administrator email must still be sent after the coordinator send fails");
+        assertTrue(sent.get(0).getBcc().contains("ad-member@test.com"));
+        assertFalse(sent.get(0).getBcc().contains("co-member@test.com"));
+    }
+
+    @Test
+    void notifyAnswerValidated_userInBothGroupsStillGetsAdministratorMailWhenCoordinatorSendFails() {
+        // A failed coordinator send must not poison alreadyNotified — the shared address is still
+        // eligible for the administrator group.
+        List<EmailMessage> sent = new ArrayList<>();
+        AtomicInteger calls = new AtomicInteger();
+        Mailer flaky = email -> {
+            if (calls.getAndIncrement() == 0) {
+                throw new MailDeliveryException("coordinator send fails", new RuntimeException("mailer down"));
+            }
+            sent.add(email);
+        };
+        EmailSurveyService svc = new EmailSurveyService(flaky, stakeholderCrudService, modelService,
+                surveyService, userService, surveyNotificationSettingsService, coordinatorService,
+                administratorService, freemarkerConfig, "no-reply@openaire.eu", applicationProperties);
+
+        SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
+        stubValidationContext(a, "National Survey", "Greece",
+                Set.of(group(new Coordinator(), "co-country", "country", Set.of(), Set.of("both@test.com"))),
+                Set.of(group(new Administrator(), "admin-country", "country", Set.of(), Set.of("both@test.com"))));
+
+        svc.notifyAnswerValidated(a, "manager@test.com");
+
+        assertEquals(1, sent.size());
+        assertTrue(sent.get(0).getBcc().contains("both@test.com"));
     }
 
     @Test

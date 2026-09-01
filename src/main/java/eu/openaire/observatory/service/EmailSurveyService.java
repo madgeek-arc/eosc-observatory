@@ -252,8 +252,15 @@ public class EmailSurveyService {
             data.put("url", buildReviewUrl(group.getId(), answer));
 
             String body = renderTemplate("emails/inlined-css/survey_answer_validated.ftlh", data);
-            sendBcc(subject, body, recipients);
-            alreadyNotified.addAll(groupUsers);
+            try {
+                sendBcc(subject, body, recipients);
+                // Only mark these users notified on a successful send. A group whose send exhausted
+                // its retries leaves its members eligible for a later group they also belong to.
+                alreadyNotified.addAll(groupUsers);
+            } catch (Exception e) {
+                logger.error("Failed to notify group [groupId={}] that an answer was validated [answerId={}]; "
+                        + "continuing with the remaining groups", group.getId(), answer.getId(), e);
+            }
         }
     }
 
