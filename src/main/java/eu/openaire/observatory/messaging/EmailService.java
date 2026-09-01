@@ -61,7 +61,12 @@ public class EmailService implements EmailOperations {
     public void sendEmails(ThreadDTO threadDTO) {
         List<EmailMessage> emailMessages = createEmails(threadDTO, emailFrom);
         for (EmailMessage email : emailMessages) {
-            mailClient.sendMail(email);
+            try {
+                mailClient.sendMail(email);
+            } catch (Exception e) {
+                logger.warn("Failed to send message-notification email [threadId={}, subject=\"{}\"]; "
+                        + "continuing with the remaining recipients", threadDTO.getId(), email.getSubject(), e);
+            }
         }
     }
 

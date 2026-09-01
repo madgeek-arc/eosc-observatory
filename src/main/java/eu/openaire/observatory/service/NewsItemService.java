@@ -77,6 +77,29 @@ public class NewsItemService extends AbstractCrudService<NewsItem> implements Cr
         if (request.active() != null) newsItem.setActive(request.active());
         if (request.status() != null) newsItem.setStatus(request.status());
 
+        // Approving or deactivating an article is an administrative change with no other record, so
+        // stamp who did it. Note modificationDate is deliberately left alone for now — pending a
+        // decision on whether a status change counts as a modification of the article itself.
+        newsItem.getMetadata().setModifiedBy(User.getId(SecurityContextHolder.getContext().getAuthentication()));
+
+        return super.update(id, newsItem);
+    }
+
+    /**
+     * Low-level save that bypasses {@link #update}'s administrative protections, for the GDPR purge
+     * only.
+     *
+     * <p>{@code update} deliberately restores the author block, owning stakeholder, status and active
+     * flag from the stored copy, and re-stamps {@code modifiedBy} from the security context — so an
+     * ordinary edit can never change anything administrative. That protection is load-bearing and
+     * stays, which is exactly why erasure cannot go through it: doing so would put the purged user's
+     * address back and then overwrite it with the identity of whoever ran the purge.
+     *
+     * <p>Package-private is the entire access control. {@code UserServiceImpl} sits in this package;
+     * controllers do not, so the authorship-forgery hole this opens is unreachable from ordinary
+     * code without any extra wiring.
+     */
+    NewsItem saveScrubbed(String id, NewsItem newsItem) {
         return super.update(id, newsItem);
     }
 

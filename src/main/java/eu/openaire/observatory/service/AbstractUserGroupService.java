@@ -19,10 +19,10 @@ package eu.openaire.observatory.service;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.domain.UserGroup;
 import eu.openaire.observatory.dto.GroupMembers;
+import eu.openaire.observatory.utils.UserIds;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.service.*;
 
-import java.util.HashSet;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -71,17 +71,19 @@ public abstract class AbstractUserGroupService<T extends UserGroup> extends Abst
     @Override
     public SortedSet<String> addMember(String groupId, String memberId) {
         T group = get(groupId);
-        if (group.getMembers() == null) {
-            group.setMembers(new TreeSet<>());
-        }
-        group.getMembers().add(memberId.toLowerCase());
+        // Assign through the setter rather than mutating getMembers(): when the underlying field is
+        // unset the getter hands back a fresh empty set, so the addition would land on a throwaway
+        // collection and be silently lost. The setter also normalizes every id it stores.
+        SortedSet<String> members = new TreeSet<>(group.getMembers());
+        members.add(UserIds.normalize(memberId));
+        group.setMembers(members);
         return super.update(groupId, group).getMembers();
     }
 
     @Override
     public SortedSet<String> removeMember(String groupId, String memberId) {
         T group = get(groupId);
-        group.getMembers().remove(memberId.toLowerCase());
+        group.getMembers().remove(UserIds.normalize(memberId));
         return super.update(groupId, group).getMembers();
     }
 
@@ -107,17 +109,17 @@ public abstract class AbstractUserGroupService<T extends UserGroup> extends Abst
     @Override
     public SortedSet<String> addAdmin(String groupId, String adminId) {
         T group = get(groupId);
-        if (group.getAdmins() == null) {
-            group.setAdmins(new HashSet<>());
-        }
-        group.getAdmins().add(adminId.toLowerCase());
+        // See addMember: mutating getAdmins() directly loses the addition when the field is unset.
+        SortedSet<String> admins = new TreeSet<>(group.getAdmins());
+        admins.add(UserIds.normalize(adminId));
+        group.setAdmins(admins);
         return super.update(groupId, group).getAdmins();
     }
 
     @Override
     public SortedSet<String> removeAdmin(String groupId, String adminId) {
         T group = get(groupId);
-        group.getAdmins().remove(adminId.toLowerCase());
+        group.getAdmins().remove(UserIds.normalize(adminId));
         return super.update(groupId, group).getAdmins();
     }
 
