@@ -18,9 +18,12 @@ package eu.openaire.observatory.controller.advices;
 
 import gr.uoa.di.madgik.catalogue.controller.GenericExceptionController;
 import gr.uoa.di.madgik.catalogue.exception.ServerError;
+import gr.uoa.di.madgik.catalogue.exception.ValidationException;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import io.sentry.Sentry;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -40,9 +43,15 @@ public class ExceptionControllerAdvice extends GenericExceptionController {
         return super.handleException(req, ex);
     }
 
-    /** True for exceptions declaring their own 4xx {@link ResponseStatus} — real client errors, not server faults. */
+    /** True for real client errors (4xx), which should not be forwarded to Sentry as server faults. */
     private boolean isClientError(Exception ex) {
         ResponseStatus responseStatus = ex.getClass().getAnnotation(ResponseStatus.class);
-        return responseStatus != null && responseStatus.value().is4xxClientError();
+        if (responseStatus != null && responseStatus.value().is4xxClientError()) {
+            return true;
+        }
+        // Types GenericExceptionController maps to a 4xx even without a @ResponseStatus annotation.
+        return ex instanceof ValidationException
+            || ex instanceof ResourceNotFoundException
+            || ex instanceof AccessDeniedException;
     }
 }
