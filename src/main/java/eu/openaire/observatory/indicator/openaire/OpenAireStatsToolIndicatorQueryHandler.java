@@ -29,10 +29,11 @@ import java.util.Map;
  * for the full non-open share; same query shape, just entity=publication vs entity=dataset),
  * publications.count, datasets.count, and software.count (all MEASURE, optionally filtered/grouped
  * by accessStatus — the three are otherwise identical, just entity=publication vs entity=dataset vs
- * entity=software). All five support country either as an EQ/IN filter (one or more countries OR'd
- * together; absent means all-EU, matching the always-applied continent=Europe scope) or as a groupBy
+ * entity=software). All five support country as an EQ/IN filter (one or more countries OR'd
+ * together; absent means all-EU, matching the always-applied continent=Europe scope), as a groupBy
  * (fans out into one row per country in a single extra sub-query, via OpenAireQueryBuilder's native
- * groupBy queries — not a query-per-country loop). publications.count/datasets.count/software.count
+ * groupBy queries — not a query-per-country loop), or both at once — the filter then narrows which
+ * countries the breakdown fans out over. publications.count/datasets.count/software.count
  * are also filterable/groupable by classification (document/output type), and publications.count
  * additionally by fieldOfScience.
  *
@@ -125,12 +126,13 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
     private IndicatorResult queryAccessStatusShareByCountry(
             IndicatorExecutionPlan plan, List<OpenAireAccessMode> numeratorModes, List<Period> periods,
             List<String> groupByCodes, String resultType) {
+        DimensionFilters filters = DimensionFilters.ofCountry(filterValues(plan, COUNTRY_DIMENSION));
         List<ObjectNode> subQueries = new ArrayList<>();
         for (Period period : periods) {
             subQueries.add(queryBuilder.resultCountByGroupSubQuery(
-                period.year(), numeratorModes, resultType, COUNTRY_DIMENSION, DimensionFilters.NONE));
+                period.year(), numeratorModes, resultType, COUNTRY_DIMENSION, filters));
             subQueries.add(queryBuilder.resultCountByGroupSubQuery(
-                period.year(), List.of(OpenAireAccessMode.values()), resultType, COUNTRY_DIMENSION, DimensionFilters.NONE));
+                period.year(), List.of(OpenAireAccessMode.values()), resultType, COUNTRY_DIMENSION, filters));
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
 

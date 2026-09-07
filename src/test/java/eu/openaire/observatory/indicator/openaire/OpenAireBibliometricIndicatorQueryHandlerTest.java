@@ -247,6 +247,26 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void accessStatusShareFilteredByCountryGroupedByCountryCombinesBoth() {
+        var handler = handlerReturning(
+            "{\"data\":[[[\"10\",\"GR\"],[\"5\",\"DE\"]],[[\"40\",\"GR\"],[\"50\",\"DE\"]]]}"
+        );
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")),
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "DE"))
+        );
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(accessStatusShareDefinition(), filters, groupBy, null));
+
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION))
+            .containsExactlyInAnyOrder("GR", "DE");
+        String request = capturedRequests.get(0);
+        assertThat(request).contains("\"field\":\"result.organization.country\"");
+        assertThat(request).contains("\"field\":\"result.organization.country.code\"").contains("\"GR\"").contains("\"DE\"");
+    }
+
+    @Test
     void accessStatusShareGroupedByCountryTreatsCountryAbsentFromNumeratorAsZero() {
         var handler = handlerReturning(
             "{\"data\":[[[\"10\",\"GR\"]],[[\"40\",\"GR\"],[\"50\",\"DE\"]]]}"
