@@ -75,10 +75,10 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     public static final String STATUS_AWAITING_DATA = "AWAITING_DATA";
 
     /** The 4 values a country_policy_status data point can carry — see IndicatorDefinitionCatalog.countryPolicyStatus(). */
-    public static final String POLICY_STATUS_MANDATORY = "MANDATORY";
-    public static final String POLICY_STATUS_NON_MANDATORY = "NON_MANDATORY";
-    public static final String POLICY_STATUS_NO_POLICY = "NO_POLICY";
-    public static final String POLICY_STATUS_AWAITING_DATA = STATUS_AWAITING_DATA;
+    public static final String POLICY_STATUS_MANDATORY = "Mandatory policy";
+    public static final String POLICY_STATUS_NON_MANDATORY = "Policy but not mandatory";
+    public static final String POLICY_STATUS_NO_POLICY = "No policy";
+    public static final String POLICY_STATUS_AWAITING_DATA = "Awaiting data";
 
     /**
      * One survey question per fixed initiativeType member — confirmed live, cross-referenced
@@ -271,13 +271,13 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     }
 
     /**
-     * 4-state (MANDATORY/NON_MANDATORY/NO_POLICY/AWAITING_DATA) counterpart to
-     * queryCountryInitiativeStatus, valid only for "*_POLICY" initiativeType members — combines two
+     * 4-state ("Mandatory policy"/"Policy but not mandatory"/"No policy"/"Awaiting data") counterpart
+     * to queryCountryInitiativeStatus, valid only for "*_POLICY" initiativeType members — combines two
      * survey answers per country: the base Yes/No policy question, and (only asked when the base
      * answer was Yes) a nested Yes/No "is this policy mandatory?" question at questionCode + ".1"
      * (see {@link #mandatoryQuestionCode}). A country that answered No to the base question is
-     * NO_POLICY outright — the mandatory sub-question is skip-logic'd for them in the survey itself,
-     * so a missing answer there does not mean AWAITING_DATA.
+     * "No policy" outright — the mandatory sub-question is skip-logic'd for them in the survey
+     * itself, so a missing answer there does not mean "Awaiting data".
      *
      * <p>Country grouping is always present, inherent to this indicator's meaning; initiativeType
      * additionally fans out into its own dimension when the plan groups by it (an IN filter + a

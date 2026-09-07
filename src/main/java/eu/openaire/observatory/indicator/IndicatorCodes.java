@@ -33,8 +33,8 @@ public final class IndicatorCodes {
     public static final String FINANCIAL_INVESTMENT = "oa.financial_investment";
     public static final String COUNTRY_INITIATIVE_STATUS = "oa.country_initiative_status";
     public static final String EU_COUNTRY_COVERAGE = "oa.eu_country_coverage";
-    // 4-state (MANDATORY/NON_MANDATORY/NO_POLICY/AWAITING_DATA) counterpart to
-    // COUNTRY_INITIATIVE_STATUS, valid only for "*_POLICY" initiativeType members — see
+    // 4-state ("Mandatory policy"/"Policy but not mandatory"/"No policy"/"Awaiting data") counterpart
+    // to COUNTRY_INITIATIVE_STATUS, valid only for "*_POLICY" initiativeType members — see
     // IndicatorDefinitionCatalog.countryPolicyStatus() javadoc.
     public static final String COUNTRY_POLICY_STATUS = "oa.country_policy_status";
     // Cross-topic composites summing Yes-answers across every "*_MONITORING_INITIATIVE"/"*_POLICY"

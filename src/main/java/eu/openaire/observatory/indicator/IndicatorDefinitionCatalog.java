@@ -485,7 +485,7 @@ public class IndicatorDefinitionCatalog {
     }
 
     /**
-     * 4-state (MANDATORY/NON_MANDATORY/NO_POLICY/AWAITING_DATA) counterpart to
+     * 4-state ("Mandatory policy"/"Policy but not mandatory"/"No policy"/"Awaiting data") counterpart to
      * countryInitiativeStatus(), for the "National Policy on X" rows (legacy ids 7/15/22/28/35/42/
      * 44/50/57/72) that ask for a Mandatory/Policy-but-not-mandatory/No-policy/Awaiting-data
      * breakdown — unlike the original assessment (a now-deleted planning doc found only flat Yes/No
@@ -507,13 +507,14 @@ public class IndicatorDefinitionCatalog {
     private static IndicatorDefinition countryPolicyStatus() {
         return definition(
             COUNTRY_POLICY_STATUS, "Country Policy Status",
-            "Per-country policy status (MANDATORY, NON_MANDATORY, NO_POLICY, or AWAITING_DATA for a "
-                + "country that hasn't answered yet) for the given \"*_POLICY\" initiativeType. "
-                + "Combines that policy's base Yes/No question with its nested \"is this policy "
-                + "mandatory?\" sub-question — a country with no policy is NO_POLICY outright (the "
-                + "mandatory sub-question is skip-logic'd for them in the survey itself, not a "
-                + "missing answer). No aggregation — always one status per answering-or-pending "
-                + "country. Optionally filterable by country to narrow the rows returned.",
+            "Per-country policy status (\"Mandatory policy\", \"Policy but not mandatory\", \"No "
+                + "policy\", or \"Awaiting data\" for a country that hasn't answered yet) for the "
+                + "given \"*_POLICY\" initiativeType. Combines that policy's base Yes/No question "
+                + "with its nested \"is this policy mandatory?\" sub-question — a country with no "
+                + "policy is \"No policy\" outright (the mandatory sub-question is skip-logic'd for "
+                + "them in the survey itself, not a missing answer). No aggregation — always one "
+                + "status per answering-or-pending country. Optionally filterable by country to "
+                + "narrow the rows returned.",
             IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.CATEGORY, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
