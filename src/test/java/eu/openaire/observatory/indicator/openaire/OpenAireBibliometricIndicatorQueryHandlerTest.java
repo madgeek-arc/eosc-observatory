@@ -647,6 +647,80 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
             .contains("\"field\":\"result.indi_result_oa_with_license.oa_with_license\"");
     }
 
+    @Test
+    void oaLicenseStatusCountGroupedByStatusFansOutOneSubQueryPerStatus() {
+        var handler = handlerReturning(
+            "{\"data\":[[[\"100\",\"Article\"]],[[\"90\",\"Article\"]],[[\"10\",\"Article\"]],[[\"5\",\"Article\"]],[[\"200\",\"Article\"]]]}"
+        );
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION));
+
+        var result = handler.execute(plan(oaLicenseStatusCountDefinition(), List.of(), groupBy, null));
+
+        assertThat(capturedRequests).hasSize(1);
+        assertThat(result.dimensions())
+            .containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION);
+        assertThat(result.data()).hasSize(5);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION)).isEqualTo("OA_WITH_LICENSE");
+            assertThat(dp.value()).isEqualTo(100L);
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION)).isEqualTo("CLOSED");
+            assertThat(dp.value()).isEqualTo(200L);
+        });
+    }
+
+    @Test
+    void oaLicenseStatusCountGroupedByStatusAndCountryTagsBoth() {
+        var handler = handlerReturning(
+            "{\"data\":["
+                + "[[\"2\",\"Article\",\"GR\"]],[[\"3\",\"Article\",\"GR\"]],[[\"1\",\"Article\",\"GR\"]],"
+                + "[[\"0\",\"Article\",\"GR\"]],[[\"7\",\"Article\",\"GR\"]]]}"
+        );
+        var groupBy = List.of(
+            new ResolvedDimension(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION),
+            new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION)
+        );
+
+        var result = handler.execute(plan(oaLicenseStatusCountDefinition(), List.of(), groupBy, null));
+
+        assertThat(result.dimensions()).containsExactly(
+            IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION
+        );
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION)).isEqualTo("OA_WITHOUT_LICENSE");
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+            assertThat(dp.value()).isEqualTo(3L);
+        });
+        assertThat(capturedRequests.get(0)).contains("\"field\":\"result.organization.country\"");
+    }
+
+    @Test
+    void oaLicenseStatusCountWithNoStatusFilterOrGroupOmitsTheAccessModeLeaf() {
+        var handler = handlerReturning("{\"data\":[[[\"5000\",\"Article\"]]]}");
+
+        var result = handler.execute(plan(oaLicenseStatusCountDefinition(), List.of(), List.of(), null));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.CLASSIFICATION_DIMENSION);
+        assertThat(result.data().get(0).value()).isEqualTo(5000L);
+        String request = capturedRequests.get(0);
+        assertThat(request).doesNotContain("result.access mode");
+        assertThat(request).doesNotContain("oa_with_license").doesNotContain("oa_without_license");
+    }
+
+    @Test
+    void oaLicenseStatusCountGroupedByStatusOverATimeRangeIssuesOneSubQueryPerStatusPerYear() {
+        var series = "[[\"1\",\"Article\"]]";
+        var handler = handlerReturning("{\"data\":[" + String.join(",", java.util.Collections.nCopies(10, series)) + "]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION));
+
+        var result = handler.execute(plan(oaLicenseStatusCountDefinition(), List.of(), groupBy, yearRange(2022, 2023)));
+
+        assertThat(capturedRequests).hasSize(1);
+        assertThat(result.data()).hasSize(10);
+        assertThat(result.dimensions()).contains(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, "period");
+    }
+
     /**
      * A single request carries every sub-query as its own "series" entry (numerator, then
      * denominator) — isolates the first one's text so assertions about the numerator's filters
@@ -828,11 +902,15 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
             null,
             Set.of(
                 new IndicatorDimensionBinding(
-                    IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER),
-                    Set.of(FilterOperator.EQ), true
+                    IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
                 ),
                 new IndicatorDimensionBinding(
                     IndicatorCodes.CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.GROUP), Set.of(), false
+                ),
+                new IndicatorDimensionBinding(
+                    IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
                 )
             ),
             timePolicy(),

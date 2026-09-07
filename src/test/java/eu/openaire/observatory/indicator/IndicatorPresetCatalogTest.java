@@ -27,8 +27,8 @@ class IndicatorPresetCatalogTest {
     private final IndicatorPresetCatalog catalog = new IndicatorPresetCatalog(definitionCatalog);
 
     @Test
-    void containsSixtySevenPresets() {
-        assertThat(catalog.getAll()).hasSize(67);
+    void containsSixtyEightPresets() {
+        assertThat(catalog.getAll()).hasSize(68);
     }
 
     @Test
@@ -148,7 +148,46 @@ class IndicatorPresetCatalogTest {
     void firstAndLastPresetIndicatorsAreStable() {
         List<IndicatorPreset> all = catalog.getAll();
         assertThat(all.getFirst().id()).isEqualTo("oa-1");
-        assertThat(all.getLast().id()).isEqualTo("fin-1");
+        assertThat(all.getLast().id()).isEqualTo("fin-2");
+    }
+
+    @Test
+    void distributionOfOaTypesPresetsExistAndAreFullWidth() {
+        IndicatorPreset oaDistribution = catalog.get("oa-9");
+        IndicatorPreset odDistribution = catalog.get("od-8");
+
+        assertThat(oaDistribution).isNotNull();
+        assertThat(oaDistribution.indicatorCode()).isEqualTo(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT);
+        assertThat(oaDistribution.fullWidth()).isTrue();
+
+        assertThat(odDistribution).isNotNull();
+        assertThat(odDistribution.indicatorCode()).isEqualTo(IndicatorCodes.DATASETS_COUNT);
+        assertThat(odDistribution.fullWidth()).isTrue();
+    }
+
+    @Test
+    void distributionPresetsCarryAnAccessTypeSelectorOnEveryView() {
+        for (String id : List.of("oa-9", "od-8")) {
+            IndicatorPreset preset = catalog.get(id);
+            assertThat(preset.views()).as(id + " views").allSatisfy(view -> {
+                assertThat(view.selector()).as(id + " " + view.renderStyle() + " selector").isNotNull();
+                assertThat(view.selector().label()).isEqualTo("Access type");
+            });
+        }
+        assertThat(catalog.get("oa-9").views().get(0).selector().dimension())
+            .isEqualTo(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION);
+        assertThat(catalog.get("od-8").views().get(0).selector().dimension())
+            .isEqualTo(IndicatorCodes.ACCESS_STATUS_DIMENSION);
+    }
+
+    @Test
+    void everyOtherPresetIsNotFullWidth() {
+        for (IndicatorPreset preset : catalog.getAll()) {
+            if (preset.id().equals("oa-9") || preset.id().equals("od-8")) {
+                continue;
+            }
+            assertThat(preset.fullWidth()).as(preset.id() + " fullWidth").isFalse();
+        }
     }
 
     @Test
@@ -188,10 +227,71 @@ class IndicatorPresetCatalogTest {
 
     @Test
     void toIndicatorQueryGroupsByCountryForAnAllCountriesMapView() {
-        // oa-4 (NATIONAL_STATUS_VIEWS) ALL_COUNTRIES / SINGLE_YEAR view is MAP
-        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("oa-4"), List.of(), 2023, 2023, List.of());
+        // oa-7 (NATIONAL_STATUS_VIEWS) ALL_COUNTRIES / SINGLE_YEAR view is MAP
+        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("oa-7"), List.of(), 2023, 2023, List.of());
 
         assertThat(query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+    }
+
+    // ---- distribution presets: the selector dimension is always grouped, so one series comes back
+    //      per member and the UI shows the one the actor picked (oa-9 = publications.oa_license_status_count,
+    //      whose classification breakdown the handler always applies). ------------------------------
+
+    @Test
+    void distributionPresetGroupsByTheSelectorDimensionAndClassificationForTheEuStackedColumnCell() {
+        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("oa-9"), List.of(), 2023, 2023, List.of());
+
+        assertThat(query.groupBy())
+            .containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION);
+        assertThat(query.filters()).isEmpty();
+        assertThat(query.timeSeries()).isEqualTo(new TimeSeriesRequest(2023, 2023, null));
+    }
+
+    @Test
+    void distributionPresetGroupsByTheSelectorDimensionOnlyForTheEuTrendCell() {
+        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("oa-9"), List.of(), 2019, 2023, List.of());
+
+        assertThat(query.groupBy()).containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION);
+        assertThat(query.timeSeries()).isEqualTo(new TimeSeriesRequest(2019, 2023, null));
+    }
+
+    @Test
+    void distributionPresetAddsCountryForTheSelectedCountriesCells() {
+        IndicatorQuery singleYear = catalog.toIndicatorQuery(catalog.get("oa-9"), List.of("EL", "IT"), 2023, 2023, List.of());
+        assertThat(singleYear.groupBy())
+            .containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+        assertThat(singleYear.filters())
+            .contains(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("EL", "IT")));
+
+        IndicatorQuery range = catalog.toIndicatorQuery(catalog.get("oa-9"), List.of("EL", "IT"), 2019, 2023, List.of());
+        assertThat(range.groupBy())
+            .containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+    }
+
+    @Test
+    void openDataDistributionPresetGroupsByAccessStatusWithoutForcingClassificationOffTheStackedColumn() {
+        // od-8 backs on datasets.count — classification IS bound there, so the stacked column keeps it
+        IndicatorQuery stacked = catalog.toIndicatorQuery(catalog.get("od-8"), List.of(), 2023, 2023, List.of());
+        assertThat(stacked.groupBy())
+            .containsExactly(IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION);
+
+        IndicatorQuery trend = catalog.toIndicatorQuery(catalog.get("od-8"), List.of(), 2019, 2023, List.of());
+        assertThat(trend.groupBy()).containsExactly(IndicatorCodes.ACCESS_STATUS_DIMENSION);
+    }
+
+    @Test
+    void investmentByAreaDistributionPresetGroupsByInvestmentAreaWithNoClassification() {
+        // fin-2 backs on oa.financial_investment, which does not bind classification at all
+        IndicatorQuery stacked = catalog.toIndicatorQuery(catalog.get("fin-2"), List.of(), 2023, 2023, List.of());
+        assertThat(stacked.groupBy()).containsExactly(IndicatorCodes.INVESTMENT_AREA_DIMENSION);
+    }
+
+    @Test
+    void nonDistributionPresetDerivesGroupByExactlyAsBefore() {
+        // oa-1 has no selector on any view — the legacy perCountryBreakdown() path
+        assertThat(catalog.toIndicatorQuery(catalog.get("oa-1"), List.of(), 2023, 2023, List.of()).groupBy()).isEmpty();
+        assertThat(catalog.toIndicatorQuery(catalog.get("oa-1"), List.of("EL"), 2023, 2023, List.of()).groupBy())
+            .containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
     @Test
@@ -205,7 +305,7 @@ class IndicatorPresetCatalogTest {
     @Test
     void toIndicatorQueryTurnsYearToIntoASurveyYearFilterForASurveyPreset() {
         IndicatorQuery query = catalog.toIndicatorQuery(
-            catalog.get("oa-6"), List.of(), 2019, 2023, List.of());
+            catalog.get("oa-8"), List.of(), 2019, 2023, List.of());
 
         assertThat(query.timeSeries()).isNull();
         assertThat(query.filters())

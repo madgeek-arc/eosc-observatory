@@ -1,0 +1,44 @@
+package eu.openaire.observatory.indicator.openaire;
+
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * Maps the catalog's "oaColor" dimension member codes to the OpenAIRE stats-tool field each color
+ * would filter/group on. GOLD/GREEN are confirmed live: {@code result.gold_oa}/{@code
+ * result.green_oa} both return 200 with real data. HYBRID/BRONZE are <em>not</em> real stats-tool
+ * fields under any name tried (confirmed HTTP 422 "unknown field" against every plausible name —
+ * see the now-removed "Rows 9/17" entry in the git history of docs/INDICATOR_TODO.md) but are kept
+ * as real, queryable members anyway: requesting them is meant to surface that upstream 422 directly,
+ * rather than silently pretending the data exists. Fixing this later is a one-line change here once
+ * the profile adds the field (or a product decision picks a different approximation).
+ */
+public enum OpenAireOaColor {
+
+    GOLD("result.gold_oa"),
+    GREEN("result.green_oa"),
+    HYBRID("result.hybrid_oa"),
+    BRONZE("result.bronze_oa");
+
+    private static final Map<String, OpenAireOaColor> BY_CATALOG_CODE = Stream.of(values())
+        .collect(Collectors.toMap(Enum::name, color -> color));
+
+    private final String openAireField;
+
+    OpenAireOaColor(String openAireField) {
+        this.openAireField = openAireField;
+    }
+
+    public String openAireField() {
+        return openAireField;
+    }
+
+    public static OpenAireOaColor fromCatalogCode(String catalogCode) {
+        OpenAireOaColor color = BY_CATALOG_CODE.get(catalogCode);
+        if (color == null) {
+            throw new IllegalArgumentException("Unknown oaColor code: " + catalogCode);
+        }
+        return color;
+    }
+}

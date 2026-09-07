@@ -1,6 +1,6 @@
 # Indicators API reference
 
-Reference for the `/api/indicators`, `/api/dimensions`, and `/api/indicator-queries` endpoints —
+Reference for the `/api/indicators`, `/api/dimensions`, and `/api/indicators/query` endpoints —
 the semantic indicator layer that lets a client discover queryable indicators and their dimensions,
 then run a single generic query endpoint against any of them.
 
@@ -41,7 +41,7 @@ indicator, disambiguated by a filter (e.g. `initiativeType`) instead of a separa
 | 73, 74 | National policy on Open Access publications / National monitoring on Open Access publications | `oa.country_initiative_status` | Originally `format: map` (now `renderHint: ENTITY_MAP`); per-country grouping is mandatory, not optional |
 
 Verified end-to-end against the legacy UI's actual 2023 values (not just structurally) via
-`POST /indicator-queries` against a locally-run instance, compared row-for-row against the same
+`POST /indicators/query` against a locally-run instance, compared row-for-row against the same
 external endpoints `observatory-ui` calls — all 8 legacy ids matched. Id 67's match required a
 denominator fix; see the note under `publications.access_status_share` below.
 
@@ -53,8 +53,9 @@ denominator fix; see the note under `publications.access_status_share` below.
 | `GET` | `/indicators/definitions/{code}` | Same, for one indicator |
 | `GET` | `/indicators/presets` | List every indicator preset (flat, one row per preset) |
 | `GET` | `/indicators/presets/{id}` | Same, for one preset |
+| `POST` | `/indicators/presets/{id}/query` | Run a preset, given only countries + year range + series aggregations |
 | `GET` | `/dimensions/{code}/members?search=&limit=` | List a dimension's valid values (for building filter UIs) |
-| `POST` | `/indicator-queries` | Run a query against one indicator |
+| `POST` | `/indicators/query` | Run an ad-hoc query against one indicator (full `IndicatorQuery` body) |
 | `GET` | `/dashboard` | Get the current user's saved dashboard |
 | `PUT` | `/dashboard` | Save the current user's dashboard items |
 | `GET` | `/users/{id}/dashboard` | Admin/support: get a specific user's dashboard |
@@ -118,7 +119,7 @@ here, only `label`):
 
 ```json
 {
-  "items": [
+  "definitions": [
     {
       "id": "publications.access_status_share",
       "label": "Publications by Access Status (Share)",
@@ -153,8 +154,7 @@ here, only `label`):
 `format` and `renderHint` are two orthogonal axes, each authored once on the indicator: `format` is
 how to format the value (`"percentage"`, `"number"`, `"currency"`, `"category"`, or `"yes-no"`);
 `renderHint` is `"SCALAR"` (a single number/series) or `"ENTITY_MAP"` (per-country breakdown).
-`GET /indicators/definitions/{code}` returns one such item directly (no `items` wrapper), or `404`
-if the code doesn't exist.
+`GET /indicators/definitions/{code}` returns one such item directly, or `404` if the code doesn't exist.
 
 ### Indicator presets
 
@@ -165,14 +165,14 @@ filter value disambiguates it — e.g. `oa.country_initiative_status` alone serv
 different "National Monitoring on X" presets here, one row per topic area. `GET
 /indicators/presets/{id}` returns one such item directly, or `404` if the id doesn't exist.
 
-`results` order is stable and meaningful: preset indicators come grouped by topic, the groups in a
+`indicatorPresets` order is stable and meaningful: preset indicators come grouped by topic, the groups in a
 fixed sequence (Open Access Publications, Open Data, FAIR Data, Data Management, Citizen Science,
 Repositories, Open Science Training, Open Software, Financial Investment), and in a curated order
 within each group. A client can render the list top-to-bottom as received.
 
 ```json
 {
-  "results": [
+  "indicatorPresets": [
     {
       "id": "oa-1",
       "label": "OA Publication in Europe (OA vs Closed)",
@@ -189,7 +189,7 @@ within each group. A client can render the list top-to-bottom as received.
       "presetFilters": {"accessStatus": ["OA"]}
     },
     {
-      "id": "od-4",
+      "id": "od-6",
       "label": "National Policy on Open Data",
       "group": "Open Data",
       "views": [
@@ -198,7 +198,7 @@ within each group. A client can render the list top-to-bottom as received.
         {"countryScope": "SELECTED_COUNTRIES", "timeScope": "SINGLE_YEAR", "renderStyle": "YES_NO"},
         {"countryScope": "SELECTED_COUNTRIES", "timeScope": "TIME_RANGE", "renderStyle": "YES_NO_TIMELINE"}
       ],
-      "format": "yes-no",
+      "format": "category",
       "allowedSeriesAggregations": [],
       "indicatorCode": "oa.country_policy_status",
       "presetFilters": {"initiativeType": ["OPEN_DATA_POLICY"]}
@@ -217,15 +217,18 @@ within each group. A client can render the list top-to-bottom as received.
     aggregate value; the unit — %, € millions, a plain count — comes from `format`), `"LINE_CHART"`,
     `"PROGRESS_BARS"` (drawn without the bar when `format` isn't `percentage`), `"MULTI_SERIES_LINE_CHART"`,
     `"YES_NO"`, `"YES_NO_TIMELINE"`, `"MAP"`, `"MAP_WITH_CHANGE_COUNT"`,
-    `"CHOROPLETH_MAP_MOST_ACTIVE_COUNTRIES"`, `"COLUMN_CHART"`, `"MULTI_SERIES_COLUMN_CHART"`. The
-    enum carries further styles (stacked columns, progress/multi-line charts) for indicators not
-    yet in the catalog. A breakdown dropdown is not a render style — it is the `selector` below.
-  - `selector` — present only on views that offer a breakdown dropdown; omitted otherwise.
-    `{dimension, label?, members?}`: `dimension` is a dimension code the backing indicator can be
-    grouped by (`groupable` in `GET /indicators/definitions`); when the actor picks a member the UI
-    appends `dimension` to the query's `groupBy`. `label` is nullable (fall back to the dimension's
-    own label); `members` is an optional curated subset — when empty, offer every member (fetchable
-    from `GET /indicators/{indicatorCode}/dimensions/{dimension}/members`).
+    `"CHOROPLETH_MAP_WITH_TOP_5"`, `"COLUMN_CHART"`, `"MULTI_SERIES_COLUMN_CHART"`. The
+    enum carries further styles (`CHOROPLETH_MAP`, stacked columns, progress/multi-line charts) for
+    indicators not yet in the catalog. A breakdown dropdown is not a render style — it is the
+    `selector` below.
+  - `selector` — present only on the "distribution" presets' views (a breakdown dropdown);
+    omitted otherwise. `{dimension, label?, members?}`: `dimension` is a dimension code the backing
+    indicator can be grouped by (`groupable` in `GET /indicators/definitions`). The
+    preset-query endpoint **always groups by that dimension** for such a view (see "`groupBy` is
+    derived" below), so one series comes back per member and the actor's pick is a pure UI filter —
+    no new request. `label` is nullable (fall back to the dimension's own label); `members` is an
+    optional curated subset — when empty, offer every member (fetchable from
+    `GET /indicators/{indicatorCode}/dimensions/{dimension}/members`).
 
   The UI computes `countryScope`/`timeScope` from the actor's current filter state and renders the
   matching entry's `renderStyle`. Rendering is entirely a UI decision: nothing about it (the
@@ -245,7 +248,7 @@ within each group. A client can render the list top-to-bottom as received.
   server-side; exposed only so a client can preview a preset via `POST .../query` before saving it.
   Saving a `DashboardItem` doesn't need them — see "User dashboards" below.
 - `id` — mostly `{topic}-{n}` (e.g. `oa-1`), sourced from the original indicator inventory. A handful
-  carry a `-x` suffix (e.g. `oa-8-x`) — these 8 "National Financial Strategy on X" presets aren't in
+  carry a `-x` suffix (e.g. `oa-10-x`) — these 8 "National Financial Strategy on X" presets aren't in
   the source inventory; they were added for symmetry with the Policy/Monitoring pairs every topic
   already has (see the `-x` id as the marker that this preset is a catalog addition, not an
   inventory-backed one).
@@ -254,25 +257,57 @@ The response is the `IndicatorPreset` domain record serialized directly — ther
 layer. `format` is copied onto each preset from its linked `IndicatorDefinition` at startup; `group`
 and `format` serialize as their wire strings via `@JsonValue`.
 
-`POST /indicators/presets/{id}/query` — actually runs a preset. Body is a plain `IndicatorQuery`
-(same shape as `POST /indicator-queries` above) with `indicatorCode` **ignored** — the preset's own
-`indicatorCode` and preset filter(s) are always used, resolved from `{id}`. The request's own `filters`
-are appended after the preset ones; everything else (`aggregation`, `groupBy`, `timeSeries`,
-`comparisonMode`, `sort`, `limit`, `seriesAggregations`) passes straight through. `404` if `{id}`
-doesn't exist. Response is a plain `IndicatorResult`, identical to `/indicator-queries`.
+`POST /indicators/presets/{id}/query` — runs a preset. A preset indicator is *select-and-nudge*:
+the body is a narrow `IndicatorPresetQueryRequest`, not a full `IndicatorQuery` —
+
+These are the same four scope inputs `PUT /dashboard` carries, validated by the same rules:
+
+| Field | Type | Notes |
+|---|---|---|
+| `countries` | `string[]` | Optional. Omit or `[]` for the EU-wide scope; when given, becomes a `country` `EQ`/`IN` filter **and** (see below) usually a per-country breakdown. |
+| `yearFrom` | `int` | **Required** when the backing indicator supports a time series; unused for survey-backed presets. Must be `<= yearTo`. |
+| `yearTo` | `int` | **Required.** End of the range. For survey-backed presets this alone picks the survey year. |
+| `seriesAggregations` | `AggregationType[]` | Optional. Whole-series summary stats; each value must appear in the preset's `allowedSeriesAggregations`. |
+
+The `indicatorCode` and preset filters are fixed by the preset (resolved from `{id}`). When the
+backing indicator supports time series the year range becomes a `timeSeries` request; otherwise
+`yearTo` becomes a `surveyYear` `EQ` filter. `404` if `{id}` doesn't exist. Response is a plain
+`IndicatorResult`, identical to `/indicators/query`.
+
+**`groupBy` is derived, not passed.** The backend computes the same `(countryScope, timeScope)` cell
+the UI would render — `countryScope` from whether `countries` is given, `timeScope` from whether
+`yearFrom == yearTo` — looks up the matching `views` entry, then:
+
+- **the view carries a `selector`** (the "distribution" presets `oa-9` / `od-8` / `fin-2`): group
+  by the selector's `dimension` so one series comes back per member (access type / open-science
+  area). `country` is added only for the `SELECTED_COUNTRIES` cells; `classification` (output /
+  document type) is added only for the stacked-column cell, and only when the backing indicator
+  binds it — it is the X axis of that chart. The other cells aggregate it away client-side. The
+  actor's selector pick is a UI-side filter over the returned series, not a request field.
+- **otherwise**: add `groupBy: ["country"]` exactly when that view's `renderStyle` needs one value
+  per country (maps, choropleths, progress bars, per-country yes/no, multi-series charts). `SCALAR`
+  and `LINE_CHART` views get no grouping — the handler computes the single EU figure directly (for
+  RATIO indicators the EU value is a pooled `Σnumerator/Σdenominator` that can't be recovered from
+  per-country rows). So `countries: ["GR","IT"]` against a magnitude preset returns one row per
+  country, not a combined figure.
+
+A missing `yearTo`, a missing `yearFrom` for a time-series indicator, or `yearFrom > yearTo` 400s
+with `InvalidPresetScopeException` — the identical check `PUT /dashboard` runs on its dashboard-level
+`yearFrom`/`yearTo`.
 
 ```bash
 curl -X POST localhost:8280/api/indicators/presets/oa-1/query \
-  -d '{"filters":[{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
+  -H 'Content-Type: application/json' \
+  -d '{"countries":["GR","IT"],"yearFrom":2019,"yearTo":2023,"seriesAggregations":["AVG","MEDIAN"]}'
 ```
-`oa-1` and `oa-2` ("OA Publication in Europe" / "Trend of Open Access Publications") share the same
-`indicatorCode`+preset filter — running `oa-2` instead is the same request with `"timeSeries":
-{"from":2022,"to":2023}` in place of the plain filter, since the only difference between the two
-presets is whether the caller asks for a time series.
+A single preset covers every rendering for its indicator — the same request drives the scalar, the
+trend line and the per-country map, and the UI picks the `views` cell that matches the actor's
+current `countryScope`/`timeScope`.
 
-If `filters` names a dimension the preset already fixes (e.g. `accessStatus` against `oa-1`, which
-*is* `accessStatus=OA`), the request 400s with `PresetFilterConflictException` rather than silently
-unioning or overriding the preset value — see the errors table below.
+A `seriesAggregations` value the preset doesn't advertise 400s with
+`SeriesAggregationNotAllowedException` — see the errors table below. `PresetFilterConflictException`
+can still be thrown by the internal merge, but only if a preset ever pins `country`/`surveyYear`
+itself (none do today).
 
 ### User dashboards
 
@@ -297,7 +332,7 @@ the dashboard, not per item.
   "seriesAggregations": ["AVG"],
   "items": [
     { "id": "item-1", "indicatorId": "oa-1" },
-    { "id": "item-2", "indicatorId": "oa-6" }
+    { "id": "item-2", "indicatorId": "oa-8" }
   ]
 }
 ```
@@ -354,7 +389,7 @@ Required as a filter on all 5 survey-stats-tool-backed indicators (`oa.financial
 
 ## Query endpoint
 
-`POST /indicator-queries`, body = `IndicatorQuery`:
+`POST /indicators/query`, body = `IndicatorQuery`:
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -425,7 +460,9 @@ body; anything else falls through to the generic handler and returns HTTP 500.
 | `ComparisonRequiresTimeSeriesException` | `comparisonMode` given without `timeSeries` |
 | `InvalidComparisonRangeException` | `comparisonMode` given but `timeSeries.from == timeSeries.to` |
 | `ComparisonNotSupportedException` | `comparisonMode` given but the indicator is `ATTRIBUTE`-typed, or its handler doesn't fetch full ranges (e.g. survey-backed indicators) |
-| `PresetFilterConflictException` | `POST /indicators/presets/{id}/query` only: request `filters` name a dimension the preset already fixes |
+| `PresetFilterConflictException` | `POST /indicators/presets/{id}/query` only: the preset-derived `country`/`surveyYear` filter collides with a dimension the preset already fixes (not reachable with today's presets) |
+| `SeriesAggregationNotAllowedException` | `POST /indicators/presets/{id}/query` and `PUT /dashboard`: a `seriesAggregations` value isn't in the preset's `allowedSeriesAggregations` |
+| `InvalidPresetScopeException` | `POST /indicators/presets/{id}/query` and `PUT /dashboard`: `yearTo` missing, `yearFrom` missing for a time-series indicator, or `yearFrom > yearTo` |
 
 ## Indicator reference
 
@@ -440,23 +477,23 @@ Real data (OpenAIRE). Number of published works. `MEASURE`, `INTEGER`, `COUNT`, 
 
 ```bash
 # Total, current year
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.count"}'
 
 # One specific status
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.count","filters":[{"dimension":"accessStatus","operator":"EQ","values":["EMBARGOED"]}]}'
 
 # Multiple countries OR'd together
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.count","filters":[{"dimension":"country","operator":"IN","values":["GR","DE"]}]}'
 
 # Per-country map (native OpenAIRE groupBy, not a query-per-country loop)
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.count","groupBy":["country"]}'
 
 # Country x accessStatus x year range
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.count","groupBy":["country","accessStatus"],"timeSeries":{"from":2022,"to":2023}}'
 ```
 
@@ -500,23 +537,23 @@ several values to exclude can use the operator whose name matches its intent.
 
 ```bash
 # Open access share
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.access_status_share","filters":[{"dimension":"accessStatus","operator":"EQ","values":["OA"]}]}'
 
 # Full non-open share
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.access_status_share","filters":[{"dimension":"accessStatus","operator":"NOT_EQ","values":["OA"]}]}'
 
 # Exclude two specific statuses
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.access_status_share","filters":[{"dimension":"accessStatus","operator":"NOT_IN","values":["CLOSED","EMBARGOED"]}]}'
 
 # Per-country map
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.access_status_share","filters":[{"dimension":"accessStatus","operator":"EQ","values":["OA"]}],"groupBy":["country"]}'
 
 # Time range
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"publications.access_status_share","filters":[{"dimension":"accessStatus","operator":"EQ","values":["OA"]}],"timeSeries":{"from":2021,"to":2024}}'
 ```
 
@@ -532,8 +569,27 @@ semantics and query shape, just `entity=dataset` instead of `entity=publication`
 | `country` | FILTER, GROUP | EQ, IN | no | Absent = all-EU |
 
 ```bash
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"datasets.access_status_share","filters":[{"dimension":"accessStatus","operator":"EQ","values":["OA"]}]}'
+```
+
+### `publications.oa_license_status_count`
+
+Real data (OpenAIRE, **`europe_monitor`** stats-tool profile — the one OpenAIRE-routed outlier).
+Backs the legacy Explore "Distribution of Open Access Types by … Publication Outputs" chart. Number
+of publications per OA-licence status, always broken down by `classification` (server-narrowed to
+`article` / `conference` / `chapter` / `book`). `MEASURE`, `INTEGER`, `COUNT`, `SCALAR`.
+
+| Dimension | Usages | Operators | Required | Notes |
+|---|---|---|---|---|
+| `oaLicenseStatus` | FILTER, GROUP | EQ, IN | no | `OA_WITH_LICENSE` / `OA_WITHOUT_LICENSE` / `EMBARGOED` / `RESTRICTED` / `CLOSED`. Filter to pick one or more; group by it to fan out one row per status; omit both for a single unfiltered total per classification. |
+| `classification` | GROUP | — | — | Always applied; not client-controlled |
+| `country` | FILTER, GROUP | EQ, IN | no | Absent = all-EU; a `country` groupBy adds a `(classification, country)` row shape |
+
+```bash
+# every access type at once, per output type (the stacked-column view)
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
+  -d '{"indicatorCode":"publications.oa_license_status_count","groupBy":["oaLicenseStatus"]}'
 ```
 
 ### `oa.financial_investment`
@@ -554,19 +610,19 @@ per year); without one, the optional `surveyYear` filter picks a single year.
 
 ```bash
 # Total across all countries with an answer (SUM by default)
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.financial_investment","filters":[{"dimension":"investmentArea","operator":"EQ","values":["OA_PUBLICATION"]},{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
 
 # Open Data investment, average per country
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.financial_investment","filters":[{"dimension":"investmentArea","operator":"EQ","values":["OPEN_DATA"]},{"dimension":"surveyYear","operator":"EQ","values":["2023"]}],"aggregation":"AVG"}'
 
 # FAIR Data investment, per-country map
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.financial_investment","filters":[{"dimension":"investmentArea","operator":"EQ","values":["FAIR_DATA"]},{"dimension":"surveyYear","operator":"EQ","values":["2023"]}],"groupBy":["country"]}'
 
 # Trend across years (2022+)
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.financial_investment","filters":[{"dimension":"investmentArea","operator":"EQ","values":["OA_PUBLICATION"]}],"timeSeries":{"from":2022,"to":2023}}'
 ```
 
@@ -590,11 +646,11 @@ year, picked via the required `surveyYear` filter.
 | `surveyYear` | FILTER | EQ | **yes** | The survey year to fetch, e.g. `"2023"` — see `GET /dimensions/surveyYear/members` |
 
 ```bash
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.country_initiative_status","filters":[{"dimension":"initiativeType","operator":"EQ","values":["OA_PUBLICATION_POLICY"]},{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
 
 # Open Data monitoring status per country
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.country_initiative_status","filters":[{"dimension":"initiativeType","operator":"EQ","values":["OPEN_DATA_MONITORING_INITIATIVE"]},{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
 ```
 
@@ -620,11 +676,11 @@ is no `country` binding for a per-country drill-down. No time series support
 | `surveyYear` | FILTER | EQ | **yes** | The survey year to fetch, e.g. `"2023"` — see `GET /dimensions/surveyYear/members` |
 
 ```bash
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.eu_country_coverage","filters":[{"dimension":"initiativeType","operator":"EQ","values":["MONITORING_INITIATIVE"]},{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
 
 # FAIR Data policy coverage
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.eu_country_coverage","filters":[{"dimension":"initiativeType","operator":"EQ","values":["FAIR_DATA_POLICY"]},{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
 ```
 
@@ -641,7 +697,7 @@ picks a single year.
 | `country` | FILTER, GROUP | EQ, IN | no | Absent + no `groupBy` aggregates every country with an answer per the requested `aggregation` (`SUM` by default; `AVG`/`MEDIAN`/`MIN`/`MAX` also allowed) |
 
 ```bash
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"repositories.long_term_preservation_count","filters":[{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
 ```
 
@@ -658,7 +714,7 @@ science dimension started, per country (survey `Question101`). Same shape as
 | `country` | FILTER, GROUP | EQ, IN | no | Absent + no `groupBy` aggregates every country with an answer per the requested `aggregation` (`SUM` by default; `AVG`/`MEDIAN`/`MIN`/`MAX` also allowed) |
 
 ```bash
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"citizen_science.new_projects_count","filters":[{"dimension":"surveyYear","operator":"EQ","values":["2023"]}],"groupBy":["country"]}'
 ```
 
@@ -674,7 +730,7 @@ support (`supportsTimeRange: false`).
 | `surveyId` | FILTER | EQ | **yes** | A real survey id, e.g. `"m-eosc-sb-2023"` — see `GET /dimensions/surveyId/members` |
 
 ```bash
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"survey.countries_with_validated_answers","filters":[{"dimension":"surveyId","operator":"EQ","values":["m-eosc-sb-2023"]}]}'
 ```
 
@@ -686,7 +742,7 @@ Real data (local — no external HTTP call, backed directly by `StakeholderServi
 dimension bindings at all — the stakeholder type is fixed to `eosc-sb`, not client-filterable.
 
 ```bash
-curl -X POST localhost:8280/api/indicator-queries -H 'Content-Type: application/json' \
+curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"stakeholder.participating_countries_count"}'
 ```
 

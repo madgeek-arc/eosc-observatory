@@ -198,7 +198,7 @@ class IndicatorDefinitionCatalogTest {
     }
 
     @Test
-    void oaLicenseStatusCountRequiresOaLicenseStatusFilterAndIsCountryAndClassificationGroupable() {
+    void oaLicenseStatusCountHasOptionalGroupableOaLicenseStatusAndIsCountryAndClassificationGroupable() {
         var bindings = catalog.get(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
             .containsExactlyInAnyOrder(
@@ -211,7 +211,11 @@ class IndicatorDefinitionCatalogTest {
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION))
             .extracting("requiredFilter")
-            .containsExactly(true);
+            .containsExactly(false);
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION))
+            .extracting("usages")
+            .containsExactly(Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP));
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.CLASSIFICATION_DIMENSION))
             .extracting("usages")

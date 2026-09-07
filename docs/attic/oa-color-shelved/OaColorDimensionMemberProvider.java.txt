@@ -1,0 +1,24 @@
+package eu.openaire.observatory.indicator.dimension;
+
+import eu.openaire.observatory.indicator.IndicatorCodes;
+import eu.openaire.observatory.indicator.openaire.OpenAireOaColor;
+import org.springframework.stereotype.Service;
+
+/**
+ * Mirrors {@link OpenAireOaColor}'s 4 constants for the "oaColor" dimension used by
+ * publications.oa_type_share/datasets.oa_type_share. HYBRID/BRONZE are listed as real, valid
+ * members even though their backing stats-tool field doesn't exist yet — see
+ * {@link OpenAireOaColor}'s javadoc for why that's deliberate.
+ */
+@Service
+public class OaColorDimensionMemberProvider extends EnumDimensionMemberProvider<OpenAireOaColor> {
+
+    public OaColorDimensionMemberProvider() {
+        super(IndicatorCodes.OA_COLOR_DIMENSION, OpenAireOaColor.class, color -> switch (color) {
+            case GOLD -> "Gold";
+            case GREEN -> "Green";
+            case HYBRID -> "Hybrid";
+            case BRONZE -> "Bronze";
+        });
+    }
+}

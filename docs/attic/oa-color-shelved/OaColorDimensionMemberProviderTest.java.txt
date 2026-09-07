@@ -1,0 +1,32 @@
+package eu.openaire.observatory.indicator.dimension;
+
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class OaColorDimensionMemberProviderTest {
+
+    private final OaColorDimensionMemberProvider provider = new OaColorDimensionMemberProvider();
+
+    @Test
+    void returnsAllFourColorsIncludingTheOnesWithNoRealUpstreamFieldYet() {
+        DimensionMembers page = provider.search(null, "", 100);
+
+        // HYBRID/BRONZE are listed here deliberately even though their backing stats-tool field
+        // doesn't exist yet — see OpenAireOaColor's javadoc.
+        assertThat(page.members()).extracting("code")
+            .containsExactlyInAnyOrder("GOLD", "GREEN", "HYBRID", "BRONZE");
+    }
+
+    @Test
+    void filtersByCaseInsensitiveSearchTextOnLabelOrCode() {
+        DimensionMembers page = provider.search(null, "gold", 100);
+
+        assertThat(page.members()).extracting("code").containsExactly("GOLD");
+    }
+
+    @Test
+    void validCodesReturnsAllFourColors() {
+        assertThat(provider.validCodes(null)).containsExactlyInAnyOrder("GOLD", "GREEN", "HYBRID", "BRONZE");
+    }
+}

@@ -24,7 +24,7 @@ class IndicatorPresetQueryTest {
     private static IndicatorPreset preset(Map<String, List<String>> presetFilters) {
         return new IndicatorPreset(
             "oa-1", "OA Publication in Europe", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
-            List.of(), null, List.of(AggregationType.AVG, AggregationType.MEDIAN),
+            List.of(), false, null, List.of(AggregationType.AVG, AggregationType.MEDIAN),
             "publications.access_status_share", presetFilters, 10
         );
     }

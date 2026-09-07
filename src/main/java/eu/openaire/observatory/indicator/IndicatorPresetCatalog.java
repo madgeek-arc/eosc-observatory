@@ -25,12 +25,15 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.CITIZEN_SCIENCE_N
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_INITIATIVE_STATUS;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_POLICY_STATUS;
 import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE;
+import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.EU_COUNTRY_COVERAGE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.FINANCIAL_INVESTMENT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.INVESTMENT_AREA_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.LONG_TERM_PRESERVATION_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.OA_LICENSE_STATUS_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
+import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.CITIZEN_SCIENCE;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.DATA_MANAGEMENT;
@@ -82,6 +85,25 @@ public class IndicatorPresetCatalog {
         new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MAP_WITH_CHANGE_COUNT),
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.YES_NO),
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.YES_NO_TIMELINE));
+
+    /**
+     * Full-width "distribution of &lt;category&gt; by output/document type" views, shared by the
+     * "Distribution of Open Access / Open Data Types" presets and "Investments by Open Science area".
+     * A 100%-stacked column at EU/single-year (every category at once, as rendered in the legacy
+     * Explore dashboard), then a year trend and per-country breakdowns. Every cell carries a
+     * {@link ViewSelector} over {@code selectorDimension} so the preset-query endpoint's derivation
+     * is a pure function of the matched view: it groups by {@code selectorDimension} to return one
+     * series per member, and the UI shows the member the actor picked from the selector (the
+     * stacked-column cell shows them all and may ignore the dropdown).
+     */
+    private static List<PresetView> categoryDistributionViews(String selectorDimension, String selectorLabel) {
+        ViewSelector selector = new ViewSelector(selectorDimension, selectorLabel, List.of());
+        return List.of(
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_SERIES_LINE_CHART, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_LINE_CHART, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_LINE_CHARTS, selector));
+    }
 
     /** {@code getAll()} contract: preset indicators grouped by {@link IndicatorGroup#order()}, then by {@link IndicatorPreset#order()} within a group. */
     private static final Comparator<IndicatorPreset> DISPLAY_ORDER =
@@ -175,161 +197,179 @@ public class IndicatorPresetCatalog {
     }
 
     private static List<IndicatorPreset> allPresets() {
+        // Ordering follows the "EOSC_OS_Observatory_Indicator_search (Indicator Inventory)" CSV, per
+        // group. Presets that are not in that inventory (the "National Financial Strategy on …"
+        // status-map variants, all id-suffixed "-x") are kept, but ordered after every inventory row
+        // in their group.
         return List.of(
-            // ---- Open Access Publications --------------------------------------------------------
+            // ---- Open Access Publications (inventory rows 2-10) --------------------------------------
             preset("oa-1", "OA Publication in Europe (OA vs Closed)", OPEN_ACCESS_PUBLICATIONS,
                 MAGNITUDE_VIEWS, AVG_MEDIAN, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA"), 10),
-            preset("oa-2", "Trend of Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA"), 20),
-            preset("oa-3", "EU Countries with Policy on OA Publication", OPEN_ACCESS_PUBLICATIONS,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OA_PUBLICATION_POLICY"), 30),
-            preset("oa-4", "National Policy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("OA_PUBLICATION_POLICY"), 40),
-            preset("oa-5", "EU Countries with National OA Publication Monitoring Initiatives", OPEN_ACCESS_PUBLICATIONS,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("MONITORING_INITIATIVE"), 50),
-            preset("oa-6", "National Monitoring on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("MONITORING_INITIATIVE"), 60),
-            preset("oa-7", "EU Countries with Financial Strategy on OA Publication", OPEN_ACCESS_PUBLICATIONS,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FINANCIAL_STRATEGY"), 70),
-            preset("oa-8-x", "National Financial Strategy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FINANCIAL_STRATEGY"), 80),
-            preset("oa-9", "EU countries with Policy on Immediate OA Publications", OPEN_ACCESS_PUBLICATIONS,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("IMMEDIATE_OA_POLICY"), 90),
-            preset("oa-10", "Financial investments in OA Publication", OPEN_ACCESS_PUBLICATIONS,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("OA_PUBLICATION"), 100),
+            preset("oa-2", "EU Countries with Policy on OA Publication", OPEN_ACCESS_PUBLICATIONS,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OA_PUBLICATION_POLICY"), 20),
+            preset("oa-3", "Financial investments in OA Publication", OPEN_ACCESS_PUBLICATIONS,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("OA_PUBLICATION"), 30),
+            preset("oa-4", "EU countries with Policy on Immediate OA Publications", OPEN_ACCESS_PUBLICATIONS,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("IMMEDIATE_OA_POLICY"), 40),
+            preset("oa-5", "EU Countries with Financial Strategy on OA Publication", OPEN_ACCESS_PUBLICATIONS,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FINANCIAL_STRATEGY"), 50),
+            preset("oa-6", "EU Countries with National OA Publication Monitoring Initiatives", OPEN_ACCESS_PUBLICATIONS,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("MONITORING_INITIATIVE"), 60),
+            preset("oa-7", "National Policy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("OA_PUBLICATION_POLICY"), 70),
+            preset("oa-8", "National Monitoring on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("MONITORING_INITIATIVE"), 80),
+            presetFullWidth("oa-9", "Distribution of Open Access Types by Different Scholarly Publication Outputs",
+                OPEN_ACCESS_PUBLICATIONS, categoryDistributionViews(OA_LICENSE_STATUS_DIMENSION, "Access type"),
+                NO_SERIES_AGGREGATIONS, PUBLICATIONS_OA_LICENSE_STATUS_COUNT, NO_FILTERS, 90),
+            // Not in the inventory:
+            preset("oa-10-x", "National Financial Strategy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FINANCIAL_STRATEGY"), 100),
 
-            // ---- Open Data -------------------------------------------------------------------------
+            // ---- Open Data (inventory rows 11-18) -------------------------------------------------------
             preset("od-1", "Open Data in Europe (Open vs Closed)", OPEN_DATA,
                 MAGNITUDE_VIEWS, AVG_MEDIAN, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA"), 10),
-            preset("od-2", "Trend of Open Data", OPEN_DATA,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA"), 20),
-            preset("od-3", "EU Countries with Policy on Open Data", OPEN_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_POLICY"), 30),
-            preset("od-4", "National Policy on Open Data", OPEN_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("OPEN_DATA_POLICY"), 40),
+            preset("od-2", "EU Countries with Policy on Open Data", OPEN_DATA,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_POLICY"), 20),
+            preset("od-3", "Financial investments in Open Data", OPEN_DATA,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("OPEN_DATA"), 30),
+            preset("od-4", "EU Countries with Financial Strategy on Open Data", OPEN_DATA,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY"), 40),
             preset("od-5", "EU Countries with National Open Data Monitoring Initiatives", OPEN_DATA,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_MONITORING_INITIATIVE"), 50),
-            preset("od-6", "National Monitoring on Open Data", OPEN_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_MONITORING_INITIATIVE"), 60),
-            preset("od-7", "EU Countries with Financial Strategy on Open Data", OPEN_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY"), 70),
-            preset("od-8-x", "National Financial Strategy on Open Data", OPEN_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY"), 80),
-            preset("od-9", "Financial investments in Open Data", OPEN_DATA,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("OPEN_DATA"), 90),
+            preset("od-6", "National Policy on Open Data", OPEN_DATA,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("OPEN_DATA_POLICY"), 60),
+            preset("od-7", "National Monitoring on Open Data", OPEN_DATA,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_MONITORING_INITIATIVE"), 70),
+            presetFullWidth("od-8", "Distribution of Open Data Types by Different Document Type",
+                OPEN_DATA, categoryDistributionViews(ACCESS_STATUS_DIMENSION, "Access type"),
+                NO_SERIES_AGGREGATIONS, DATASETS_COUNT, NO_FILTERS, 80),
+            // Not in the inventory:
+            preset("od-9-x", "National Financial Strategy on Open Data", OPEN_DATA,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY"), 90),
 
-            // ---- FAIR Data -------------------------------------------------------------------------
+            // ---- FAIR Data (inventory rows 19-24) -----------------------------------------------------
             preset("fair-1", "EU Countries with Policy on FAIR Data", FAIR_DATA,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_POLICY"), 10),
-            preset("fair-2", "National Policy on FAIR Data", FAIR_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("FAIR_DATA_POLICY"), 20),
-            preset("fair-3", "EU Countries with National FAIR Data Monitoring Initiatives", FAIR_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_MONITORING_INITIATIVE"), 30),
-            preset("fair-4", "National Monitoring on FAIR Data", FAIR_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_MONITORING_INITIATIVE"), 40),
-            preset("fair-5", "EU Countries with Financial Strategy on FAIR Data", FAIR_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY"), 50),
-            preset("fair-6-x", "National Financial Strategy on FAIR Data", FAIR_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY"), 60),
-            preset("fair-7", "Financial investments in FAIR Data", FAIR_DATA,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("FAIR_DATA"), 70),
+            preset("fair-2", "Financial investments in FAIR Data", FAIR_DATA,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("FAIR_DATA"), 20),
+            preset("fair-3", "EU Countries with Financial Strategy on FAIR Data", FAIR_DATA,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY"), 30),
+            preset("fair-4", "EU Countries with National FAIR Data Monitoring Initiatives", FAIR_DATA,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_MONITORING_INITIATIVE"), 40),
+            preset("fair-5", "National Policy on FAIR Data", FAIR_DATA,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("FAIR_DATA_POLICY"), 50),
+            preset("fair-6", "National Monitoring on FAIR Data", FAIR_DATA,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_MONITORING_INITIATIVE"), 60),
+            // Not in the inventory:
+            preset("fair-7-x", "National Financial Strategy on FAIR Data", FAIR_DATA,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY"), 70),
 
-            // ---- Data Management --------------------------------------------------------------------
+            // ---- Data Management (inventory rows 25-30) ---------------------------------------------
             preset("dm-1", "EU Countries with Policy on Data Management", DATA_MANAGEMENT,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_POLICY"), 10),
-            preset("dm-2", "National Policy on Data Management", DATA_MANAGEMENT,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("DATA_MANAGEMENT_POLICY"), 20),
-            preset("dm-3", "EU Countries with National Data Management Monitoring Initiatives", DATA_MANAGEMENT,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE"), 30),
-            preset("dm-4", "National Monitoring on Data Management", DATA_MANAGEMENT,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE"), 40),
-            preset("dm-5", "EU Countries with Financial Strategy on Data Management", DATA_MANAGEMENT,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY"), 50),
-            preset("dm-6-x", "National Financial Strategy on Data Management", DATA_MANAGEMENT,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY"), 60),
-            preset("dm-7", "Financial investments in Data Management", DATA_MANAGEMENT,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("DATA_MANAGEMENT"), 70),
+            preset("dm-2", "Financial investments in Data Management", DATA_MANAGEMENT,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("DATA_MANAGEMENT"), 20),
+            preset("dm-3", "EU Countries with Financial Strategy on Data Management", DATA_MANAGEMENT,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY"), 30),
+            preset("dm-4", "EU Countries with National Data Management Monitoring Initiatives", DATA_MANAGEMENT,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE"), 40),
+            preset("dm-5", "National Policy on Data Management", DATA_MANAGEMENT,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("DATA_MANAGEMENT_POLICY"), 50),
+            preset("dm-6", "National Monitoring on Data Management", DATA_MANAGEMENT,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE"), 60),
+            // Not in the inventory:
+            preset("dm-7-x", "National Financial Strategy on Data Management", DATA_MANAGEMENT,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY"), 70),
 
-            // ---- Citizen Science ---------------------------------------------------------------------
+            // ---- Citizen Science (inventory rows 31-37) -------------------------------------------------
             preset("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE,
                 OUTPUT_COUNT_VIEWS, AVG_MEDIAN, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS, 10),
             preset("cs-2", "EU Countries with Policy on Citizen Science", CITIZEN_SCIENCE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_POLICY"), 20),
-            preset("cs-3", "National Policy on Citizen Science", CITIZEN_SCIENCE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("CITIZEN_SCIENCE_POLICY"), 30),
-            preset("cs-4", "EU Countries with Citizen Science Monitoring Initiatives", CITIZEN_SCIENCE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE"), 40),
-            preset("cs-5", "National Monitoring on Citizen Science", CITIZEN_SCIENCE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE"), 50),
-            preset("cs-6", "EU Countries with Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY"), 60),
-            preset("cs-7-x", "National Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY"), 70),
-            preset("cs-8", "Financial investments in Citizen Science", CITIZEN_SCIENCE,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("CITIZEN_SCIENCE"), 80),
+            preset("cs-3", "Financial investments in Citizen Science", CITIZEN_SCIENCE,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("CITIZEN_SCIENCE"), 30),
+            preset("cs-4", "EU Countries with Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY"), 40),
+            preset("cs-5", "EU Countries with Citizen Science Monitoring Initiatives", CITIZEN_SCIENCE,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE"), 50),
+            preset("cs-6", "National Policy on Citizen Science", CITIZEN_SCIENCE,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("CITIZEN_SCIENCE_POLICY"), 60),
+            preset("cs-7", "National Monitoring on Citizen Science", CITIZEN_SCIENCE,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE"), 70),
+            // Not in the inventory:
+            preset("cs-8-x", "National Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY"), 80),
 
-            // ---- Repositories (covers both Connecting Repositories to EOSC and Long-term Data
-            //      Preservation sub-topics) ------------------------------------------------------------
+            // ---- Repositories (inventory rows 38-46; covers both Connecting Repositories to EOSC and
+            //      Long-term Data Preservation sub-topics) --------------------------------------------
             preset("repo-1", "Repositories offering long-term preservation in EU Countries", REPOSITORIES,
                 MAGNITUDE_VIEWS, AVG_MEDIAN, LONG_TERM_PRESERVATION_COUNT, NO_FILTERS, 10),
             preset("repo-2", "EU Countries with Policy on Connecting Repositories to EOSC", REPOSITORIES,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_POLICY"), 20),
-            preset("repo-3", "National Policy on Connecting Repositories to EOSC", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_CONNECT_POLICY"), 30),
-            preset("repo-4", "EU Countries with Monitoring Initiatives on Connecting Repositories to EOSC", REPOSITORIES,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE"), 40),
-            preset("repo-5", "National Monitoring on Connecting Repositories to EOSC", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE"), 50),
-            preset("repo-6", "EU Countries with Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY"), 60),
-            preset("repo-7-x", "National Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY"), 70),
-            preset("repo-8", "Financial investments in connecting repositories to EOSC", REPOSITORIES,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("REPOSITORIES_CONNECT"), 80),
-            preset("repo-9", "National Policy on Long-term Data Preservation", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_PRESERVATION_POLICY"), 90),
-            preset("repo-10", "National Monitoring on Long-term Data Preservation", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE"), 100),
-            // No REPOSITORIES_PRESERVATION_FINANCIAL_STRATEGY/REPOSITORIES_PRESERVATION member exists yet,
-            // so the preservation financial-strategy/investment presets are omitted.
+            preset("repo-3", "Financial investments in connecting repositories to EOSC", REPOSITORIES,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("REPOSITORIES_CONNECT"), 30),
+            preset("repo-4", "EU Countries with Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY"), 40),
+            preset("repo-5", "EU Countries with Monitoring Initiatives on Connecting Repositories to EOSC", REPOSITORIES,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE"), 50),
+            preset("repo-6", "National Policy on Connecting Repositories to EOSC", REPOSITORIES,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_CONNECT_POLICY"), 60),
+            preset("repo-7", "National Monitoring on Connecting Repositories to EOSC", REPOSITORIES,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE"), 70),
+            preset("repo-8", "National Policy on Long-term Data Preservation", REPOSITORIES,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_PRESERVATION_POLICY"), 80),
+            preset("repo-9", "National Monitoring on Long-term Data Preservation", REPOSITORIES,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE"), 90),
+            // Not in the inventory. Also: no REPOSITORIES_PRESERVATION_FINANCIAL_STRATEGY/
+            // REPOSITORIES_PRESERVATION member exists yet, so the preservation financial-strategy/
+            // investment presets are omitted.
+            preset("repo-10-x", "National Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY"), 100),
 
-            // ---- Open Science Training -----------------------------------------------------------
+            // ---- Open Science Training (inventory rows 47-52) ----------------------------------------
             preset("train-1", "EU Countries with Policy on skills/training for Open Science", OPEN_SCIENCE_TRAINING,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_POLICY"), 10),
-            preset("train-2", "National Policy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("TRAINING_POLICY"), 20),
-            preset("train-3", "EU Countries with Monitoring Initiatives on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_MONITORING_INITIATIVE"), 30),
-            preset("train-4", "National Monitoring on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_MONITORING_INITIATIVE"), 40),
-            preset("train-5", "EU Countries with Financial Strategy on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_FINANCIAL_STRATEGY"), 50),
-            preset("train-6-x", "National Financial Strategy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_FINANCIAL_STRATEGY"), 60),
-            preset("train-7", "Financial investments in skills/training for Open Science", OPEN_SCIENCE_TRAINING,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("TRAINING"), 70),
+            preset("train-2", "Financial investments in skills/training for Open Science", OPEN_SCIENCE_TRAINING,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("TRAINING"), 20),
+            preset("train-3", "EU Countries with Financial Strategy on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_FINANCIAL_STRATEGY"), 30),
+            preset("train-4", "EU Countries with Monitoring Initiatives on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_MONITORING_INITIATIVE"), 40),
+            preset("train-5", "National Policy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("TRAINING_POLICY"), 50),
+            preset("train-6", "National Monitoring on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_MONITORING_INITIATIVE"), 60),
+            // Not in the inventory:
+            preset("train-7-x", "National Financial Strategy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_FINANCIAL_STRATEGY"), 70),
 
-            // ---- Open Software ----------------------------------------------------------------------
+            // ---- Open Software (inventory rows 53-59) -----------------------------------------------
             preset("sw-1", "Open Software sets published in EU Countries", OPEN_SOFTWARE,
                 OUTPUT_COUNT_VIEWS, AVG_MEDIAN, SOFTWARE_OPEN_SOURCE_SETS_COUNT, NO_FILTERS, 10),
             preset("sw-2", "EU Countries with Policy on Open Software", OPEN_SOFTWARE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_POLICY"), 20),
-            preset("sw-3", "National Policy on Open Source Software", OPEN_SOFTWARE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("SOFTWARE_POLICY"), 30),
-            preset("sw-4", "EU Countries with Monitoring Initiatives on Open Software", OPEN_SOFTWARE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_MONITORING_INITIATIVE"), 40),
-            preset("sw-5", "National Monitoring on Open Source Software", OPEN_SOFTWARE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_MONITORING_INITIATIVE"), 50),
-            preset("sw-6", "EU Countries with Financial Strategy on Open Software", OPEN_SOFTWARE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 60),
-            preset("sw-7-x", "National Financial Strategy on Open Software", OPEN_SOFTWARE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 70),
-            preset("sw-8", "Financial investments in Open Software", OPEN_SOFTWARE,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("SOFTWARE"), 80),
+            preset("sw-3", "Financial investments in Open Software", OPEN_SOFTWARE,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("SOFTWARE"), 30),
+            preset("sw-4", "EU Countries with Financial Strategy on Open Software", OPEN_SOFTWARE,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 40),
+            preset("sw-5", "EU Countries with Monitoring Initiatives on Open Software", OPEN_SOFTWARE,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_MONITORING_INITIATIVE"), 50),
+            preset("sw-6", "National Policy on Open Source Software", OPEN_SOFTWARE,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("SOFTWARE_POLICY"), 60),
+            preset("sw-7", "National Monitoring on Open Source Software", OPEN_SOFTWARE,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_MONITORING_INITIATIVE"), 70),
+            // Not in the inventory:
+            preset("sw-8-x", "National Financial Strategy on Open Software", OPEN_SOFTWARE,
+                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 80),
 
-            // ---- Financial Investment (Investments in EOSC page) -------------------------------------
+            // ---- Financial Investment (Investments in EOSC page, inventory rows 64-65) --------------
             preset("fin-1", "Total amount of investments in EOSC and Open Science", IndicatorGroup.FINANCIAL_INVESTMENT,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 10)
+                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 10),
+            // Same FINANCIAL_INVESTMENT indicator as fin-1, broken out per investment area — the
+            // definition is groupable by investmentArea (see IndicatorDefinitionCatalog.financialInvestment).
+            preset("fin-2", "Investments in EOSC and Open Science (by Open Science area)", IndicatorGroup.FINANCIAL_INVESTMENT,
+                categoryDistributionViews(INVESTMENT_AREA_DIMENSION, "Open Science area"), AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 20)
         );
     }
 
@@ -337,8 +377,23 @@ public class IndicatorPresetCatalog {
             String id, String label, IndicatorGroup group, List<PresetView> views,
             List<AggregationType> allowedSeriesAggregations, String indicatorCode,
             Map<String, List<String>> presetFilters, int order) {
+        return preset(id, label, group, views, false, allowedSeriesAggregations, indicatorCode, presetFilters, order);
+    }
+
+    /** Like {@link #preset}, but for the handful of presets whose views need the whole dashboard width. */
+    private static IndicatorPreset presetFullWidth(
+            String id, String label, IndicatorGroup group, List<PresetView> views,
+            List<AggregationType> allowedSeriesAggregations, String indicatorCode,
+            Map<String, List<String>> presetFilters, int order) {
+        return preset(id, label, group, views, true, allowedSeriesAggregations, indicatorCode, presetFilters, order);
+    }
+
+    private static IndicatorPreset preset(
+            String id, String label, IndicatorGroup group, List<PresetView> views, boolean fullWidth,
+            List<AggregationType> allowedSeriesAggregations, String indicatorCode,
+            Map<String, List<String>> presetFilters, int order) {
         // format is null here — IndicatorPresetCatalog fills it from the linked definition.
-        return new IndicatorPreset(id, label, group, views, null,
+        return new IndicatorPreset(id, label, group, views, fullWidth, null,
             allowedSeriesAggregations, indicatorCode, presetFilters, order);
     }
 

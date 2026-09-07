@@ -155,6 +155,10 @@ public class OpenAireQueryBuilder {
      * country]} rows rather than {@code [count, classification]}), via a real {@code raw?json=} call.
      * The optional country filter reuses the same {@code result.organization.country.code} field/leaf
      * shape as every other sub-query in this class ({@link #countryFilter}).
+     *
+     * <p>{@code status} may be {@code null} — the denominator ("all four output types, any access
+     * mode") sub-query the share views need: then the {@code result.access mode} and license-flag
+     * filters are omitted and the query counts every publication in the classification vocabulary.
      */
     public ObjectNode oaLicenseStatusSubQuery(
             int year, OpenAireOaLicenseStatus status, List<String> countryCodes, boolean groupByCountry) {
@@ -174,9 +178,11 @@ public class OpenAireQueryBuilder {
         ArrayNode filterArray = query.putArray("filters");
         filterArray.add(classificationVocabularyFilter());
         filterArray.add(groupFilter("result.type", "=", RESULT_TYPE_PUBLICATION));
-        filterArray.add(groupFilter("result.access mode", "=", status.accessMode().openAireLiteral()));
-        if (status.licenseField() != null) {
-            filterArray.add(groupFilter(status.licenseField(), "=", "1"));
+        if (status != null) {
+            filterArray.add(groupFilter("result.access mode", "=", status.accessMode().openAireLiteral()));
+            if (status.licenseField() != null) {
+                filterArray.add(groupFilter(status.licenseField(), "=", "1"));
+            }
         }
         filterArray.add(groupFilter("result.organization.country.continent", "=", "Europe"));
         filterArray.add(groupFilter("result.year", "=", String.valueOf(year)));

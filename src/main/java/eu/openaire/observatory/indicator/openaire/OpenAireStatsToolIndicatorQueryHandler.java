@@ -220,43 +220,80 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
     }
 
     /**
-     * publications.oa_license_status_count: one query per period for the required oaLicenseStatus,
+     * publications.oa_license_status_count: one sub-query per period per requested oaLicenseStatus,
      * always grouped by classification (its only mandatory groupable binding) — europe_monitor-profiled,
-     * confirmed live. An optional country filter narrows to one or more specific countries instead of
-     * all-Europe; an optional country groupBy additionally fans out into one row per (classification,
-     * country) pair — confirmed live as a genuine two-select-group-field query against the
-     * europe_monitor profile, returning {@code [count, classification, country]} rows.
+     * confirmed live. {@code oaLicenseStatus} is optional: an EQ/IN filter picks the status(es);
+     * grouping by it instead fans out all five (used by the "distribution of access types" preset);
+     * with neither, a single unfiltered total per classification is returned. An optional country
+     * filter narrows to one or more specific countries instead of all-Europe; an optional country
+     * groupBy additionally fans out into one row per (classification, country) pair — confirmed live
+     * as a genuine two-select-group-field query against the europe_monitor profile, returning
+     * {@code [count, classification, country]} rows.
      */
     private IndicatorResult queryOaLicenseStatusCount(IndicatorExecutionPlan plan) {
-        OpenAireOaLicenseStatus status = OpenAireOaLicenseStatus.fromCatalogCode(requiredFilterValue(plan, OA_LICENSE_STATUS_DIMENSION));
+        List<String> groupByCodes = plan.groupBy().stream().map(ResolvedDimension::dimensionCode).toList();
+        List<OpenAireOaLicenseStatus> statuses = resolveOaLicenseStatusGroupValues(plan, groupByCodes);
         List<String> countryCodes = filterValues(plan, COUNTRY_DIMENSION);
-        boolean byCountry = plan.groupBy().stream().map(ResolvedDimension::dimensionCode).toList().contains(COUNTRY_DIMENSION);
+        boolean byStatus = groupByCodes.contains(OA_LICENSE_STATUS_DIMENSION);
+        boolean byCountry = groupByCodes.contains(COUNTRY_DIMENSION);
         List<Period> periods = resolvePeriods(plan);
 
         List<ObjectNode> subQueries = new ArrayList<>();
         for (Period period : periods) {
-            subQueries.add(queryBuilder.oaLicenseStatusSubQuery(period.year(), status, countryCodes, byCountry));
+            for (OpenAireOaLicenseStatus status : statuses) {
+                subQueries.add(queryBuilder.oaLicenseStatusSubQuery(period.year(), status, countryCodes, byCountry));
+            }
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (int i = 0; i < periods.size(); i++) {
-            for (List<String> row : raw.get(i)) {
-                Map<String, Object> dimensions = new LinkedHashMap<>();
-                dimensions.put(CLASSIFICATION_DIMENSION, row.get(1));
-                if (byCountry) {
-                    dimensions.put(COUNTRY_DIMENSION, row.get(2));
+        for (int p = 0; p < periods.size(); p++) {
+            for (int s = 0; s < statuses.size(); s++) {
+                OpenAireOaLicenseStatus status = statuses.get(s);
+                for (List<String> row : raw.get(p * statuses.size() + s)) {
+                    Map<String, Object> dimensions = new LinkedHashMap<>();
+                    if (byStatus && status != null) {
+                        dimensions.put(OA_LICENSE_STATUS_DIMENSION, status.name());
+                    }
+                    dimensions.put(CLASSIFICATION_DIMENSION, row.get(1));
+                    if (byCountry) {
+                        dimensions.put(COUNTRY_DIMENSION, row.get(2));
+                    }
+                    dimensions.putAll(periods.get(p).dimensions());
+                    data.add(new IndicatorDataPoint(dimensions, Long.parseLong(row.get(0))));
                 }
-                dimensions.putAll(periods.get(i).dimensions());
-                data.add(new IndicatorDataPoint(dimensions, Long.parseLong(row.get(0))));
             }
         }
 
-        List<String> dimensionKeys = new ArrayList<>(List.of(CLASSIFICATION_DIMENSION));
+        List<String> dimensionKeys = new ArrayList<>();
+        if (byStatus) {
+            dimensionKeys.add(OA_LICENSE_STATUS_DIMENSION);
+        }
+        dimensionKeys.add(CLASSIFICATION_DIMENSION);
         if (byCountry) {
             dimensionKeys.add(COUNTRY_DIMENSION);
         }
         return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
+    }
+
+    /**
+     * A matching EQ/IN {@code oaLicenseStatus} filter narrows to those status(es); a groupBy on
+     * {@code oaLicenseStatus} fans out one sub-query per status (all five); neither means a single
+     * unfiltered total per classification (the {@code null} element — the sub-query then omits the
+     * access-mode/licence leaves). Mirrors {@link #resolveAccessModeGroupValues}.
+     */
+    private List<OpenAireOaLicenseStatus> resolveOaLicenseStatusGroupValues(IndicatorExecutionPlan plan, List<String> groupByCodes) {
+        List<Object> filterValues = plan.filters().stream()
+            .filter(filter -> filter.dimensionCode().equals(OA_LICENSE_STATUS_DIMENSION))
+            .flatMap(filter -> filter.values().stream())
+            .toList();
+        if (!filterValues.isEmpty()) {
+            return filterValues.stream().map(value -> OpenAireOaLicenseStatus.fromCatalogCode(String.valueOf(value))).toList();
+        }
+        if (groupByCodes.contains(OA_LICENSE_STATUS_DIMENSION)) {
+            return List.of(OpenAireOaLicenseStatus.values());
+        }
+        return Collections.singletonList(null);
     }
 
     /** A matching EQ filter narrows to one value; a groupBy on accessStatus expands to all four; neither means unfiltered. */

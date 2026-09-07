@@ -260,15 +260,14 @@ class IndicatorDefinitionCatalogOpenAireWiringTest {
     }
 
     @Test
-    void oaLicenseStatusCountRequiresTheOaLicenseStatusFilter() {
+    void oaLicenseStatusCountNoLongerRequiresTheOaLicenseStatusFilter() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT).build();
 
-        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
-            .isInstanceOf(MissingRequiredFilterException.class);
+        assertThat(validator.compile(query, ALLOW_ALL).filters()).isEmpty();
     }
 
     @Test
-    void oaLicenseStatusCountAcceptsTheRequiredFilter() {
+    void oaLicenseStatusCountAcceptsTheOaLicenseStatusFilter() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT)
             .withFilters(new IndicatorFilter(
                 IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA_WITH_LICENSE")
@@ -279,6 +278,16 @@ class IndicatorDefinitionCatalogOpenAireWiringTest {
 
         assertThat(plan.filters().get(0).dimensionCode()).isEqualTo(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION);
         assertThat(plan.filters().get(0).values()).containsExactly("OA_WITH_LICENSE");
+    }
+
+    @Test
+    void oaLicenseStatusCountAcceptsOaLicenseStatusAsAGroupBy() {
+        var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT)
+            .withGroupBy(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION)
+            .build();
+
+        assertThat(validator.compile(query, ALLOW_ALL).groupBy())
+            .extracting("dimensionCode").containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION);
     }
 
     @Test

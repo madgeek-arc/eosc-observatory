@@ -139,7 +139,7 @@ public class IndicatorDefinitionCatalog {
         );
         DimensionDefinition oaLicenseStatusDimension = new DimensionDefinition(
             OA_LICENSE_STATUS_DIMENSION, "OA license status", DimensionType.ENUM,
-            true, false, false, Set.of(FilterOperator.EQ), null
+            true, true, false, Set.of(FilterOperator.EQ, FilterOperator.IN), null
         );
         this.dimensionsByCode = Map.ofEntries(
             Map.entry(COUNTRY_DIMENSION, countryDimension),
@@ -224,30 +224,36 @@ public class IndicatorDefinitionCatalog {
     /**
      * Legacy chart "OA Publication in Europe by License Status" (distributionOfOAPublications) —
      * the europe_monitor-profiled outlier among the OpenAIRE-routed indicators (every other one
-     * uses openaire_stats). oaLicenseStatus is a required, exhaustive 5-value partition
-     * (OA_WITH_LICENSE/OA_WITHOUT_LICENSE/EMBARGOED/RESTRICTED/CLOSED); always broken down by
-     * classification (its only mandatory groupable binding — narrowed server-side to a fixed
-     * article/conference/chapter/book vocabulary, not client-controlled). Also filterable/groupable
-     * by country (one or more countries OR'd together; absent means all-Europe, matching the
-     * always-applied continent=Europe scope) — confirmed live: the europe_monitor profile accepts a
-     * genuine second simultaneous select-group field (classification + country), returning
-     * {@code [count, classification, country]} rows, not just the single-group
-     * {@code [count, classification]} shape used elsewhere.
+     * uses openaire_stats). oaLicenseStatus is an optional, exhaustive 5-value partition
+     * (OA_WITH_LICENSE/OA_WITHOUT_LICENSE/EMBARGOED/RESTRICTED/CLOSED): an EQ/IN filter picks the
+     * status(es), grouping by it fans out one row per status (the "distribution of access types by
+     * output type" preset), and with neither a single unfiltered total per classification is
+     * returned. Always broken down by classification (its only mandatory groupable binding —
+     * narrowed server-side to a fixed article/conference/chapter/book vocabulary, not
+     * client-controlled). Also filterable/groupable by country (one or more countries OR'd together;
+     * absent means all-Europe, matching the always-applied continent=Europe scope) — confirmed live:
+     * the europe_monitor profile accepts a genuine second simultaneous select-group field
+     * (classification + country), returning {@code [count, classification, country]} rows, not just
+     * the single-group {@code [count, classification]} shape used elsewhere.
      */
     private static IndicatorDefinition publicationsOaLicenseStatusCount() {
         return definition(
             PUBLICATIONS_OA_LICENSE_STATUS_COUNT, "Publications by OA License Status",
             "Number of published works matching the given OA license status (OA with licence, OA "
                 + "without licence, Embargoed, Restricted, or Closed), broken down by classification, "
-                + "optionally also by country. The oaLicenseStatus filter is required — there is no "
-                + "meaningful value without specifying which status to measure. Routed to the "
-                + "europe_monitor stats-tool profile, unlike every other OpenAIRE-routed indicator in "
-                + "this catalog.",
+                + "optionally also by country. The oaLicenseStatus filter is optional: an EQ/IN value "
+                + "picks the status(es), grouping by oaLicenseStatus fans out one row per status, and "
+                + "with neither a single unfiltered total per classification is returned. Routed to "
+                + "the europe_monitor stats-tool profile, unlike every other OpenAIRE-routed "
+                + "indicator in this catalog.",
             IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
             Set.of(
-                requiredEqFilterBinding(OA_LICENSE_STATUS_DIMENSION),
+                new IndicatorDimensionBinding(
+                    OA_LICENSE_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                ),
                 new IndicatorDimensionBinding(CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.GROUP), Set.of(), false),
                 countryBinding()
             ),

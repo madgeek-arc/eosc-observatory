@@ -24,6 +24,7 @@ import eu.openaire.observatory.indicator.model.RenderHint;
 import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.model.TimePolicy;
+import eu.openaire.observatory.indicator.model.ViewSelector;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.IndicatorPreset;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
@@ -91,14 +92,14 @@ class UserDashboardServiceTest {
         authentication = OidcTestUtils.oidcAuthentication(EMAIL);
 
         trendDefinition = new IndicatorPreset(
-                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), null,
+                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), false, null,
                 List.of(AggregationType.AVG, AggregationType.MEDIAN), "indicator.trend", Map.of(), 10);
         trendIndicator = indicatorDefinition("indicator.trend", true,
                 Set.of(new IndicatorDimensionBinding(
                         IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ, FilterOperator.IN), false)));
 
         nonTrendDefinition = new IndicatorPreset(
-                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), null,
+                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), false, null,
                 List.of(), "indicator.non-trend", Map.of(), 20);
         nonTrendIndicator = indicatorDefinition("indicator.non-trend", false, Set.of());
 
@@ -337,7 +338,7 @@ class UserDashboardServiceTest {
         IndicatorPreset perCountryPreset = new IndicatorPreset(
                 "widget-map", "Map Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
                 List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MAP)),
-                null, List.of(), "indicator.trend", Map.of(), 30);
+                false, null, List.of(), "indicator.trend", Map.of(), 30);
         lenient().when(presetCatalog.get("widget-map")).thenReturn(perCountryPreset);
         UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", "widget-map")), null, 2023, 2023, null);
 
@@ -346,6 +347,32 @@ class UserDashboardServiceTest {
         var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
         verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
         assertEquals(List.of(IndicatorCodes.COUNTRY_DIMENSION), captor.getValue().groupBy());
+    }
+
+    @Test
+    void save_derivesTheSelectorDimensionGroupByForADistributionPresetView() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        var selector = new ViewSelector(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, "Access type", List.of());
+        IndicatorPreset distributionPreset = new IndicatorPreset(
+                "widget-distribution", "Distribution Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
+                List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, selector)),
+                true, null, List.of(), "indicator.distribution", Map.of(), 40);
+        IndicatorDefinition distributionIndicator = indicatorDefinition("indicator.distribution", true, Set.of(
+                new IndicatorDimensionBinding(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION,
+                        Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP), Set.of(FilterOperator.EQ, FilterOperator.IN), false),
+                new IndicatorDimensionBinding(IndicatorCodes.CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.GROUP), Set.of(), false)));
+        lenient().when(presetCatalog.get("widget-distribution")).thenReturn(distributionPreset);
+        lenient().when(definitionCatalog.get("indicator.distribution")).thenReturn(distributionIndicator);
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", "widget-distribution")), null, 2023, 2023, null);
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
+        assertEquals(
+                List.of(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.CLASSIFICATION_DIMENSION),
+                captor.getValue().groupBy());
     }
 
     @Test

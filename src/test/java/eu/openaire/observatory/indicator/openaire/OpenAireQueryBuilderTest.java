@@ -341,6 +341,22 @@ class OpenAireQueryBuilderTest {
     }
 
     @Test
+    void oaLicenseStatusSubQueryWithNullStatusOmitsTheAccessModeAndLicenceLeaves() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, null, List.of(), false);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(filters.stream().map(this::fieldOf))
+            .doesNotContain("result.access mode",
+                "result.indi_result_oa_with_license.oa_with_license",
+                "result.indi_result_oa_without_license.oa_without_license");
+        // still the classification vocabulary + entity type + Europe + year scope
+        assertThat(fieldValues(filters, "result.classification"))
+            .containsExactlyInAnyOrder("article", "conference", "chapter", "book");
+        assertThat(fieldValues(filters, "result.year")).containsExactly("2022");
+        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+    }
+
+    @Test
     void oaLicenseStatusSubQueryNarrowsClassificationToTheFixedVocabulary() {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
 

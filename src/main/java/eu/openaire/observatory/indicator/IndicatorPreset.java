@@ -3,11 +3,13 @@ package eu.openaire.observatory.indicator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.CountryScope;
+import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.model.PresetView;
+import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
@@ -30,12 +32,17 @@ import java.util.Map;
  *
  * <p>{@code format} is copied from the linked definition by the catalog (see
  * {@link #resolvedAgainst(IndicatorDefinition)}); authored entries leave it {@code null}.
+ *
+ * <p>{@code fullWidth} is layout metadata only — {@code true} for the handful of presets (e.g. the
+ * "Distribution of ... Types" indicators) whose views need the whole dashboard width rather than
+ * sharing a row with another widget; {@code false} for every other preset.
  */
 public record IndicatorPreset(
     String id,
     String label,
     IndicatorGroup group,
     List<PresetView> views, // renderings that make sense for this preset; UI picks by the actor's filter state
+    boolean fullWidth, // true when this preset's views need the whole dashboard width
     IndicatorFormat format, // resolved from the linked IndicatorDefinition by IndicatorPresetCatalog
     List<AggregationType> allowedSeriesAggregations, // meaningful seriesAggregations values for this preset — empty if none
     String indicatorCode, // must resolve in IndicatorDefinitionCatalog
@@ -45,7 +52,7 @@ public record IndicatorPreset(
     /** A copy with {@code format} filled from {@code definition}. Called once, at catalog construction. */
     public IndicatorPreset resolvedAgainst(IndicatorDefinition definition) {
         return new IndicatorPreset(
-            id, label, group, views, definition.format(),
+            id, label, group, views, fullWidth, definition.format(),
             allowedSeriesAggregations, indicatorCode, presetFilters, order);
     }
 
@@ -83,8 +90,16 @@ public record IndicatorPreset(
      * unused.
      *
      * <p>{@code groupBy} is derived from {@code views}: the backend computes the same
-     * {@code (countryScope, timeScope)} cell the UI would render and groups by country exactly when
-     * that view's {@link eu.openaire.observatory.indicator.model.RenderStyle#perCountryBreakdown()}.
+     * {@code (countryScope, timeScope)} cell the UI would render, then —
+     * <ul>
+     *   <li>if that view carries a {@link PresetView#selector()} (the "distribution" presets), it
+     *       groups by the selector's dimension so one series comes back per member; the UI shows the
+     *       member the actor picked. {@code country} is added only for the selected-countries cells,
+     *       and {@code classification} only for the stacked-column cell (and only when the backing
+     *       indicator binds it for grouping — the other cells aggregate it away client-side);
+     *   <li>otherwise it groups by country exactly when that view's
+     *       {@link eu.openaire.observatory.indicator.model.RenderStyle#perCountryBreakdown()}.
+     * </ul>
      */
     public IndicatorQuery toIndicatorQuery(
             IndicatorDefinition indicator, List<String> countries, Integer yearFrom, Integer yearTo,
@@ -102,21 +117,42 @@ public record IndicatorPreset(
         }
         List<AggregationType> resolvedSeriesAggregations = seriesAggregations == null ? List.of() : seriesAggregations;
         return toIndicatorQuery(new IndicatorQuery(
-            indicatorCode, null, filters, groupByFor(countries, yearFrom, yearTo), timeSeries, null,
+            indicatorCode, null, filters, groupByFor(indicator, countries, yearFrom, yearTo), timeSeries, null,
             List.of(), null, resolvedSeriesAggregations));
     }
 
-    private List<String> groupByFor(List<String> countries, Integer yearFrom, Integer yearTo) {
+    private List<String> groupByFor(IndicatorDefinition indicator, List<String> countries, Integer yearFrom, Integer yearTo) {
         CountryScope countryScope = (countries == null || countries.isEmpty())
             ? CountryScope.ALL_COUNTRIES : CountryScope.SELECTED_COUNTRIES;
         TimeScope timeScope = (yearFrom == null || yearFrom.equals(yearTo))
             ? TimeScope.SINGLE_YEAR : TimeScope.TIME_RANGE;
-        boolean perCountry = views.stream()
+        PresetView matched = views.stream()
             .filter(view -> (view.countryScope() == null || view.countryScope() == countryScope)
                 && (view.timeScope() == null || view.timeScope() == timeScope))
             .findFirst()
-            .map(view -> view.renderStyle().perCountryBreakdown())
-            .orElse(false);
-        return perCountry ? List.of(IndicatorCodes.COUNTRY_DIMENSION) : List.of();
+            .orElse(null);
+        if (matched == null) {
+            return List.of();
+        }
+        if (matched.selector() != null) {
+            List<String> groupBy = new ArrayList<>();
+            groupBy.add(matched.selector().dimension());
+            if (matched.renderStyle() == RenderStyle.STACKED_COLUMN
+                    && bindsForGrouping(indicator, IndicatorCodes.CLASSIFICATION_DIMENSION)) {
+                groupBy.add(IndicatorCodes.CLASSIFICATION_DIMENSION);
+            }
+            if (countryScope == CountryScope.SELECTED_COUNTRIES) {
+                groupBy.add(IndicatorCodes.COUNTRY_DIMENSION);
+            }
+            return List.copyOf(groupBy);
+        }
+        return matched.renderStyle().perCountryBreakdown()
+            ? List.of(IndicatorCodes.COUNTRY_DIMENSION) : List.of();
+    }
+
+    private static boolean bindsForGrouping(IndicatorDefinition indicator, String dimensionCode) {
+        return indicator.dimensionBindings().stream()
+            .anyMatch(binding -> binding.dimensionCode().equals(dimensionCode)
+                && binding.usages().contains(DimensionUsage.GROUP));
     }
 }

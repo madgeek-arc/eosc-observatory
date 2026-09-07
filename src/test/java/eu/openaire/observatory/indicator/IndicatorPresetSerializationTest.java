@@ -32,7 +32,7 @@ class IndicatorPresetSerializationTest {
         JsonNode json = objectMapper.valueToTree(catalog.get("oa-1"));
 
         assertThat(fieldNames(json)).containsExactlyInAnyOrder(
-            "id", "label", "group", "views", "format",
+            "id", "label", "group", "views", "fullWidth", "format",
             "allowedSeriesAggregations", "indicatorCode", "presetFilters");
 
         assertThat(json.get("id").asText()).isEqualTo("oa-1");
@@ -108,6 +108,6 @@ class IndicatorPresetSerializationTest {
             .map(IndicatorPreset::id)
             .toList();
 
-        assertThat(yesNoIds).contains("oa-6"); // COUNTRY_INITIATIVE_STATUS -> yes-no
+        assertThat(yesNoIds).contains("oa-8"); // COUNTRY_INITIATIVE_STATUS -> yes-no
     }
 }
