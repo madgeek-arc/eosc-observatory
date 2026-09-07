@@ -6,6 +6,7 @@ import eu.openaire.observatory.indicator.handler.AbstractIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
+import eu.openaire.observatory.indicator.validation.IndicatorNotYetImplementedException;
 import eu.openaire.observatory.service.StakeholderService;
 import eu.openaire.observatory.service.SurveyService;
 import org.springframework.stereotype.Service;
@@ -53,6 +54,13 @@ public class LocalRegistryIndicatorQueryHandler extends AbstractIndicatorQueryHa
         return switch (providerIndicatorKey) {
             case IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS -> queryCountriesWithValidatedAnswers(plan);
             case IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT -> queryParticipatingCountriesCount(plan);
+            // Registered for catalog completeness (inventory row "Coverage of Researchers by National
+            // Open Science Policies"), but its EUROSTAT per-country researcher-count denominator has
+            // no confirmed ingest in this repo — 501 until that data is wired. See docs/INDICATOR_TODO.md.
+            case IndicatorCodes.RESEARCHER_POLICY_COVERAGE -> throw new IndicatorNotYetImplementedException(
+                "Indicator " + IndicatorCodes.RESEARCHER_POLICY_COVERAGE + " is registered but not "
+                    + "queryable yet: its EUROSTAT per-country researcher-count data is not available "
+                    + "in this deployment.");
             default -> throw new IllegalStateException(
                 "LocalRegistryIndicatorQueryHandler has no logic for providerIndicatorKey: " + providerIndicatorKey);
         };

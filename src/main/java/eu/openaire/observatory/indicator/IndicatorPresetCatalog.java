@@ -31,16 +31,22 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.FINANCIAL_INVESTM
 import static eu.openaire.observatory.indicator.IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.INVESTMENT_AREA_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.LONG_TERM_PRESERVATION_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.MONITORED_AREAS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.OA_LICENSE_STATUS_DIMENSION;
+import static eu.openaire.observatory.indicator.IndicatorCodes.POLICY_AREAS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.RESEARCHER_POLICY_COVERAGE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.CITIZEN_SCIENCE;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.DATA_MANAGEMENT;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.FAIR_DATA;
+import static eu.openaire.observatory.indicator.model.IndicatorGroup.NATIONAL_MONITORING;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.OPEN_ACCESS_PUBLICATIONS;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.OPEN_DATA;
+import static eu.openaire.observatory.indicator.model.IndicatorGroup.OPEN_SCIENCE_POLICIES;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.OPEN_SCIENCE_TRAINING;
+import static eu.openaire.observatory.indicator.model.IndicatorGroup.OPEN_SCIENCE_TRENDS;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.OPEN_SOFTWARE;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.REPOSITORIES;
 
@@ -104,6 +110,43 @@ public class IndicatorPresetCatalog {
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_LINE_CHART, selector),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_LINE_CHARTS, selector));
     }
+
+    /**
+     * Per-country status ("… on area" / "… by Countries and Areas") views for the initiativeType-keyed
+     * national policy/monitoring presets. Same MAP / YES_NO shape as {@link #NATIONAL_STATUS_VIEWS},
+     * plus an {@code initiativeType} {@link ViewSelector} on every cell so the preset-query endpoint
+     * groups by {@code initiativeType} (one status per (country, area) pair) and the UI picks which
+     * area layer to show — the difference between a single-area "… on area" preset and the full
+     * "… by Countries and Areas" matrix is only how many {@code initiativeType} members the preset
+     * pins in {@code presetFilters}.
+     */
+    private static List<PresetView> statusByAreaViews() {
+        ViewSelector selector = new ViewSelector(INITIATIVE_TYPE_DIMENSION, "Open Science area", List.of());
+        return List.of(
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MAP, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MAP_WITH_CHANGE_COUNT, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.YES_NO, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.YES_NO_TIMELINE, selector));
+    }
+
+    /** The one "*_POLICY" initiativeType member per real topic area (matches the per-topic "National Policy on …" presets). */
+    private static final List<String> POLICY_AREA_TYPES = List.of(
+        "OA_PUBLICATION_POLICY", "OPEN_DATA_POLICY", "FAIR_DATA_POLICY", "DATA_MANAGEMENT_POLICY",
+        "CITIZEN_SCIENCE_POLICY", "REPOSITORIES_CONNECT_POLICY", "REPOSITORIES_PRESERVATION_POLICY",
+        "TRAINING_POLICY", "SOFTWARE_POLICY");
+
+    /** The one "*_MONITORING_INITIATIVE" initiativeType member per real topic area. */
+    private static final List<String> MONITORING_AREA_TYPES = List.of(
+        "MONITORING_INITIATIVE", "OPEN_DATA_MONITORING_INITIATIVE", "FAIR_DATA_MONITORING_INITIATIVE",
+        "DATA_MANAGEMENT_MONITORING_INITIATIVE", "CITIZEN_SCIENCE_MONITORING_INITIATIVE",
+        "REPOSITORIES_CONNECT_MONITORING_INITIATIVE", "REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE",
+        "TRAINING_MONITORING_INITIATIVE", "SOFTWARE_MONITORING_INITIATIVE");
+
+    /** The "*_FINANCIAL_STRATEGY" initiativeType members that map to a survey question (no preservation one exists). */
+    private static final List<String> FINANCIAL_STRATEGY_AREA_TYPES = List.of(
+        "FINANCIAL_STRATEGY", "OPEN_DATA_FINANCIAL_STRATEGY", "FAIR_DATA_FINANCIAL_STRATEGY",
+        "DATA_MANAGEMENT_FINANCIAL_STRATEGY", "CITIZEN_SCIENCE_FINANCIAL_STRATEGY",
+        "REPOSITORIES_CONNECT_FINANCIAL_STRATEGY", "TRAINING_FINANCIAL_STRATEGY", "SOFTWARE_FINANCIAL_STRATEGY");
 
     /** {@code getAll()} contract: preset indicators grouped by {@link IndicatorGroup#order()}, then by {@link IndicatorPreset#order()} within a group. */
     private static final Comparator<IndicatorPreset> DISPLAY_ORDER =
@@ -369,7 +412,56 @@ public class IndicatorPresetCatalog {
             // Same FINANCIAL_INVESTMENT indicator as fin-1, broken out per investment area — the
             // definition is groupable by investmentArea (see IndicatorDefinitionCatalog.financialInvestment).
             preset("fin-2", "Investments in EOSC and Open Science (by Open Science area)", IndicatorGroup.FINANCIAL_INVESTMENT,
-                categoryDistributionViews(INVESTMENT_AREA_DIMENSION, "Open Science area"), AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 20)
+                categoryDistributionViews(INVESTMENT_AREA_DIMENSION, "Open Science area"), AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 20),
+
+            // ---- Open Science Trends (inventory rows 60-63) ----------------------------------------
+            // The "… by Areas" rows are eu_country_coverage pinned to every topic's *_POLICY /
+            // *_FINANCIAL_STRATEGY member (an IN filter); the initiativeType selector on each view
+            // makes the preset-query endpoint group by initiativeType, so one %-per-year series comes
+            // back per area.
+            presetFullWidth("ost-1", "Trends in National Open Science Policies by Areas", OPEN_SCIENCE_TRENDS,
+                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(POLICY_AREA_TYPES), 10),
+            presetFullWidth("ost-2", "Trends in Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_TRENDS,
+                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES), 20),
+            preset("ost-3", "Trend of Open Access Publications", OPEN_SCIENCE_TRENDS,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA"), 30),
+            preset("ost-4", "Trend of Open Data", OPEN_SCIENCE_TRENDS,
+                MAGNITUDE_VIEWS, AVG_MEDIAN, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA"), 40),
+
+            // ---- National Monitoring (inventory rows 66-69) --------------------------------------
+            presetFullWidth("nm-1", "National Monitoring of Open Science by Areas", NATIONAL_MONITORING,
+                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(MONITORING_AREA_TYPES), 10),
+            preset("nm-2", "National Monitoring (number of monitored areas per country)", NATIONAL_MONITORING,
+                OUTPUT_COUNT_VIEWS, NO_SERIES_AGGREGATIONS, MONITORED_AREAS_COUNT, NO_FILTERS, 20),
+            preset("nm-3", "National Monitoring on area", NATIONAL_MONITORING,
+                statusByAreaViews(), NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS,
+                initiativeType("MONITORING_INITIATIVE"), 30),
+            presetFullWidth("nm-4", "National Monitoring of Open Science by Countries and Areas", NATIONAL_MONITORING,
+                statusByAreaViews(), NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS,
+                initiativeTypes(MONITORING_AREA_TYPES), 40),
+
+            // ---- Open Science Policies (inventory rows 70-75) ----------------------------------------
+            presetFullWidth("osp-1", "National Open Science Policies by Areas", OPEN_SCIENCE_POLICIES,
+                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(POLICY_AREA_TYPES), 10),
+            presetFullWidth("osp-2", "Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_POLICIES,
+                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES), 20),
+            preset("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES,
+                OUTPUT_COUNT_VIEWS, NO_SERIES_AGGREGATIONS, POLICY_AREAS_COUNT, NO_FILTERS, 30),
+            preset("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES,
+                statusByAreaViews(), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
+                initiativeType("OA_PUBLICATION_POLICY"), 40),
+            // Registered for catalog completeness — not queryable yet, returns HTTP 501 (see
+            // IndicatorDefinitionCatalog.researcherPolicyCoverage() / docs/INDICATOR_TODO.md).
+            preset("osp-5", "Coverage of Researchers by National Open Science Policies in Europe", OPEN_SCIENCE_POLICIES,
+                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, RESEARCHER_POLICY_COVERAGE, NO_FILTERS, 50),
+            presetFullWidth("osp-6", "National Open Science Policies by Countries and Areas", OPEN_SCIENCE_POLICIES,
+                statusByAreaViews(), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
+                initiativeTypes(POLICY_AREA_TYPES), 60)
         );
     }
 
@@ -403,6 +495,11 @@ public class IndicatorPresetCatalog {
 
     private static Map<String, List<String>> initiativeType(String value) {
         return Map.of(INITIATIVE_TYPE_DIMENSION, List.of(value));
+    }
+
+    /** A multi-value {@code initiativeType} preset filter (becomes an IN filter) — for the "… by Areas" pivots. */
+    private static Map<String, List<String>> initiativeTypes(List<String> values) {
+        return Map.of(INITIATIVE_TYPE_DIMENSION, values);
     }
 
     private static Map<String, List<String>> investmentArea(String value) {

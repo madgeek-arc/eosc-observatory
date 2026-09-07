@@ -110,6 +110,23 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS})
+    void perCountryStatusIndicatorsAcceptAnInitiativeTypeInFilterPlusGroupBy(String indicatorCode) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
+            .withFilters(
+                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.IN,
+                    List.of("OA_PUBLICATION_POLICY", "OPEN_DATA_POLICY")),
+                SURVEY_YEAR_2023
+            )
+            .withGroupBy(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.groupBy()).extracting("dimensionCode").containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS})
     void surveyYearFilterIsRequiredOnTheTwoNonTrendPerCountryIndicators(String indicatorCode) {
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))

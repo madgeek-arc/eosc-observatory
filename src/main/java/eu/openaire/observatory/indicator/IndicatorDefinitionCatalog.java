@@ -55,6 +55,7 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.POLICY_AREAS_COUN
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.RESEARCHER_POLICY_COVERAGE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_COUNT;
@@ -179,7 +180,7 @@ public class IndicatorDefinitionCatalog {
             publicationsCount(), publicationsAccessStatusShare(), datasetsCount(), softwareCount(),
             publicationsOaLicenseStatusCount(), datasetsAccessStatusShare(),
             financialInvestment(), countryInitiativeStatus(), euCountryCoverage(), countryPolicyStatus(),
-            monitoredAreasCount(), policyAreasCount(),
+            monitoredAreasCount(), policyAreasCount(), researcherPolicyCoverage(),
             longTermPreservationCount(), citizenScienceNewProjectsCount(), softwareOpenSourceSetsCount(),
             countriesWithValidatedAnswers(), stakeholderParticipatingCountriesCount()
         );
@@ -495,6 +496,11 @@ public class IndicatorDefinitionCatalog {
      * sub-question to combine with and is a caller error, not validated here (same as
      * countryInitiativeStatus() trusting its initiativeType filter value).
      *
+     * <p>initiativeType is EQ (one policy area) or IN (several), and — like
+     * countryInitiativeStatus() — also GROUP-usable: an IN filter plus a groupBy on initiativeType
+     * fans out one status per (country, initiativeType) pair, i.e. the "National Open Science
+     * Policies by Countries and Areas" country×area matrix.
+     *
      * <p>Also filterable/groupable by country, narrowing (or, since every row is already
      * per-country, redundantly re-confirming) the rows returned.
      */
@@ -511,7 +517,7 @@ public class IndicatorDefinitionCatalog {
             IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.CATEGORY, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
-            Set.of(requiredEqFilterBinding(INITIATIVE_TYPE_DIMENSION), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
+            Set.of(initiativeTypeFilterGroupBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
             NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
@@ -557,6 +563,35 @@ public class IndicatorDefinitionCatalog {
             null,
             Set.of(requiredEqFilterBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
             NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+        );
+    }
+
+    /**
+     * Inventory row "Coverage of Researchers by National Open Science Policies in Europe" — the
+     * share of Europe's researchers who are in a country with a national Open Science policy
+     * (conceptually {@code sum(researchers[country] with a policy) / sum(researchers[country])},
+     * combining policyAreasCount() with a EUROSTAT per-country researcher count).
+     *
+     * <p><strong>Registered but not queryable yet.</strong> The researcher-count denominator would
+     * come from a EUROSTAT-sourced {@code datasets.DatasetEntry} ingest that this repo has no
+     * confirmed migration, seed or fixture for, and no {@code IndicatorQueryHandler} reads
+     * {@code datasets} today. It is in the catalog so {@code GET /indicators/presets} covers every
+     * inventory row; {@link LocalRegistryIndicatorQueryHandler} answers a query for it with an
+     * {@link eu.openaire.observatory.indicator.validation.IndicatorNotYetImplementedException}
+     * (HTTP 501) until the data is wired. See {@code docs/INDICATOR_TODO.md}.
+     */
+    private static IndicatorDefinition researcherPolicyCoverage() {
+        return definition(
+            RESEARCHER_POLICY_COVERAGE, "Coverage of Researchers by National Open Science Policies",
+            "Percentage of Europe's researchers who are in a country with a national Open Science "
+                + "policy. Registered for catalog completeness but not queryable yet — its EUROSTAT "
+                + "per-country researcher-count denominator is not wired in this deployment; a query "
+                + "returns HTTP 501 until it is.",
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, IndicatorFormat.PERCENTAGE, RenderHint.SCALAR,
+            NO_AGGREGATION_POLICY,
+            new RatioPolicy(ZeroDenominatorHandling.NULL),
+            Set.of(requiredEqFilterBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
+            NON_TIME_SERIES_POLICY, LocalRegistryIndicatorQueryHandler.HANDLER_KEY
         );
     }
 

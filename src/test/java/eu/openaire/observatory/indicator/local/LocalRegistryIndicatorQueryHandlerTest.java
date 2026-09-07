@@ -20,6 +20,7 @@ import eu.openaire.observatory.indicator.model.RenderHint;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
+import eu.openaire.observatory.indicator.validation.IndicatorNotYetImplementedException;
 import eu.openaire.observatory.indicator.validation.QuerySecurityScope;
 import eu.openaire.observatory.indicator.validation.ResolvedFilter;
 import eu.openaire.observatory.service.StakeholderService;
@@ -131,6 +132,30 @@ class LocalRegistryIndicatorQueryHandlerTest {
         var result = handler.execute(plan(stakeholderParticipatingCountriesCountDefinition(), List.of()));
 
         assertThat(result.data().get(0).value()).isEqualTo(0L);
+    }
+
+    @Test
+    void researcherPolicyCoverageIsRegisteredButNotYetImplemented() {
+        assertThatThrownBy(() -> handler.execute(plan(researcherPolicyCoverageDefinition(), List.of())))
+            .isInstanceOf(IndicatorNotYetImplementedException.class)
+            .hasMessageContaining(IndicatorCodes.RESEARCHER_POLICY_COVERAGE)
+            .hasMessageContaining("researcher");
+    }
+
+    private static IndicatorDefinition researcherPolicyCoverageDefinition() {
+        return new IndicatorDefinition(
+            UUID.randomUUID(), IndicatorCodes.RESEARCHER_POLICY_COVERAGE,
+            "Coverage of Researchers by National Open Science Policies", "desc",
+            IndicatorValueType.DECIMAL, IndicatorSemanticType.RATIO, UnitType.PERCENT, IndicatorFormat.PERCENTAGE, RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
+            null,
+            Set.of(),
+            nonTimeSeriesPolicy(),
+            new IndicatorExecutionBinding(
+                LocalRegistryIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.RESEARCHER_POLICY_COVERAGE
+            ),
+            IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
+        );
     }
 
     private static IndicatorExecutionPlan plan(IndicatorDefinition definition, List<ResolvedFilter> filters) {

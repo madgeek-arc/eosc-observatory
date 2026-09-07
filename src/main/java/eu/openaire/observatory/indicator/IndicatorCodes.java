@@ -41,6 +41,12 @@ public final class IndicatorCodes {
     // initiativeType member for one country — see IndicatorDefinitionCatalog.monitoredAreasCount()/policyAreasCount().
     public static final String MONITORED_AREAS_COUNT = "oa.monitored_areas_count";
     public static final String POLICY_AREAS_COUNT = "oa.policy_areas_count";
+    // Inventory row "Coverage of Researchers by National Open Science Policies in Europe": share of
+    // Europe's researchers in countries with a national OS policy. Registered so the catalog covers
+    // every inventory row, but not yet queryable — its EUROSTAT per-country researcher-count
+    // denominator has no confirmed ingest in this repo. LocalRegistryIndicatorQueryHandler answers
+    // it with a 501 until that data lands. See docs/INDICATOR_TODO.md.
+    public static final String RESEARCHER_POLICY_COVERAGE = "oa.researcher_policy_coverage";
     public static final String LONG_TERM_PRESERVATION_COUNT = "repositories.long_term_preservation_count";
     public static final String CITIZEN_SCIENCE_NEW_PROJECTS_COUNT = "citizen_science.new_projects_count";
     // Self-reported per-country count (survey Question73), distinct from software.count's OpenAIRE

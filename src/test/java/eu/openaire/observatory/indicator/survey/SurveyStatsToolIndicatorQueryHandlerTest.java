@@ -466,12 +466,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.YES_NO, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
-            Set.of(
-                new IndicatorDimensionBinding(
-                    IndicatorCodes.INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
-                ),
-                surveyYearBinding()
-            ),
+            Set.of(initiativeTypeFilterGroupBinding(), surveyYearBinding()),
             timePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.COUNTRY_POLICY_STATUS),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
@@ -706,6 +701,34 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         assertThat(valueFor(result, "DE")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NON_MANDATORY);
         assertThat(valueFor(result, "FR")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NO_POLICY);
         assertThat(valueFor(result, "IT")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_AWAITING_DATA);
+    }
+
+    @Test
+    void countryPolicyStatusGroupedByInitiativeTypeReturnsOneStatusPerCountryPerArea() {
+        // Same rows for every fetch: base GR=Yes/DE=No, mandatory GR=Yes -> GR MANDATORY, DE NO_POLICY, per type.
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION));
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.IN,
+                List.of("OA_PUBLICATION_POLICY", "OPEN_DATA_POLICY")),
+            SURVEY_YEAR_2023
+        );
+
+        var result = handler.execute(plan(countryPolicyStatusDefinition(), filters, groupBy, null, AggregationType.NONE));
+
+        assertThat(capturedRequests).hasSize(4); // base + mandatory sub-question, per type
+        assertThat(result.dimensions()).containsExactlyInAnyOrder(
+            IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+        assertThat(result.data()).hasSize(4);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+            assertThat(dp.dimensions().get(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)).isEqualTo("OPEN_DATA_POLICY");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_MANDATORY);
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("DE");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NO_POLICY);
+        });
     }
 
     private static Object valueFor(eu.openaire.observatory.indicator.result.IndicatorResult result, String country) {

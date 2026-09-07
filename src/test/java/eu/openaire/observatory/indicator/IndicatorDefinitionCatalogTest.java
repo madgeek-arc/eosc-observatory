@@ -16,13 +16,14 @@ class IndicatorDefinitionCatalogTest {
     private final IndicatorDefinitionCatalog catalog = new IndicatorDefinitionCatalog();
 
     @Test
-    void containsAllSeventeenRealDefinitions() {
-        assertThat(catalog.getAll()).hasSize(17);
+    void containsAllEighteenRealDefinitions() {
+        assertThat(catalog.getAll()).hasSize(18);
         assertThat(catalog.getAll()).extracting("code").containsExactlyInAnyOrder(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
             IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT, IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE,
             IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.EU_COUNTRY_COVERAGE,
             IndicatorCodes.COUNTRY_POLICY_STATUS, IndicatorCodes.MONITORED_AREAS_COUNT, IndicatorCodes.POLICY_AREAS_COUNT,
+            IndicatorCodes.RESEARCHER_POLICY_COVERAGE,
             IndicatorCodes.LONG_TERM_PRESERVATION_COUNT, IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT,
             IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT,
             IndicatorCodes.COUNTRIES_WITH_VALIDATED_ANSWERS, IndicatorCodes.STAKEHOLDER_PARTICIPATING_COUNTRIES_COUNT
@@ -331,7 +332,7 @@ class IndicatorDefinitionCatalogTest {
 
         assertThat(catalog.getAll())
             .filteredOn(definition -> !timeSeriesCapable.contains(definition.code()))
-            .hasSize(6)
+            .hasSize(7)
             .noneMatch(definition -> definition.timePolicy().supported());
     }
 

@@ -12,7 +12,10 @@ public enum IndicatorGroup {
     REPOSITORIES("Repositories", 60),
     OPEN_SCIENCE_TRAINING("Open Science Training", 70),
     OPEN_SOFTWARE("Open Software", 80),
-    FINANCIAL_INVESTMENT("Financial Investment", 90);
+    OPEN_SCIENCE_TRENDS("Open Science Trends", 85),
+    FINANCIAL_INVESTMENT("Financial Investment", 90),
+    NATIONAL_MONITORING("National Monitoring", 100),
+    OPEN_SCIENCE_POLICIES("Open Science Policies", 110);
 
     private final String wireValue;
     private final int order;

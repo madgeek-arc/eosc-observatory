@@ -27,8 +27,8 @@ class IndicatorPresetCatalogTest {
     private final IndicatorPresetCatalog catalog = new IndicatorPresetCatalog(definitionCatalog);
 
     @Test
-    void containsSixtyEightPresets() {
-        assertThat(catalog.getAll()).hasSize(68);
+    void containsEightyTwoPresets() {
+        assertThat(catalog.getAll()).hasSize(82);
     }
 
     @Test
@@ -148,7 +148,7 @@ class IndicatorPresetCatalogTest {
     void firstAndLastPresetIndicatorsAreStable() {
         List<IndicatorPreset> all = catalog.getAll();
         assertThat(all.getFirst().id()).isEqualTo("oa-1");
-        assertThat(all.getLast().id()).isEqualTo("fin-2");
+        assertThat(all.getLast().id()).isEqualTo("osp-6");
     }
 
     @Test
@@ -182,11 +182,12 @@ class IndicatorPresetCatalogTest {
 
     @Test
     void everyOtherPresetIsNotFullWidth() {
+        Set<String> fullWidthIds = Set.of(
+            "oa-9", "od-8", "ost-1", "ost-2", "nm-1", "nm-4", "osp-1", "osp-2", "osp-6");
         for (IndicatorPreset preset : catalog.getAll()) {
-            if (preset.id().equals("oa-9") || preset.id().equals("od-8")) {
-                continue;
-            }
-            assertThat(preset.fullWidth()).as(preset.id() + " fullWidth").isFalse();
+            assertThat(preset.fullWidth())
+                .as(preset.id() + " fullWidth")
+                .isEqualTo(fullWidthIds.contains(preset.id()));
         }
     }
 
@@ -347,5 +348,55 @@ class IndicatorPresetCatalogTest {
         assertThatThrownBy(() -> catalog.toIndicatorQuery(catalog.get("oa-1"), List.of(), 2024, 2023, List.of()))
             .isInstanceOf(InvalidPresetScopeException.class)
             .hasMessageContaining("yearFrom");
+    }
+
+    // ---- cross-cutting pages: Open Science Trends / National Monitoring / Open Science Policies ----
+
+    @Test
+    void theThreeCrossCuttingPagesEachHaveTheirInventoryPresets() {
+        assertThat(idsInGroup(IndicatorGroup.OPEN_SCIENCE_TRENDS)).containsExactly("ost-1", "ost-2", "ost-3", "ost-4");
+        assertThat(idsInGroup(IndicatorGroup.NATIONAL_MONITORING)).containsExactly("nm-1", "nm-2", "nm-3", "nm-4");
+        assertThat(idsInGroup(IndicatorGroup.OPEN_SCIENCE_POLICIES))
+            .containsExactly("osp-1", "osp-2", "osp-3", "osp-4", "osp-5", "osp-6");
+    }
+
+    @Test
+    void byAreaPresetsPinEveryTopicAreaAndDeriveAnInitiativeTypeGroupBy() {
+        // nm-1 ("… by Areas"): EU-wide single year -> group by initiativeType only, one series per area.
+        IndicatorQuery euSingle = catalog.toIndicatorQuery(catalog.get("nm-1"), List.of(), 2023, 2023, List.of());
+        assertThat(euSingle.groupBy()).containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+        assertThat(euSingle.filters()).anySatisfy(f -> {
+            assertThat(f.dimension()).isEqualTo(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+            assertThat(f.operator()).isEqualTo(FilterOperator.IN);
+            assertThat(f.values()).hasSize(9);
+        });
+
+        // selected countries -> initiativeType + country
+        IndicatorQuery selected = catalog.toIndicatorQuery(catalog.get("nm-1"), List.of("EL", "IT"), 2023, 2023, List.of());
+        assertThat(selected.groupBy())
+            .containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+    }
+
+    @Test
+    void byCountriesAndAreasMatrixPresetGroupsByInitiativeType() {
+        IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("osp-6"), List.of(), 2023, 2023, List.of());
+        assertThat(query.groupBy()).contains(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+        assertThat(query.filters()).anySatisfy(f ->
+            assertThat(f.dimension()).isEqualTo(IndicatorCodes.INITIATIVE_TYPE_DIMENSION));
+    }
+
+    @Test
+    void researcherCoveragePresetIsRegisteredEvenThoughItsHandlerIsStubbed() {
+        IndicatorPreset preset = catalog.get("osp-5");
+        assertThat(preset).isNotNull();
+        assertThat(preset.indicatorCode()).isEqualTo(IndicatorCodes.RESEARCHER_POLICY_COVERAGE);
+        assertThat(definitionCatalog.get(preset.indicatorCode())).isNotNull();
+    }
+
+    private List<String> idsInGroup(IndicatorGroup group) {
+        return catalog.getAll().stream()
+            .filter(preset -> preset.group() == group)
+            .map(IndicatorPreset::id)
+            .toList();
     }
 }

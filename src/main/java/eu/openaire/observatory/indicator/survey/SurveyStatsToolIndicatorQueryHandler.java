@@ -278,18 +278,27 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
      * (see {@link #mandatoryQuestionCode}). A country that answered No to the base question is
      * NO_POLICY outright — the mandatory sub-question is skip-logic'd for them in the survey itself,
      * so a missing answer there does not mean AWAITING_DATA.
+     *
+     * <p>Country grouping is always present, inherent to this indicator's meaning; initiativeType
+     * additionally fans out into its own dimension when the plan groups by it (an IN filter + a
+     * groupBy on initiativeType — the "National Open Science Policies by Countries and Areas"
+     * country×area matrix), otherwise initiativeType is a single value (the original snapshot shape).
      */
     private IndicatorResult queryCountryPolicyStatus(IndicatorExecutionPlan plan) {
-        String questionCode = questionCodeForInitiativeType(requiredFilterValue(plan, INITIATIVE_TYPE_DIMENSION));
+        List<String> types = filterValues(plan, INITIATIVE_TYPE_DIMENSION);
+        boolean byType = groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION);
         int year = resolveYear(plan);
 
-        Map<String, String> baseByCountry = narrowToRequestedCountries(plan, fetchInitiativeStatusByCountry(year, questionCode).byCountry());
-        Map<String, String> mandatoryByCountry = fetchInitiativeStatusByCountry(year, mandatoryQuestionCode(questionCode)).byCountry();
+        List<IndicatorDataPoint> data = new ArrayList<>();
+        for (String type : types) {
+            String questionCode = questionCodeForInitiativeType(type);
+            Map<String, String> baseByCountry = narrowToRequestedCountries(
+                plan, fetchInitiativeStatusByCountry(year, questionCode).byCountry());
+            Map<String, String> mandatoryByCountry = fetchInitiativeStatusByCountry(
+                year, mandatoryQuestionCode(questionCode)).byCountry();
 
-        List<IndicatorDataPoint> data = baseByCountry.entrySet().stream()
-            .map(entry -> {
-                String country = entry.getKey();
-                String status = switch (entry.getValue()) {
+            baseByCountry.forEach((country, baseStatus) -> {
+                String status = switch (baseStatus) {
                     case STATUS_NO -> POLICY_STATUS_NO_POLICY;
                     case STATUS_AWAITING_DATA -> POLICY_STATUS_AWAITING_DATA;
                     case STATUS_YES -> switch (mandatoryByCountry.getOrDefault(country, STATUS_AWAITING_DATA)) {
@@ -297,12 +306,19 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
                         case STATUS_NO -> POLICY_STATUS_NON_MANDATORY;
                         default -> POLICY_STATUS_AWAITING_DATA;
                     };
-                    default -> throw new IllegalStateException("Unexpected base policy status: " + entry.getValue());
+                    default -> throw new IllegalStateException("Unexpected base policy status: " + baseStatus);
                 };
-                return new IndicatorDataPoint(Map.of(COUNTRY_DIMENSION, country), status);
-            })
-            .toList();
-        return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), data);
+                Map<String, Object> dimensions = new LinkedHashMap<>();
+                dimensions.put(COUNTRY_DIMENSION, country);
+                if (byType) {
+                    dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
+                }
+                data.add(new IndicatorDataPoint(dimensions, status));
+            });
+        }
+        List<String> dimensionKeys = byType
+            ? List.of(COUNTRY_DIMENSION, INITIATIVE_TYPE_DIMENSION) : List.of(COUNTRY_DIMENSION);
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
     }
 
     /**

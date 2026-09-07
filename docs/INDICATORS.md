@@ -167,8 +167,21 @@ different "National Monitoring on X" presets here, one row per topic area. `GET
 
 `indicatorPresets` order is stable and meaningful: preset indicators come grouped by topic, the groups in a
 fixed sequence (Open Access Publications, Open Data, FAIR Data, Data Management, Citizen Science,
-Repositories, Open Science Training, Open Software, Financial Investment), and in a curated order
-within each group. A client can render the list top-to-bottom as received.
+Repositories, Open Science Training, Open Software, Open Science Trends, Financial Investment,
+National Monitoring, Open Science Policies), and in a curated order within each group. A client can
+render the list top-to-bottom as received.
+
+The last three cross-cutting groups (Open Science Trends, National Monitoring, Open Science
+Policies) hold the inventory's "… by Areas" / "… by Countries and Areas" pivots. These are the
+same `oa.eu_country_coverage` / `oa.country_initiative_status` / `oa.country_policy_status`
+indicators the per-topic presets use, pinned (an `initiativeType` **IN** filter) to every topic
+area's `*_POLICY` / `*_MONITORING_INITIATIVE` / `*_FINANCIAL_STRATEGY` member. Each such preset's
+views carry an `initiativeType` `ViewSelector`, so `POST /indicators/presets/{id}/query` groups by
+`initiativeType` and returns one series/row per area (plus `country` for the selected-countries
+cells); the UI shows the area the actor picked. One preset — `osp-5`, "Coverage of Researchers by
+National Open Science Policies" (`oa.researcher_policy_coverage`) — is listed for catalog
+completeness but is **not queryable yet**: its query returns `501 Not Implemented` until the
+EUROSTAT per-country researcher-count data is wired (see `docs/INDICATOR_TODO.md`).
 
 ```json
 {
@@ -447,9 +460,14 @@ Validation failures are plain `RuntimeException`s (`MissingRequiredFilterExcepti
 code in the table below (403/404/400 as applicable) with the exception's message as the response
 body; anything else falls through to the generic handler and returns HTTP 500.
 
+`IndicatorNotYetImplementedException` is the one exception thrown from a handler rather than
+validation: it extends `UnsupportedOperationException`, so it maps to HTTP 501 (message preserved,
+logged at INFO). Only `oa.researcher_policy_coverage` raises it today — see its row in the reference.
+
 | Exception | When |
 |---|---|
 | `UnknownIndicatorException` | `indicatorCode` doesn't exist |
+| `IndicatorNotYetImplementedException` | The indicator is registered but its query path isn't implemented yet (`oa.researcher_policy_coverage`) — HTTP 501 |
 | `IndicatorAccessDeniedException` | Actor's access level is below the indicator's `accessLevel` |
 | `InvalidAggregationException` | `aggregation` isn't in the indicator's `allowedAggregations` |
 | `UnsupportedDimensionException` | Filtering/grouping by a dimension not bound to this indicator, or bound but not for that usage |
@@ -683,6 +701,17 @@ curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/j
 curl -X POST localhost:8280/api/indicators/query -H 'Content-Type: application/json' \
   -d '{"indicatorCode":"oa.eu_country_coverage","filters":[{"dimension":"initiativeType","operator":"EQ","values":["FAIR_DATA_POLICY"]},{"dimension":"surveyYear","operator":"EQ","values":["2023"]}]}'
 ```
+
+### `oa.researcher_policy_coverage`
+
+**Registered but not queryable yet.** Percentage of Europe's researchers who are in a country with a
+national Open Science policy. `RATIO`, `DECIMAL`, `PERCENT`, `SCALAR`; backs preset `osp-5`
+("Coverage of Researchers by National Open Science Policies in Europe"). It is in the catalog so
+`GET /indicators/presets` and `GET /indicators/definitions` cover every inventory row, but any
+`POST /indicators/query` or `POST /indicators/presets/osp-5/query` returns **HTTP 501** with an
+`IndicatorNotYetImplementedException` message — its EUROSTAT per-country researcher-count
+denominator has no confirmed ingest in this deployment. See `docs/INDICATOR_TODO.md` for the
+wiring plan.
 
 ### `repositories.long_term_preservation_count`
 
