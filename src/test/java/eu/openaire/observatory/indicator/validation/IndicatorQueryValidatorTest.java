@@ -40,6 +40,7 @@ class IndicatorQueryValidatorTest {
     private static final String COMPARABLE_ATTRIBUTE_CODE = "country.name.timeseries";
     private static final String NON_COMPARABLE_COUNT_CODE = "publications.count.no_comparison_handler";
     private static final String STATUS_FILTERABLE_CODE = "publications.count.status_filterable";
+    private static final String SURVEY_YEAR_FILTERABLE_CODE = "survey.backed_measure";
 
     private final IndicatorDefinition countIndicator = IndicatorFixtures.countIndicator(COUNT_CODE);
     private final IndicatorDefinition ratioIndicator = IndicatorFixtures.ratioIndicator(RATIO_CODE);
@@ -51,11 +52,14 @@ class IndicatorQueryValidatorTest {
         IndicatorFixtures.timeSeriesAttributeIndicator(COMPARABLE_ATTRIBUTE_CODE);
     private final IndicatorDefinition nonComparableCountIndicator = IndicatorFixtures.countIndicator(NON_COMPARABLE_COUNT_CODE);
     private final IndicatorDefinition statusFilterableIndicator = IndicatorFixtures.statusFilterableIndicator(STATUS_FILTERABLE_CODE);
+    private final IndicatorDefinition surveyYearFilterableIndicator =
+        IndicatorFixtures.surveyYearFilterableIndicator(SURVEY_YEAR_FILTERABLE_CODE);
     private final DimensionDefinition countryDimension = IndicatorFixtures.countryDimension();
 
     private final Map<String, IndicatorDefinition> definitionsByCode = List.of(
         countIndicator, ratioIndicator, nonTimeSeriesIndicator, restrictedIndicator, requiredFilterIndicator,
-        comparableRatioIndicator, comparableAttributeIndicator, nonComparableCountIndicator, statusFilterableIndicator
+        comparableRatioIndicator, comparableAttributeIndicator, nonComparableCountIndicator, statusFilterableIndicator,
+        surveyYearFilterableIndicator
     ).stream().collect(Collectors.toMap(IndicatorDefinition::code, d -> d));
 
     private final IndicatorDefinitionLookup definitionLookup = code -> {
@@ -67,6 +71,7 @@ class IndicatorQueryValidatorTest {
     };
 
     private final DimensionDefinition statusDimension = IndicatorFixtures.statusDimension();
+    private final DimensionDefinition surveyYearDimension = IndicatorFixtures.surveyYearDimension();
 
     private final DimensionDefinitionLookup dimensionLookup = code -> {
         if (IndicatorFixtures.COUNTRY_DIMENSION.equals(code)) {
@@ -74,6 +79,9 @@ class IndicatorQueryValidatorTest {
         }
         if (IndicatorFixtures.STATUS_DIMENSION.equals(code)) {
             return statusDimension;
+        }
+        if (IndicatorFixtures.SURVEY_YEAR_DIMENSION.equals(code)) {
+            return surveyYearDimension;
         }
         throw new IllegalStateException("unexpected dimension in test: " + code);
     };
@@ -98,8 +106,24 @@ class IndicatorQueryValidatorTest {
         }
     }
 
+    /**
+     * Fixture provider: knows only about 2023. The validator must NOT gate a surveyYear filter on
+     * this list (unlike a closed enumeration) — a year the survey stats-tool lacks still compiles.
+     */
+    private static final class SurveyYearDimensionMemberProvider implements DimensionMemberProvider {
+        @Override
+        public String dimensionCode() {
+            return IndicatorFixtures.SURVEY_YEAR_DIMENSION;
+        }
+
+        @Override
+        public DimensionMembers search(String indicatorCode, String searchText, int limit) {
+            return new DimensionMembers(List.of(new DimensionMember("2023", "2023")));
+        }
+    }
+
     private final DimensionMemberProviderRegistry memberProviders =
-        new DimensionMemberProviderRegistry(List.of(new StatusDimensionMemberProvider()));
+        new DimensionMemberProviderRegistry(List.of(new StatusDimensionMemberProvider(), new SurveyYearDimensionMemberProvider()));
 
     /** handlerKey defaults to the indicator's own code (IndicatorFixtures), so each handler below is keyed by code. */
     private final IndicatorQueryHandlerRegistry handlers = new IndicatorQueryHandlerRegistry(List.of(
@@ -260,6 +284,80 @@ class IndicatorQueryValidatorTest {
         var plan = validator.compile(query, ALLOW_ALL);
 
         assertThat(plan.filters()).hasSize(1);
+    }
+
+    @Test
+    void compileAcceptsASurveyYearOutsideTheProvidersMemberList() {
+        // The provider knows only 2023; a dashboard configured for an earlier year must still compile,
+        // degrading to null data downstream rather than being rejected here.
+        var query = IndicatorQueryBuilder.forIndicator(SURVEY_YEAR_FILTERABLE_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2019")))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.filters()).hasSize(1);
+    }
+
+    @Test
+    void compileAcceptsTheCurrentYearAsASurveyYearEvenWithNoSurveyForItYet() {
+        var query = IndicatorQueryBuilder.forIndicator(SURVEY_YEAR_FILTERABLE_CODE)
+            .withFilters(new IndicatorFilter(
+                IndicatorFixtures.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of(String.valueOf(Year.now().getValue()))))
+            .build();
+
+        assertThat(validator.compile(query, ALLOW_ALL).filters()).hasSize(1);
+    }
+
+    @Test
+    void compileRejectsANonIntegerSurveyYear() {
+        var query = IndicatorQueryBuilder.forIndicator(SURVEY_YEAR_FILTERABLE_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("not-a-year")))
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidFilterValueException.class);
+    }
+
+    @Test
+    void compileRejectsASurveyYearBelowTheEarliestSupportedYear() {
+        var query = IndicatorQueryBuilder.forIndicator(SURVEY_YEAR_FILTERABLE_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2014")))
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidFilterValueException.class);
+    }
+
+    @Test
+    void compileRejectsASurveyYearAfterTheCurrentYear() {
+        var query = IndicatorQueryBuilder.forIndicator(SURVEY_YEAR_FILTERABLE_CODE)
+            .withFilters(new IndicatorFilter(
+                IndicatorFixtures.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of(String.valueOf(Year.now().getValue() + 1))))
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidFilterValueException.class);
+    }
+
+    @Test
+    void compileRejectsASurveyBackedIndicatorWithNeitherATimeSeriesNorASurveyYearFilter() {
+        var query = IndicatorQueryBuilder.forIndicator(SURVEY_YEAR_FILTERABLE_CODE).build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(MissingTimeScopeException.class);
+    }
+
+    @Test
+    void compileAcceptsASurveyBackedIndicatorWithATimeSeriesAndNoSurveyYearFilter() {
+        var query = IndicatorQueryBuilder.forIndicator(SURVEY_YEAR_FILTERABLE_CODE)
+            .withTimeSeries(new TimeSeriesRequest(2020, 2023, null))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.timeRange()).isNotNull();
+        assertThat(plan.filters()).isEmpty();
     }
 
     @Test

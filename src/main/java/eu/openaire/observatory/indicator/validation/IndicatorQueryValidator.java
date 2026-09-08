@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator.validation;
 
+import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.dimension.DimensionMemberProviderRegistry;
 import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.handler.SupportsComparisonQueries;
@@ -72,6 +73,7 @@ public class IndicatorQueryValidator {
             .toList();
 
         ResolvedTimeRange timeRange = resolveTimeRange(definition, query);
+        requireTimeScope(definition, query, timeRange);
         ComparisonMode comparisonMode = resolveComparisonMode(definition, query, timeRange);
 
         int limit = query.limit() != null ? query.limit() : DEFAULT_LIMIT;
@@ -137,6 +139,10 @@ public class IndicatorQueryValidator {
         if (!VALUE_CHECKABLE_OPERATORS.contains(filter.operator())) {
             return;
         }
+        if (IndicatorCodes.SURVEY_YEAR_DIMENSION.equals(filter.dimension())) {
+            validateSurveyYearValues(filter);
+            return; // deliberately NOT checked against the member provider — see SurveyYearDimensionMemberProvider
+        }
         memberProviders.find(filter.dimension()).ifPresent(provider -> {
             Set<String> validCodes = provider.validCodes(indicatorCode);
             for (Object value : filter.values()) {
@@ -145,6 +151,51 @@ public class IndicatorQueryValidator {
                 }
             }
         });
+    }
+
+    /**
+     * A {@code surveyYear} filter is only checked for being a well-formed year within the supported
+     * span — never against the member list. A dashboard is configured with a fixed calendar range
+     * (e.g. 2018–2026); the survey-stats-tool has data for only part of it, and a year it lacks must
+     * degrade to {@code null} values downstream, not be rejected here. A non-integer or out-of-span
+     * value is still a clean 400 so the handler's {@code Integer.parseInt} never sees garbage.
+     */
+    private void validateSurveyYearValues(IndicatorFilter filter) {
+        int currentYear = Year.now().getValue();
+        for (Object value : filter.values()) {
+            int year;
+            try {
+                year = Integer.parseInt(String.valueOf(value).trim());
+            } catch (NumberFormatException e) {
+                throw new InvalidFilterValueException(filter.dimension(), value);
+            }
+            if (year < EARLIEST_SUPPORTED_YEAR || year > currentYear) {
+                throw new InvalidFilterValueException(filter.dimension(), value);
+            }
+        }
+    }
+
+    /**
+     * An indicator that binds {@code surveyYear} as an <em>optional</em> filter (every
+     * survey-stats-tool indicator does, since a {@code timeSeries} range is the alternative way to
+     * pick years) needs one or the other — there is no "latest survey" default. Rejected here as a
+     * 400 rather than left to blow up as a 500 inside the handler's {@code resolveYears}.
+     */
+    private void requireTimeScope(IndicatorDefinition definition, IndicatorQuery query, ResolvedTimeRange timeRange) {
+        if (timeRange != null) {
+            return;
+        }
+        boolean bindsOptionalSurveyYear = definition.dimensionBindings().stream()
+            .anyMatch(binding -> IndicatorCodes.SURVEY_YEAR_DIMENSION.equals(binding.dimensionCode())
+                && !binding.requiredFilter());
+        if (!bindsOptionalSurveyYear) {
+            return;
+        }
+        boolean hasSurveyYearFilter = query.filters().stream()
+            .anyMatch(filter -> IndicatorCodes.SURVEY_YEAR_DIMENSION.equals(filter.dimension()));
+        if (!hasSurveyYearFilter) {
+            throw new MissingTimeScopeException(definition.code());
+        }
     }
 
     private void requireMandatoryFilters(IndicatorDefinition definition, List<ResolvedFilter> filters) {

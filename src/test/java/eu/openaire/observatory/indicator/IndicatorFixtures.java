@@ -34,6 +34,8 @@ public final class IndicatorFixtures {
     public static final String COUNTRY_DIMENSION = "country";
     /** A closed-enumeration dimension (ACTIVE/INACTIVE), for filter-value-validation coverage. */
     public static final String STATUS_DIMENSION = "status";
+    /** The real "surveyYear" dimension code — an open, year-valued dimension not gated by its member list. */
+    public static final String SURVEY_YEAR_DIMENSION = IndicatorCodes.SURVEY_YEAR_DIMENSION;
 
     public static DimensionDefinition countryDimension() {
         return new DimensionDefinition(
@@ -58,6 +60,47 @@ public final class IndicatorFixtures {
             false,
             Set.of(FilterOperator.EQ, FilterOperator.IN, FilterOperator.NOT_EQ, FilterOperator.NOT_IN),
             null
+        );
+    }
+
+    public static DimensionDefinition surveyYearDimension() {
+        return new DimensionDefinition(
+            SURVEY_YEAR_DIMENSION,
+            "Survey Year",
+            DimensionType.INTEGER,
+            true,
+            false,
+            false,
+            Set.of(FilterOperator.EQ),
+            null
+        );
+    }
+
+    /** A MEASURE indicator filterable by "surveyYear" — for the open-year-dimension validation coverage. */
+    public static IndicatorDefinition surveyYearFilterableIndicator(String code) {
+        return new IndicatorDefinition(
+            UUID.randomUUID(),
+            code,
+            "Survey-backed measure",
+            "A measure fed by the survey stats-tool, filterable by surveyYear",
+            IndicatorValueType.INTEGER,
+            IndicatorSemanticType.MEASURE,
+            UnitType.COUNT,
+            IndicatorFormat.NUMBER,
+            RenderHint.SCALAR,
+            new AggregationPolicy(AggregationType.SUM, Set.of(AggregationType.SUM), NullHandling.EXCLUDE),
+            null,
+            Set.of(new IndicatorDimensionBinding(
+                SURVEY_YEAR_DIMENSION,
+                Set.of(DimensionUsage.FILTER),
+                Set.of(FilterOperator.EQ),
+                false
+            )),
+            new TimePolicy(true, MissingPeriodHandling.NULL_FILL),
+            new IndicatorExecutionBinding(code, code),
+            IndicatorAccessLevel.PUBLIC,
+            IndicatorStatus.ACTIVE,
+            1
         );
     }
 

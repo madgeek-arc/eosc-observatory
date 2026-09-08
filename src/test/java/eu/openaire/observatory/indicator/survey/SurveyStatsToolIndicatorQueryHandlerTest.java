@@ -27,6 +27,12 @@ import eu.openaire.observatory.indicator.validation.ResolvedDimension;
 import eu.openaire.observatory.indicator.validation.ResolvedFilter;
 import eu.openaire.observatory.indicator.validation.ResolvedTimeRange;
 import eu.openaire.observatory.statistics.StatsToolProperties;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Property;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -374,6 +380,26 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         return handlerReturningEachInTurn(List.of(responseJson));
     }
 
+    /** Returns HTTP 422 (the live tool's "no such named query" answer) for any {@code eosc.sb.<unavailableYear>.*} request, and 200 + {@code okBody} for every other year. */
+    private SurveyStatsToolIndicatorQueryHandler handlerReturning422ForYear(int unavailableYear, String okBody) {
+        WebClient.Builder builder = WebClient.builder().exchangeFunction(request -> {
+            String rawJson = URLDecoder.decode(
+                request.url().getRawQuery().substring("json=".length()), StandardCharsets.UTF_8);
+            capturedRequests.add(rawJson);
+            ClientResponse response = rawJson.contains("eosc.sb." + unavailableYear + ".")
+                ? ClientResponse.create(HttpStatus.UNPROCESSABLE_ENTITY).body("").build()
+                : ClientResponse.create(HttpStatus.OK)
+                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE).body(okBody).build();
+            return Mono.just(response);
+        });
+        StatsToolProperties properties = new StatsToolProperties()
+            .setEndpoint("https://survey-stats.test/stats-api/")
+            .setSurveyProfile("eosc-obs");
+        SurveyStatsToolClient client = new SurveyStatsToolClient(builder, properties);
+        SurveyStatsToolQueryBuilder queryBuilder = new SurveyStatsToolQueryBuilder(new ObjectMapper(), properties);
+        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client);
+    }
+
     /** Each call to the stubbed client returns the next response in order — for tests needing distinct answers per fetch (e.g. countryPolicyStatus's base + mandatory sub-question). The last response repeats once the list is exhausted. */
     private SurveyStatsToolIndicatorQueryHandler handlerReturningEachInTurn(List<String> responseJsonInOrder) {
         List<String> queue = new ArrayList<>(responseJsonInOrder);
@@ -403,24 +429,12 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         );
     }
 
-    private static TimePolicy timePolicy() {
-        return new TimePolicy(
-            false, MissingPeriodHandling.OMIT
-        );
-    }
-
-    /** For the 3 trend-capable indicators (financialInvestment/longTermPreservationCount/citizenScienceNewProjectsCount). */
+    /** Every survey-stats-tool indicator is trend-capable — a timeSeries range yields one point per year, NULL_FILL for a year with no upstream data. */
     private static TimePolicy trendTimePolicy() {
-        return new TimePolicy(true, MissingPeriodHandling.ZERO_FILL);
+        return new TimePolicy(true, MissingPeriodHandling.NULL_FILL);
     }
 
-    private static IndicatorDimensionBinding surveyYearBinding() {
-        return new IndicatorDimensionBinding(
-            IndicatorCodes.SURVEY_YEAR_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), true
-        );
-    }
-
-    /** For the 3 trend-capable indicators — surveyYear is filter-only and optional, since a timeSeries range is the alternative way to pick years. */
+    /** surveyYear is filter-only and optional on every indicator here, since a timeSeries range is the alternative way to pick years. */
     private static IndicatorDimensionBinding optionalSurveyYearBinding() {
         return new IndicatorDimensionBinding(
             IndicatorCodes.SURVEY_YEAR_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ), false
@@ -440,8 +454,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.YES_NO, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
-            Set.of(initiativeTypeFilterGroupBinding(), surveyYearBinding()),
-            timePolicy(),
+            Set.of(initiativeTypeFilterGroupBinding(), optionalSurveyYearBinding()),
+            trendTimePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.COUNTRY_INITIATIVE_STATUS),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
@@ -466,8 +480,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.YES_NO, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
-            Set.of(initiativeTypeFilterGroupBinding(), surveyYearBinding()),
-            timePolicy(),
+            Set.of(initiativeTypeFilterGroupBinding(), optionalSurveyYearBinding()),
+            trendTimePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.COUNTRY_POLICY_STATUS),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
@@ -479,8 +493,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
-            Set.of(surveyYearBinding()),
-            timePolicy(),
+            Set.of(optionalSurveyYearBinding()),
+            trendTimePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.MONITORED_AREAS_COUNT),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
@@ -492,8 +506,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             new AggregationPolicy(AggregationType.NONE, Set.of(AggregationType.NONE), NullHandling.EXCLUDE),
             null,
-            Set.of(surveyYearBinding()),
-            timePolicy(),
+            Set.of(optionalSurveyYearBinding()),
+            trendTimePolicy(),
             new IndicatorExecutionBinding(SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY, IndicatorCodes.POLICY_AREAS_COUNT),
             IndicatorAccessLevel.PUBLIC, IndicatorStatus.ACTIVE, 1
         );
@@ -564,7 +578,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     void financialInvestmentWithTimeSeriesReturnsOnePointPerYear() {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}");
-        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.ZERO_FILL);
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
 
         var result = handler.execute(plan(
             financialInvestmentDefinition(), List.of(INVESTMENT_AREA_OA_PUBLICATION), List.of(), timeRange, AggregationType.SUM));
@@ -583,7 +597,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     void countByQuestionWithTimeSeriesAndCountryGroupByReturnsOnePointPerYearPerCountry() {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"PL\",\"68\"]}]}}]}");
-        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.ZERO_FILL);
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
         var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
 
         var result = handler.execute(
@@ -668,7 +682,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         var groupBy = List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION));
         var filters = List.of(new ResolvedFilter(
             IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.IN, List.of("OA_PUBLICATION_POLICY", "OPEN_DATA_POLICY")));
-        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.ZERO_FILL);
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
 
         var result = handler.execute(plan(euCountryCoverageDefinition(), filters, groupBy, timeRange, AggregationType.NONE));
 
@@ -770,5 +784,229 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         handler.execute(plan(softwareOpenSourceSetsCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
 
         assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question73\"");
+    }
+
+    // --- Degradation: a survey year / question the tool has no data for must not fail the query ---
+
+    @Test
+    void countryInitiativeStatusReturnsAnEmptyResultWhenTheSurveyYearHasNoData() {
+        var handler = handlerReturning("{\"datasets\":[]}");
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY,
+            new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2019"))
+        );
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).isEmpty();
+    }
+
+    @Test
+    void financialInvestmentSingleYearReturnsOneNullPointWhenTheSurveyYearHasNoData() {
+        var handler = handlerReturning("{\"datasets\":[]}");
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2019")),
+            INVESTMENT_AREA_OA_PUBLICATION
+        );
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), filters, List.of(), null, AggregationType.SUM));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).value()).isNull();
+    }
+
+    @Test
+    void financialInvestmentTrendYieldsANullPointForAYearWithoutData() {
+        var handler = handlerReturningEachInTurn(List.of(
+            "{\"datasets\":[]}",                                                        // 2022: no data
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}"      // 2023: real data
+        ));
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
+
+        var result = handler.execute(plan(
+            financialInvestmentDefinition(), List.of(INVESTMENT_AREA_OA_PUBLICATION), List.of(), timeRange, AggregationType.SUM));
+
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get("period")).isEqualTo("2022");
+            assertThat(dp.value()).isNull();
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get("period")).isEqualTo("2023");
+            assertThat(dp.value()).isEqualTo(10_000_000.0);
+        });
+    }
+
+    @Test
+    void countryInitiativeStatusWithTimeSeriesReturnsOneStatusPerCountryPerYear() {
+        var handler = handlerReturningEachInTurn(List.of(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"No\"]},{\"row\":[\"DE\",\"Yes\"]}]}}]}",  // 2022
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"Yes\"]}]}}]}"   // 2023
+        ));
+        var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY);
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), timeRange, AggregationType.NONE));
+
+        assertThat(capturedRequests).hasSize(2);
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION, "period");
+        assertThat(result.data()).hasSize(4);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions()).containsEntry(IndicatorCodes.COUNTRY_DIMENSION, "GR").containsEntry("period", "2022");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_NO);
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions()).containsEntry(IndicatorCodes.COUNTRY_DIMENSION, "GR").containsEntry("period", "2023");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_YES);
+        });
+    }
+
+    @Test
+    void countryInitiativeStatusWithTimeSeriesEmitsNoPointForAYearWithNoData() {
+        // The handler simply omits the empty year; TimeSeriesNormalizer NULL_FILLs it (see TimeSeriesNormalizerTest).
+        var handler = handlerReturningEachInTurn(List.of(
+            "{\"datasets\":[]}",                                                          // 2022: no data
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}"       // 2023: real data
+        ));
+        var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY);
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), timeRange, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions()).containsEntry("period", "2023");
+    }
+
+    @Test
+    void countryInitiativeStatusWithTimeSeriesDegradesAnHttp422YearToNoPointsRatherThanFailing() {
+        // The live survey stats-tool answers an unavailable eosc.sb.<year>.<question> with 422.
+        var handler = handlerReturning422ForYear(2020,
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+        var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY);
+        var timeRange = new ResolvedTimeRange(2020, 2021, MissingPeriodHandling.NULL_FILL);
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), timeRange, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions()).containsEntry("period", "2021");
+    }
+
+    @Test
+    void countryPolicyStatusWithTimeSeriesAndInitiativeTypeGroupByFansOutPerCountryPerTypePerYear() {
+        // Every fetch (base + mandatory, per type, per year) returns GR=Yes/DE=No; mandatory GR=Yes -> GR MANDATORY, DE NO_POLICY.
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION));
+        var filters = List.of(new ResolvedFilter(
+            IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.IN, List.of("OA_PUBLICATION_POLICY", "OPEN_DATA_POLICY")));
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
+
+        var result = handler.execute(plan(countryPolicyStatusDefinition(), filters, groupBy, timeRange, AggregationType.NONE));
+
+        assertThat(result.dimensions()).containsExactlyInAnyOrder(
+            IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.INITIATIVE_TYPE_DIMENSION, "period");
+        // 2 countries x 2 types x 2 years
+        assertThat(result.data()).hasSize(8);
+        assertThat(result.data()).filteredOn(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION).equals("GR"))
+            .allSatisfy(dp -> assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_MANDATORY));
+    }
+
+    @Test
+    void monitoredAreasCountWithTimeSeriesAndCountryGroupByReturnsOneCountPerCountryPerYear() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
+
+        var result = handler.execute(plan(monitoredAreasCountDefinition(), List.of(), groupBy, timeRange, AggregationType.NONE));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION, "period");
+        assertThat(result.data()).hasSize(4);
+        assertThat(result.data()).filteredOn(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION).equals("GR"))
+            .allSatisfy(dp -> assertThat(dp.value()).isEqualTo(9L)); // Yes for all 9 monitoring topic members
+        assertThat(result.data()).filteredOn(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION).equals("DE"))
+            .allSatisfy(dp -> assertThat(dp.value()).isEqualTo(0L));
+    }
+
+    @Test
+    void fetchDoublesTreatsANonNumericAnswerAsNoAnswer() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"n/a\"]},{\"row\":[\"FI\",\"10\"]}]}}]}");
+
+        var result = handler.execute(plan(
+            financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION), List.of(), null, AggregationType.SUM));
+
+        assertThat(result.data().get(0).value()).isEqualTo(10_000_000.0);
+    }
+
+    @Test
+    void fetchCountsTreatsANonNumericAnswerAsNoAnswer() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"PL\",\"lots\"]},{\"row\":[\"RS\",\"5\"]}]}}]}");
+
+        var result = handler.execute(plan(
+            longTermPreservationCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
+
+        assertThat(result.data().get(0).value()).isEqualTo(5L);
+    }
+
+    @Test
+    void initiativeStatusTreatsAnUnexpectedValueAsAwaitingData() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Maybe\"]}]}}]}");
+        var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023);
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_AWAITING_DATA);
+    }
+
+    @Test
+    void anEmptyRowIsSkippedRatherThanThrowing() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[]},{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+        var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023);
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+    }
+
+    @Test
+    void aMissingYearQuestionIsLoggedExactlyOnce() {
+        Logger logger = (Logger) LogManager.getLogger(SurveyStatsToolIndicatorQueryHandler.class);
+        CapturingAppender appender = new CapturingAppender();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            var handler = handlerReturning("{\"datasets\":[]}");
+            var filters = List.of(
+                INITIATIVE_TYPE_OA_PUBLICATION_POLICY,
+                new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2019"))
+            );
+            handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+            handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+            assertThat(appender.warnings)
+                .filteredOn(message -> message.contains("eosc.sb.2019.Question6"))
+                .hasSize(1);
+        } finally {
+            logger.removeAppender(appender);
+        }
+    }
+
+    private static final class CapturingAppender extends AbstractAppender {
+        private final List<String> warnings = new ArrayList<>();
+
+        private CapturingAppender() {
+            super("capture", null, null, true, Property.EMPTY_ARRAY);
+        }
+
+        @Override
+        public void append(LogEvent event) {
+            if (event.getLevel() == Level.WARN) {
+                warnings.add(event.getMessage().getFormattedMessage());
+            }
+        }
     }
 }

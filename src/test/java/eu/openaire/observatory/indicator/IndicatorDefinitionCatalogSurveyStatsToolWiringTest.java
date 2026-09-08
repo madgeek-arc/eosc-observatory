@@ -11,7 +11,7 @@ import eu.openaire.observatory.indicator.validation.ActorContext;
 import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizationService;
 import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
 import eu.openaire.observatory.indicator.validation.MissingRequiredFilterException;
-import eu.openaire.observatory.indicator.validation.TimeSeriesNotSupportedException;
+import eu.openaire.observatory.indicator.validation.MissingTimeScopeException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -27,10 +27,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * is no meaningful value without picking which initiative the status/percentage refers to);
  * repositories.long_term_preservation_count, citizen_science.new_projects_count, and
  * software.open_source_sets_count are plain country-filterable/groupable counts, the same shape as
- * oa.financial_investment. oa.country_initiative_status and oa.country_policy_status require a
- * surveyYear filter (there's no "latest survey" concept to default to) and reject timeSeries
- * outright; oa.eu_country_coverage and the 3 count indicators support a real multi-year trend, so
- * surveyYear is optional for them and timeSeries is accepted instead.
+ * oa.financial_investment. Every survey-stats-tool indicator supports a real multi-year trend, so
+ * surveyYear is an optional filter and a timeSeries range is accepted — but a query carrying
+ * neither is a 400 (MissingTimeScopeException): there's no "latest survey" concept to default to.
  */
 class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
 
@@ -127,13 +126,40 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS})
-    void surveyYearFilterIsRequiredOnTheTwoNonTrendPerCountryIndicators(String indicatorCode) {
+    void aTimeScopeIsRequiredOnTheTwoPerCountryStatusIndicators(String indicatorCode) {
+        // surveyYear is optional now, but a query with neither it nor a timeSeries range has no
+        // year to resolve — rejected as a 400 rather than left to blow up in the handler.
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
             .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
-            .isInstanceOf(MissingRequiredFilterException.class);
+            .isInstanceOf(MissingTimeScopeException.class);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.MONITORED_AREAS_COUNT, IndicatorCodes.POLICY_AREAS_COUNT})
+    void aTimeScopeIsRequiredOnTheTwoAreasCountIndicators(String indicatorCode) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode).build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(MissingTimeScopeException.class);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS})
+    void aSurveyYearFilterAloneStillSatisfiesTheTwoPerCountryStatusIndicators(String indicatorCode) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
+            .withFilters(
+                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
+                SURVEY_YEAR_2023
+            )
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.timeRange()).isNull();
+        assertThat(plan.filters()).extracting("dimensionCode").contains(IndicatorCodes.SURVEY_YEAR_DIMENSION);
     }
 
     @ParameterizedTest(name = "{0}")
@@ -185,17 +211,28 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS})
-    void timeSeriesIsRejectedOnTheTwoNonTrendPerCountryIndicators(String indicatorCode) {
+    void timeSeriesIsAcceptedOnTheTwoPerCountryStatusIndicators(String indicatorCode) {
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
-            .withFilters(
-                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
-                SURVEY_YEAR_2023
-            )
+            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
             .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
             .build();
 
-        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
-            .isInstanceOf(TimeSeriesNotSupportedException.class);
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.timeRange().from()).isEqualTo(2022);
+        assertThat(plan.timeRange().to()).isEqualTo(2023);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {IndicatorCodes.MONITORED_AREAS_COUNT, IndicatorCodes.POLICY_AREAS_COUNT})
+    void timeSeriesIsAcceptedOnTheTwoAreasCountIndicators(String indicatorCode) {
+        var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
+            .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
+            .build();
+
+        var plan = validator.compile(query, ALLOW_ALL);
+
+        assertThat(plan.timeRange()).isNotNull();
     }
 
     @ParameterizedTest(name = "{0}")

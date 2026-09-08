@@ -304,13 +304,24 @@ class IndicatorPresetCatalogTest {
     }
 
     @Test
-    void toIndicatorQueryTurnsYearToIntoASurveyYearFilterForASurveyPreset() {
+    void toIndicatorQueryTurnsYearToIntoASurveyYearFilterForANonTrendSurveyPreset() {
+        // osp-5 backs researcher_policy_coverage, the one survey preset still declared non-time-series.
         IndicatorQuery query = catalog.toIndicatorQuery(
-            catalog.get("oa-8"), List.of(), 2019, 2023, List.of());
+            catalog.get("osp-5"), List.of(), 2019, 2023, List.of());
 
         assertThat(query.timeSeries()).isNull();
         assertThat(query.filters())
             .contains(new IndicatorFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of(2023)));
+    }
+
+    @Test
+    void toIndicatorQueryTurnsTheYearRangeIntoATimeSeriesForANationalStatusPreset() {
+        // oa-8 backs country_initiative_status, now trend-capable like every other survey indicator.
+        IndicatorQuery query = catalog.toIndicatorQuery(
+            catalog.get("oa-8"), List.of(), 2019, 2023, List.of());
+
+        assertThat(query.timeSeries()).isEqualTo(new TimeSeriesRequest(2019, 2023, null));
+        assertThat(query.filters()).noneMatch(f -> f.dimension().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION));
     }
 
     @Test

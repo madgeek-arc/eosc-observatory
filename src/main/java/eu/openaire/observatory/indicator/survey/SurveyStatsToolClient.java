@@ -3,15 +3,19 @@ package eu.openaire.observatory.indicator.survey;
 import eu.openaire.observatory.statistics.StatsToolProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Thin synchronous wrapper around the survey stats-tool's "raw?json=" endpoint (a different
@@ -28,6 +32,15 @@ public class SurveyStatsToolClient {
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyStatsToolClient.class);
 
+    /**
+     * Statuses that mean "the survey stats-tool has no data for this named query", not a failure.
+     * The tool answers an unregistered/unavailable {@code eosc.sb.<year>.<question>} with a 404 or
+     * (observed live) a 422 — the request shape is fixed and always valid, so a 422 here can only
+     * mean the named query can't be resolved.
+     */
+    private static final Set<Integer> NO_DATA_STATUSES =
+        Set.of(HttpStatus.NOT_FOUND.value(), HttpStatus.UNPROCESSABLE_ENTITY.value());
+
     private final String endpoint;
     private final WebClient webClient;
 
@@ -36,27 +49,55 @@ public class SurveyStatsToolClient {
         this.webClient = webClientBuilder.baseUrl(this.endpoint).build();
     }
 
-    /** Rows of the single requested series, e.g. [countryCode, value] or [value] for a .sum query. */
-    public List<List<String>> fetchRows(String json) {
+    /**
+     * Rows of the single requested series (e.g. {@code [countryCode, value]}, or {@code [value]} for
+     * a {@code .sum} query), or {@link Optional#empty()} when the survey stats-tool has <em>no
+     * data</em> for this named query — an unregistered {@code eosc.sb.<year>.<question>}, surfaced as
+     * an HTTP 404 or 422, a 200 with an empty/absent {@code datasets} array, or a null
+     * {@code series}/{@code result}. An answered survey that produced zero rows returns
+     * {@code Optional.of(List.of())} (present but empty).
+     *
+     * <p>A genuine failure — any 5xx, or any 4xx other than 404/422 (e.g. 400/401/403, which point
+     * at a malformed request or a misconfigured endpoint/profile) — still throws
+     * {@link SurveyStatsToolQueryException}, as does a malformed request URI.
+     */
+    public Optional<List<List<String>>> fetchRowsIfAvailable(String json) {
         URI uri = rawUri(json);
         logger.trace("Survey stats-tool request: {}", uri);
         SurveyRawResponse response = webClient.get()
             .uri(uri)
-            .retrieve()
-            .onStatus(HttpStatusCode::isError, clientResponse -> clientResponse.bodyToMono(String.class)
-                .map(body -> new SurveyStatsToolQueryException(
-                    "Survey stats-tool returned an error status [%s]: %s"
-                        .formatted(clientResponse.statusCode(), body))))
-            .bodyToMono(SurveyRawResponse.class)
+            .exchangeToMono(clientResponse -> {
+                HttpStatusCode status = clientResponse.statusCode();
+                if (NO_DATA_STATUSES.contains(status.value())) {
+                    return clientResponse.releaseBody().then(Mono.<SurveyRawResponse>empty());
+                }
+                if (status.isError()) {
+                    return clientResponse.bodyToMono(String.class).defaultIfEmpty("")
+                        .flatMap(body -> Mono.<SurveyRawResponse>error(new SurveyStatsToolQueryException(
+                            "Survey stats-tool returned an error status [%s]: %s".formatted(status, body))));
+                }
+                return clientResponse.bodyToMono(SurveyRawResponse.class);
+            })
             .block();
         if (response == null || response.datasets() == null || response.datasets().isEmpty()) {
-            throw new SurveyStatsToolQueryException("Survey stats-tool returned an empty response body");
+            return Optional.empty();
         }
         SurveyRawResponse.Series series = response.datasets().get(0).series();
         if (series == null || series.result() == null) {
-            throw new SurveyStatsToolQueryException("Survey stats-tool response had no result rows");
+            return Optional.empty();
         }
-        return series.result().stream().map(SurveyRawResponse.RowWrapper::row).toList();
+        return Optional.of(series.result().stream().map(SurveyRawResponse.RowWrapper::row).toList());
+    }
+
+    /**
+     * Rows of the single requested series. Prefer {@link #fetchRowsIfAvailable} — this variant
+     * throws {@link SurveyStatsToolQueryException} when the tool has no data for the query, so it
+     * is only appropriate for callers that require the series to exist.
+     */
+    public List<List<String>> fetchRows(String json) {
+        return fetchRowsIfAvailable(json)
+            .orElseThrow(() -> new SurveyStatsToolQueryException(
+                "Survey stats-tool returned no data for query: " + json));
     }
 
     private URI rawUri(String json) {

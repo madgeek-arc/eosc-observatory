@@ -9,6 +9,8 @@ import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
 import eu.openaire.observatory.indicator.validation.ResolvedDimension;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,6 +19,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BinaryOperator;
 import java.util.stream.IntStream;
 
@@ -27,19 +32,21 @@ import java.util.stream.IntStream;
  * (distinct from the OpenAIRE one — see indicator/openaire/). oa.financial_investment and
  * oa.country_initiative_status/oa.eu_country_coverage are cross-topic despite the "oa." prefix —
  * required investmentArea/initiativeType filters pick which topic's question is queried (see
- * QUESTION_CODE_BY_INVESTMENT_AREA/QUESTION_CODE_BY_INITIATIVE_TYPE below). Scoped to survey years
- * 2022+ only: 2021 used incompatible question numbering (its "Question6"/"Question7" are unrelated
- * numeric funding data, and "Question54"/"Question6.3"/"Question56" aren't registered at all for
- * that year) — confirmed live, not assumed.
+ * QUESTION_CODE_BY_INVESTMENT_AREA/QUESTION_CODE_BY_INITIATIVE_TYPE below).
  *
- * <p>oa.financial_investment, repositories.long_term_preservation_count, and
- * citizen_science.new_projects_count support a real multi-year trend (TimePolicy(supported=true)):
- * when the plan carries a timeSeries range, {@link #resolveYears} fetches one point per year instead
- * of requiring a single surveyYear filter, mirroring OpenAireStatsToolIndicatorQueryHandler's own
- * period-per-year loop. oa.country_initiative_status and oa.eu_country_coverage remain single-survey
- * snapshots (TimePolicy(supported=false)) — every query still resolves exactly one survey year via
- * the required surveyYear filter (there's no "latest survey" concept to default to, same as surveyId
- * elsewhere in this catalog).
+ * <p>Any requested survey year is served. When the survey-stats-tool has no data for a given
+ * {@code eosc.sb.<year>.<question>} — an unregistered named query, or (as for 2021, whose
+ * "Question6"/"Question7" are unrelated numeric funding data and whose "Question54"/"Question6.3"/
+ * "Question56" aren't registered at all) a value that can't be read as the expected Yes/No or
+ * number — that country/period simply carries no answer, which composes into {@code null} values
+ * rather than an error. Each missing {@code (year, question)} is logged once (WARN) per process.
+ *
+ * <p>Every indicator here supports a real multi-year trend (TimePolicy(supported=true)): when the
+ * plan carries a timeSeries range, {@link #resolveYears} fetches one point per year instead of
+ * requiring a single surveyYear filter, mirroring OpenAireStatsToolIndicatorQueryHandler's own
+ * period-per-year loop. Without a timeSeries range the (optional) surveyYear filter picks one year
+ * for a snapshot; the validator rejects a query that carries neither as a 400 (there's no "latest
+ * survey" concept to default to, same as surveyId elsewhere in this catalog).
  *
  * <p>oa.country_initiative_status (ATTRIBUTE) and oa.eu_country_coverage (RATIO) are two
  * renderings of the same per-initiativeType Yes/No dataset — one raw per-country map, one turned
@@ -149,12 +156,23 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         Map.entry("SOFTWARE", "Question72")
     );
 
+    private static final Logger logger = LoggerFactory.getLogger(SurveyStatsToolIndicatorQueryHandler.class);
+
     private final SurveyStatsToolQueryBuilder queryBuilder;
     private final SurveyStatsToolClient client;
+
+    /** {@code year|questionCode} pairs already logged as missing, so the WARN fires once per process. */
+    private final Set<String> loggedMissingData = ConcurrentHashMap.newKeySet();
 
     public SurveyStatsToolIndicatorQueryHandler(SurveyStatsToolQueryBuilder queryBuilder, SurveyStatsToolClient client) {
         this.queryBuilder = queryBuilder;
         this.client = client;
+    }
+
+    private void warnNoData(int year, String questionCode, String indicatorCode) {
+        if (loggedMissingData.add(year + "|" + questionCode)) {
+            logger.warn("survey-stats-tool has no data for eosc.sb.{}.{} (indicator {})", year, questionCode, indicatorCode);
+        }
     }
 
     @Override
@@ -192,23 +210,30 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
      * Countries and Areas" country x area matrix — a flat list of (country, initiativeType, status)
      * triples the caller pivots into a matrix, needing no dedicated matrix RenderHint). Otherwise
      * initiativeType must resolve to exactly one value (the original single-type snapshot shape).
+     *
+     * <p>Supports a real multi-year trend (one point per year, like {@link #queryEuCountryCoverage}):
+     * a timeSeries range fetches one status per country per year; otherwise the single year comes
+     * from the surveyYear filter.
      */
     private IndicatorResult queryCountryInitiativeStatus(IndicatorExecutionPlan plan) {
         List<String> types = filterValues(plan, INITIATIVE_TYPE_DIMENSION);
         boolean byType = groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION);
-        int year = resolveYear(plan);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (String type : types) {
-            InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(year, questionCodeForInitiativeType(type));
-            narrowToRequestedCountries(plan, fetch.byCountry()).forEach((country, status) -> {
-                Map<String, Object> dimensions = new LinkedHashMap<>();
-                dimensions.put(COUNTRY_DIMENSION, country);
-                if (byType) {
-                    dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
-                }
-                data.add(new IndicatorDataPoint(dimensions, status));
-            });
+        for (int year : resolveYears(plan)) {
+            Map<String, Object> periodDimensions = periodDimensions(plan, year);
+            for (String type : types) {
+                InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(
+                    year, questionCodeForInitiativeType(type), plan.definition().code());
+                narrowToRequestedCountries(plan, fetch.byCountry()).forEach((country, status) -> {
+                    Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
+                    dimensions.put(COUNTRY_DIMENSION, country);
+                    if (byType) {
+                        dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
+                    }
+                    data.add(new IndicatorDataPoint(dimensions, status));
+                });
+            }
         }
         List<String> dimensionKeys = byType
             ? List.of(COUNTRY_DIMENSION, INITIATIVE_TYPE_DIMENSION) : List.of(COUNTRY_DIMENSION);
@@ -235,7 +260,8 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         for (int year : resolveYears(plan)) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
             for (String type : types) {
-                InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(year, questionCodeForInitiativeType(type));
+                InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(
+                    year, questionCodeForInitiativeType(type), plan.definition().code());
                 Map<String, String> scoped = narrowToRequestedCountries(plan, fetch.byCountry());
 
                 if (byCountry) {
@@ -287,34 +313,37 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     private IndicatorResult queryCountryPolicyStatus(IndicatorExecutionPlan plan) {
         List<String> types = filterValues(plan, INITIATIVE_TYPE_DIMENSION);
         boolean byType = groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION);
-        int year = resolveYear(plan);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (String type : types) {
-            String questionCode = questionCodeForInitiativeType(type);
-            Map<String, String> baseByCountry = narrowToRequestedCountries(
-                plan, fetchInitiativeStatusByCountry(year, questionCode).byCountry());
-            Map<String, String> mandatoryByCountry = fetchInitiativeStatusByCountry(
-                year, mandatoryQuestionCode(questionCode)).byCountry();
+        for (int year : resolveYears(plan)) {
+            Map<String, Object> periodDimensions = periodDimensions(plan, year);
+            for (String type : types) {
+                String questionCode = questionCodeForInitiativeType(type);
+                String indicatorCode = plan.definition().code();
+                Map<String, String> baseByCountry = narrowToRequestedCountries(
+                    plan, fetchInitiativeStatusByCountry(year, questionCode, indicatorCode).byCountry());
+                Map<String, String> mandatoryByCountry = fetchInitiativeStatusByCountry(
+                    year, mandatoryQuestionCode(questionCode), indicatorCode).byCountry();
 
-            baseByCountry.forEach((country, baseStatus) -> {
-                String status = switch (baseStatus) {
-                    case STATUS_NO -> POLICY_STATUS_NO_POLICY;
-                    case STATUS_AWAITING_DATA -> POLICY_STATUS_AWAITING_DATA;
-                    case STATUS_YES -> switch (mandatoryByCountry.getOrDefault(country, STATUS_AWAITING_DATA)) {
-                        case STATUS_YES -> POLICY_STATUS_MANDATORY;
-                        case STATUS_NO -> POLICY_STATUS_NON_MANDATORY;
-                        default -> POLICY_STATUS_AWAITING_DATA;
+                baseByCountry.forEach((country, baseStatus) -> {
+                    String status = switch (baseStatus) {
+                        case STATUS_NO -> POLICY_STATUS_NO_POLICY;
+                        case STATUS_AWAITING_DATA -> POLICY_STATUS_AWAITING_DATA;
+                        case STATUS_YES -> switch (mandatoryByCountry.getOrDefault(country, STATUS_AWAITING_DATA)) {
+                            case STATUS_YES -> POLICY_STATUS_MANDATORY;
+                            case STATUS_NO -> POLICY_STATUS_NON_MANDATORY;
+                            default -> POLICY_STATUS_AWAITING_DATA;
+                        };
+                        default -> throw new IllegalStateException("Unexpected base policy status: " + baseStatus);
                     };
-                    default -> throw new IllegalStateException("Unexpected base policy status: " + baseStatus);
-                };
-                Map<String, Object> dimensions = new LinkedHashMap<>();
-                dimensions.put(COUNTRY_DIMENSION, country);
-                if (byType) {
-                    dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
-                }
-                data.add(new IndicatorDataPoint(dimensions, status));
-            });
+                    Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
+                    dimensions.put(COUNTRY_DIMENSION, country);
+                    if (byType) {
+                        dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
+                    }
+                    data.add(new IndicatorDataPoint(dimensions, status));
+                });
+            }
         }
         List<String> dimensionKeys = byType
             ? List.of(COUNTRY_DIMENSION, INITIATIVE_TYPE_DIMENSION) : List.of(COUNTRY_DIMENSION);
@@ -337,20 +366,28 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             .map(topic -> areaMemberKey(topic, memberSuffix))
             .filter(QUESTION_CODE_BY_INITIATIVE_TYPE::containsKey)
             .toList();
-        int year = resolveYear(plan);
 
-        Map<String, Long> countByCountry = new LinkedHashMap<>();
-        for (String type : types) {
-            InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(year, questionCodeForInitiativeType(type));
-            fetch.byCountry().forEach((country, status) -> {
-                if (STATUS_YES.equals(status)) {
-                    countByCountry.merge(country, 1L, Long::sum);
-                } else {
-                    countByCountry.putIfAbsent(country, 0L);
-                }
+        List<IndicatorDataPoint> data = new ArrayList<>();
+        for (int year : resolveYears(plan)) {
+            Map<String, Long> countByCountry = new LinkedHashMap<>();
+            for (String type : types) {
+                InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(
+                    year, questionCodeForInitiativeType(type), plan.definition().code());
+                fetch.byCountry().forEach((country, status) -> {
+                    if (STATUS_YES.equals(status)) {
+                        countByCountry.merge(country, 1L, Long::sum);
+                    } else {
+                        countByCountry.putIfAbsent(country, 0L);
+                    }
+                });
+            }
+            Map<String, Object> periodDimensions = periodDimensions(plan, year);
+            narrowToRequestedCountries(plan, countByCountry).forEach((country, count) -> {
+                Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
+                dimensions.put(COUNTRY_DIMENSION, country);
+                data.add(new IndicatorDataPoint(dimensions, count));
             });
         }
-        List<IndicatorDataPoint> data = byCountryDataPoints(narrowToRequestedCountries(plan, countByCountry));
         return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), data);
     }
 
@@ -363,18 +400,28 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
      * than this 3-value set (confirmed live: every policy/monitoring question is a flat Yes/No radio
      * field, see IndicatorDefinitionCatalog.countryInitiativeStatus() javadoc).
      */
-    private InitiativeStatusFetch fetchInitiativeStatusByCountry(int year, String questionCode) {
-        List<List<String>> rows = client.fetchRows(queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+    private InitiativeStatusFetch fetchInitiativeStatusByCountry(int year, String questionCode, String indicatorCode) {
+        Optional<List<List<String>>> maybeRows = client.fetchRowsIfAvailable(
+            queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+        if (maybeRows.isEmpty()) {
+            warnNoData(year, questionCode, indicatorCode);
+            return new InitiativeStatusFetch(Map.of(), 0);
+        }
+        List<List<String>> rows = maybeRows.get();
 
         Map<String, String> byCountry = new LinkedHashMap<>();
         for (List<String> row : rows) {
+            if (row.isEmpty()) {
+                continue;
+            }
             String country = row.get(0);
             String rawValue = row.size() > 1 ? row.get(1) : null;
             byCountry.put(country, isNoAnswer(rawValue) ? STATUS_AWAITING_DATA : switch (rawValue) {
                 case "Yes" -> STATUS_YES;
                 case "No" -> STATUS_NO;
-                default -> throw new SurveyStatsToolQueryException(
-                    "Unexpected value for %s/%s: %s".formatted(questionCode, country, rawValue));
+                // An unexpected value (e.g. 2021's Question6, which carries numeric funding data
+                // where a Yes/No is expected) means "no usable answer", not a hard failure.
+                default -> STATUS_AWAITING_DATA;
             });
         }
         return new InitiativeStatusFetch(byCountry, rows.size());
@@ -411,7 +458,8 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             Map<String, Map<String, Double>> millionsByCountryPerArea = new LinkedHashMap<>();
             Map<String, Double> millionsByCountryAllAreas = new LinkedHashMap<>();
             for (String area : areas) {
-                Map<String, Double> millionsByCountry = fetchDoublesByCountry(year, questionCodeForInvestmentArea(area));
+                Map<String, Double> millionsByCountry = fetchDoublesByCountry(
+                    year, questionCodeForInvestmentArea(area), plan.definition().code());
                 millionsByCountryPerArea.put(area, millionsByCountry);
                 millionsByCountry.forEach((country, millions) -> millionsByCountryAllAreas.merge(country, millions, Double::sum));
             }
@@ -459,14 +507,27 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         return aggregatedMillions == null ? null : toEuros(aggregatedMillions);
     }
 
-    private Map<String, Double> fetchDoublesByCountry(int year, String questionCode) {
-        List<List<String>> rows = client.fetchRows(queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+    private Map<String, Double> fetchDoublesByCountry(int year, String questionCode, String indicatorCode) {
+        Optional<List<List<String>>> maybeRows = client.fetchRowsIfAvailable(
+            queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+        if (maybeRows.isEmpty()) {
+            warnNoData(year, questionCode, indicatorCode);
+            return Map.of();
+        }
         Map<String, Double> byCountry = new LinkedHashMap<>();
-        for (List<String> row : rows) {
+        for (List<String> row : maybeRows.get()) {
+            if (row.isEmpty()) {
+                continue;
+            }
             String country = row.get(0);
             String rawValue = row.size() > 1 ? row.get(1) : null;
-            if (!isNoAnswer(rawValue)) {
+            if (isNoAnswer(rawValue)) {
+                continue;
+            }
+            try {
                 byCountry.put(country, Double.parseDouble(rawValue));
+            } catch (NumberFormatException e) {
+                // A non-numeric answer -> treat as no answer, same as an omitted country.
             }
         }
         return byCountry;
@@ -488,7 +549,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
 
         List<IndicatorDataPoint> data = new ArrayList<>();
         for (int year : resolveYears(plan)) {
-            Map<String, Long> countByCountry = fetchCountsByCountry(year, questionCode);
+            Map<String, Long> countByCountry = fetchCountsByCountry(year, questionCode, plan.definition().code());
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
 
             if (byCountry) {
@@ -506,14 +567,27 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         return buildResult(plan, dimensionKeysFor(byCountry ? List.of(COUNTRY_DIMENSION) : List.of(), plan), data);
     }
 
-    private Map<String, Long> fetchCountsByCountry(int year, String questionCode) {
-        List<List<String>> rows = client.fetchRows(queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+    private Map<String, Long> fetchCountsByCountry(int year, String questionCode, String indicatorCode) {
+        Optional<List<List<String>>> maybeRows = client.fetchRowsIfAvailable(
+            queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+        if (maybeRows.isEmpty()) {
+            warnNoData(year, questionCode, indicatorCode);
+            return Map.of();
+        }
         Map<String, Long> byCountry = new LinkedHashMap<>();
-        for (List<String> row : rows) {
+        for (List<String> row : maybeRows.get()) {
+            if (row.isEmpty()) {
+                continue;
+            }
             String country = row.get(0);
             String rawValue = row.size() > 1 ? row.get(1) : null;
-            if (!isNoAnswer(rawValue)) {
+            if (isNoAnswer(rawValue)) {
+                continue;
+            }
+            try {
                 byCountry.put(country, Math.round(Double.parseDouble(rawValue)));
+            } catch (NumberFormatException e) {
+                // A non-numeric answer -> treat as no answer, same as an omitted country.
             }
         }
         return byCountry;
@@ -539,13 +613,6 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     /** No timeRange -> no period dimension at all (matches the non-trend indicators' existing shape); otherwise one "period" dimension per year, mirroring OpenAireStatsToolIndicatorQueryHandler's own period handling. */
     private static Map<String, Object> periodDimensions(IndicatorExecutionPlan plan, int year) {
         return plan.timeRange() == null ? Map.of() : Map.of(PERIOD_DIMENSION, String.valueOf(year));
-    }
-
-    /** Per-country IndicatorDataPoints, one per map entry. */
-    private List<IndicatorDataPoint> byCountryDataPoints(Map<String, ?> valueByCountry) {
-        return valueByCountry.entrySet().stream()
-            .map(entry -> new IndicatorDataPoint(Map.of(COUNTRY_DIMENSION, entry.getKey()), entry.getValue()))
-            .toList();
     }
 
     /** The requested countries' values (filtered to those with an answer), or every answering country's value if none were requested. */
@@ -640,16 +707,15 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         return questionCode;
     }
 
-    /** Required surveyYear filter — there's no "latest survey" concept to default to (same as surveyId elsewhere in this catalog). */
-    private int resolveYear(IndicatorExecutionPlan plan) {
-        return Integer.parseInt(requiredFilterValue(plan, SURVEY_YEAR_DIMENSION));
-    }
-
     /**
-     * Every year in the requested timeSeries range (for the trend-capable indicators —
-     * oa.financial_investment, repositories.long_term_preservation_count,
-     * citizen_science.new_projects_count), or the single year picked by an explicit surveyYear
-     * filter otherwise — there's no "latest survey" concept to default to when neither is given.
+     * Every year in the requested timeSeries range, or the single year picked by an explicit
+     * surveyYear filter otherwise — there's no "latest survey" concept to default to when neither is
+     * given (the validator rejects that combination as a 400 before we get here). Every query method
+     * in this handler now goes through here: the per-country status/count indicators
+     * (oa.country_initiative_status, oa.country_policy_status, oa.monitored_areas_count,
+     * oa.policy_areas_count) resolve one year in the snapshot case and loop the range in the trend
+     * case, exactly like oa.financial_investment / oa.eu_country_coverage / the count-by-question
+     * indicators.
      */
     private List<Integer> resolveYears(IndicatorExecutionPlan plan) {
         if (plan.timeRange() != null) {

@@ -82,6 +82,32 @@ class TimeSeriesNormalizerTest {
     }
 
     @Test
+    void nullFillsEachCountrysStatusSeriesIndependently() {
+        // A per-country ATTRIBUTE series (oa.country_initiative_status &c.): a year with no survey
+        // data for a country comes back as a null status, not dropped and not a fabricated value.
+        List<IndicatorDataPoint> data = List.of(
+            new IndicatorDataPoint(Map.of("country", "GR", TimeSeriesNormalizer.PERIOD_DIMENSION, "2022"), "NO"),
+            new IndicatorDataPoint(Map.of("country", "GR", TimeSeriesNormalizer.PERIOD_DIMENSION, "2024"), "YES"),
+            new IndicatorDataPoint(Map.of("country", "DE", TimeSeriesNormalizer.PERIOD_DIMENSION, "2023"), "YES")
+        );
+        var result = new IndicatorResult(
+            new IndicatorMetadata("oa.country_initiative_status", "label", null, null, null),
+            List.of("country", TimeSeriesNormalizer.PERIOD_DIMENSION),
+            data,
+            new QueryExecutionMetadata(Instant.now(), false)
+        );
+        var range = new ResolvedTimeRange(2022, 2024, MissingPeriodHandling.NULL_FILL);
+
+        var normalized = normalizer.normalize(result, range);
+
+        assertThat(normalized.data()).hasSize(6);
+        assertThat(valueForCountry(normalized, "GR", "2023")).isNull();
+        assertThat(valueForCountry(normalized, "GR", "2024")).isEqualTo("YES");
+        assertThat(valueForCountry(normalized, "DE", "2022")).isNull();
+        assertThat(valueForCountry(normalized, "DE", "2024")).isNull();
+    }
+
+    @Test
     void omitLeavesGapsUntouched() {
         var result = resultWithPeriods(Map.of("2020", 10));
         var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.OMIT);

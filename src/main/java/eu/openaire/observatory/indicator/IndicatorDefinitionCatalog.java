@@ -67,8 +67,8 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_YEAR_DIMEN
  * — the 17 definitions it holds today are all real: 6 route to OpenAireStatsToolIndicatorQueryHandler
  * (OpenAIRE data — publications.oa_license_status_count is the europe_monitor-profiled outlier of
  * the 6, the other 5 use the default openaire_stats profile), 9 route to
- * SurveyStatsToolIndicatorQueryHandler (survey stats-tool data, scoped to survey years 2022+ — see
- * that handler's Javadoc for why 2021 is excluded), and 2 route to
+ * SurveyStatsToolIndicatorQueryHandler (survey stats-tool data; any requested year with no upstream
+ * survey data degrades to null, see that handler's Javadoc), and 2 route to
  * LocalRegistryIndicatorQueryHandler (no external HTTP call at all — wraps
  * SurveyService/StakeholderService directly). It previously also held 3 synthetic mock indicators
  * with the same codes as the 3 original survey ones; those were removed and later replaced with
@@ -77,7 +77,15 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.SURVEY_YEAR_DIMEN
 @Service
 public class IndicatorDefinitionCatalog {
 
-    private static final TimePolicy TIME_POLICY = new TimePolicy(true, MissingPeriodHandling.ZERO_FILL);
+    /**
+     * A period with no datapoint is genuinely unknown, not zero — for the survey-backed trend
+     * indicators a year outside the surveyed range has no data at all, and for the OpenAIRE-backed
+     * ones a country/field silently absent from one year is a coverage gap, not a measured zero
+     * (the scalar count path still reports 0 explicitly via its own parseCount). This also keeps the
+     * share indicators consistent with their own zero-denominator handling, which already yields
+     * {@code null}.
+     */
+    private static final TimePolicy TIME_POLICY = new TimePolicy(true, MissingPeriodHandling.NULL_FILL);
 
     /** For the 2 local-registry indicators, which have no year/time concept at all. */
     private static final TimePolicy NON_TIME_SERIES_POLICY = new TimePolicy(false, MissingPeriodHandling.OMIT);
@@ -414,8 +422,10 @@ public class IndicatorDefinitionCatalog {
      * answering country; grouping by initiativeType additionally fans out one row per (country,
      * initiativeType) pair — this is how the "National Monitoring/Policies of Open Science by
      * Countries and Areas" country x area matrix (legacy ids 68/74) is served: a flat list of
-     * triples the caller pivots into a matrix table, no dedicated matrix RenderHint needed. A single
-     * survey year, not a real time series — the required surveyYear filter picks it.
+     * triples the caller pivots into a matrix table, no dedicated matrix RenderHint needed.
+     * Supports a real multi-year trend (a timeSeries request fetches one status per country per
+     * year, like euCountryCoverage()); without one, the optional surveyYear filter picks a single
+     * year — see SurveyStatsToolIndicatorQueryHandler.queryCountryInitiativeStatus.
      *
      * <p>Three-valued (YES/NO/AWAITING_DATA), not boolean: the underlying survey question is a flat
      * Yes/No radio field with no richer status, so a country that hasn't answered is reported as
@@ -440,8 +450,8 @@ public class IndicatorDefinitionCatalog {
             IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.YES_NO, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
-            Set.of(initiativeTypeFilterGroupBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
-            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(initiativeTypeFilterGroupBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
@@ -503,6 +513,10 @@ public class IndicatorDefinitionCatalog {
      *
      * <p>Also filterable/groupable by country, narrowing (or, since every row is already
      * per-country, redundantly re-confirming) the rows returned.
+     *
+     * <p>Supports a real multi-year trend (a timeSeries request fetches one status per country per
+     * year, like euCountryCoverage()); without one, the optional surveyYear filter picks a single
+     * year.
      */
     private static IndicatorDefinition countryPolicyStatus() {
         return definition(
@@ -518,8 +532,8 @@ public class IndicatorDefinitionCatalog {
             IndicatorValueType.TEXT, IndicatorSemanticType.ATTRIBUTE, UnitType.NONE, IndicatorFormat.CATEGORY, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
-            Set.of(initiativeTypeFilterGroupBinding(), requiredEqFilterBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
-            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(initiativeTypeFilterGroupBinding(), filterOnlyBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
@@ -530,7 +544,8 @@ public class IndicatorDefinitionCatalog {
      * indicator's own code, unlike countryInitiativeStatus()/euCountryCoverage(). Always one row
      * per country, same as countryInitiativeStatus() — no aggregation. Also filterable/groupable by
      * country, narrowing (or, since every row is already per-country, redundantly re-confirming)
-     * the rows returned.
+     * the rows returned. Supports a real multi-year trend (a timeSeries request fetches one count
+     * per country per year); without one, the optional surveyYear filter picks a single year.
      */
     private static IndicatorDefinition monitoredAreasCount() {
         return definition(
@@ -542,8 +557,8 @@ public class IndicatorDefinitionCatalog {
             IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
-            Set.of(requiredEqFilterBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
-            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(filterOnlyBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 
@@ -552,6 +567,8 @@ public class IndicatorDefinitionCatalog {
      * counterpart to monitoredAreasCount(): for one country, how many of every "*_POLICY"
      * initiativeType member did it answer Yes to. Also filterable/groupable by country, narrowing
      * (or, since every row is already per-country, redundantly re-confirming) the rows returned.
+     * Supports a real multi-year trend (a timeSeries request fetches one count per country per
+     * year); without one, the optional surveyYear filter picks a single year.
      */
     private static IndicatorDefinition policyAreasCount() {
         return definition(
@@ -562,8 +579,8 @@ public class IndicatorDefinitionCatalog {
             IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
-            Set.of(requiredEqFilterBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
-            NON_TIME_SERIES_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
+            Set.of(filterOnlyBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
+            TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
 

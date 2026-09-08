@@ -2,6 +2,7 @@ package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
+import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.model.RenderHint;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -57,7 +58,7 @@ class IndicatorDefinitionCatalogTest {
     }
 
     @Test
-    void countryPolicyStatusRequiresInitiativeTypeAndSurveyYearFilters() {
+    void countryPolicyStatusRequiresInitiativeTypeAndHasAnOptionalSurveyYearFilter() {
         var bindings = catalog.get(IndicatorCodes.COUNTRY_POLICY_STATUS).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
             .containsExactlyInAnyOrder(
@@ -67,24 +68,29 @@ class IndicatorDefinitionCatalogTest {
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION))
             .extracting("requiredFilter")
             .containsExactly(true);
-        assertThat(catalog.get(IndicatorCodes.COUNTRY_POLICY_STATUS).timePolicy().supported()).isFalse();
+        assertThat(bindings)
+            .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
+            .extracting("requiredFilter")
+            .containsExactly(false);
+        assertThat(catalog.get(IndicatorCodes.COUNTRY_POLICY_STATUS).timePolicy().supported()).isTrue();
     }
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {IndicatorCodes.MONITORED_AREAS_COUNT, IndicatorCodes.POLICY_AREAS_COUNT})
-    void areaCountIndicatorsRequireOnlySurveyYearFilterAndAreOptionallyCountryFilterable(String indicatorCode) {
+    void areaCountIndicatorsHaveAnOptionalSurveyYearFilterAndAreOptionallyCountryFilterable(String indicatorCode) {
         var bindings = catalog.get(indicatorCode).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
             .containsExactlyInAnyOrder(IndicatorCodes.SURVEY_YEAR_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")
-            .containsExactly(true);
+            .containsExactly(false);
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
             .extracting("requiredFilter")
             .containsExactly(false);
         assertThat(catalog.get(indicatorCode).renderHint()).isEqualTo(RenderHint.ENTITY_MAP);
+        assertThat(catalog.get(indicatorCode).timePolicy().supported()).isTrue();
     }
 
     @Test
@@ -97,7 +103,7 @@ class IndicatorDefinitionCatalogTest {
     }
 
     @Test
-    void countryInitiativeStatusRequiresInitiativeTypeAndSurveyYearFilters() {
+    void countryInitiativeStatusRequiresInitiativeTypeAndHasAnOptionalSurveyYearFilter() {
         var bindings = catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
             .containsExactlyInAnyOrder(
@@ -110,7 +116,8 @@ class IndicatorDefinitionCatalogTest {
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")
-            .containsExactly(true);
+            .containsExactly(false);
+        assertThat(catalog.get(IndicatorCodes.COUNTRY_INITIATIVE_STATUS).timePolicy().supported()).isTrue();
     }
 
     @Test
@@ -317,23 +324,39 @@ class IndicatorDefinitionCatalogTest {
     }
 
     @Test
-    void elevenDefinitionsSupportTimeSeries() {
+    void fifteenDefinitionsSupportTimeSeries() {
         Set<String> timeSeriesCapable = Set.of(
             IndicatorCodes.PUBLICATIONS_COUNT, IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE, IndicatorCodes.DATASETS_COUNT,
             IndicatorCodes.SOFTWARE_COUNT, IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT, IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE,
             IndicatorCodes.FINANCIAL_INVESTMENT, IndicatorCodes.EU_COUNTRY_COVERAGE, IndicatorCodes.LONG_TERM_PRESERVATION_COUNT,
-            IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT
+            IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT,
+            IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS,
+            IndicatorCodes.MONITORED_AREAS_COUNT, IndicatorCodes.POLICY_AREAS_COUNT
         );
 
         assertThat(catalog.getAll())
             .filteredOn(definition -> timeSeriesCapable.contains(definition.code()))
-            .hasSize(11)
+            .hasSize(15)
             .allMatch(definition -> definition.timePolicy().supported());
 
         assertThat(catalog.getAll())
             .filteredOn(definition -> !timeSeriesCapable.contains(definition.code()))
-            .hasSize(7)
+            .hasSize(3)
             .noneMatch(definition -> definition.timePolicy().supported());
+    }
+
+    @Test
+    void everyTimeSeriesIndicatorNullFillsMissingPeriods() {
+        // A period with no datapoint is unknown, not a measured zero — for both the survey-backed
+        // trend indicators (a year outside the surveyed range) and the OpenAIRE-backed ones (a
+        // coverage gap). The non-time-series indicators omit gaps entirely.
+        assertThat(catalog.getAll())
+            .filteredOn(definition -> definition.timePolicy().supported())
+            .allMatch(definition -> definition.timePolicy().missingPeriodHandling() == MissingPeriodHandling.NULL_FILL);
+
+        assertThat(catalog.getAll())
+            .filteredOn(definition -> !definition.timePolicy().supported())
+            .allMatch(definition -> definition.timePolicy().missingPeriodHandling() == MissingPeriodHandling.OMIT);
     }
 
     @Test
