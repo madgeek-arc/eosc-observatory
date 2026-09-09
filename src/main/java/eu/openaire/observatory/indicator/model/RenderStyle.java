@@ -60,7 +60,70 @@ public enum RenderStyle {
     COLUMN_CHART,
 
     /** Column chart with multiple data series. */
-    MULTI_SERIES_COLUMN_CHART;
+    MULTI_SERIES_COLUMN_CHART,
+
+    /** Single-series bar chart — one bar per area/category, for a single year. */
+    BAR_CHART,
+
+    /** Bar chart with one series per year across the selected range. */
+    MULTI_SERIES_BAR_CHART,
+
+    /** Table-like grid of per-country yes/no across the areas, for a single year. */
+    YES_NO_TABLE,
+
+    /**
+     * Composite: the year each country adopted the initiative, paired with a coverage-over-time
+     * trend — the status in the {@code to} year shown alongside.
+     */
+    YEAR_ADOPTED_COVERAGE_TREND,
+
+    /** The coverage-over-time trend panel on its own (the "only the coverage trend view" variant). */
+    COVERAGE_TREND,
+
+    /**
+     * Per-area count of the countries answering Yes, with the average across areas called out on
+     * top, for a single year.
+     */
+    COUNT_BY_AREA_WITH_AVERAGE,
+
+    /** Column chart with the percentage/number printed on top of each column, across the year range. */
+    COLUMN_CHART_WITH_VALUE_LABELS,
+
+    /**
+     * A stacked bar with a progress bar per category beneath it and the value/percentage on the
+     * right, for a single year.
+     */
+    STACKED_BAR_WITH_PROGRESS,
+
+    /** One stacked bar per country, for a single year. */
+    MULTI_STACKED_BARS,
+
+    /**
+     * Pie chart paired with a companion list of progress bars carrying both the percentages and the
+     * absolute numbers, for a single year.
+     */
+    PIE_WITH_PROGRESS_BARS,
+
+    /**
+     * Composite: per-country column charts as one view, a multi-series line chart as the other.
+     */
+    COMPOSITE_COLUMNS_AND_MULTI_SERIES_LINE,
+
+    /**
+     * Composite: a per-year / cumulative toggle over multi-series line charts.
+     */
+    COMPOSITE_PER_YEAR_AND_CUMULATIVE_LINES,
+
+    /**
+     * Composite: an "amount" and a "share" view, each a column chart with the number printed on top.
+     */
+    COMPOSITE_AMOUNT_AND_SHARE_COLUMNS,
+
+    /**
+     * Composite: a "composition" view (multiple column charts) and a "per area" view (a tab per
+     * area, each with multi-series line charts).
+     */
+    COMPOSITE_COMPOSITION_AND_PER_AREA;
 
     /**
      * Whether drawing this style needs one value per country. It's what decides whether a preset
@@ -71,11 +134,17 @@ public enum RenderStyle {
      * rows, so it must be computed without the grouping).
      *
      * <p>{@code COLUMN_CHART} counts as per-country — {@code OUTPUT_COUNT_VIEWS} uses it for
-     * "most-active-countries" charts. {@code STACKED_COLUMN} is category-over-time, not per-country.
+     * "most-active-countries" charts. {@code STACKED_COLUMN} is category-over-time, not per-country;
+     * so are the EU-aggregate / by-area styles ({@code BAR_CHART}, {@code STACKED_BAR_WITH_PROGRESS},
+     * {@code PIE_WITH_PROGRESS_BARS}, {@code COUNT_BY_AREA_WITH_AVERAGE}, …) that draw one mark per
+     * area or category rather than one per country.
      */
     public boolean perCountryBreakdown() {
         return switch (this) {
-            case SCALAR, LINE_CHART, STACKED_COLUMN -> false;
+            case SCALAR, LINE_CHART, STACKED_COLUMN,
+                 BAR_CHART, MULTI_SERIES_BAR_CHART, COUNT_BY_AREA_WITH_AVERAGE,
+                 COLUMN_CHART_WITH_VALUE_LABELS, STACKED_BAR_WITH_PROGRESS, PIE_WITH_PROGRESS_BARS,
+                 COMPOSITE_AMOUNT_AND_SHARE_COLUMNS -> false;
             default -> true;
         };
     }

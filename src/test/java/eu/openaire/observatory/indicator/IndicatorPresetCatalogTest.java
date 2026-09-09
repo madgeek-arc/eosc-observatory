@@ -27,8 +27,8 @@ class IndicatorPresetCatalogTest {
     private final IndicatorPresetCatalog catalog = new IndicatorPresetCatalog(definitionCatalog);
 
     @Test
-    void containsEightyTwoPresets() {
-        assertThat(catalog.getAll()).hasSize(82);
+    void containsEightyPresets() {
+        assertThat(catalog.getAll()).hasSize(80);
     }
 
     @Test
@@ -183,7 +183,8 @@ class IndicatorPresetCatalogTest {
     @Test
     void everyOtherPresetIsNotFullWidth() {
         Set<String> fullWidthIds = Set.of(
-            "oa-9", "od-8", "ost-1", "ost-2", "nm-1", "nm-4", "osp-1", "osp-2", "osp-6");
+            "oa-9", "od-8", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1", "nm-2",
+            "osp-1", "osp-2", "osp-3", "osp-4", "osp-5", "osp-6");
         for (IndicatorPreset preset : catalog.getAll()) {
             assertThat(preset.fullWidth())
                 .as(preset.id() + " fullWidth")
@@ -281,10 +282,28 @@ class IndicatorPresetCatalogTest {
     }
 
     @Test
-    void investmentByAreaDistributionPresetGroupsByInvestmentAreaWithNoClassification() {
-        // fin-2 backs on oa.financial_investment, which does not bind classification at all
-        IndicatorQuery stacked = catalog.toIndicatorQuery(catalog.get("fin-2"), List.of(), 2023, 2023, List.of());
-        assertThat(stacked.groupBy()).containsExactly(IndicatorCodes.INVESTMENT_AREA_DIMENSION);
+    void investmentByAreaPresetGroupsByInvestmentAreaWithNoClassification() {
+        // inv-2 backs on oa.financial_investment, which does not bind classification at all
+        IndicatorQuery euSingle = catalog.toIndicatorQuery(catalog.get("inv-2"), List.of(), 2023, 2023, List.of());
+        assertThat(euSingle.groupBy()).containsExactly(IndicatorCodes.INVESTMENT_AREA_DIMENSION);
+    }
+
+    @Test
+    void trendOfOpenAccessPresetGroupsByAccessStatus() {
+        // ost-3 backs on publications.count with an accessStatus selector on every view
+        IndicatorQuery euRange = catalog.toIndicatorQuery(catalog.get("ost-3"), List.of(), 2019, 2023, List.of());
+        assertThat(euRange.groupBy()).containsExactly(IndicatorCodes.ACCESS_STATUS_DIMENSION);
+        assertThat(euRange.filters()).isEmpty();
+
+        IndicatorQuery selected = catalog.toIndicatorQuery(catalog.get("ost-3"), List.of("EL"), 2019, 2023, List.of());
+        assertThat(selected.groupBy())
+            .containsExactly(IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+    }
+
+    @Test
+    void investmentsInEoscPresetsAreGroupedTogether() {
+        assertThat(idsInGroup(IndicatorGroup.INVESTMENTS_IN_EOSC)).containsExactly("inv-1", "inv-2");
+        assertThat(catalog.get("inv-1").group().wireValue()).isEqualTo("Investments in EOSC");
     }
 
     @Test
@@ -366,7 +385,7 @@ class IndicatorPresetCatalogTest {
     @Test
     void theThreeCrossCuttingPagesEachHaveTheirInventoryPresets() {
         assertThat(idsInGroup(IndicatorGroup.OPEN_SCIENCE_TRENDS)).containsExactly("ost-1", "ost-2", "ost-3", "ost-4");
-        assertThat(idsInGroup(IndicatorGroup.NATIONAL_MONITORING)).containsExactly("nm-1", "nm-2", "nm-3", "nm-4");
+        assertThat(idsInGroup(IndicatorGroup.NATIONAL_MONITORING)).containsExactly("nm-1", "nm-2");
         assertThat(idsInGroup(IndicatorGroup.OPEN_SCIENCE_POLICIES))
             .containsExactly("osp-1", "osp-2", "osp-3", "osp-4", "osp-5", "osp-6");
     }

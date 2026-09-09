@@ -9,11 +9,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class RenderStyleTest {
 
-    private static final Set<RenderStyle> AGGREGATE_STYLES =
-        EnumSet.of(RenderStyle.SCALAR, RenderStyle.LINE_CHART, RenderStyle.STACKED_COLUMN);
+    private static final Set<RenderStyle> AGGREGATE_STYLES = EnumSet.of(
+        RenderStyle.SCALAR, RenderStyle.LINE_CHART, RenderStyle.STACKED_COLUMN,
+        RenderStyle.BAR_CHART, RenderStyle.MULTI_SERIES_BAR_CHART, RenderStyle.COUNT_BY_AREA_WITH_AVERAGE,
+        RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS, RenderStyle.STACKED_BAR_WITH_PROGRESS,
+        RenderStyle.PIE_WITH_PROGRESS_BARS, RenderStyle.COMPOSITE_AMOUNT_AND_SHARE_COLUMNS);
 
     @Test
-    void scalarAndLineAndStackedColumnAreNotPerCountry() {
+    void euAggregateAndByAreaStylesAreNotPerCountry() {
         for (RenderStyle style : AGGREGATE_STYLES) {
             assertThat(style.perCountryBreakdown()).as(style.name()).isFalse();
         }

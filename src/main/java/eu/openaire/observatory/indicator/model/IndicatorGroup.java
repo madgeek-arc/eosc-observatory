@@ -13,7 +13,7 @@ public enum IndicatorGroup {
     OPEN_SCIENCE_TRAINING("Open Science Training", 70),
     OPEN_SOFTWARE("Open Software", 80),
     OPEN_SCIENCE_TRENDS("Open Science Trends", 85),
-    FINANCIAL_INVESTMENT("Financial Investment", 90),
+    INVESTMENTS_IN_EOSC("Investments in EOSC", 90),
     NATIONAL_MONITORING("National Monitoring", 100),
     OPEN_SCIENCE_POLICIES("Open Science Policies", 110);
 

@@ -35,12 +35,14 @@ import static eu.openaire.observatory.indicator.IndicatorCodes.MONITORED_AREAS_C
 import static eu.openaire.observatory.indicator.IndicatorCodes.OA_LICENSE_STATUS_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.POLICY_AREAS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_ACCESS_STATUS_SHARE;
+import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT;
 import static eu.openaire.observatory.indicator.IndicatorCodes.RESEARCHER_POLICY_COVERAGE;
 import static eu.openaire.observatory.indicator.IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.CITIZEN_SCIENCE;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.DATA_MANAGEMENT;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.FAIR_DATA;
+import static eu.openaire.observatory.indicator.model.IndicatorGroup.INVESTMENTS_IN_EOSC;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.NATIONAL_MONITORING;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.OPEN_ACCESS_PUBLICATIONS;
 import static eu.openaire.observatory.indicator.model.IndicatorGroup.OPEN_DATA;
@@ -94,7 +96,7 @@ public class IndicatorPresetCatalog {
 
     /**
      * Full-width "distribution of &lt;category&gt; by output/document type" views, shared by the
-     * "Distribution of Open Access / Open Data Types" presets and "Investments by Open Science area".
+     * "Distribution of Open Access / Open Data Types" presets ({@code oa-9} / {@code od-8}).
      * A 100%-stacked column at EU/single-year (every category at once, as rendered in the legacy
      * Explore dashboard), then a year trend and per-country breakdowns. Every cell carries a
      * {@link ViewSelector} over {@code selectorDimension} so the preset-query endpoint's derivation
@@ -111,22 +113,78 @@ public class IndicatorPresetCatalog {
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_LINE_CHARTS, selector));
     }
 
+    /** The {@code initiativeType} "Open Science area" selector carried by every by-area pivot view. */
+    private static ViewSelector openScienceAreaSelector() {
+        return new ViewSelector(INITIATIVE_TYPE_DIMENSION, "Open Science area", List.of());
+    }
+
     /**
-     * Per-country status ("… on area" / "… by Countries and Areas") views for the initiativeType-keyed
-     * national policy/monitoring presets. Same MAP / YES_NO shape as {@link #NATIONAL_STATUS_VIEWS},
-     * plus an {@code initiativeType} {@link ViewSelector} on every cell so the preset-query endpoint
-     * groups by {@code initiativeType} (one status per (country, area) pair) and the UI picks which
-     * area layer to show — the difference between a single-area "… on area" preset and the full
-     * "… by Countries and Areas" matrix is only how many {@code initiativeType} members the preset
-     * pins in {@code presetFilters}.
+     * Bar-chart / table / year-adopted+coverage-trend views for the "… by Areas", "… on area" and
+     * "… by Countries and Areas" national policy/monitoring/financial-strategy presets. When
+     * {@code selector} is non-null (the {@code initiativeType} one) the preset-query endpoint groups
+     * by {@code initiativeType} so one series/row comes back per area; {@code osp-5}
+     * ("Coverage of Researchers …") passes {@code null} — its backing indicator has no area
+     * breakdown.
      */
-    private static List<PresetView> statusByAreaViews() {
-        ViewSelector selector = new ViewSelector(INITIATIVE_TYPE_DIMENSION, "Open Science area", List.of());
+    private static List<PresetView> areaTrendViews(ViewSelector selector) {
         return List.of(
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MAP, selector),
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MAP_WITH_CHANGE_COUNT, selector),
-            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.YES_NO, selector),
-            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.YES_NO_TIMELINE, selector));
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.BAR_CHART, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_SERIES_BAR_CHART, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.YES_NO_TABLE, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.YEAR_ADOPTED_COVERAGE_TREND, selector));
+    }
+
+    /**
+     * "Number of monitored/policy areas per country" views ({@code nm-2}, {@code osp-3}). No
+     * selector — {@code oa.monitored_areas_count} / {@code oa.policy_areas_count} bind only
+     * {@code country} + {@code surveyYear}, so the EU/single-year
+     * {@link RenderStyle#COUNT_BY_AREA_WITH_AVERAGE} "countries with Yes by area" breakdown is
+     * nominal against these indicators (see {@code docs/INDICATOR_TODO.md}).
+     */
+    private static List<PresetView> areaCountViews() {
+        return List.of(
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.COUNT_BY_AREA_WITH_AVERAGE),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_BARS),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COVERAGE_TREND));
+    }
+
+    /**
+     * "Trend of Open Access Publications / Open Data" ({@code ost-3} / {@code ost-4}), backed by
+     * {@code publications.count} / {@code datasets.count} grouped by {@code accessStatus}. Every
+     * cell carries an {@code accessStatus} selector so the preset-query endpoint fans out one
+     * series per access type (and adds {@code country} for the selected-countries cells).
+     */
+    private static List<PresetView> accessTypeTrendViews() {
+        ViewSelector selector = new ViewSelector(ACCESS_STATUS_DIMENSION, "Access type", List.of());
+        return List.of(
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_BAR_WITH_PROGRESS, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MULTI_STACKED_BARS, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_COLUMNS_AND_MULTI_SERIES_LINE, selector));
+    }
+
+    /** "Total amount of investments in EOSC and Open Science" ({@code inv-1}). No selector — one summed figure. */
+    private static List<PresetView> totalInvestmentViews() {
+        return List.of(
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.SCALAR),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_BARS),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_PER_YEAR_AND_CUMULATIVE_LINES));
+    }
+
+    /**
+     * "Investments in EOSC and Open Science (by Open Science area)" ({@code inv-2}). Every cell
+     * carries the {@code investmentArea} selector so the preset-query endpoint groups by
+     * {@code investmentArea} and one series comes back per area.
+     */
+    private static List<PresetView> investmentByAreaViews() {
+        ViewSelector selector = new ViewSelector(INVESTMENT_AREA_DIMENSION, "Open Science area", List.of());
+        return List.of(
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PIE_WITH_PROGRESS_BARS, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_AMOUNT_AND_SHARE_COLUMNS, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MULTI_STACKED_BARS, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_COMPOSITION_AND_PER_AREA, selector));
     }
 
     /** The one "*_POLICY" initiativeType member per real topic area (matches the per-topic "National Policy on …" presets). */
@@ -406,61 +464,58 @@ public class IndicatorPresetCatalog {
             preset("sw-8-x", "National Financial Strategy on Open Software", OPEN_SOFTWARE,
                 NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 80),
 
-            // ---- Financial Investment (Investments in EOSC page, inventory rows 64-65) --------------
-            preset("fin-1", "Total amount of investments in EOSC and Open Science", IndicatorGroup.FINANCIAL_INVESTMENT,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 10),
-            // Same FINANCIAL_INVESTMENT indicator as fin-1, broken out per investment area — the
+            // ---- Investments in EOSC page (inventory rows 64-65) -----------------------------------
+            presetFullWidth("inv-1", "Total amount of investments in EOSC and Open Science", INVESTMENTS_IN_EOSC,
+                totalInvestmentViews(), AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 10),
+            // Same oa.financial_investment indicator as inv-1, broken out per investment area — the
             // definition is groupable by investmentArea (see IndicatorDefinitionCatalog.financialInvestment).
-            preset("fin-2", "Investments in EOSC and Open Science (by Open Science area)", IndicatorGroup.FINANCIAL_INVESTMENT,
-                categoryDistributionViews(INVESTMENT_AREA_DIMENSION, "Open Science area"), AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 20),
+            presetFullWidth("inv-2", "Investments in EOSC and Open Science (by Open Science area)", INVESTMENTS_IN_EOSC,
+                investmentByAreaViews(), AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 20),
 
             // ---- Open Science Trends (inventory rows 60-63) ----------------------------------------
             // The "… by Areas" rows are eu_country_coverage pinned to every topic's *_POLICY /
             // *_FINANCIAL_STRATEGY member (an IN filter); the initiativeType selector on each view
-            // makes the preset-query endpoint group by initiativeType, so one %-per-year series comes
-            // back per area.
+            // makes the preset-query endpoint group by initiativeType, so one series comes back per area.
             presetFullWidth("ost-1", "Trends in National Open Science Policies by Areas", OPEN_SCIENCE_TRENDS,
-                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                areaTrendViews(openScienceAreaSelector()),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(POLICY_AREA_TYPES), 10),
             presetFullWidth("ost-2", "Trends in Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_TRENDS,
-                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                areaTrendViews(openScienceAreaSelector()),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES), 20),
+            // ost-3/ost-4 back on publications.count / datasets.count grouped by accessStatus (the
+            // *_access_status_share indicators can't fan out per access type — accessStatus is a
+            // required filter-only binding there). Every view carries an accessStatus selector.
             preset("ost-3", "Trend of Open Access Publications", OPEN_SCIENCE_TRENDS,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA"), 30),
-            preset("ost-4", "Trend of Open Data", OPEN_SCIENCE_TRENDS,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA"), 40),
+                accessTypeTrendViews(), AVG_MEDIAN, PUBLICATIONS_COUNT, NO_FILTERS, 30),
+            presetFullWidth("ost-4", "Trend of Open Data", OPEN_SCIENCE_TRENDS,
+                accessTypeTrendViews(), AVG_MEDIAN, DATASETS_COUNT, NO_FILTERS, 40),
 
-            // ---- National Monitoring (inventory rows 66-69) --------------------------------------
+            // ---- National Monitoring (inventory rows 66-69, merged into 2 presets) ---------------
             presetFullWidth("nm-1", "National Monitoring of Open Science by Areas", NATIONAL_MONITORING,
-                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                areaTrendViews(openScienceAreaSelector()),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(MONITORING_AREA_TYPES), 10),
-            preset("nm-2", "National Monitoring (number of monitored areas per country)", NATIONAL_MONITORING,
-                OUTPUT_COUNT_VIEWS, NO_SERIES_AGGREGATIONS, MONITORED_AREAS_COUNT, NO_FILTERS, 20),
-            preset("nm-3", "National Monitoring on area", NATIONAL_MONITORING,
-                statusByAreaViews(), NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS,
-                initiativeType("MONITORING_INITIATIVE"), 30),
-            presetFullWidth("nm-4", "National Monitoring of Open Science by Countries and Areas", NATIONAL_MONITORING,
-                statusByAreaViews(), NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS,
-                initiativeTypes(MONITORING_AREA_TYPES), 40),
+            presetFullWidth("nm-2", "National Monitoring (number of monitored areas per country)", NATIONAL_MONITORING,
+                areaCountViews(), NO_SERIES_AGGREGATIONS, MONITORED_AREAS_COUNT, NO_FILTERS, 20),
 
             // ---- Open Science Policies (inventory rows 70-75) ----------------------------------------
             presetFullWidth("osp-1", "National Open Science Policies by Areas", OPEN_SCIENCE_POLICIES,
-                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                areaTrendViews(openScienceAreaSelector()),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(POLICY_AREA_TYPES), 10),
             presetFullWidth("osp-2", "Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_POLICIES,
-                categoryDistributionViews(INITIATIVE_TYPE_DIMENSION, "Open Science area"),
+                areaTrendViews(openScienceAreaSelector()),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES), 20),
-            preset("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES,
-                OUTPUT_COUNT_VIEWS, NO_SERIES_AGGREGATIONS, POLICY_AREAS_COUNT, NO_FILTERS, 30),
-            preset("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES,
-                statusByAreaViews(), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
+            presetFullWidth("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES,
+                areaCountViews(), NO_SERIES_AGGREGATIONS, POLICY_AREAS_COUNT, NO_FILTERS, 30),
+            presetFullWidth("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES,
+                areaTrendViews(openScienceAreaSelector()), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
                 initiativeType("OA_PUBLICATION_POLICY"), 40),
             // Registered for catalog completeness — not queryable yet, returns HTTP 501 (see
             // IndicatorDefinitionCatalog.researcherPolicyCoverage() / docs/INDICATOR_TODO.md).
-            preset("osp-5", "Coverage of Researchers by National Open Science Policies in Europe", OPEN_SCIENCE_POLICIES,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, RESEARCHER_POLICY_COVERAGE, NO_FILTERS, 50),
+            // researcher_policy_coverage has no initiativeType binding, so areaTrendViews takes no selector.
+            presetFullWidth("osp-5", "Coverage of Researchers by National Open Science Policies in Europe", OPEN_SCIENCE_POLICIES,
+                areaTrendViews(null), NO_SERIES_AGGREGATIONS, RESEARCHER_POLICY_COVERAGE, NO_FILTERS, 50),
             presetFullWidth("osp-6", "National Open Science Policies by Countries and Areas", OPEN_SCIENCE_POLICIES,
-                statusByAreaViews(), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
+                areaTrendViews(openScienceAreaSelector()), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
                 initiativeTypes(POLICY_AREA_TYPES), 60)
         );
     }
