@@ -20,6 +20,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * matches the field names/values confirmed against observatory-ui's OAPublicationVSClosed query
  * (access-mode filtering) and coutry-pages.queries.ts (the "closed" OR-block and the
  * result.organization.country.code country filter).
+ *
+ * <p>Every {@code op:"AND"} condition a sub-query carries is folded into one shared
+ * {@code groupFilters} block ({@link OpenAireQueryBuilder#foldAndBlocks}); {@code OR} blocks stay
+ * separate. The helpers below therefore look leaves up <em>across all blocks</em>.
  */
 class OpenAireQueryBuilderTest {
 
@@ -37,12 +41,13 @@ class OpenAireQueryBuilderTest {
         assertThat(query.path("select").get(0).path("aggregate").asText()).isEqualTo("count");
 
         List<JsonNode> filters = toList(query.path("filters"));
-        assertThat(filters).hasSize(4);
-        assertThat(opOf(filters, "result.access mode")).isEqualTo("AND");
-        assertThat(fieldValues(filters, "result.access mode")).containsExactly("Closed Access");
-        assertThat(fieldValues(filters, "result.type")).containsExactly("publication");
-        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
-        assertThat(fieldValues(filters, "result.year")).containsExactly("2023");
+        // Single access mode is an AND condition, so it folds in with type/continent/year.
+        assertThat(filters).hasSize(1);
+        assertThat(opForField(filters, "result.access mode")).isEqualTo("AND");
+        assertThat(leafValues(filters, "result.access mode")).containsExactly("Closed Access");
+        assertThat(leafValues(filters, "result.type")).containsExactly("publication");
+        assertThat(leafValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+        assertThat(leafValues(filters, "result.year")).containsExactly("2023");
     }
 
     @Test
@@ -52,8 +57,8 @@ class OpenAireQueryBuilderTest {
         );
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(opOf(filters, "result.access mode")).isEqualTo("OR");
-        assertThat(fieldValues(filters, "result.access mode"))
+        assertThat(opForField(filters, "result.access mode")).isEqualTo("OR");
+        assertThat(leafValues(filters, "result.access mode"))
             .containsExactlyInAnyOrder("Closed Access", "Embargo", "Restricted");
     }
 
@@ -62,8 +67,8 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.publicationCountSubQuery(2023, List.of(), null);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters).hasSize(3);
-        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.access mode");
+        assertThat(filters).hasSize(1);
+        assertThat(fieldsPresent(filters)).doesNotContain("result.access mode");
     }
 
     @Test
@@ -71,11 +76,12 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.publicationCountSubQuery(2023, List.of(), List.of("GR"));
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters).hasSize(4);
-        assertThat(opOf(filters, "result.organization.country.code")).isEqualTo("AND");
-        assertThat(fieldValues(filters, "result.organization.country.code")).containsExactly("GR");
+        // Single country is an AND condition too — one folded block.
+        assertThat(filters).hasSize(1);
+        assertThat(opForField(filters, "result.organization.country.code")).isEqualTo("AND");
+        assertThat(leafValues(filters, "result.organization.country.code")).containsExactly("GR");
         // Country given still keeps the continent scope — narrowing, not replacing it.
-        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+        assertThat(leafValues(filters, "result.organization.country.continent")).containsExactly("Europe");
     }
 
     @Test
@@ -83,8 +89,8 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.publicationCountSubQuery(2023, List.of(), List.of("GR", "DE"));
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(opOf(filters, "result.organization.country.code")).isEqualTo("OR");
-        assertThat(fieldValues(filters, "result.organization.country.code")).containsExactlyInAnyOrder("GR", "DE");
+        assertThat(opForField(filters, "result.organization.country.code")).isEqualTo("OR");
+        assertThat(leafValues(filters, "result.organization.country.code")).containsExactlyInAnyOrder("GR", "DE");
     }
 
     @Test
@@ -92,7 +98,7 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.publicationCountSubQuery(2023, List.of(), null);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.organization.country.code");
+        assertThat(fieldsPresent(filters)).doesNotContain("result.organization.country.code");
     }
 
     @Test
@@ -100,7 +106,7 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.publicationCountSubQuery(2023, List.of(), List.of());
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.organization.country.code");
+        assertThat(fieldsPresent(filters)).doesNotContain("result.organization.country.code");
     }
 
     @Test
@@ -118,11 +124,11 @@ class OpenAireQueryBuilderTest {
         assertThat(select.get(1).path("aggregate").isNull()).isTrue();
 
         List<JsonNode> filters = toList(query.path("filters"));
-        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.organization.country.code");
-        assertThat(fieldValues(filters, "result.access mode")).containsExactly("Open Access");
-        assertThat(fieldValues(filters, "result.type")).containsExactly("publication");
-        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
-        assertThat(fieldValues(filters, "result.year")).containsExactly("2023");
+        assertThat(fieldsPresent(filters)).doesNotContain("result.organization.country.code");
+        assertThat(leafValues(filters, "result.access mode")).containsExactly("Open Access");
+        assertThat(leafValues(filters, "result.type")).containsExactly("publication");
+        assertThat(leafValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+        assertThat(leafValues(filters, "result.year")).containsExactly("2023");
     }
 
     @Test
@@ -130,8 +136,8 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.publicationCountByCountrySubQuery(2023, List.of());
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters).hasSize(3);
-        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.access mode");
+        assertThat(filters).hasSize(1);
+        assertThat(fieldsPresent(filters)).doesNotContain("result.access mode");
     }
 
     @Test
@@ -148,13 +154,42 @@ class OpenAireQueryBuilderTest {
         assertThat(root.path("series").get(1)).isEqualTo(second);
     }
 
+    @Test
+    void publicationCountSubQueryFoldsEveryAndConditionIntoOneBlock() {
+        ObjectNode subQuery = builder.publicationCountSubQuery(2023, List.of(OpenAireAccessMode.OA), null);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(filters).hasSize(1);
+        assertThat(filters.get(0).path("op").asText()).isEqualTo("AND");
+        assertThat(fieldsInBlock(filters.get(0))).containsExactlyInAnyOrder(
+            "result.access mode", "result.type", "result.organization.country.continent", "result.year");
+    }
+
+    @Test
+    void publicationCountSubQueryKeepsAnOrBlockAlongsideTheFoldedAndBlock() {
+        ObjectNode subQuery = builder.publicationCountSubQuery(
+            2023, List.of(OpenAireAccessMode.CLOSED, OpenAireAccessMode.EMBARGOED), null);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        assertThat(filters).hasSize(2);
+
+        JsonNode orBlock = blockContaining(filters, "result.access mode");
+        assertThat(orBlock.path("op").asText()).isEqualTo("OR");
+        assertThat(fieldsInBlock(orBlock)).containsOnly("result.access mode");
+
+        JsonNode andBlock = blockContaining(filters, "result.year");
+        assertThat(andBlock.path("op").asText()).isEqualTo("AND");
+        assertThat(fieldsInBlock(andBlock)).containsExactlyInAnyOrder(
+            "result.type", "result.organization.country.continent", "result.year");
+    }
+
     @ParameterizedTest(name = "{0}")
     @CsvSource({"dataset", "software"})
     void resultCountSubQueryFiltersByTheGivenResultType(String resultType) {
         ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), DimensionFilters.NONE, resultType);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.type")).containsExactly(resultType);
+        assertThat(leafValues(filters, "result.type")).containsExactly(resultType);
     }
 
     @ParameterizedTest(name = "{0}")
@@ -164,7 +199,7 @@ class OpenAireQueryBuilderTest {
             2023, List.of(), resultType, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.type")).containsExactly(resultType);
+        assertThat(leafValues(filters, "result.type")).containsExactly(resultType);
     }
 
     @Test
@@ -197,9 +232,9 @@ class OpenAireQueryBuilderTest {
         assertThat(query.path("select").get(1).path("field").asText()).isEqualTo("result.result_fos.lvl1");
 
         List<JsonNode> filters = toList(query.path("filters"));
-        assertThat(fieldValues(filters, "result.organization.country.code")).containsExactly("GR");
+        assertThat(leafValues(filters, "result.organization.country.code")).containsExactly("GR");
         // The Europe continent scope still applies alongside the narrower country filter.
-        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+        assertThat(leafValues(filters, "result.organization.country.continent")).containsExactly("Europe");
     }
 
     @Test
@@ -208,7 +243,7 @@ class OpenAireQueryBuilderTest {
             2023, List.of(), OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION, IndicatorCodes.CLASSIFICATION_DIMENSION, DimensionFilters.NONE);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.organization.country.code");
+        assertThat(fieldsPresent(filters)).doesNotContain("result.organization.country.code");
     }
 
     @Test
@@ -217,8 +252,8 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
-        assertThat(opOf(resultFilters, "result.classification")).isEqualTo("AND");
-        assertThat(fieldValues(resultFilters, "result.classification")).containsExactly("Article");
+        assertThat(opForField(resultFilters, "result.classification")).isEqualTo("AND");
+        assertThat(leafValues(resultFilters, "result.classification")).containsExactly("Article");
     }
 
     @Test
@@ -227,8 +262,8 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
-        assertThat(opOf(resultFilters, "result.classification")).isEqualTo("OR");
-        assertThat(fieldValues(resultFilters, "result.classification")).containsExactlyInAnyOrder("Article", "Book");
+        assertThat(opForField(resultFilters, "result.classification")).isEqualTo("OR");
+        assertThat(leafValues(resultFilters, "result.classification")).containsExactlyInAnyOrder("Article", "Book");
     }
 
     @Test
@@ -237,7 +272,7 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.resultCountSubQuery(2023, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(resultFilters, "result.result_fos.lvl1")).containsExactly("01 natural sciences");
+        assertThat(leafValues(resultFilters, "result.result_fos.lvl1")).containsExactly("01 natural sciences");
     }
 
     @Test
@@ -250,7 +285,7 @@ class OpenAireQueryBuilderTest {
         assertThat(query.path("select").get(1).path("field").asText()).isEqualTo("result.organization.country");
 
         List<JsonNode> resultFilters = toList(query.path("filters"));
-        assertThat(fieldValues(resultFilters, "result.classification")).containsExactly("Article");
+        assertThat(leafValues(resultFilters, "result.classification")).containsExactly("Article");
     }
 
     @Test
@@ -259,8 +294,8 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.resultCountSubQuery(2022, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(resultFilters, "result.gold_oa")).containsExactly("1");
-        assertThat(resultFilters.stream().map(this::fieldOf)).doesNotContain("result.green_oa");
+        assertThat(leafValues(resultFilters, "result.gold_oa")).containsExactly("1");
+        assertThat(fieldsPresent(resultFilters)).doesNotContain("result.green_oa");
     }
 
     @Test
@@ -269,20 +304,23 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.resultCountSubQuery(2022, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(resultFilters, "result.green_oa")).containsExactly("1");
-        assertThat(resultFilters.stream().map(this::fieldOf)).doesNotContain("result.gold_oa");
+        assertThat(leafValues(resultFilters, "result.green_oa")).containsExactly("1");
+        assertThat(fieldsPresent(resultFilters)).doesNotContain("result.gold_oa");
     }
 
     @Test
-    void resultCountSubQueryWithBothGoldAndGreenOaAddsTwoIndependentAndBlocks() {
+    void resultCountSubQueryFoldsGoldAndGreenOaIntoTheSharedAndBlock() {
         var filters = new DimensionFilters(List.of(), List.of(), List.of(), List.of("1"), List.of("1"));
         ObjectNode subQuery = builder.resultCountSubQuery(2022, List.of(), filters, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
-        assertThat(opOf(resultFilters, "result.gold_oa")).isEqualTo("AND");
-        assertThat(opOf(resultFilters, "result.green_oa")).isEqualTo("AND");
-        assertThat(fieldValues(resultFilters, "result.gold_oa")).containsExactly("1");
-        assertThat(fieldValues(resultFilters, "result.green_oa")).containsExactly("1");
+        // Both gold_oa and green_oa are AND conditions — they land in the one shared AND block.
+        assertThat(resultFilters).hasSize(1);
+        assertThat(resultFilters.get(0).path("op").asText()).isEqualTo("AND");
+        assertThat(opForField(resultFilters, "result.gold_oa")).isEqualTo("AND");
+        assertThat(opForField(resultFilters, "result.green_oa")).isEqualTo("AND");
+        assertThat(leafValues(resultFilters, "result.gold_oa")).containsExactly("1");
+        assertThat(leafValues(resultFilters, "result.green_oa")).containsExactly("1");
     }
 
     @Test
@@ -290,7 +328,7 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.resultCountSubQuery(2022, List.of(), DimensionFilters.NONE, OpenAireQueryBuilder.RESULT_TYPE_PUBLICATION);
 
         List<JsonNode> resultFilters = toList(subQuery.path("query").path("filters"));
-        assertThat(resultFilters.stream().map(this::fieldOf)).doesNotContain("result.gold_oa", "result.green_oa");
+        assertThat(fieldsPresent(resultFilters)).doesNotContain("result.gold_oa", "result.green_oa");
     }
 
     @ParameterizedTest(name = "{0}")
@@ -308,10 +346,10 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, status, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.access mode")).containsExactly(status.accessMode().openAireLiteral());
-        assertThat(fieldValues(filters, "result.type")).containsExactly("publication");
-        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
-        assertThat(fieldValues(filters, "result.year")).containsExactly("2022");
+        assertThat(leafValues(filters, "result.access mode")).containsExactly(status.accessMode().openAireLiteral());
+        assertThat(leafValues(filters, "result.type")).containsExactly("publication");
+        assertThat(leafValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+        assertThat(leafValues(filters, "result.year")).containsExactly("2022");
     }
 
     @Test
@@ -319,7 +357,7 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.OA_WITH_LICENSE, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.indi_result_oa_with_license.oa_with_license")).containsExactly("1");
+        assertThat(leafValues(filters, "result.indi_result_oa_with_license.oa_with_license")).containsExactly("1");
     }
 
     @Test
@@ -327,7 +365,7 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.OA_WITHOUT_LICENSE, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(fieldValues(filters, "result.indi_result_oa_without_license.oa_without_license")).containsExactly("1");
+        assertThat(leafValues(filters, "result.indi_result_oa_without_license.oa_without_license")).containsExactly("1");
     }
 
     @Test
@@ -335,7 +373,7 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters.stream().map(this::fieldOf))
+        assertThat(fieldsPresent(filters))
             .doesNotContain("result.indi_result_oa_with_license.oa_with_license")
             .doesNotContain("result.indi_result_oa_without_license.oa_without_license");
     }
@@ -345,15 +383,15 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, null, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters.stream().map(this::fieldOf))
+        assertThat(fieldsPresent(filters))
             .doesNotContain("result.access mode",
                 "result.indi_result_oa_with_license.oa_with_license",
                 "result.indi_result_oa_without_license.oa_without_license");
         // still the classification vocabulary + entity type + Europe + year scope
-        assertThat(fieldValues(filters, "result.classification"))
+        assertThat(leafValues(filters, "result.classification"))
             .containsExactlyInAnyOrder("article", "conference", "chapter", "book");
-        assertThat(fieldValues(filters, "result.year")).containsExactly("2022");
-        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+        assertThat(leafValues(filters, "result.year")).containsExactly("2022");
+        assertThat(leafValues(filters, "result.organization.country.continent")).containsExactly("Europe");
     }
 
     @Test
@@ -361,11 +399,25 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(opOf(filters, "result.classification")).isEqualTo("OR");
-        assertThat(fieldValues(filters, "result.classification"))
+        assertThat(opForField(filters, "result.classification")).isEqualTo("OR");
+        assertThat(leafValues(filters, "result.classification"))
             .containsExactlyInAnyOrder("article", "conference", "chapter", "book");
-        JsonNode classificationBlock = filters.stream().filter(f -> "result.classification".equals(fieldOf(f))).findFirst().orElseThrow();
+        JsonNode classificationBlock = blockContaining(filters, "result.classification");
         assertThat(toList(classificationBlock.path("groupFilters")).get(0).path("type").asText()).isEqualTo("contains");
+    }
+
+    @Test
+    void oaLicenseStatusSubQueryKeepsTheClassificationVocabularyAsItsOwnOrBlock() {
+        ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
+
+        List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
+        // one OR block (the classification vocabulary) + one folded AND block (everything else).
+        assertThat(filters).hasSize(2);
+        assertThat(blockContaining(filters, "result.classification").path("op").asText()).isEqualTo("OR");
+        JsonNode andBlock = blockContaining(filters, "result.year");
+        assertThat(andBlock.path("op").asText()).isEqualTo("AND");
+        assertThat(fieldsInBlock(andBlock)).containsExactlyInAnyOrder(
+            "result.type", "result.access mode", "result.organization.country.continent", "result.year");
     }
 
     @Test
@@ -382,10 +434,10 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of("GR", "DE"), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(opOf(filters, "result.organization.country.code")).isEqualTo("OR");
-        assertThat(fieldValues(filters, "result.organization.country.code")).containsExactlyInAnyOrder("GR", "DE");
+        assertThat(opForField(filters, "result.organization.country.code")).isEqualTo("OR");
+        assertThat(leafValues(filters, "result.organization.country.code")).containsExactlyInAnyOrder("GR", "DE");
         // Country given still keeps the continent scope — narrowing, not replacing it.
-        assertThat(fieldValues(filters, "result.organization.country.continent")).containsExactly("Europe");
+        assertThat(leafValues(filters, "result.organization.country.continent")).containsExactly("Europe");
     }
 
     @Test
@@ -393,7 +445,7 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of(), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(filters.stream().map(this::fieldOf)).doesNotContain("result.organization.country.code");
+        assertThat(fieldsPresent(filters)).doesNotContain("result.organization.country.code");
     }
 
     /**
@@ -425,21 +477,39 @@ class OpenAireQueryBuilderTest {
         return StreamSupport.stream(arrayNode.spliterator(), false).toList();
     }
 
-    private String fieldOf(JsonNode groupFilterBlock) {
-        return groupFilterBlock.path("groupFilters").get(0).path("field").asText();
+    /** Every leaf {@code field} across every filter block. */
+    private List<String> fieldsPresent(List<JsonNode> filters) {
+        return filters.stream()
+            .flatMap(block -> toList(block.path("groupFilters")).stream())
+            .map(leaf -> leaf.path("field").asText())
+            .toList();
     }
 
-    private JsonNode blockFor(List<JsonNode> filters, String field) {
-        return filters.stream().filter(f -> field.equals(fieldOf(f))).findFirst().orElseThrow();
+    /** The {@code field}s of the leaves within one block. */
+    private List<String> fieldsInBlock(JsonNode block) {
+        return toList(block.path("groupFilters")).stream()
+            .map(leaf -> leaf.path("field").asText())
+            .toList();
     }
 
-    private String opOf(List<JsonNode> filters, String field) {
-        return blockFor(filters, field).path("op").asText();
+    /** The one block whose leaves include the given field. */
+    private JsonNode blockContaining(List<JsonNode> filters, String field) {
+        return filters.stream()
+            .filter(block -> fieldsInBlock(block).contains(field))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no filter block carries a leaf for " + field));
     }
 
-    /** All leaf values (one leaf per literal) within the block for the given field. */
-    private List<String> fieldValues(List<JsonNode> filters, String field) {
-        return toList(blockFor(filters, field).path("groupFilters")).stream()
+    /** {@code op} of the block carrying the given field. */
+    private String opForField(List<JsonNode> filters, String field) {
+        return blockContaining(filters, field).path("op").asText();
+    }
+
+    /** All leaf values (one per literal) for the given field, in whichever block they sit. */
+    private List<String> leafValues(List<JsonNode> filters, String field) {
+        return filters.stream()
+            .flatMap(block -> toList(block.path("groupFilters")).stream())
+            .filter(leaf -> field.equals(leaf.path("field").asText()))
             .map(leaf -> leaf.path("values").get(0).asText())
             .toList();
     }

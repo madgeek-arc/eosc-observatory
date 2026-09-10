@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator.openaire;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -15,6 +16,10 @@ import java.util.Map;
  * explore-queries.ts (OAPublicationVSClosed) into Java. Every sub-query scopes to European
  * results for a given year and entity type (publication or dataset); an optional access-mode
  * filter narrows it further.
+ *
+ * <p>Each sub-query's {@code op:"AND"} conditions are folded into a single {@code groupFilters}
+ * block ({@link #foldAndBlocks}) to keep the generated {@code raw?json=} URL short; {@code OR}
+ * blocks stay separate top-level blocks.
  */
 @Component
 public class OpenAireQueryBuilder {
@@ -62,9 +67,10 @@ public class OpenAireQueryBuilder {
         query.putArray("parameters");
         query.putArray("select").addObject().put("field", ENTITY).put("aggregate", "count");
 
-        ArrayNode filterArray = query.putArray("filters");
+        ArrayNode filterArray = objectMapper.createArrayNode();
         commonFilters(filterArray, year, accessModes, resultType);
         addDimensionFilters(filterArray, filters);
+        query.set("filters", foldAndBlocks(filterArray));
 
         query.put("entity", ENTITY);
         query.put("profile", PROFILE);
@@ -104,9 +110,10 @@ public class OpenAireQueryBuilder {
         group.put("field", GROUP_FIELD_BY_DIMENSION.get(groupDimensionCode));
         group.putNull("aggregate");
 
-        ArrayNode filterArray = query.putArray("filters");
+        ArrayNode filterArray = objectMapper.createArrayNode();
         commonFilters(filterArray, year, accessModes, resultType);
         addDimensionFilters(filterArray, filters);
+        query.set("filters", foldAndBlocks(filterArray));
 
         query.put("entity", ENTITY);
         query.put("profile", PROFILE);
@@ -147,6 +154,35 @@ public class OpenAireQueryBuilder {
     }
 
     /**
+     * Folds every {@code op:"AND"} block of a freshly built filter array into a single trailing AND
+     * block. Semantically identical — the stats-tool AND-combines top-level filter blocks (confirmed
+     * live in this repo: one combined {@code groupFilters} block and two separate top-level blocks
+     * return identical results, see the {@code country} {@code NOT_IN} note in
+     * {@code indicator/README.md}) — but it collapses the 4-8 single-leaf AND blocks every sub-query
+     * carries (access mode, result type, Europe scope, year, dimension filters) into one, shrinking
+     * the {@code raw?json=} URL by ~13% so wider year ranges stay under the upstream request-line
+     * limit. OR blocks (multi access-mode, multi country, the classification-vocabulary
+     * contains-match) are kept as separate top-level blocks.
+     */
+    private ArrayNode foldAndBlocks(ArrayNode builtFilters) {
+        ArrayNode folded = objectMapper.createArrayNode();
+        ObjectNode andBlock = objectMapper.createObjectNode();
+        ArrayNode andLeaves = andBlock.putArray("groupFilters");
+        for (JsonNode block : builtFilters) {
+            if ("AND".equals(block.path("op").asText())) {
+                block.path("groupFilters").forEach(andLeaves::add);
+            } else {
+                folded.add(block);
+            }
+        }
+        if (!andLeaves.isEmpty()) {
+            andBlock.put("op", "AND");
+            folded.add(andBlock);
+        }
+        return folded;
+    }
+
+    /**
      * One sub-query for publications.oa_license_status_count: European (or, if countryCodes is
      * given, one or more specific countries') publication count for the given year and OA/license
      * status, grouped by classification (narrowed to the fixed article/conference/chapter/book
@@ -175,7 +211,7 @@ public class OpenAireQueryBuilder {
             countryGroup.putNull("aggregate");
         }
 
-        ArrayNode filterArray = query.putArray("filters");
+        ArrayNode filterArray = objectMapper.createArrayNode();
         filterArray.add(classificationVocabularyFilter());
         filterArray.add(groupFilter("result.type", "=", RESULT_TYPE_PUBLICATION));
         if (status != null) {
@@ -189,6 +225,7 @@ public class OpenAireQueryBuilder {
         if (countryCodes != null && !countryCodes.isEmpty()) {
             filterArray.add(countryFilter(countryCodes));
         }
+        query.set("filters", foldAndBlocks(filterArray));
 
         query.put("entity", ENTITY);
         query.put("profile", EUROPE_MONITOR_PROFILE);
