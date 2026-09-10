@@ -27,6 +27,7 @@ import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.ViewSelector;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.IndicatorPreset;
+import eu.openaire.observatory.indicator.PresetValueLabels;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.IndicatorPresetCatalog;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
@@ -93,14 +94,14 @@ class UserDashboardServiceTest {
 
         trendDefinition = new IndicatorPreset(
                 TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), false, null,
-                List.of(AggregationType.AVG, AggregationType.MEDIAN), "indicator.trend", Map.of(), 10);
+                List.of(AggregationType.AVG, AggregationType.MEDIAN), "indicator.trend", Map.of(), PresetValueLabels.NONE, 10);
         trendIndicator = indicatorDefinition("indicator.trend", true,
                 Set.of(new IndicatorDimensionBinding(
                         IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ, FilterOperator.IN), false)));
 
         nonTrendDefinition = new IndicatorPreset(
                 NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), false, null,
-                List.of(), "indicator.non-trend", Map.of(), 20);
+                List.of(), "indicator.non-trend", Map.of(), PresetValueLabels.NONE, 20);
         nonTrendIndicator = indicatorDefinition("indicator.non-trend", false, Set.of());
 
         lenient().when(presetCatalog.get(TREND_WIDGET_ID)).thenReturn(trendDefinition);
@@ -338,7 +339,7 @@ class UserDashboardServiceTest {
         IndicatorPreset perCountryPreset = new IndicatorPreset(
                 "widget-map", "Map Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
                 List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MAP)),
-                false, null, List.of(), "indicator.trend", Map.of(), 30);
+                false, null, List.of(), "indicator.trend", Map.of(), PresetValueLabels.NONE, 30);
         lenient().when(presetCatalog.get("widget-map")).thenReturn(perCountryPreset);
         UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", "widget-map")), null, 2023, 2023, null);
 
@@ -357,7 +358,7 @@ class UserDashboardServiceTest {
         IndicatorPreset distributionPreset = new IndicatorPreset(
                 "widget-distribution", "Distribution Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
                 List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, selector)),
-                true, null, List.of(), "indicator.distribution", Map.of(), 40);
+                true, null, List.of(), "indicator.distribution", Map.of(), PresetValueLabels.NONE, 40);
         IndicatorDefinition distributionIndicator = indicatorDefinition("indicator.distribution", true, Set.of(
                 new IndicatorDimensionBinding(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION,
                         Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP), Set.of(FilterOperator.EQ, FilterOperator.IN), false),

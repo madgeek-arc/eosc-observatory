@@ -20,6 +20,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
 
 class IndicatorPresetCatalogTest {
 
@@ -195,10 +196,10 @@ class IndicatorPresetCatalogTest {
     @Test
     void toIndicatorQueryBuildsACountryFilterAndGroupsByCountryForSelectedCountries() {
         IndicatorQuery query = catalog.toIndicatorQuery(
-            catalog.get("oa-1"), List.of("EL", "IT"), 2019, 2023, List.of());
+            catalog.get("oa-1"), List.of("GR", "IT"), 2019, 2023, List.of());
 
         assertThat(query.filters())
-            .contains(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("EL", "IT")));
+            .contains(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "IT")));
         assertThat(query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
@@ -259,13 +260,13 @@ class IndicatorPresetCatalogTest {
 
     @Test
     void distributionPresetAddsCountryForTheSelectedCountriesCells() {
-        IndicatorQuery singleYear = catalog.toIndicatorQuery(catalog.get("oa-9"), List.of("EL", "IT"), 2023, 2023, List.of());
+        IndicatorQuery singleYear = catalog.toIndicatorQuery(catalog.get("oa-9"), List.of("GR", "IT"), 2023, 2023, List.of());
         assertThat(singleYear.groupBy())
             .containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
         assertThat(singleYear.filters())
-            .contains(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("EL", "IT")));
+            .contains(new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "IT")));
 
-        IndicatorQuery range = catalog.toIndicatorQuery(catalog.get("oa-9"), List.of("EL", "IT"), 2019, 2023, List.of());
+        IndicatorQuery range = catalog.toIndicatorQuery(catalog.get("oa-9"), List.of("GR", "IT"), 2019, 2023, List.of());
         assertThat(range.groupBy())
             .containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
     }
@@ -295,7 +296,7 @@ class IndicatorPresetCatalogTest {
         assertThat(euRange.groupBy()).containsExactly(IndicatorCodes.ACCESS_STATUS_DIMENSION);
         assertThat(euRange.filters()).isEmpty();
 
-        IndicatorQuery selected = catalog.toIndicatorQuery(catalog.get("ost-3"), List.of("EL"), 2019, 2023, List.of());
+        IndicatorQuery selected = catalog.toIndicatorQuery(catalog.get("ost-3"), List.of("GR"), 2019, 2023, List.of());
         assertThat(selected.groupBy())
             .containsExactly(IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
     }
@@ -310,7 +311,7 @@ class IndicatorPresetCatalogTest {
     void nonDistributionPresetDerivesGroupByExactlyAsBefore() {
         // oa-1 has no selector on any view — the legacy perCountryBreakdown() path
         assertThat(catalog.toIndicatorQuery(catalog.get("oa-1"), List.of(), 2023, 2023, List.of()).groupBy()).isEmpty();
-        assertThat(catalog.toIndicatorQuery(catalog.get("oa-1"), List.of("EL"), 2023, 2023, List.of()).groupBy())
+        assertThat(catalog.toIndicatorQuery(catalog.get("oa-1"), List.of("GR"), 2023, 2023, List.of()).groupBy())
             .containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
@@ -341,6 +342,48 @@ class IndicatorPresetCatalogTest {
 
         assertThat(query.timeSeries()).isEqualTo(new TimeSeriesRequest(2019, 2023, null));
         assertThat(query.filters()).noneMatch(f -> f.dimension().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION));
+    }
+
+    @Test
+    void everyNationalMonitoringPresetDeclaresTheMonitoringLegendLabels() {
+        for (String id : List.of("oa-8", "od-7", "fair-6", "dm-6", "cs-7", "repo-7", "repo-9", "train-6", "sw-7")) {
+            IndicatorPreset preset = catalog.get(id);
+            assertThat(preset.valueLabels()).as(id).containsOnly(
+                entry("YES", "Has national monitoring"),
+                entry("NO", "Does not have national monitoring"),
+                entry("AWAITING_DATA", "N/A"));
+            assertThat(preset.missingValueLabel()).as(id).isEqualTo("N/A");
+        }
+    }
+
+    @Test
+    void nationalPolicyPresetOnlyRelabelsTheGapFilledValue() {
+        IndicatorPreset oa7 = catalog.get("oa-7");
+
+        assertThat(oa7.valueLabels()).isEmpty();
+        assertThat(oa7.missingValueLabel()).isEqualTo("N/A");
+    }
+
+    @Test
+    void magnitudePresetDeclaresNoLegendLabels() {
+        IndicatorPreset oa1 = catalog.get("oa-1");
+
+        assertThat(oa1.valueLabels()).isEmpty();
+        assertThat(oa1.missingValueLabel()).isNull();
+    }
+
+    @Test
+    void catalogRejectsValueLabelsOnAPresetWhoseFormatIsNotAStatusFormat() {
+        IndicatorPreset magnitudeWithLabels = new IndicatorPreset(
+            "oa-1", "OA", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), false, null, List.of(),
+            "publications.access_status_share", java.util.Map.of(),
+            PresetValueLabels.forMissing("N/A"), 10);
+
+        assertThatThrownBy(() -> IndicatorPresetCatalog.validateValueLabels(
+                magnitudeWithLabels, definitionCatalog.get("publications.access_status_share")))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("oa-1")
+            .hasMessageContaining("declares value labels");
     }
 
     @Test
@@ -402,7 +445,7 @@ class IndicatorPresetCatalogTest {
         });
 
         // selected countries -> initiativeType + country
-        IndicatorQuery selected = catalog.toIndicatorQuery(catalog.get("nm-1"), List.of("EL", "IT"), 2023, 2023, List.of());
+        IndicatorQuery selected = catalog.toIndicatorQuery(catalog.get("nm-1"), List.of("GR", "IT"), 2023, 2023, List.of());
         assertThat(selected.groupBy())
             .containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
     }

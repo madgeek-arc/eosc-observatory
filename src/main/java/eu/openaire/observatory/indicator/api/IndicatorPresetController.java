@@ -3,6 +3,7 @@ package eu.openaire.observatory.indicator.api;
 import eu.openaire.observatory.indicator.IndicatorPreset;
 import eu.openaire.observatory.indicator.IndicatorPresetCatalog;
 import eu.openaire.observatory.indicator.IndicatorQueryService;
+import eu.openaire.observatory.indicator.PresetValueLabeler;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.ActorContext;
@@ -24,12 +25,15 @@ public class IndicatorPresetController {
 
     private final IndicatorPresetCatalog presetCatalog;
     private final IndicatorQueryService queryService;
+    private final PresetValueLabeler valueLabeler;
     private final ActorContext actorContext;
 
     public IndicatorPresetController(
-            IndicatorPresetCatalog presetCatalog, IndicatorQueryService queryService, ActorContext actorContext) {
+            IndicatorPresetCatalog presetCatalog, IndicatorQueryService queryService,
+            PresetValueLabeler valueLabeler, ActorContext actorContext) {
         this.presetCatalog = presetCatalog;
         this.queryService = queryService;
+        this.valueLabeler = valueLabeler;
         this.actorContext = actorContext;
     }
 
@@ -59,6 +63,6 @@ public class IndicatorPresetController {
         }
         IndicatorQuery query = presetCatalog.toIndicatorQuery(
             preset, request.countries(), request.yearFrom(), request.yearTo(), request.seriesAggregations());
-        return ResponseEntity.ok(queryService.execute(query, actorContext));
+        return ResponseEntity.ok(valueLabeler.relabel(preset, queryService.execute(query, actorContext)));
     }
 }

@@ -1,6 +1,8 @@
 package eu.openaire.observatory.indicator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.CountryScope;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
@@ -36,6 +38,15 @@ import java.util.Map;
  * <p>{@code fullWidth} is layout metadata only — {@code true} for the handful of presets (e.g. the
  * "Distribution of ... Types" indicators) whose views need the whole dashboard width rather than
  * sharing a row with another widget; {@code false} for every other preset.
+ *
+ * <p>{@code labels} ({@link PresetValueLabels}) lets a preset name the display strings its query
+ * results carry — a raw per-country status value like {@code "YES"} maps to
+ * {@code "Has national monitoring"}, a gap-filled {@code null} year to {@code "N/A"} — so the UI
+ * can use the values straight as chart legend labels. It serializes flat as
+ * {@code valueLabels}/{@code missingValueLabel} (both omitted when empty) and is applied to the
+ * {@code POST /indicators/presets/{id}/query} response by {@link PresetValueLabeler}; the generic
+ * {@code POST /indicators/query} endpoint is untouched. {@link PresetValueLabels#NONE} for every
+ * preset whose raw values are already display-ready.
  */
 public record IndicatorPreset(
     String id,
@@ -47,13 +58,38 @@ public record IndicatorPreset(
     List<AggregationType> allowedSeriesAggregations, // meaningful seriesAggregations values for this preset — empty if none
     String indicatorCode, // must resolve in IndicatorDefinitionCatalog
     Map<String, List<String>> presetFilters, // dimensionCode -> values; empty when none needed
+    @JsonIgnore PresetValueLabels labels, // legend labels for this preset's raw values; serialized flat, see valueLabels()/missingValueLabel()
     @JsonIgnore int order // this preset indicator's rank within {@code group}; drives catalog ordering, not exposed on the wire
 ) {
+    public IndicatorPreset {
+        labels = labels != null ? labels : PresetValueLabels.NONE;
+    }
+
+    /** Raw data-point value -&gt; display label; empty when the raw values are already display-ready. */
+    @JsonProperty("valueLabels")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public Map<String, String> valueLabels() {
+        return labels.values();
+    }
+
+    /** Display label for a null (gap-filled) data-point value; {@code null} to leave nulls as-is. */
+    @JsonProperty("missingValueLabel")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String missingValueLabel() {
+        return labels.missingValue();
+    }
+
     /** A copy with {@code format} filled from {@code definition}. Called once, at catalog construction. */
     public IndicatorPreset resolvedAgainst(IndicatorDefinition definition) {
         return new IndicatorPreset(
             id, label, group, views, fullWidth, definition.format(),
-            allowedSeriesAggregations, indicatorCode, presetFilters, order);
+            allowedSeriesAggregations, indicatorCode, presetFilters, labels, order);
+    }
+
+    /** A copy carrying {@code labels} — used by the catalog to attach a preset's legend labels. */
+    public IndicatorPreset withValueLabels(PresetValueLabels labels) {
+        return new IndicatorPreset(id, label, group, views, fullWidth, format, allowedSeriesAggregations,
+            indicatorCode, presetFilters, labels, order);
     }
 
     /**

@@ -4,12 +4,14 @@ import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.CountryScope;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.model.ViewSelector;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
+import eu.openaire.observatory.indicator.survey.SurveyStatsToolIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.validation.PresetScopeValidation;
 import org.springframework.stereotype.Service;
 
@@ -93,6 +95,22 @@ public class IndicatorPresetCatalog {
         new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MAP_WITH_CHANGE_COUNT),
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.YES_NO),
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.YES_NO_TIMELINE));
+
+    /** The display label a gap-filled (null) year, or a country that hasn't answered yet, renders as. */
+    private static final String NOT_AVAILABLE = "N/A";
+
+    /**
+     * Legend labels for the per-topic "National Monitoring on &lt;topic&gt;" presets
+     * ({@code oa.country_initiative_status}): the raw {@code YES}/{@code NO}/{@code AWAITING_DATA}
+     * values {@link SurveyStatsToolIndicatorQueryHandler} emits render as
+     * {@code "Has national monitoring"}/{@code "Does not have national monitoring"}/{@value #NOT_AVAILABLE}.
+     * Keyed on the handler's constants so a vocabulary rename is a compile error here; values it does
+     * not list pass through unchanged.
+     */
+    private static final Map<String, String> MONITORING_STATUS_LABELS = Map.of(
+        SurveyStatsToolIndicatorQueryHandler.STATUS_YES, "Has national monitoring",
+        SurveyStatsToolIndicatorQueryHandler.STATUS_NO, "Does not have national monitoring",
+        SurveyStatsToolIndicatorQueryHandler.STATUS_AWAITING_DATA, NOT_AVAILABLE);
 
     /**
      * Full-width "distribution of &lt;category&gt; by output/document type" views, shared by the
@@ -232,6 +250,7 @@ public class IndicatorPresetCatalog {
                         + " (near id '" + preset.id() + "')");
             }
             validateViews(preset, definition);
+            validateValueLabels(preset, definition);
             byId.put(preset.id(), preset.resolvedAgainst(definition));
         }
         this.presetsById = Map.copyOf(byId);
@@ -282,6 +301,23 @@ public class IndicatorPresetCatalog {
         }
     }
 
+    /**
+     * A preset that declares legend labels ({@link IndicatorPreset#labels()}, applied by
+     * {@link PresetValueLabeler}) must back a per-country status indicator — {@code YES_NO} or
+     * {@code CATEGORY} format. Blank entries are rejected by {@link PresetValueLabels} itself;
+     * whether the map covers every value the handler can emit is not checked: those are runtime data.
+     */
+    static void validateValueLabels(IndicatorPreset preset, IndicatorDefinition definition) {
+        if (preset.labels().isEmpty()) {
+            return;
+        }
+        if (definition.format() != IndicatorFormat.YES_NO && definition.format() != IndicatorFormat.CATEGORY) {
+            throw new IllegalStateException(
+                "Preset indicator '" + preset.id() + "' declares value labels but its format is "
+                    + definition.format() + " (only YES_NO / CATEGORY carry per-country status values)");
+        }
+    }
+
     private static void validateSelector(IndicatorPreset preset, IndicatorDefinition definition, ViewSelector selector) {
         if (selector == null) {
             return;
@@ -316,10 +352,10 @@ public class IndicatorPresetCatalog {
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FINANCIAL_STRATEGY"), 50),
             preset("oa-6", "EU Countries with National OA Publication Monitoring Initiatives", OPEN_ACCESS_PUBLICATIONS,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("MONITORING_INITIATIVE"), 60),
-            preset("oa-7", "National Policy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("OA_PUBLICATION_POLICY"), 70),
-            preset("oa-8", "National Monitoring on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("MONITORING_INITIATIVE"), 80),
+            nationalPolicyPreset("oa-7", "National Policy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                "OA_PUBLICATION_POLICY", 70),
+            nationalMonitoringPreset("oa-8", "National Monitoring on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
+                "MONITORING_INITIATIVE", 80),
             presetFullWidth("oa-9", "Distribution of Open Access Types by Different Scholarly Publication Outputs",
                 OPEN_ACCESS_PUBLICATIONS, categoryDistributionViews(OA_LICENSE_STATUS_DIMENSION, "Access type"),
                 NO_SERIES_AGGREGATIONS, PUBLICATIONS_OA_LICENSE_STATUS_COUNT, NO_FILTERS, 90),
@@ -338,10 +374,10 @@ public class IndicatorPresetCatalog {
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY"), 40),
             preset("od-5", "EU Countries with National Open Data Monitoring Initiatives", OPEN_DATA,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_MONITORING_INITIATIVE"), 50),
-            preset("od-6", "National Policy on Open Data", OPEN_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("OPEN_DATA_POLICY"), 60),
-            preset("od-7", "National Monitoring on Open Data", OPEN_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_MONITORING_INITIATIVE"), 70),
+            nationalPolicyPreset("od-6", "National Policy on Open Data", OPEN_DATA,
+                "OPEN_DATA_POLICY", 60),
+            nationalMonitoringPreset("od-7", "National Monitoring on Open Data", OPEN_DATA,
+                "OPEN_DATA_MONITORING_INITIATIVE", 70),
             presetFullWidth("od-8", "Distribution of Open Data Types by Different Document Type",
                 OPEN_DATA, categoryDistributionViews(ACCESS_STATUS_DIMENSION, "Access type"),
                 NO_SERIES_AGGREGATIONS, DATASETS_COUNT, NO_FILTERS, 80),
@@ -358,10 +394,10 @@ public class IndicatorPresetCatalog {
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY"), 30),
             preset("fair-4", "EU Countries with National FAIR Data Monitoring Initiatives", FAIR_DATA,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_MONITORING_INITIATIVE"), 40),
-            preset("fair-5", "National Policy on FAIR Data", FAIR_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("FAIR_DATA_POLICY"), 50),
-            preset("fair-6", "National Monitoring on FAIR Data", FAIR_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_MONITORING_INITIATIVE"), 60),
+            nationalPolicyPreset("fair-5", "National Policy on FAIR Data", FAIR_DATA,
+                "FAIR_DATA_POLICY", 50),
+            nationalMonitoringPreset("fair-6", "National Monitoring on FAIR Data", FAIR_DATA,
+                "FAIR_DATA_MONITORING_INITIATIVE", 60),
             // Not in the inventory:
             preset("fair-7-x", "National Financial Strategy on FAIR Data", FAIR_DATA,
                 NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY"), 70),
@@ -375,10 +411,10 @@ public class IndicatorPresetCatalog {
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY"), 30),
             preset("dm-4", "EU Countries with National Data Management Monitoring Initiatives", DATA_MANAGEMENT,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE"), 40),
-            preset("dm-5", "National Policy on Data Management", DATA_MANAGEMENT,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("DATA_MANAGEMENT_POLICY"), 50),
-            preset("dm-6", "National Monitoring on Data Management", DATA_MANAGEMENT,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE"), 60),
+            nationalPolicyPreset("dm-5", "National Policy on Data Management", DATA_MANAGEMENT,
+                "DATA_MANAGEMENT_POLICY", 50),
+            nationalMonitoringPreset("dm-6", "National Monitoring on Data Management", DATA_MANAGEMENT,
+                "DATA_MANAGEMENT_MONITORING_INITIATIVE", 60),
             // Not in the inventory:
             preset("dm-7-x", "National Financial Strategy on Data Management", DATA_MANAGEMENT,
                 NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY"), 70),
@@ -394,10 +430,10 @@ public class IndicatorPresetCatalog {
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY"), 40),
             preset("cs-5", "EU Countries with Citizen Science Monitoring Initiatives", CITIZEN_SCIENCE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE"), 50),
-            preset("cs-6", "National Policy on Citizen Science", CITIZEN_SCIENCE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("CITIZEN_SCIENCE_POLICY"), 60),
-            preset("cs-7", "National Monitoring on Citizen Science", CITIZEN_SCIENCE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE"), 70),
+            nationalPolicyPreset("cs-6", "National Policy on Citizen Science", CITIZEN_SCIENCE,
+                "CITIZEN_SCIENCE_POLICY", 60),
+            nationalMonitoringPreset("cs-7", "National Monitoring on Citizen Science", CITIZEN_SCIENCE,
+                "CITIZEN_SCIENCE_MONITORING_INITIATIVE", 70),
             // Not in the inventory:
             preset("cs-8-x", "National Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
                 NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY"), 80),
@@ -414,14 +450,14 @@ public class IndicatorPresetCatalog {
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY"), 40),
             preset("repo-5", "EU Countries with Monitoring Initiatives on Connecting Repositories to EOSC", REPOSITORIES,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE"), 50),
-            preset("repo-6", "National Policy on Connecting Repositories to EOSC", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_CONNECT_POLICY"), 60),
-            preset("repo-7", "National Monitoring on Connecting Repositories to EOSC", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE"), 70),
-            preset("repo-8", "National Policy on Long-term Data Preservation", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("REPOSITORIES_PRESERVATION_POLICY"), 80),
-            preset("repo-9", "National Monitoring on Long-term Data Preservation", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE"), 90),
+            nationalPolicyPreset("repo-6", "National Policy on Connecting Repositories to EOSC", REPOSITORIES,
+                "REPOSITORIES_CONNECT_POLICY", 60),
+            nationalMonitoringPreset("repo-7", "National Monitoring on Connecting Repositories to EOSC", REPOSITORIES,
+                "REPOSITORIES_CONNECT_MONITORING_INITIATIVE", 70),
+            nationalPolicyPreset("repo-8", "National Policy on Long-term Data Preservation", REPOSITORIES,
+                "REPOSITORIES_PRESERVATION_POLICY", 80),
+            nationalMonitoringPreset("repo-9", "National Monitoring on Long-term Data Preservation", REPOSITORIES,
+                "REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE", 90),
             // Not in the inventory. Also: no REPOSITORIES_PRESERVATION_FINANCIAL_STRATEGY/
             // REPOSITORIES_PRESERVATION member exists yet, so the preservation financial-strategy/
             // investment presets are omitted.
@@ -437,10 +473,10 @@ public class IndicatorPresetCatalog {
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_FINANCIAL_STRATEGY"), 30),
             preset("train-4", "EU Countries with Monitoring Initiatives on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_MONITORING_INITIATIVE"), 40),
-            preset("train-5", "National Policy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("TRAINING_POLICY"), 50),
-            preset("train-6", "National Monitoring on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_MONITORING_INITIATIVE"), 60),
+            nationalPolicyPreset("train-5", "National Policy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
+                "TRAINING_POLICY", 50),
+            nationalMonitoringPreset("train-6", "National Monitoring on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
+                "TRAINING_MONITORING_INITIATIVE", 60),
             // Not in the inventory:
             preset("train-7-x", "National Financial Strategy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
                 NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_FINANCIAL_STRATEGY"), 70),
@@ -456,10 +492,10 @@ public class IndicatorPresetCatalog {
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 40),
             preset("sw-5", "EU Countries with Monitoring Initiatives on Open Software", OPEN_SOFTWARE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_MONITORING_INITIATIVE"), 50),
-            preset("sw-6", "National Policy on Open Source Software", OPEN_SOFTWARE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS, initiativeType("SOFTWARE_POLICY"), 60),
-            preset("sw-7", "National Monitoring on Open Source Software", OPEN_SOFTWARE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_MONITORING_INITIATIVE"), 70),
+            nationalPolicyPreset("sw-6", "National Policy on Open Source Software", OPEN_SOFTWARE,
+                "SOFTWARE_POLICY", 60),
+            nationalMonitoringPreset("sw-7", "National Monitoring on Open Source Software", OPEN_SOFTWARE,
+                "SOFTWARE_MONITORING_INITIATIVE", 70),
             // Not in the inventory:
             preset("sw-8-x", "National Financial Strategy on Open Software", OPEN_SOFTWARE,
                 NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 80),
@@ -508,7 +544,8 @@ public class IndicatorPresetCatalog {
                 areaCountViews(), NO_SERIES_AGGREGATIONS, POLICY_AREAS_COUNT, NO_FILTERS, 30),
             presetFullWidth("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES,
                 areaTrendViews(openScienceAreaSelector()), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
-                initiativeType("OA_PUBLICATION_POLICY"), 40),
+                initiativeType("OA_PUBLICATION_POLICY"), 40)
+                .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE)),
             // Registered for catalog completeness — not queryable yet, returns HTTP 501 (see
             // IndicatorDefinitionCatalog.researcherPolicyCoverage() / docs/INDICATOR_TODO.md).
             // researcher_policy_coverage has no initiativeType binding, so areaTrendViews takes no selector.
@@ -517,6 +554,7 @@ public class IndicatorPresetCatalog {
             presetFullWidth("osp-6", "National Open Science Policies by Countries and Areas", OPEN_SCIENCE_POLICIES,
                 areaTrendViews(openScienceAreaSelector()), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
                 initiativeTypes(POLICY_AREA_TYPES), 60)
+                .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE))
         );
     }
 
@@ -541,7 +579,34 @@ public class IndicatorPresetCatalog {
             Map<String, List<String>> presetFilters, int order) {
         // format is null here — IndicatorPresetCatalog fills it from the linked definition.
         return new IndicatorPreset(id, label, group, views, fullWidth, null,
-            allowedSeriesAggregations, indicatorCode, presetFilters, order);
+            allowedSeriesAggregations, indicatorCode, presetFilters, PresetValueLabels.NONE, order);
+    }
+
+    /**
+     * "National Policy on &lt;topic&gt;" preset: national-status views over
+     * {@code oa.country_policy_status}, pinned to the {@code *_POLICY} {@code initiativeType}
+     * member {@code policyType}. Its raw values are display-ready, so only the gap-filled
+     * {@code null} is relabeled (to {@value #NOT_AVAILABLE}).
+     */
+    private static IndicatorPreset nationalPolicyPreset(
+            String id, String label, IndicatorGroup group, String policyType, int order) {
+        return preset(id, label, group, NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS,
+                COUNTRY_POLICY_STATUS, initiativeType(policyType), order)
+            .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE));
+    }
+
+    /**
+     * "National Monitoring on &lt;topic&gt;" preset: national-status views over
+     * {@code oa.country_initiative_status}, pinned to the {@code *_MONITORING_INITIATIVE}
+     * {@code initiativeType} member {@code monitoringType}. Its raw
+     * {@code YES}/{@code NO}/{@code AWAITING_DATA} values (and the gap-filled {@code null}) map to
+     * the {@link #MONITORING_STATUS_LABELS} legend labels.
+     */
+    private static IndicatorPreset nationalMonitoringPreset(
+            String id, String label, IndicatorGroup group, String monitoringType, int order) {
+        return preset(id, label, group, NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS,
+                COUNTRY_INITIATIVE_STATUS, initiativeType(monitoringType), order)
+            .withValueLabels(new PresetValueLabels(MONITORING_STATUS_LABELS, NOT_AVAILABLE));
     }
 
     private static Map<String, List<String>> accessStatus(String value) {

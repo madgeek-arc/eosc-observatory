@@ -102,6 +102,20 @@ class IndicatorPresetSerializationTest {
     }
 
     @Test
+    void presetValueLabelsSerializeOnlyWhenTheyArePresent() {
+        JsonNode oa8 = objectMapper.valueToTree(catalog.get("oa-8"));
+        assertThat(oa8.has("labels")).as("the PresetValueLabels wrapper never leaks to the wire").isFalse();
+        assertThat(oa8.get("valueLabels").get("YES").asText()).isEqualTo("Has national monitoring");
+        assertThat(oa8.get("valueLabels").get("NO").asText()).isEqualTo("Does not have national monitoring");
+        assertThat(oa8.get("valueLabels").get("AWAITING_DATA").asText()).isEqualTo("N/A");
+        assertThat(oa8.get("missingValueLabel").asText()).isEqualTo("N/A");
+
+        JsonNode oa1 = objectMapper.valueToTree(catalog.get("oa-1"));
+        assertThat(oa1.has("valueLabels")).isFalse();
+        assertThat(oa1.has("missingValueLabel")).isFalse();
+    }
+
+    @Test
     void yesNoFormatPresetSerializesFormatAsYesNo() {
         List<String> yesNoIds = catalog.getAll().stream()
             .filter(preset -> "yes-no".equals(objectMapper.valueToTree(preset).get("format").asText()))

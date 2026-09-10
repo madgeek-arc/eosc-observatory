@@ -25,7 +25,7 @@ class IndicatorPresetQueryTest {
         return new IndicatorPreset(
             "oa-1", "OA Publication in Europe", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
             List.of(), false, null, List.of(AggregationType.AVG, AggregationType.MEDIAN),
-            "publications.access_status_share", presetFilters, 10
+            "publications.access_status_share", presetFilters, PresetValueLabels.NONE, 10
         );
     }
 
