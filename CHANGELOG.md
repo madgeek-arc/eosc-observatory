@@ -44,6 +44,17 @@
 * Updating a document sets 'curated' flag to true ([7059b69](https://github.com/madgeek-arc/eosc-observatory/commit/7059b69426a7c1fb7097a4d94ea8a26b2a942bc4))
 * Updating a message method uses findWithCommentById() method which initializes the comment thread - fixes lazy initialization outside of session when mapping to dto ([ba39258](https://github.com/madgeek-arc/eosc-observatory/commit/ba39258da2ccaceb1096d6d629d364aff20ad48f))
 
+## [4.4.1](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.0...4.4.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* allow coordinators to update stakeholder users ([8c0515f](https://github.com/madgeek-arc/eosc-observatory/commit/8c0515f0a9d2ed9e27bcbcd6601e2a5a63eb21ba))
+* compare TypeInfo.getType() == FieldType.composite instead of string equals ([ad7e201](https://github.com/madgeek-arc/eosc-observatory/commit/ad7e2017ec1c3cd03ec7b5d26bc7d14cec6b506c))
+* null-guard user id/email lookups in survey history and CSV export ([de60b25](https://github.com/madgeek-arc/eosc-observatory/commit/de60b252a07d777d1ddca0fa54a5992239a15d26))
+* throw error instead of hiding it ([8d72803](https://github.com/madgeek-arc/eosc-observatory/commit/8d728035e1109bb52cb83809e3c8e384ab435c21))
+* use setter to set email so it will be lowercased ([23183ca](https://github.com/madgeek-arc/eosc-observatory/commit/23183ca2008be23cf564ff89fbaa28071b63e3c4))
+
 ## [4.4.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.3.0...4.4.0) (2026-05-21)
 
 
