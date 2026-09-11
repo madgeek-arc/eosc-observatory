@@ -2,7 +2,7 @@ def DOCKER_IMAGE = null
 def DOCKER_TAG = ''
 
 pipeline {
-  agent any
+  agent { label 'master' }
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '20'))
