@@ -222,7 +222,7 @@ public class SurveyCSVConverter implements CSVConverter {
                 .collect(Collectors.toSet());
         return contributorIds
                 .stream()
-                .map(userService::get)
+                .map(userService::getUser)
                 .map(user -> String.format("%s (%s)", user.getFullname(), user.getId()))
                 .collect(Collectors.joining(DELIMITER_SECONDARY));
     }

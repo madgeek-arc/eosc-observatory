@@ -75,6 +75,14 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     }
 
     @Override
+    public User get(String id) {
+        if (id == null || id.isBlank()) {
+            throw new ResourceNotFoundException(id, getResourceType());
+        }
+        return super.get(id);
+    }
+
+    @Override
     public User getUser(String id) {
         User user = null;
         try {

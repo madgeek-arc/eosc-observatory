@@ -670,7 +670,9 @@ public class SurveyServiceImpl implements SurveyService {
             User user;
             String userId = ((SurveyAnswer) object).getMetadata().getModifiedBy();
             try {
-                userId = userId.split(",", 2)[0];
+                if (userId != null) {
+                    userId = userId.split(",", 2)[0];
+                }
                 user = userService.get(userId);
             } catch (ResourceNotFoundException e) {
                 user = new User();
@@ -692,10 +694,12 @@ public class SurveyServiceImpl implements SurveyService {
             if (entry.getAction() == History.HistoryAction.UPDATED
                     || entry.getAction() == History.HistoryAction.VALIDATED) {
                 if (entry.getUserId() != null) { // TODO: added for backward compatibility
-                    editors.putIfAbsent(entry.getUserId(), userService.get(entry.getUserId()));
+                    editors.putIfAbsent(entry.getUserId(), userService.getUser(entry.getUserId()));
                 }
                 for (Editor editor : Objects.requireNonNullElse(entry.getEditors(), new ArrayList<Editor>())) {
-                    editors.putIfAbsent(editor.getUser(), userService.get(editor.getUser()));
+                    if (editor.getUser() != null) {
+                        editors.putIfAbsent(editor.getUser(), userService.getUser(editor.getUser()));
+                    }
                 }
             }
         }

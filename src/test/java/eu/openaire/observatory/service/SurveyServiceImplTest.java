@@ -5,6 +5,10 @@ import eu.openaire.observatory.domain.History;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
+import eu.openaire.observatory.dto.EditorDTO;
+import eu.openaire.observatory.dto.HistoryActionDTO;
+import eu.openaire.observatory.dto.HistoryDTO;
+import eu.openaire.observatory.dto.HistoryEntryDTO;
 import eu.openaire.observatory.permissions.PermissionService;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
@@ -119,6 +123,26 @@ class SurveyServiceImplTest {
 
         assertSame(surveyAnswer, result);
         verify(surveyAnswerCrudService).get("sa-1");
+    }
+
+    @Test
+    void getHistoryHandlesEditorWithNullEmailWithoutThrowing() throws ResourceNotFoundException {
+        EditorDTO editorDTO = new EditorDTO();
+        editorDTO.setEmail(null);
+        HistoryEntryDTO entryDTO = new HistoryEntryDTO();
+        entryDTO.setEditors(List.of(editorDTO));
+        entryDTO.setAction(HistoryActionDTO.of(History.HistoryAction.UPDATED, null));
+        HistoryDTO historyDTO = new HistoryDTO(List.of(entryDTO));
+
+        when(surveyAnswerCrudService.getHistory(org.mockito.ArgumentMatchers.eq("sa-1"), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(historyDTO);
+        // Mirrors the null-guard added in UserServiceImpl.get(): a null id is "not found", not a search error.
+        when(userService.get(org.mockito.ArgumentMatchers.isNull()))
+                .thenThrow(new ResourceNotFoundException(null, "user"));
+
+        HistoryDTO result = service.getHistory("sa-1");
+
+        assertEquals("unknown", result.getEntries().get(0).getEditors().get(0).getFullname());
     }
 
     private Authentication oidcAuthentication() {
