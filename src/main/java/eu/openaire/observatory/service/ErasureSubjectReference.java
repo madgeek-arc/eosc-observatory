@@ -66,11 +66,19 @@ public class ErasureSubjectReference {
             throw new ServiceException("observatory.erasureHashSecret is not configured; "
                     + "a purge cannot be recorded without it.");
         }
+        return hmacHex(secret, UserIds.normalize(userId));
+    }
+
+    /**
+     * The raw keyed HMAC used by {@link #of}, exposed so the log-masking layer can produce the same
+     * reference for an arbitrary {@code user} value without going through the {@link ApplicationProperties}
+     * lookup. {@code value} is hashed as-is — callers normalize first (see {@link #of}).
+     */
+    public static String hmacHex(String secret, String value) {
         try {
             Mac mac = Mac.getInstance(ALGORITHM);
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), ALGORITHM));
-            return HexFormat.of().formatHex(
-                    mac.doFinal(UserIds.normalize(userId).getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of().formatHex(mac.doFinal(value.getBytes(StandardCharsets.UTF_8)));
         } catch (GeneralSecurityException e) {
             throw new ServiceException("Could not compute the erasure subject reference.", e);
         }

@@ -30,17 +30,28 @@
                 </Delete>
             </DefaultRolloverStrategy>
         </RollingFile>
+
+        <!-- Masks an erased user's identifier in the 'user' MDC field before it is written.
+             Living users pass through untouched. See ErasureMaskingRewritePolicy. -->
+        <Rewrite name="ConsoleMasked">
+            <AppenderRef ref="Console"/>
+            <ErasureMaskingRewritePolicy/>
+        </Rewrite>
+        <Rewrite name="AllMasked">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+            <ErasureMaskingRewritePolicy/>
+        </Rewrite>
     </Appenders>
     <Loggers>
         <Root level="info">
-            <AppenderRef ref="Console"/>
-            <AppenderRef ref="RollingFile"/>
+            <AppenderRef ref="AllMasked"/>
         </Root>
         <Logger name="springfox.documentation" level="warn">
-            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ConsoleMasked"/>
         </Logger>
         <Logger name="org.springframework" level="warn">
-            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ConsoleMasked"/>
         </Logger>
     </Loggers>
 </Configuration>

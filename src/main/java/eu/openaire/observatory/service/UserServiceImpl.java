@@ -16,6 +16,7 @@
 
 package eu.openaire.observatory.service;
 
+import eu.openaire.observatory.commenting.domain.ErasureRecord;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.permissions.PermissionService;
@@ -36,10 +37,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
@@ -86,6 +89,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     // eu.openaire.observatory.messaging.MessagingService, a different class entirely.
     private final MessagingService messagingClient;
     private final ApplicationProperties applicationProperties;
+    private final ErasureRegisterService erasureRegisterService;
 
     protected UserServiceImpl(ResourceTypeService resourceTypeService,
                               ResourceService resourceService,
@@ -108,6 +112,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               ErasureSubjectReference erasureSubjectReference,
                               MessagingService messagingClient,
                               ApplicationProperties applicationProperties,
+                              ErasureRegisterService erasureRegisterService,
                               ModelResponseValidator validator) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
         this.privacyPolicyService = privacyPolicyService;
@@ -126,6 +131,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         this.erasureSubjectReference = erasureSubjectReference;
         this.messagingClient = messagingClient;
         this.applicationProperties = applicationProperties;
+        this.erasureRegisterService = erasureRegisterService;
     }
 
     @Override
@@ -333,7 +339,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // identifier being purged would itself retain the PII this method exists to remove.
         // The subject reference is a keyed HMAC, so it answers "was this person purged?" without
         // storing a readable address; it is pseudonymous, not anonymous.
-        // TODO: write this to a durable erasure register (subject_ref, timestamp, requested_by, executed_by, scope, outcome) — archived logs are deleted after 180 days, but a complaint to a supervisory authority can arrive long after; pending the DPO's hash-vs-plaintext decision, which does not block the build since the column is a varchar either way.
+        // The same figures are persisted to the durable erasure register just below — the log line
+        // ages out with log retention, the register row does not.
         logger.info("Purge report: removed from stakeholder group(s) {}, coordinator group(s) {}, " +
                         "administrator group(s) {}; anonymized {} survey answer(s), {} news item(s), {} survey " +
                         "definition(s), {} document(s), {} messaging thread(s); anonymized comment authorship " +
@@ -360,8 +367,42 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             return true;
         });
 
+        // Durable erasure register (GDPR Art. 5(2)/24 accountability). Written last, just before
+        // delete(id): a failure in any earlier step aborts the method and leaves no "SUCCESS" row,
+        // and every step above is idempotent so a re-run reaches here again — the register does a
+        // check-then-insert on the HMAC key, so the first record stays authoritative.
+        boolean registered = erasureRegisterService.record(new ErasureRecord()
+                .setSubjectRef(subjectRef)
+                .setErasedAt(Instant.now())
+                .setExecutedBy(resolveExecutedBy())
+                .setStakeholderGroups(stakeholderIds.size())
+                .setCoordinatorGroups(coordinatorIds.size())
+                .setAdministratorGroups(administratorIds.size())
+                .setSurveyAnswers(surveyAnswersAnonymized)
+                .setNewsItems(newsItemsAnonymized)
+                .setSurveyDefinitions(surveyDefinitionsAnonymized)
+                .setDocuments(documentsAnonymized)
+                .setMessagingThreads(messagingThreadsAnonymized)
+                .setOutcome("SUCCESS"));
+        if (!registered) {
+            logger.info("Erasure register already held subject {} — purge re-run, original record kept.", subjectRef);
+        }
+
         // Delete the user record
         delete(id);
+    }
+
+    /**
+     * The administrator running this erasure, for the register's accountability column. Null-safe:
+     * {@code purge()} is also invoked directly from integration tests with no security context.
+     */
+    private static String resolveExecutedBy() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            return auth == null ? null : User.getId(auth);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     /**

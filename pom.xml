@@ -348,6 +348,13 @@
 							<artifactId>mapstruct-processor</artifactId>
 							<version>${mapstruct.version}</version>
 						</path>
+						<!-- Generates the Log4j2Plugins.dat descriptor for our custom
+						     ErasureMaskingRewritePolicy so log4j2 finds it without package scanning. -->
+						<path>
+							<groupId>org.apache.logging.log4j</groupId>
+							<artifactId>log4j-core</artifactId>
+							<version>${log4j2.version}</version>
+						</path>
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>

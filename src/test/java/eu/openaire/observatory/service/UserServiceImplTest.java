@@ -1,5 +1,6 @@
 package eu.openaire.observatory.service;
 
+import eu.openaire.observatory.commenting.domain.ErasureRecord;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -36,6 +37,8 @@ import gr.uoa.di.madgik.registry.service.VersionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
@@ -46,6 +49,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -54,6 +58,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -108,6 +113,8 @@ class UserServiceImplTest {
     @Mock
     private ApplicationProperties applicationProperties;
     @Mock
+    private ErasureRegisterService erasureRegisterService;
+    @Mock
     private ModelResponseValidator validator;
 
     private UserServiceImpl service;
@@ -136,12 +143,16 @@ class UserServiceImplTest {
                 erasureSubjectReference,
                 messagingClient,
                 applicationProperties,
+                erasureRegisterService,
                 validator
         ));
 
         // Every purge test reaches the messaging step; the ones that don't assert on it still
         // need a non-null Mono back, so stub it leniently here and override where it matters.
         lenient().when(messagingClient.anonymizeUser(anyString())).thenReturn(Mono.just(0));
+
+        // Every purge test reaches the erasure-register step; default it to "wrote a new row".
+        lenient().when(erasureRegisterService.record(any())).thenReturn(true);
 
         // Default: no version history, so anonymizeVersions() is a no-op unless a test
         // overrides these with a Resource that actually has Versions on it.
@@ -468,6 +479,43 @@ class UserServiceImplTest {
         // strand the user's name and email inside the messaging service with nothing to key
         // a retry on.
         verify(service, never()).delete(USER_ID);
+    }
+
+    /**
+     * The durable erasure register (GDPR Art. 5(2)/24 accountability) is written just before
+     * delete(id), carrying the same PII-free figures as the purge report line.
+     */
+    @Test
+    void purgeWritesErasureRegisterRecordBeforeDeleting() throws ResourceNotFoundException {
+        when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
+
+        Stakeholder stakeholder = new Stakeholder();
+        stakeholder.setId("sh-1");
+        when(stakeholderCrudService.getWithFilter("users", USER_ID)).thenReturn(Set.of(stakeholder));
+
+        SurveyAnswer answered = surveyAnswer("sa-1");
+        answered.getMetadata().setCreatedBy(USER_ID);
+        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf(answered));
+
+        when(messagingClient.anonymizeUser(USER_ID)).thenReturn(Mono.just(4));
+        doReturn(new User()).when(service).delete(USER_ID);
+
+        service.purge(USER_ID);
+
+        ArgumentCaptor<ErasureRecord> captor = ArgumentCaptor.forClass(ErasureRecord.class);
+        InOrder ordered = inOrder(erasureRegisterService, service);
+        ordered.verify(erasureRegisterService).record(captor.capture());
+        ordered.verify(service).delete(USER_ID);
+
+        ErasureRecord record = captor.getValue();
+        assertEquals("subject-hmac", record.getSubjectRef());
+        assertEquals("SUCCESS", record.getOutcome());
+        assertNotNull(record.getErasedAt());
+        assertEquals(1, record.getStakeholderGroups());
+        assertEquals(0, record.getCoordinatorGroups());
+        assertEquals(0, record.getAdministratorGroups());
+        assertEquals(1, record.getSurveyAnswers());
+        assertEquals(4, record.getMessagingThreads());
     }
 
     @Test
