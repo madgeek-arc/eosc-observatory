@@ -73,6 +73,8 @@ public class SurveyServiceImpl implements SurveyService {
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final CacheService<String, SurveyAnswerRevisionsAggregation> cacheService;
+    private final EmailSurveyService emailSurveyService;
+    private final SurveySettingsService surveySettingsService;
     private final ConcurrentMap<String, ReentrantLock> surveyAnswerLocks = new ConcurrentHashMap<>();
 
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
@@ -82,7 +84,9 @@ public class SurveyServiceImpl implements SurveyService {
                              ModelService modelService,
                              UserService userService,
                              ObjectMapper objectMapper,
-                             CacheService<String, SurveyAnswerRevisionsAggregation> cacheService) {
+                             CacheService<String, SurveyAnswerRevisionsAggregation> cacheService,
+                             EmailSurveyService emailSurveyService,
+                             SurveySettingsService surveySettingsService) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericResourceService = genericResourceService;
@@ -91,6 +95,8 @@ public class SurveyServiceImpl implements SurveyService {
         this.userService = userService;
         this.objectMapper = objectMapper;
         this.cacheService = cacheService;
+        this.emailSurveyService = emailSurveyService;
+        this.surveySettingsService = surveySettingsService;
     }
 
     @Override
@@ -394,9 +400,43 @@ public class SurveyServiceImpl implements SurveyService {
             surveyAnswer.getHistory().addEntry(user.getId(), userRole, "", date, action);
             surveyAnswer.getMetadata().setModifiedBy(user.getId());
             surveyAnswer.getMetadata().setModificationDate(date);
-            return validated ? validateAnswer(surveyAnswer) : invalidateAnswer(surveyAnswer);
+            if (!validated) {
+                return invalidateAnswer(surveyAnswer);
+            }
+            SurveyAnswer validatedAnswer = validateAnswer(surveyAnswer);
+            notifyValidationIfNeeded(validatedAnswer, user.getId());
+            return validatedAnswer;
         }
         return surveyAnswer;
+    }
+
+    /**
+     * <p>Notifies the Coordinators and Administrators of the answer's type that it has been validated.</p>
+     * <p>Skipped only when the survey type's {@link SurveySettings#isNotifyOnValidation() notifyOnValidation}
+     * flag is explicitly disabled.</p>
+     */
+    private void notifyValidationIfNeeded(SurveyAnswer answer, String validatedBy) {
+        try {
+            if (!shouldNotifyOnValidation(answer.getType())) return;
+            emailSurveyService.notifyAnswerValidated(answer, validatedBy);
+        } catch (Exception e) {
+            logger.warn("Failed to send answer validated email [answerId={}]", answer.getId(), e);
+        }
+    }
+
+    /**
+     * <p>{@link SurveySettingsService#getByType(String) getByType} throws when no settings record exists
+     * for the type rather than returning null. A missing record means "not configured" and defaults to
+     * notifying &mdash; treating it as "do not notify" would silence the feature everywhere, since no
+     * survey type has a settings record until someone creates one.</p>
+     */
+    private boolean shouldNotifyOnValidation(String surveyType) {
+        try {
+            SurveySettings settings = surveySettingsService.getByType(surveyType);
+            return settings == null || settings.isNotifyOnValidation();
+        } catch (ResourceNotFoundException e) {
+            return true;
+        }
     }
 
     @Override
@@ -671,19 +711,43 @@ public class SurveyServiceImpl implements SurveyService {
     private HistoryEntryDTO createHistoryEntry(Object object) {
         HistoryEntryDTO entry = new HistoryEntryDTO();
         if (object instanceof SurveyAnswer) {
-            User user;
-            String userId = ((SurveyAnswer) object).getMetadata().getModifiedBy();
-            try {
-                userId = userId.split(",", 2)[0];
-                user = userService.get(userId);
-            } catch (ResourceNotFoundException e) {
-                user = new User();
-                user.setId(userId);
-            }
             List<HistoryEntry> historyEntryList = ((SurveyAnswer) object).getHistory().getEntries();
-            entry = HistoryEntryDTO.of(historyEntryList.get(historyEntryList.size() - 1), user);
+            HistoryEntry latest = historyEntryList.get(historyEntryList.size() - 1);
+            entry = HistoryEntryDTO.of(latest, resolveLatestEditor(latest));
         }
         return entry;
+    }
+
+    /**
+     * Resolves the identity behind a history entry, for the deprecated flat fields on
+     * {@link HistoryEntryDTO}. Reads the structured editor list rather than parsing
+     * {@code metadata.modifiedBy}: that field carries a comma-joined list of everyone who edited
+     * during a session, so the previous {@code userId.split(",", 2)[0]} reported whoever edited
+     * <em>first</em> and silently dropped the rest. Taking the last editor reports the most recent
+     * one instead, and is multi-editor correct by construction.
+     *
+     * <p>Falls back to the deprecated {@link HistoryEntry#getUserId()} for rows that predate the
+     * editors list. Also removes a latent NPE: a null {@code modifiedBy} used to throw inside a
+     * {@code try} that only caught {@link ResourceNotFoundException}.
+     */
+    private User resolveLatestEditor(HistoryEntry historyEntry) {
+        String userId = null;
+        if (historyEntry.getEditors() != null && !historyEntry.getEditors().isEmpty()) {
+            userId = historyEntry.getEditors().get(historyEntry.getEditors().size() - 1).getUser();
+        }
+        if (userId == null) {
+            userId = historyEntry.getUserId();
+        }
+        if (userId == null) {
+            return new User();
+        }
+        try {
+            return userService.get(userId);
+        } catch (ResourceNotFoundException e) {
+            User user = new User();
+            user.setId(userId);
+            return user;
+        }
     }
 
     @Override

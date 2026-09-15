@@ -133,10 +133,12 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     @Override
     public SortedSet<String> addMember(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
-        if (stakeholder.getMembers() == null) {
-            stakeholder.setMembers(new HashSet<>());
-        }
-        stakeholder.getMembers().add(userId);
+        // Assign through the setter rather than mutating getMembers(): when the underlying field is
+        // unset the getter hands back a fresh empty set, so the addition would land on a throwaway
+        // collection and be silently lost. The setter also normalizes every id it stores.
+        SortedSet<String> members = new TreeSet<>(stakeholder.getMembers());
+        members.add(userId);
+        stakeholder.setMembers(members);
         stakeholder = update(stakeholderId, stakeholder);
 
         // read access for all resources
@@ -203,10 +205,10 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     @Override
     public SortedSet<String> addAdmin(String stakeholderId, String userId) {
         Stakeholder stakeholder = get(stakeholderId);
-        if (stakeholder.getAdmins() == null) {
-            stakeholder.setAdmins(new HashSet<>());
-        }
-        stakeholder.getAdmins().add(userId);
+        // See addMember: mutating getAdmins() directly loses the addition when the field is unset.
+        SortedSet<String> admins = new TreeSet<>(stakeholder.getAdmins());
+        admins.add(userId);
+        stakeholder.setAdmins(admins);
         stakeholder = update(stakeholderId, stakeholder);
 
         // read/manage/publish access for all resources
