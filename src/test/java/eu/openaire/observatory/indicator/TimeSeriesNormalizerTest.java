@@ -108,6 +108,37 @@ class TimeSeriesNormalizerTest {
     }
 
     @Test
+    void aggregateWithNoGroupingDimensionStillNullFillsEveryPeriodWhenCompletelyEmpty() {
+        var result = resultWithPeriods(Map.of());
+        var range = new ResolvedTimeRange(2020, 2021, MissingPeriodHandling.NULL_FILL);
+
+        var normalized = normalizer.normalize(result, range);
+
+        assertThat(normalized.data()).hasSize(2);
+        assertThat(valueFor(normalized, "2020")).isNull();
+        assertThat(valueFor(normalized, "2021")).isNull();
+    }
+
+    @Test
+    void groupedResultWithNoDataAtAllStaysEmptyRatherThanFabricatingAGrouplessRow() {
+        // e.g. a single selected-country filter whose country has no answer in any requested
+        // period: the handler returns zero rows, and the result must stay zero rows — not a
+        // phantom point missing the "country" key it declares in dimensions().
+        var result = new IndicatorResult(
+            new IndicatorMetadata("oa.financial_investment", "label", null, null, null),
+            List.of("country", TimeSeriesNormalizer.PERIOD_DIMENSION),
+            List.of(),
+            new QueryExecutionMetadata(Instant.now(), false)
+        );
+        var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.NULL_FILL);
+
+        var normalized = normalizer.normalize(result, range);
+
+        assertThat(normalized.data()).isEmpty();
+        assertThat(normalized.dimensions()).containsExactly("country", TimeSeriesNormalizer.PERIOD_DIMENSION);
+    }
+
+    @Test
     void omitLeavesGapsUntouched() {
         var result = resultWithPeriods(Map.of("2020", 10));
         var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.OMIT);

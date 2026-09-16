@@ -15,6 +15,14 @@ import java.util.Map;
  * Fills gaps in a time-series result according to its MissingPeriodHandling policy. Groups data
  * points by every dimension except "period" (e.g. "country") and gap-fills each group's period
  * series independently, so a multi-country result doesn't have its countries collapsed together.
+ *
+ * <p>A group only gets gap-filled if the handler returned at least one row for it — a group with
+ * zero rows at all (e.g. one selected country with no data in any requested period) stays absent
+ * from the output entirely, rather than being null-filled, matching how a handler already drops
+ * (rather than nulls) an individual missing period/country pairing within an otherwise-present
+ * group. The one exception is a plain aggregate result with no grouping dimension at all: there,
+ * zero rows still gets null/zero-filled across the whole requested range, since there's no group
+ * identity to have been "dropped".
  */
 @Service
 public class TimeSeriesNormalizer {
@@ -34,7 +42,16 @@ public class TimeSeriesNormalizer {
                 .computeIfAbsent(groupKey, k -> new LinkedHashMap<>())
                 .put(String.valueOf(period), point);
         }
-        if (byGroupThenPeriod.isEmpty()) {
+        // Only fabricate a single ungrouped placeholder group when the result has no grouping
+        // dimension at all (a plain aggregate query genuinely returned zero rows) — this lets a
+        // NULL/ZERO_FILL policy still produce one point per period. When the result declares a
+        // non-period dimension (e.g. "country") but a handler returned zero rows for it — a
+        // requested group (a filtered-but-dataless country) is dropped, not null-filled, matching
+        // how a *partially* missing group is already handled below — inserting the Map.of()
+        // placeholder here would instead fabricate a row with that dimension silently missing,
+        // contradicting the result's own declared `dimensions()`. Leave `filled` empty instead.
+        boolean hasGroupingDimension = result.dimensions().stream().anyMatch(d -> !d.equals(PERIOD_DIMENSION));
+        if (byGroupThenPeriod.isEmpty() && !hasGroupingDimension) {
             byGroupThenPeriod.put(Map.of(), Map.of());
         }
 
