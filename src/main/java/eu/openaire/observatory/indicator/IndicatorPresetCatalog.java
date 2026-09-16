@@ -84,6 +84,13 @@ public class IndicatorPresetCatalog {
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_BARS),
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_SERIES_COLUMN_CHART));
 
+    /** Like OUTPUT_COUNT_VIEWS, but only the EU map view is full-width. */
+    private static final List<PresetView> CITIZEN_SCIENCE_OUTPUT_COUNT_VIEWS = List.of(
+        OUTPUT_COUNT_VIEWS.get(0).withFullWidth(true),
+        OUTPUT_COUNT_VIEWS.get(1),
+        OUTPUT_COUNT_VIEWS.get(2),
+        OUTPUT_COUNT_VIEWS.get(3));
+
     private static final List<PresetView> EU_COVERAGE_VIEWS = List.of(
         new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.SCALAR),
         new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.LINE_CHART),
@@ -408,8 +415,8 @@ public class IndicatorPresetCatalog {
                 "DATA_MANAGEMENT_MONITORING_INITIATIVE", 60),
 
             // ---- Citizen Science (inventory rows 31-37) -------------------------------------------------
-            presetFullWidth("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE,
-                OUTPUT_COUNT_VIEWS, AVG_MEDIAN, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS, 10),
+            preset("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE,
+                CITIZEN_SCIENCE_OUTPUT_COUNT_VIEWS, AVG_MEDIAN, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS, 10),
             preset("cs-2", "EU Countries with Policy on Citizen Science", CITIZEN_SCIENCE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_POLICY"), 20),
             preset("cs-3", "Financial investments in Citizen Science", CITIZEN_SCIENCE,

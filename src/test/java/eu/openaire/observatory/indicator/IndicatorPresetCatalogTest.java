@@ -6,6 +6,7 @@ import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.model.PresetView;
+import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
@@ -184,15 +185,30 @@ class IndicatorPresetCatalogTest {
     @Test
     void everyOtherPresetIsNotFullWidth() {
         Set<String> fullWidthIds = Set.of(
-            "oa-9", "od-8", "cs-1", "sw-1", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1", "nm-2",
+            "oa-9", "od-8", "sw-1", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1", "nm-2",
             "osp-1", "osp-2", "osp-3", "osp-4", "osp-5", "osp-6");
         for (IndicatorPreset preset : catalog.getAll()) {
+            if (preset.id().equals("cs-1")) {
+                continue; // asserted separately in cs1OnlyChoroplethMapViewIsFullWidth()
+            }
             boolean expectedFullWidth = fullWidthIds.contains(preset.id());
             for (PresetView view : preset.views()) {
                 assertThat(view.fullWidth())
                     .as(preset.id() + " " + view.renderStyle() + " fullWidth")
                     .isEqualTo(expectedFullWidth);
             }
+        }
+    }
+
+    @Test
+    void cs1OnlyChoroplethMapViewIsFullWidth() {
+        IndicatorPreset cs1 = catalog.get("cs-1");
+        assertThat(cs1).isNotNull();
+        for (PresetView view : cs1.views()) {
+            boolean expectedFullWidth = view.renderStyle() == RenderStyle.CHOROPLETH_MAP_WITH_TOP_5;
+            assertThat(view.fullWidth())
+                .as(view.renderStyle() + " fullWidth")
+                .isEqualTo(expectedFullWidth);
         }
     }
 
