@@ -1,10 +1,16 @@
 package eu.openaire.observatory.indicator;
 
+import eu.openaire.observatory.indicator.dimension.DimensionMember;
+import eu.openaire.observatory.indicator.dimension.DimensionMemberProvider;
+import eu.openaire.observatory.indicator.dimension.DimensionMemberProviderRegistry;
+import eu.openaire.observatory.indicator.dimension.DimensionMembers;
+import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
 import eu.openaire.observatory.indicator.result.IndicatorMetadata;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.result.QueryExecutionMetadata;
+import eu.openaire.observatory.indicator.validation.ResolvedFilter;
 import eu.openaire.observatory.indicator.validation.ResolvedTimeRange;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +22,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TimeSeriesNormalizerTest {
 
-    private final TimeSeriesNormalizer normalizer = new TimeSeriesNormalizer();
+    private final TimeSeriesNormalizer normalizer = new TimeSeriesNormalizer(new DimensionMemberProviderRegistry(List.of()));
+
+    private static DimensionMemberProvider fakeProvider(String dimensionCode, String... codes) {
+        return new DimensionMemberProvider() {
+            @Override
+            public String dimensionCode() {
+                return dimensionCode;
+            }
+
+            @Override
+            public DimensionMembers search(String indicatorCode, String searchText, int limit) {
+                return new DimensionMembers(List.of(codes).stream().map(code -> new DimensionMember(code, code)).toList());
+            }
+        };
+    }
 
     private static IndicatorResult resultWithPeriods(Map<String, Object> periodToValue) {
         List<IndicatorDataPoint> data = periodToValue.entrySet().stream()
@@ -35,7 +55,7 @@ class TimeSeriesNormalizerTest {
         var result = resultWithPeriods(Map.of("2020", 10, "2022", 20));
         var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.ZERO_FILL);
 
-        var normalized = normalizer.normalize(result, range);
+        var normalized = normalizer.normalize(result, range, List.of());
 
         assertThat(normalized.data()).hasSize(3);
         assertThat(valueFor(normalized, "2020")).isEqualTo(10);
@@ -48,7 +68,7 @@ class TimeSeriesNormalizerTest {
         var result = resultWithPeriods(Map.of("2020", 10));
         var range = new ResolvedTimeRange(2020, 2021, MissingPeriodHandling.NULL_FILL);
 
-        var normalized = normalizer.normalize(result, range);
+        var normalized = normalizer.normalize(result, range, List.of());
 
         assertThat(normalized.data()).hasSize(2);
         assertThat(valueFor(normalized, "2020")).isEqualTo(10);
@@ -70,7 +90,7 @@ class TimeSeriesNormalizerTest {
         );
         var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.ZERO_FILL);
 
-        var normalized = normalizer.normalize(result, range);
+        var normalized = normalizer.normalize(result, range, List.of());
 
         assertThat(normalized.data()).hasSize(6);
         assertThat(valueForCountry(normalized, "GR", "2020")).isEqualTo(10);
@@ -98,7 +118,7 @@ class TimeSeriesNormalizerTest {
         );
         var range = new ResolvedTimeRange(2022, 2024, MissingPeriodHandling.NULL_FILL);
 
-        var normalized = normalizer.normalize(result, range);
+        var normalized = normalizer.normalize(result, range, List.of());
 
         assertThat(normalized.data()).hasSize(6);
         assertThat(valueForCountry(normalized, "GR", "2023")).isNull();
@@ -112,7 +132,7 @@ class TimeSeriesNormalizerTest {
         var result = resultWithPeriods(Map.of());
         var range = new ResolvedTimeRange(2020, 2021, MissingPeriodHandling.NULL_FILL);
 
-        var normalized = normalizer.normalize(result, range);
+        var normalized = normalizer.normalize(result, range, List.of());
 
         assertThat(normalized.data()).hasSize(2);
         assertThat(valueFor(normalized, "2020")).isNull();
@@ -120,10 +140,11 @@ class TimeSeriesNormalizerTest {
     }
 
     @Test
-    void groupedResultWithNoDataAtAllStaysEmptyRatherThanFabricatingAGrouplessRow() {
-        // e.g. a single selected-country filter whose country has no answer in any requested
-        // period: the handler returns zero rows, and the result must stay zero rows — not a
-        // phantom point missing the "country" key it declares in dimensions().
+    void groupedResultWithNoDataAtAllStaysEmptyWhenDimensionHasNoProviderOrFilter() {
+        // No registered DimensionMemberProvider for "country" (default `normalizer` has none
+        // registered) and no filter narrowing it either: there's no reasonable set of expected
+        // groups to fabricate, so the result must stay zero rows — not a phantom point missing
+        // the "country" key it declares in dimensions().
         var result = new IndicatorResult(
             new IndicatorMetadata("oa.financial_investment", "label", null, null, null),
             List.of("country", TimeSeriesNormalizer.PERIOD_DIMENSION),
@@ -132,10 +153,66 @@ class TimeSeriesNormalizerTest {
         );
         var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.NULL_FILL);
 
-        var normalized = normalizer.normalize(result, range);
+        var normalized = normalizer.normalize(result, range, List.of());
 
         assertThat(normalized.data()).isEmpty();
         assertThat(normalized.dimensions()).containsExactly("country", TimeSeriesNormalizer.PERIOD_DIMENSION);
+    }
+
+    @Test
+    void groupedResultWithNoDataAtAllIsSeededFromTheRegisteredMemberProvider() {
+        var normalizerWithCountries = new TimeSeriesNormalizer(
+            new DimensionMemberProviderRegistry(List.of(fakeProvider("country", "DE", "FR"))));
+        var result = new IndicatorResult(
+            new IndicatorMetadata("citizen_science.new_projects_count", "label", null, null, null),
+            List.of("country", TimeSeriesNormalizer.PERIOD_DIMENSION),
+            List.of(),
+            new QueryExecutionMetadata(Instant.now(), false)
+        );
+        var range = new ResolvedTimeRange(2024, 2024, MissingPeriodHandling.NULL_FILL);
+
+        var normalized = normalizerWithCountries.normalize(result, range, List.of());
+
+        assertThat(normalized.data()).hasSize(2);
+        assertThat(valueForCountry(normalized, "DE", "2024")).isNull();
+        assertThat(valueForCountry(normalized, "FR", "2024")).isNull();
+    }
+
+    @Test
+    void groupedResultWithNoDataAtAllPrefersAnExplicitFilterOverTheMemberProvider() {
+        var normalizerWithCountries = new TimeSeriesNormalizer(
+            new DimensionMemberProviderRegistry(List.of(fakeProvider("country", "DE", "FR", "PL", "IT"))));
+        var result = new IndicatorResult(
+            new IndicatorMetadata("citizen_science.new_projects_count", "label", null, null, null),
+            List.of("country", TimeSeriesNormalizer.PERIOD_DIMENSION),
+            List.of(),
+            new QueryExecutionMetadata(Instant.now(), false)
+        );
+        var range = new ResolvedTimeRange(2024, 2024, MissingPeriodHandling.NULL_FILL);
+        var filters = List.of(new ResolvedFilter("country", FilterOperator.IN, List.of("PL", "IT")));
+
+        var normalized = normalizerWithCountries.normalize(result, range, filters);
+
+        assertThat(normalized.data()).hasSize(2);
+        assertThat(valueForCountry(normalized, "PL", "2024")).isNull();
+        assertThat(valueForCountry(normalized, "IT", "2024")).isNull();
+    }
+
+    @Test
+    void groupedResultWithNoDataAtAllStaysEmptyWhenGroupedByMultipleDimensions() {
+        var normalizerWithCountries = new TimeSeriesNormalizer(
+            new DimensionMemberProviderRegistry(List.of(fakeProvider("country", "DE", "FR"))));
+        var result = new IndicatorResult(
+            new IndicatorMetadata("publications.oa_license_status_count", "label", null, null, null),
+            List.of("accessStatus", "country", TimeSeriesNormalizer.PERIOD_DIMENSION),
+            List.of(),
+            new QueryExecutionMetadata(Instant.now(), false)
+        );
+        var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.NULL_FILL);
+
+        var normalized = normalizerWithCountries.normalize(result, range, List.of());
+
+        assertThat(normalized.data()).isEmpty();
     }
 
     @Test
@@ -143,7 +220,7 @@ class TimeSeriesNormalizerTest {
         var result = resultWithPeriods(Map.of("2020", 10));
         var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.OMIT);
 
-        var normalized = normalizer.normalize(result, range);
+        var normalized = normalizer.normalize(result, range, List.of());
 
         assertThat(normalized.data()).hasSize(1);
     }
