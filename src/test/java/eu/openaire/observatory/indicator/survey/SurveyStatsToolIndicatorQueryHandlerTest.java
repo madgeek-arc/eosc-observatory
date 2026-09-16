@@ -153,7 +153,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
-    void countryInitiativeStatusIgnoresARequestedCountryWithNoData() {
+    void countryInitiativeStatusIncludesARequestedCountryWithNoDataAsAwaitingData() {
         var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
         var filters = List.of(
             INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023,
@@ -162,8 +162,15 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
 
-        assertThat(result.data()).hasSize(1);
-        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_YES);
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("XX");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_AWAITING_DATA);
+        });
     }
 
     @Test
@@ -184,6 +191,26 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void countryPolicyStatusIncludesARequestedCountryWithNoDataAsAwaitingData() {
+        var handler = handlerReturningEachInTurn(List.of(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}",
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}"
+        ));
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "XX"))
+        );
+
+        var result = handler.execute(plan(countryPolicyStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("XX");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_AWAITING_DATA);
+        });
+    }
+
+    @Test
     void monitoredAreasCountNarrowsToRequestedCountries() {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
@@ -195,6 +222,23 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         assertThat(result.data()).hasSize(1);
         assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+    }
+
+    @Test
+    void monitoredAreasCountIncludesARequestedCountryWithNoDataAsNull() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
+        var filters = List.of(
+            SURVEY_YEAR_2023, new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "XX"))
+        );
+
+        var result = handler.execute(plan(monitoredAreasCountDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("XX");
+            assertThat(dp.value()).isNull();
+        });
     }
 
     @Test
@@ -226,6 +270,22 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         assertThat(result.data()).hasSize(2);
         assertThat(valueFor(result, "GR")).isEqualTo(100.0);
         assertThat(valueFor(result, "DE")).isEqualTo(0.0);
+    }
+
+    @Test
+    void euCountryCoverageGroupedByCountryIncludesARequestedCountryWithNoDataAsZeroPercent() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "XX"))
+        );
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(euCountryCoverageDefinition(), filters, groupBy, null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(2);
+        assertThat(valueFor(result, "GR")).isEqualTo(100.0);
+        assertThat(valueFor(result, "XX")).isEqualTo(0.0);
     }
 
     @Test
@@ -332,6 +392,59 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void financialInvestmentGroupedByCountryNarrowsToRequestedCountries() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"26.94\"]},{\"row\":[\"FR\",\"30\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+        var filters = List.of(
+            SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("FI"))
+        );
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), filters, groupBy, null, AggregationType.SUM));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("FI");
+        assertThat(result.data().get(0).value()).isEqualTo(26_940_000.0);
+    }
+
+    @Test
+    void financialInvestmentGroupedByAreaAndCountryNarrowsToRequestedCountries() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"26.94\"]},{\"row\":[\"FR\",\"30\"]}]}}]}");
+        var groupBy = List.of(
+            new ResolvedDimension(IndicatorCodes.INVESTMENT_AREA_DIMENSION), new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+        var filters = List.of(
+            SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("FI"))
+        );
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), filters, groupBy, null, AggregationType.SUM));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("FI");
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.INVESTMENT_AREA_DIMENSION)).isEqualTo("OA_PUBLICATION");
+    }
+
+    @Test
+    void financialInvestmentGroupedByCountryIncludesARequestedCountryWithNoDataAsNull() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"26.94\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+        var filters = List.of(
+            SURVEY_YEAR_2023, INVESTMENT_AREA_OA_PUBLICATION,
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("FI", "XX"))
+        );
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), filters, groupBy, null, AggregationType.SUM));
+
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("XX");
+            assertThat(dp.value()).isNull();
+        });
+    }
+
+    @Test
     void longTermPreservationCountUsesQuestion89AndSumsByDefault() {
         var handler = handlerReturning(
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"PL\",\"68\"]},{\"row\":[\"RS\",\"118\"]}]}}]}");
@@ -373,6 +486,39 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         assertThat(result.data()).anySatisfy(dp -> {
             assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("IE");
             assertThat(dp.value()).isEqualTo(124L);
+        });
+    }
+
+    @Test
+    void countByQuestionGroupedByCountryNarrowsToRequestedCountries() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"PL\",\"68\"]},{\"row\":[\"RS\",\"118\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+        var filters = List.of(
+            SURVEY_YEAR_2023, new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("PL"))
+        );
+
+        var result = handler.execute(plan(longTermPreservationCountDefinition(), filters, groupBy, null, AggregationType.SUM));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("PL");
+        assertThat(result.data().get(0).value()).isEqualTo(68L);
+    }
+
+    @Test
+    void countByQuestionGroupedByCountryIncludesARequestedCountryWithNoDataAsNull() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"PL\",\"68\"]}]}}]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+        var filters = List.of(
+            SURVEY_YEAR_2023, new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("PL", "XX"))
+        );
+
+        var result = handler.execute(plan(longTermPreservationCountDefinition(), filters, groupBy, null, AggregationType.SUM));
+
+        assertThat(result.data()).hasSize(2);
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("XX");
+            assertThat(dp.value()).isNull();
         });
     }
 

@@ -225,7 +225,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             for (String type : types) {
                 InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(
                     year, questionCodeForInitiativeType(type), plan.definition().code());
-                narrowToRequestedCountries(plan, fetch.byCountry()).forEach((country, status) -> {
+                narrowToRequestedCountries(plan, fetch.byCountry(), STATUS_AWAITING_DATA).forEach((country, status) -> {
                     Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                     dimensions.put(COUNTRY_DIMENSION, country);
                     if (byType) {
@@ -262,10 +262,12 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             for (String type : types) {
                 InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(
                     year, questionCodeForInitiativeType(type), plan.definition().code());
-                Map<String, String> scoped = narrowToRequestedCountries(plan, fetch.byCountry());
 
                 if (byCountry) {
-                    scoped.forEach((country, status) -> {
+                    // Per-country rows always include every requested country — a missing/no-answer
+                    // one still renders as 0% (STATUS_YES.equals(null) is false), same as an explicit
+                    // STATUS_NO/STATUS_AWAITING_DATA answer, rather than being dropped from the list.
+                    narrowToRequestedCountries(plan, fetch.byCountry()).forEach((country, status) -> {
                         Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                         dimensions.put(COUNTRY_DIMENSION, country);
                         if (byType) {
@@ -274,8 +276,13 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
                         data.add(new IndicatorDataPoint(dimensions, RatioPercentage.of(STATUS_YES.equals(status) ? 1 : 0, 1)));
                     });
                 } else {
-                    long adopted = scoped.values().stream().filter(STATUS_YES::equals).count();
-                    long total = filterValues(plan, COUNTRY_DIMENSION).isEmpty() ? fetch.totalRespondents() : scoped.size();
+                    // The aggregate percentage, unlike the per-country listing above, still excludes a
+                    // requested-but-dataless country from both numerator and denominator (selectedValues)
+                    // rather than counting it as a confirmed non-adopter — a different, correct-as-is
+                    // concept (NullHandling.EXCLUDE) from "don't drop a row".
+                    List<String> selected = selectedValues(plan, fetch.byCountry());
+                    long adopted = selected.stream().filter(STATUS_YES::equals).count();
+                    long total = filterValues(plan, COUNTRY_DIMENSION).isEmpty() ? fetch.totalRespondents() : selected.size();
                     Object value = RatioPercentage.of(adopted, total);
 
                     Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
@@ -321,7 +328,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
                 String questionCode = questionCodeForInitiativeType(type);
                 String indicatorCode = plan.definition().code();
                 Map<String, String> baseByCountry = narrowToRequestedCountries(
-                    plan, fetchInitiativeStatusByCountry(year, questionCode, indicatorCode).byCountry());
+                    plan, fetchInitiativeStatusByCountry(year, questionCode, indicatorCode).byCountry(), STATUS_AWAITING_DATA);
                 Map<String, String> mandatoryByCountry = fetchInitiativeStatusByCountry(
                     year, mandatoryQuestionCode(questionCode), indicatorCode).byCountry();
 
@@ -468,11 +475,11 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
                 for (String area : areas) {
                     Map<String, Double> millionsByCountry = millionsByCountryPerArea.get(area);
                     if (byCountry) {
-                        millionsByCountry.forEach((country, millions) -> {
+                        narrowToRequestedCountries(plan, millionsByCountry).forEach((country, millions) -> {
                             Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                             dimensions.put(INVESTMENT_AREA_DIMENSION, area);
                             dimensions.put(COUNTRY_DIMENSION, country);
-                            data.add(new IndicatorDataPoint(dimensions, toEuros(millions)));
+                            data.add(new IndicatorDataPoint(dimensions, millions == null ? null : toEuros(millions)));
                         });
                     } else {
                         Object aggregated = aggregatedEuros(plan, millionsByCountry);
@@ -482,10 +489,10 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
                     }
                 }
             } else if (byCountry) {
-                millionsByCountryAllAreas.forEach((country, millions) -> {
+                narrowToRequestedCountries(plan, millionsByCountryAllAreas).forEach((country, millions) -> {
                     Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                     dimensions.put(COUNTRY_DIMENSION, country);
-                    data.add(new IndicatorDataPoint(dimensions, toEuros(millions)));
+                    data.add(new IndicatorDataPoint(dimensions, millions == null ? null : toEuros(millions)));
                 });
             } else {
                 data.add(new IndicatorDataPoint(periodDimensions, aggregatedEuros(plan, millionsByCountryAllAreas)));
@@ -553,7 +560,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
 
             if (byCountry) {
-                countByCountry.forEach((country, value) -> {
+                narrowToRequestedCountries(plan, countByCountry).forEach((country, value) -> {
                     Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                     dimensions.put(COUNTRY_DIMENSION, country);
                     data.add(new IndicatorDataPoint(dimensions, value));
@@ -625,22 +632,31 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
 
     /**
      * Map-preserving counterpart to {@link #selectedValues}, for the per-country listing methods
-     * (queryCountryInitiativeStatus/queryCountryPolicyStatus/queryAreasCount/queryEuCountryCoverage)
-     * rather than the aggregate ones: narrows {@code byCountry} down to just the country filter's
-     * values (dropping any requested country absent from the data), or returns it unchanged if no
-     * country filter was given.
+     * (queryCountryInitiativeStatus/queryCountryPolicyStatus/queryAreasCount/queryEuCountryCoverage/
+     * queryFinancialInvestment/queryCountByQuestion, on their byCountry branches) rather than the
+     * aggregate ones: every requested country gets a row, in request order. One present in
+     * {@code byCountry} keeps its value; one absent gets {@code null} (the same "no data" signal
+     * already used elsewhere in this indicator family for a missing period) — never dropped. Returns
+     * {@code byCountry} unchanged if no country filter was given.
      */
     private static <V> Map<String, V> narrowToRequestedCountries(IndicatorExecutionPlan plan, Map<String, V> byCountry) {
+        return narrowToRequestedCountries(plan, byCountry, null);
+    }
+
+    /**
+     * Overload of {@link #narrowToRequestedCountries(IndicatorExecutionPlan, Map)} for a value type
+     * with a defined "no usable answer" sentinel (e.g. {@link #STATUS_AWAITING_DATA}) instead of a
+     * raw {@code null} — used where downstream code expects one of a fixed set of non-null values.
+     */
+    private static <V> Map<String, V> narrowToRequestedCountries(
+            IndicatorExecutionPlan plan, Map<String, V> byCountry, V missingValue) {
         List<String> requestedCountries = filterValues(plan, COUNTRY_DIMENSION);
         if (requestedCountries.isEmpty()) {
             return byCountry;
         }
         Map<String, V> narrowed = new LinkedHashMap<>();
         for (String country : requestedCountries) {
-            V value = byCountry.get(country);
-            if (value != null) {
-                narrowed.put(country, value);
-            }
+            narrowed.put(country, byCountry.getOrDefault(country, missingValue));
         }
         return narrowed;
     }
