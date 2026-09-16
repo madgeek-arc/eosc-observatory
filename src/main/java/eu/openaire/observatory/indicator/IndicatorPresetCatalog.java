@@ -359,9 +359,6 @@ public class IndicatorPresetCatalog {
             presetFullWidth("oa-9", "Distribution of Open Access Types by Different Scholarly Publication Outputs",
                 OPEN_ACCESS_PUBLICATIONS, categoryDistributionViews(OA_LICENSE_STATUS_DIMENSION, "Access type"),
                 NO_SERIES_AGGREGATIONS, PUBLICATIONS_OA_LICENSE_STATUS_COUNT, NO_FILTERS, 90),
-            // Not in the inventory:
-            preset("oa-10-x", "National Financial Strategy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FINANCIAL_STRATEGY"), 100),
 
             // ---- Open Data (inventory rows 11-18) -------------------------------------------------------
             preset("od-1", "Open Data in Europe (Open vs Closed)", OPEN_DATA,
@@ -381,9 +378,6 @@ public class IndicatorPresetCatalog {
             presetFullWidth("od-8", "Distribution of Open Data Types by Different Document Type",
                 OPEN_DATA, categoryDistributionViews(ACCESS_STATUS_DIMENSION, "Access type"),
                 NO_SERIES_AGGREGATIONS, DATASETS_COUNT, NO_FILTERS, 80),
-            // Not in the inventory:
-            preset("od-9-x", "National Financial Strategy on Open Data", OPEN_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY"), 90),
 
             // ---- FAIR Data (inventory rows 19-24) -----------------------------------------------------
             preset("fair-1", "EU Countries with Policy on FAIR Data", FAIR_DATA,
@@ -398,9 +392,6 @@ public class IndicatorPresetCatalog {
                 "FAIR_DATA_POLICY", 50),
             nationalMonitoringPreset("fair-6", "National Monitoring on FAIR Data", FAIR_DATA,
                 "FAIR_DATA_MONITORING_INITIATIVE", 60),
-            // Not in the inventory:
-            preset("fair-7-x", "National Financial Strategy on FAIR Data", FAIR_DATA,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY"), 70),
 
             // ---- Data Management (inventory rows 25-30) ---------------------------------------------
             preset("dm-1", "EU Countries with Policy on Data Management", DATA_MANAGEMENT,
@@ -415,12 +406,9 @@ public class IndicatorPresetCatalog {
                 "DATA_MANAGEMENT_POLICY", 50),
             nationalMonitoringPreset("dm-6", "National Monitoring on Data Management", DATA_MANAGEMENT,
                 "DATA_MANAGEMENT_MONITORING_INITIATIVE", 60),
-            // Not in the inventory:
-            preset("dm-7-x", "National Financial Strategy on Data Management", DATA_MANAGEMENT,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY"), 70),
 
             // ---- Citizen Science (inventory rows 31-37) -------------------------------------------------
-            preset("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE,
+            presetFullWidth("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE,
                 OUTPUT_COUNT_VIEWS, AVG_MEDIAN, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS, 10),
             preset("cs-2", "EU Countries with Policy on Citizen Science", CITIZEN_SCIENCE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_POLICY"), 20),
@@ -434,9 +422,6 @@ public class IndicatorPresetCatalog {
                 "CITIZEN_SCIENCE_POLICY", 60),
             nationalMonitoringPreset("cs-7", "National Monitoring on Citizen Science", CITIZEN_SCIENCE,
                 "CITIZEN_SCIENCE_MONITORING_INITIATIVE", 70),
-            // Not in the inventory:
-            preset("cs-8-x", "National Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY"), 80),
 
             // ---- Repositories (inventory rows 38-46; covers both Connecting Repositories to EOSC and
             //      Long-term Data Preservation sub-topics) --------------------------------------------
@@ -458,11 +443,6 @@ public class IndicatorPresetCatalog {
                 "REPOSITORIES_PRESERVATION_POLICY", 80),
             nationalMonitoringPreset("repo-9", "National Monitoring on Long-term Data Preservation", REPOSITORIES,
                 "REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE", 90),
-            // Not in the inventory. Also: no REPOSITORIES_PRESERVATION_FINANCIAL_STRATEGY/
-            // REPOSITORIES_PRESERVATION member exists yet, so the preservation financial-strategy/
-            // investment presets are omitted.
-            preset("repo-10-x", "National Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY"), 100),
 
             // ---- Open Science Training (inventory rows 47-52) ----------------------------------------
             preset("train-1", "EU Countries with Policy on skills/training for Open Science", OPEN_SCIENCE_TRAINING,
@@ -477,12 +457,9 @@ public class IndicatorPresetCatalog {
                 "TRAINING_POLICY", 50),
             nationalMonitoringPreset("train-6", "National Monitoring on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
                 "TRAINING_MONITORING_INITIATIVE", 60),
-            // Not in the inventory:
-            preset("train-7-x", "National Financial Strategy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("TRAINING_FINANCIAL_STRATEGY"), 70),
 
             // ---- Open Software (inventory rows 53-59) -----------------------------------------------
-            preset("sw-1", "Open Software sets published in EU Countries", OPEN_SOFTWARE,
+            presetFullWidth("sw-1", "Open Software sets published in EU Countries", OPEN_SOFTWARE,
                 OUTPUT_COUNT_VIEWS, AVG_MEDIAN, SOFTWARE_OPEN_SOURCE_SETS_COUNT, NO_FILTERS, 10),
             preset("sw-2", "EU Countries with Policy on Open Software", OPEN_SOFTWARE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_POLICY"), 20),
@@ -496,9 +473,6 @@ public class IndicatorPresetCatalog {
                 "SOFTWARE_POLICY", 60),
             nationalMonitoringPreset("sw-7", "National Monitoring on Open Source Software", OPEN_SOFTWARE,
                 "SOFTWARE_MONITORING_INITIATIVE", 70),
-            // Not in the inventory:
-            preset("sw-8-x", "National Financial Strategy on Open Software", OPEN_SOFTWARE,
-                NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS, COUNTRY_INITIATIVE_STATUS, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 80),
 
             // ---- Investments in EOSC page (inventory rows 64-65) -----------------------------------
             presetFullWidth("inv-1", "Total amount of investments in EOSC and Open Science", INVESTMENTS_IN_EOSC,
