@@ -536,7 +536,9 @@ public class IndicatorPresetCatalog {
             String id, String label, IndicatorGroup group, List<PresetView> views,
             List<AggregationType> allowedSeriesAggregations, String indicatorCode,
             Map<String, List<String>> presetFilters, int order) {
-        return preset(id, label, group, views, false, allowedSeriesAggregations, indicatorCode, presetFilters, order);
+        // format is null here — IndicatorPresetCatalog fills it from the linked definition.
+        return new IndicatorPreset(id, label, group, views, null,
+            allowedSeriesAggregations, indicatorCode, presetFilters, PresetValueLabels.NONE, order);
     }
 
     /** Like {@link #preset}, but for the handful of presets whose views need the whole dashboard width. */
@@ -544,16 +546,8 @@ public class IndicatorPresetCatalog {
             String id, String label, IndicatorGroup group, List<PresetView> views,
             List<AggregationType> allowedSeriesAggregations, String indicatorCode,
             Map<String, List<String>> presetFilters, int order) {
-        return preset(id, label, group, views, true, allowedSeriesAggregations, indicatorCode, presetFilters, order);
-    }
-
-    private static IndicatorPreset preset(
-            String id, String label, IndicatorGroup group, List<PresetView> views, boolean fullWidth,
-            List<AggregationType> allowedSeriesAggregations, String indicatorCode,
-            Map<String, List<String>> presetFilters, int order) {
-        // format is null here — IndicatorPresetCatalog fills it from the linked definition.
-        return new IndicatorPreset(id, label, group, views, fullWidth, null,
-            allowedSeriesAggregations, indicatorCode, presetFilters, PresetValueLabels.NONE, order);
+        List<PresetView> fullWidthViews = views.stream().map(view -> view.withFullWidth(true)).toList();
+        return preset(id, label, group, fullWidthViews, allowedSeriesAggregations, indicatorCode, presetFilters, order);
     }
 
     /**

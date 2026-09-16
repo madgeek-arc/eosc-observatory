@@ -35,10 +35,6 @@ import java.util.Map;
  * <p>{@code format} is copied from the linked definition by the catalog (see
  * {@link #resolvedAgainst(IndicatorDefinition)}); authored entries leave it {@code null}.
  *
- * <p>{@code fullWidth} is layout metadata only — {@code true} for the handful of presets (e.g. the
- * "Distribution of ... Types" indicators) whose views need the whole dashboard width rather than
- * sharing a row with another widget; {@code false} for every other preset.
- *
  * <p>{@code labels} ({@link PresetValueLabels}) lets a preset name the display strings its query
  * results carry — a raw per-country status value like {@code "YES"} maps to
  * {@code "Has national monitoring"}, a gap-filled {@code null} year to {@code "N/A"} — so the UI
@@ -53,7 +49,6 @@ public record IndicatorPreset(
     String label,
     IndicatorGroup group,
     List<PresetView> views, // renderings that make sense for this preset; UI picks by the actor's filter state
-    boolean fullWidth, // true when this preset's views need the whole dashboard width
     IndicatorFormat format, // resolved from the linked IndicatorDefinition by IndicatorPresetCatalog
     List<AggregationType> allowedSeriesAggregations, // meaningful seriesAggregations values for this preset — empty if none
     String indicatorCode, // must resolve in IndicatorDefinitionCatalog
@@ -82,13 +77,13 @@ public record IndicatorPreset(
     /** A copy with {@code format} filled from {@code definition}. Called once, at catalog construction. */
     public IndicatorPreset resolvedAgainst(IndicatorDefinition definition) {
         return new IndicatorPreset(
-            id, label, group, views, fullWidth, definition.format(),
+            id, label, group, views, definition.format(),
             allowedSeriesAggregations, indicatorCode, presetFilters, labels, order);
     }
 
     /** A copy carrying {@code labels} — used by the catalog to attach a preset's legend labels. */
     public IndicatorPreset withValueLabels(PresetValueLabels labels) {
-        return new IndicatorPreset(id, label, group, views, fullWidth, format, allowedSeriesAggregations,
+        return new IndicatorPreset(id, label, group, views, format, allowedSeriesAggregations,
             indicatorCode, presetFilters, labels, order);
     }
 

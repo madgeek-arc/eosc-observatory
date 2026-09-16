@@ -32,7 +32,7 @@ class IndicatorPresetSerializationTest {
         JsonNode json = objectMapper.valueToTree(catalog.get("oa-1"));
 
         assertThat(fieldNames(json)).containsExactlyInAnyOrder(
-            "id", "label", "group", "views", "fullWidth", "format",
+            "id", "label", "group", "views", "format",
             "allowedSeriesAggregations", "indicatorCode", "presetFilters");
 
         assertThat(json.get("id").asText()).isEqualTo("oa-1");
@@ -51,7 +51,7 @@ class IndicatorPresetSerializationTest {
         assertThat(views.isArray()).isTrue();
         assertThat(views).hasSize(4);
         views.forEach(view -> assertThat(fieldNames(view))
-            .containsExactlyInAnyOrder("countryScope", "timeScope", "renderStyle"));
+            .containsExactlyInAnyOrder("countryScope", "timeScope", "renderStyle", "fullWidth"));
 
         JsonNode allCountriesSingleYear = findView(views, "ALL_COUNTRIES", "SINGLE_YEAR");
         assertThat(allCountriesSingleYear.get("renderStyle").asText()).isEqualTo("SCALAR");
@@ -64,7 +64,7 @@ class IndicatorPresetSerializationTest {
         JsonNode view = objectMapper.valueToTree(
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.SCALAR));
 
-        assertThat(fieldNames(view)).containsExactlyInAnyOrder("countryScope", "timeScope", "renderStyle");
+        assertThat(fieldNames(view)).containsExactlyInAnyOrder("countryScope", "timeScope", "renderStyle", "fullWidth");
     }
 
     @Test

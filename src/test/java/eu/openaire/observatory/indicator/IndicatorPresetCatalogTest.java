@@ -159,11 +159,11 @@ class IndicatorPresetCatalogTest {
 
         assertThat(oaDistribution).isNotNull();
         assertThat(oaDistribution.indicatorCode()).isEqualTo(IndicatorCodes.PUBLICATIONS_OA_LICENSE_STATUS_COUNT);
-        assertThat(oaDistribution.fullWidth()).isTrue();
+        assertThat(oaDistribution.views()).allMatch(PresetView::fullWidth);
 
         assertThat(odDistribution).isNotNull();
         assertThat(odDistribution.indicatorCode()).isEqualTo(IndicatorCodes.DATASETS_COUNT);
-        assertThat(odDistribution.fullWidth()).isTrue();
+        assertThat(odDistribution.views()).allMatch(PresetView::fullWidth);
     }
 
     @Test
@@ -184,12 +184,15 @@ class IndicatorPresetCatalogTest {
     @Test
     void everyOtherPresetIsNotFullWidth() {
         Set<String> fullWidthIds = Set.of(
-            "oa-9", "od-8", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1", "nm-2",
+            "oa-9", "od-8", "cs-1", "sw-1", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1", "nm-2",
             "osp-1", "osp-2", "osp-3", "osp-4", "osp-5", "osp-6");
         for (IndicatorPreset preset : catalog.getAll()) {
-            assertThat(preset.fullWidth())
-                .as(preset.id() + " fullWidth")
-                .isEqualTo(fullWidthIds.contains(preset.id()));
+            boolean expectedFullWidth = fullWidthIds.contains(preset.id());
+            for (PresetView view : preset.views()) {
+                assertThat(view.fullWidth())
+                    .as(preset.id() + " " + view.renderStyle() + " fullWidth")
+                    .isEqualTo(expectedFullWidth);
+            }
         }
     }
 
@@ -375,7 +378,7 @@ class IndicatorPresetCatalogTest {
     @Test
     void catalogRejectsValueLabelsOnAPresetWhoseFormatIsNotAStatusFormat() {
         IndicatorPreset magnitudeWithLabels = new IndicatorPreset(
-            "oa-1", "OA", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), false, null, List.of(),
+            "oa-1", "OA", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), null, List.of(),
             "publications.access_status_share", java.util.Map.of(),
             PresetValueLabels.forMissing("N/A"), 10);
 

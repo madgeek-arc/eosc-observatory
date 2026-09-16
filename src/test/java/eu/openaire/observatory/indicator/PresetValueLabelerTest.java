@@ -20,7 +20,7 @@ class PresetValueLabelerTest {
     private static IndicatorPreset presetWithLabels(Map<String, String> valueLabels, String missingValueLabel) {
         return new IndicatorPreset(
             "oa-8", "National Monitoring", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
-            List.of(), false, null, List.of(), "oa.country_initiative_status", Map.of(),
+            List.of(), null, List.of(), "oa.country_initiative_status", Map.of(),
             new PresetValueLabels(valueLabels, missingValueLabel), 80);
     }
 
@@ -93,7 +93,7 @@ class PresetValueLabelerTest {
     void returnsTheSameResultInstanceWhenThePresetDeclaresNoLabels() {
         IndicatorPreset noLabels = new IndicatorPreset(
             "oa-1", "OA", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
-            List.of(), false, null, List.of(), "publications.access_status_share", Map.of(),
+            List.of(), null, List.of(), "publications.access_status_share", Map.of(),
             PresetValueLabels.NONE, 10);
         IndicatorResult original = resultOf(point("GR", "YES"));
 

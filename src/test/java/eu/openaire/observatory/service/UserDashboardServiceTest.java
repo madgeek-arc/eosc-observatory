@@ -93,14 +93,14 @@ class UserDashboardServiceTest {
         authentication = OidcTestUtils.oidcAuthentication(EMAIL);
 
         trendDefinition = new IndicatorPreset(
-                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), false, null,
+                TREND_WIDGET_ID, "Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), null,
                 List.of(AggregationType.AVG, AggregationType.MEDIAN), "indicator.trend", Map.of(), PresetValueLabels.NONE, 10);
         trendIndicator = indicatorDefinition("indicator.trend", true,
                 Set.of(new IndicatorDimensionBinding(
                         IndicatorCodes.COUNTRY_DIMENSION, Set.of(DimensionUsage.FILTER), Set.of(FilterOperator.EQ, FilterOperator.IN), false)));
 
         nonTrendDefinition = new IndicatorPreset(
-                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), false, null,
+                NON_TREND_WIDGET_ID, "Non-Trend Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(), null,
                 List.of(), "indicator.non-trend", Map.of(), PresetValueLabels.NONE, 20);
         nonTrendIndicator = indicatorDefinition("indicator.non-trend", false, Set.of());
 
@@ -339,7 +339,7 @@ class UserDashboardServiceTest {
         IndicatorPreset perCountryPreset = new IndicatorPreset(
                 "widget-map", "Map Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
                 List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MAP)),
-                false, null, List.of(), "indicator.trend", Map.of(), PresetValueLabels.NONE, 30);
+                null, List.of(), "indicator.trend", Map.of(), PresetValueLabels.NONE, 30);
         lenient().when(presetCatalog.get("widget-map")).thenReturn(perCountryPreset);
         UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", "widget-map")), null, 2023, 2023, null);
 
@@ -357,8 +357,9 @@ class UserDashboardServiceTest {
         var selector = new ViewSelector(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, "Access type", List.of());
         IndicatorPreset distributionPreset = new IndicatorPreset(
                 "widget-distribution", "Distribution Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
-                List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, selector)),
-                true, null, List.of(), "indicator.distribution", Map.of(), PresetValueLabels.NONE, 40);
+                List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, selector)
+                        .withFullWidth(true)),
+                null, List.of(), "indicator.distribution", Map.of(), PresetValueLabels.NONE, 40);
         IndicatorDefinition distributionIndicator = indicatorDefinition("indicator.distribution", true, Set.of(
                 new IndicatorDimensionBinding(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION,
                         Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP), Set.of(FilterOperator.EQ, FilterOperator.IN), false),
