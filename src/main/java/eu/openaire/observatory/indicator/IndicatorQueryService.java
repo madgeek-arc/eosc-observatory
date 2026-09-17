@@ -35,7 +35,9 @@ public class IndicatorQueryService {
         var handler = handlers.getRequired(plan.definition().executionBinding().handlerKey());
         IndicatorResult result = handler.execute(plan);
         result = normalizer.normalize(result, plan.timeRange(), plan.filters());
-        result = seriesAggregationCalculator.summarize(result, plan.seriesAggregations());
+        if (plan.timeRange() != null) {
+            result = seriesAggregationCalculator.summarize(result, plan.seriesAggregations());
+        }
         return comparisonCalculator.compare(result, plan.comparisonMode(), plan.timeRange(), plan.definition().semanticType());
     }
 }

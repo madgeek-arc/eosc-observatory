@@ -74,7 +74,7 @@ class LocalRegistryIndicatorQueryHandlerTest {
             .thenReturn(List.of("GR", "DE", "FR"));
         var filters = List.of(
             new ResolvedFilter(IndicatorCodes.SURVEY_ID_DIMENSION, FilterOperator.EQ, List.of("m-eosc-sb-2023")),
-            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "XX"))
+            new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "GR", "XX", "XX"))
         );
 
         var result = handler.execute(plan(countriesWithValidatedAnswersDefinition(), filters));
@@ -118,7 +118,7 @@ class LocalRegistryIndicatorQueryHandlerTest {
         de.setId("de-stakeholder");
         de.setCountry("DE");
         when(stakeholderService.getWithFilter("type", "eosc-sb")).thenReturn(Set.of(gr, de));
-        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")));
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "GR", "XX")));
 
         var result = handler.execute(plan(stakeholderParticipatingCountriesCountDefinition(), filters));
 

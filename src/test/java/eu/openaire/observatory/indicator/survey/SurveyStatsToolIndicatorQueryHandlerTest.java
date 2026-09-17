@@ -1,16 +1,24 @@
 package eu.openaire.observatory.indicator.survey;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.openaire.observatory.indicator.CatalogDimensionDefinitionLookup;
+import eu.openaire.observatory.indicator.ComparisonCalculator;
 import eu.openaire.observatory.indicator.IndicatorCodes;
+import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
+import eu.openaire.observatory.indicator.IndicatorQueryService;
+import eu.openaire.observatory.indicator.TimeSeriesAggregationCalculator;
+import eu.openaire.observatory.indicator.TimeSeriesNormalizer;
+import eu.openaire.observatory.indicator.dimension.DimensionMemberProviderRegistry;
+import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.model.AggregationPolicy;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
-import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.model.IndicatorExecutionBinding;
+import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorSemanticType;
 import eu.openaire.observatory.indicator.model.IndicatorStatus;
 import eu.openaire.observatory.indicator.model.IndicatorValueType;
@@ -21,7 +29,12 @@ import eu.openaire.observatory.indicator.model.RenderHint;
 import eu.openaire.observatory.indicator.model.TimePolicy;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.model.ZeroDenominatorHandling;
+import eu.openaire.observatory.indicator.query.IndicatorFilter;
+import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
+import eu.openaire.observatory.indicator.result.IndicatorResult;
+import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizationService;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
+import eu.openaire.observatory.indicator.validation.IndicatorQueryValidator;
 import eu.openaire.observatory.indicator.validation.QuerySecurityScope;
 import eu.openaire.observatory.indicator.validation.ResolvedDimension;
 import eu.openaire.observatory.indicator.validation.ResolvedFilter;
@@ -65,6 +78,33 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         IndicatorCodes.INVESTMENT_AREA_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION"));
 
     private final List<String> capturedRequests = new ArrayList<>();
+
+    @Test
+    void serviceNormalizesYearAndDeduplicatesCountriesBeforeNumericAggregation() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"100.5\"]},{\"row\":[\"DE\",\"200.25\"]}]}}]}");
+        var catalog = new IndicatorDefinitionCatalog();
+        var providers = new DimensionMemberProviderRegistry(List.of());
+        var handlers = new IndicatorQueryHandlerRegistry(List.of(handler));
+        var validator = new IndicatorQueryValidator(
+            code -> financialInvestmentDefinition(), new CatalogDimensionDefinitionLookup(catalog),
+            new AllowAllIndicatorAuthorizationService(), handlers, providers);
+        var service = new IndicatorQueryService(validator, handlers,
+            new TimeSeriesNormalizer(providers),
+            new TimeSeriesAggregationCalculator(),
+            new ComparisonCalculator());
+        for (List<Object> countries : List.of(List.<Object>of("GR", "DE"), List.<Object>of("GR", "GR", "DE"))) {
+            var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.FINANCIAL_INVESTMENT)
+                .withFilters(
+                    new IndicatorFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of(" 2023 ")),
+                    new IndicatorFilter(IndicatorCodes.INVESTMENT_AREA_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION")),
+                    new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, countries))
+                .build();
+            assertThat(service.execute(query, level -> true).data()).singleElement()
+                .satisfies(point -> assertThat(point.value()).isEqualTo(300_750_000.0));
+        }
+        assertThat(capturedRequests).isNotEmpty().allSatisfy(request -> assertThat(request).contains("eosc.sb.2023."));
+    }
 
     @Test
     void countryInitiativeStatusMapsYesNoToStatusPerCountry() {
@@ -891,7 +931,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         });
     }
 
-    private static Object valueFor(eu.openaire.observatory.indicator.result.IndicatorResult result, String country) {
+    private static Object valueFor(IndicatorResult result, String country) {
         return result.data().stream()
             .filter(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION).equals(country))
             .findFirst().orElseThrow().value();

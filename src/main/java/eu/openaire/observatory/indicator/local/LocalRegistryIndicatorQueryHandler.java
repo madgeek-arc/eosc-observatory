@@ -95,7 +95,7 @@ public class LocalRegistryIndicatorQueryHandler extends AbstractIndicatorQueryHa
         List<String> requestedCountries = filterValues(plan, IndicatorCodes.COUNTRY_DIMENSION);
         return requestedCountries.isEmpty()
             ? countries.size()
-            : requestedCountries.stream().filter(countries::contains).count();
+            : requestedCountries.stream().distinct().filter(countries::contains).count();
     }
 
     private static IndicatorResult flatResult(IndicatorExecutionPlan plan, long value) {

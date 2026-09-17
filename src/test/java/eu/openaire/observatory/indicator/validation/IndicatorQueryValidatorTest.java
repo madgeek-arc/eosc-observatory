@@ -10,9 +10,11 @@ import eu.openaire.observatory.indicator.handler.IndicatorQueryHandlerRegistry;
 import eu.openaire.observatory.indicator.handler.SupportsComparisonQueries;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.DimensionDefinition;
+import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorAccessLevel;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
+import eu.openaire.observatory.indicator.model.IndicatorDimensionBinding;
 import eu.openaire.observatory.indicator.query.ComparisonMode;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
@@ -20,10 +22,17 @@ import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mockito;
 
 import java.time.Year;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -139,6 +148,103 @@ class IndicatorQueryValidatorTest {
 
     private static final ActorContext ALLOW_ALL = level -> true;
     private static final ActorContext DENY_RESTRICTED = level -> level != IndicatorAccessLevel.RESTRICTED;
+
+    @Test
+    void rejectsMalformedFiltersAndRepeatedDimensions() {
+        List<IndicatorFilter> malformed = Arrays.asList(
+            null,
+            new IndicatorFilter(null, FilterOperator.EQ, List.of("GR")),
+            new IndicatorFilter(" ", FilterOperator.EQ, List.of("GR")),
+            new IndicatorFilter("country", null, List.of("GR")),
+            new IndicatorFilter("country", FilterOperator.EQ, null),
+            new IndicatorFilter("country", FilterOperator.IN, Arrays.asList("GR", null)),
+            new IndicatorFilter("country", FilterOperator.EQ, List.of("GR", "GR"))
+        );
+        for (IndicatorFilter filter : malformed) {
+            var query = new IndicatorQuery(COUNT_CODE, null, Arrays.asList(filter),
+                null, null, null, null, null, null);
+            assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+                .isInstanceOf(InvalidFilterShapeException.class);
+        }
+        var repeated = IndicatorQueryBuilder.forIndicator(COUNT_CODE).withFilters(
+            new IndicatorFilter("country", FilterOperator.EQ, List.of("GR")),
+            new IndicatorFilter("country", FilterOperator.IN, List.of("DE"))).build();
+        assertThatThrownBy(() -> validator.compile(repeated, ALLOW_ALL))
+            .isInstanceOf(InvalidFilterShapeException.class).hasMessageContaining("country");
+        var emptyRequired = IndicatorQueryBuilder.forIndicator(REQUIRED_FILTER_CODE).withFilters(
+            new IndicatorFilter("country", FilterOperator.IN, List.of())).build();
+        assertThatThrownBy(() -> validator.compile(emptyRequired, ALLOW_ALL))
+            .isInstanceOf(InvalidFilterShapeException.class);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "EQ,1", "NOT_EQ,1", "GT,1", "GTE,1", "LT,1", "LTE,1", "CONTAINS,1", "STARTS_WITH,1",
+        "BETWEEN,2", "IN,-1", "NOT_IN,-1", "IS_NULL,0", "IS_NOT_NULL,0"
+    })
+    void enforcesCardinalityForEveryOperator(FilterOperator operator, int cardinality) {
+        var definition = Mockito.mock(IndicatorDefinition.class);
+        var binding = new IndicatorDimensionBinding(
+            "country", Set.of(DimensionUsage.FILTER),
+            Set.of(FilterOperator.values()), false);
+        Mockito.when(definition.dimensionBindings()).thenReturn(Set.of(binding));
+        Mockito.when(definition.aggregationPolicy()).thenReturn(countIndicator.aggregationPolicy());
+        var dimension = Mockito.mock(DimensionDefinition.class);
+        Mockito.when(dimension.supportedOperators()).thenReturn(Set.of(FilterOperator.values()));
+        var compiler = new IndicatorQueryValidator(code -> definition, code -> dimension,
+            new AllowAllIndicatorAuthorizationService(), handlers, new DimensionMemberProviderRegistry(List.of()));
+        for (int size = 0; size <= 3; size++) {
+            var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE).withFilters(
+                new IndicatorFilter("country", operator, Collections.nCopies(size, "GR"))).build();
+            if (size == cardinality || (cardinality == -1 && size > 0)) {
+                assertThat(compiler.compile(query, ALLOW_ALL).filters()).hasSize(1);
+            } else {
+                assertThatThrownBy(() -> compiler.compile(query, ALLOW_ALL))
+                    .isInstanceOf(InvalidFilterShapeException.class).hasMessageContaining(operator.name());
+            }
+        }
+    }
+
+    @Test
+    void membershipValuesAreDeduplicatedInOrderAndCopied() {
+        for (FilterOperator operator : List.of(FilterOperator.IN, FilterOperator.NOT_IN)) {
+            var values = new ArrayList<Object>(List.of("INACTIVE", "ACTIVE", "INACTIVE"));
+            var query = IndicatorQueryBuilder.forIndicator(STATUS_FILTERABLE_CODE).withFilters(
+                new IndicatorFilter("status", operator, values)).build();
+            var resolved = validator.compile(query, ALLOW_ALL).filters().get(0).values();
+            assertThat(resolved).containsExactly("INACTIVE", "ACTIVE");
+            assertThat(values).containsExactly("INACTIVE", "ACTIVE", "INACTIVE");
+            values.clear();
+            assertThat(resolved).hasSize(2);
+            assertThatThrownBy(() -> resolved.add("ACTIVE")).isInstanceOf(UnsupportedOperationException.class);
+        }
+    }
+
+    @Test
+    void equalityValuesAreCopiedWithoutChangingTheirRepresentation() {
+        var values = new ArrayList<Object>(List.of(" gr "));
+        var query = IndicatorQueryBuilder.forIndicator(COUNT_CODE).withFilters(
+            new IndicatorFilter("country", FilterOperator.EQ, values)).build();
+        var resolved = validator.compile(query, ALLOW_ALL).filters().get(0).values();
+        values.clear();
+        assertThat(resolved).containsExactly(" gr ");
+        assertThatThrownBy(() -> resolved.add("DE")).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void omittedFiltersStillMeanNoFilters() {
+        var query = new IndicatorQuery(COUNT_CODE, null, null, null, null, null, null, null, null);
+        assertThat(validator.compile(query, ALLOW_ALL).filters()).isEmpty();
+    }
+
+    @Test
+    void surveyYearIsCanonicalizedWithoutMutatingInput() {
+        var values = new ArrayList<Object>(List.of(" 2023 "));
+        var query = IndicatorQueryBuilder.forIndicator(SURVEY_YEAR_FILTERABLE_CODE).withFilters(
+            new IndicatorFilter(IndicatorFixtures.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, values)).build();
+        assertThat(validator.compile(query, ALLOW_ALL).filters().get(0).values()).containsExactly("2023");
+        assertThat(values).containsExactly(" 2023 ");
+    }
 
     private static IndicatorQuery baseQuery(String code) {
         return IndicatorQueryBuilder.forIndicator(code).build();

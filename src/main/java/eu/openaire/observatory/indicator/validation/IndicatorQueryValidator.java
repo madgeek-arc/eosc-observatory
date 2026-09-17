@@ -16,7 +16,10 @@ import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import org.springframework.stereotype.Service;
 
 import java.time.Year;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -61,6 +64,7 @@ public class IndicatorQueryValidator {
 
         AggregationType aggregation = resolveAggregation(definition, query);
 
+        validateFilterShapes(query.filters());
         List<ResolvedFilter> filters = query.filters().stream()
             .map(filter -> resolveFilter(definition, filter))
             .toList();
@@ -117,6 +121,47 @@ public class IndicatorQueryValidator {
         return query.seriesAggregations();
     }
 
+    /** Check the entire request before any member lookup, which may access a remote provider. */
+    private void validateFilterShapes(List<IndicatorFilter> filters) {
+        Set<String> seenDimensions = new HashSet<>();
+        for (int index = 0; index < filters.size(); index++) {
+            IndicatorFilter filter = filters.get(index);
+            String label = "at index " + index;
+            if (filter == null) {
+                throw new InvalidFilterShapeException(label, "must not be null");
+            }
+            if (filter.dimension() == null || filter.dimension().isBlank()) {
+                throw new InvalidFilterShapeException(label, "dimension must not be blank");
+            }
+            label = filter.dimension();
+            if (!seenDimensions.add(label)) {
+                throw new InvalidFilterShapeException(label, "dimension must occur only once");
+            }
+            if (filter.operator() == null) {
+                throw new InvalidFilterShapeException(label, "operator must not be null");
+            }
+            if (filter.values() == null || filter.values().stream().anyMatch(Objects::isNull)) {
+                throw new InvalidFilterShapeException(label, "values must be a non-null list without null elements");
+            }
+            int size = filter.values().size();
+            boolean valid = switch (filter.operator()) {
+                case EQ, NOT_EQ, GT, GTE, LT, LTE, CONTAINS, STARTS_WITH -> size == 1;
+                case BETWEEN -> size == 2;
+                case IN, NOT_IN -> size > 0;
+                case IS_NULL, IS_NOT_NULL -> size == 0;
+            };
+            if (!valid) {
+                String expected = switch (filter.operator()) {
+                    case EQ, NOT_EQ, GT, GTE, LT, LTE, CONTAINS, STARTS_WITH -> "exactly one value";
+                    case BETWEEN -> "exactly two values";
+                    case IN, NOT_IN -> "at least one value";
+                    case IS_NULL, IS_NOT_NULL -> "no values";
+                };
+                throw new InvalidFilterShapeException(label, filter.operator() + " requires " + expected);
+            }
+        }
+    }
+
     private ResolvedFilter resolveFilter(IndicatorDefinition definition, IndicatorFilter filter) {
         IndicatorDimensionBinding binding = requireDimensionBinding(definition, filter.dimension(), DimensionUsage.FILTER);
 
@@ -126,9 +171,14 @@ public class IndicatorQueryValidator {
             throw new UnsupportedOperatorException(filter.dimension(), filter.operator());
         }
 
-        validateFilterValues(definition.code(), filter);
+        List<Object> values = IndicatorCodes.SURVEY_YEAR_DIMENSION.equals(filter.dimension())
+            ? normalizeSurveyYearValues(filter) : List.copyOf(filter.values());
+        if (filter.operator() == FilterOperator.IN || filter.operator() == FilterOperator.NOT_IN) {
+            values = values.stream().distinct().toList();
+        }
+        validateFilterValues(definition.code(), new IndicatorFilter(filter.dimension(), filter.operator(), values));
 
-        return new ResolvedFilter(filter.dimension(), filter.operator(), filter.values());
+        return new ResolvedFilter(filter.dimension(), filter.operator(), values);
     }
 
     /**
@@ -140,7 +190,6 @@ public class IndicatorQueryValidator {
             return;
         }
         if (IndicatorCodes.SURVEY_YEAR_DIMENSION.equals(filter.dimension())) {
-            validateSurveyYearValues(filter);
             return; // deliberately NOT checked against the member provider — see SurveyYearDimensionMemberProvider
         }
         memberProviders.find(filter.dimension()).ifPresent(provider -> {
@@ -160,7 +209,8 @@ public class IndicatorQueryValidator {
      * degrade to {@code null} values downstream, not be rejected here. A non-integer or out-of-span
      * value is still a clean 400 so the handler's {@code Integer.parseInt} never sees garbage.
      */
-    private void validateSurveyYearValues(IndicatorFilter filter) {
+    private List<Object> normalizeSurveyYearValues(IndicatorFilter filter) {
+        List<Object> normalized = new ArrayList<>();
         int currentYear = Year.now().getValue();
         for (Object value : filter.values()) {
             int year;
@@ -172,7 +222,9 @@ public class IndicatorQueryValidator {
             if (year < EARLIEST_SUPPORTED_YEAR || year > currentYear) {
                 throw new InvalidFilterValueException(filter.dimension(), value);
             }
+            normalized.add(Integer.toString(year));
         }
+        return List.copyOf(normalized);
     }
 
     /**
