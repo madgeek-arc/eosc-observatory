@@ -85,7 +85,7 @@ public class IndicatorPresetCatalog {
         new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_SERIES_COLUMN_CHART));
 
     /** Like OUTPUT_COUNT_VIEWS, but only the EU map view is full-width. */
-    private static final List<PresetView> CITIZEN_SCIENCE_OUTPUT_COUNT_VIEWS = List.of(
+    private static final List<PresetView> OUTPUT_COUNT_VIEWS_MAP_FULL_WIDTH = List.of(
         OUTPUT_COUNT_VIEWS.get(0).withFullWidth(true),
         OUTPUT_COUNT_VIEWS.get(1),
         OUTPUT_COUNT_VIEWS.get(2),
@@ -416,7 +416,7 @@ public class IndicatorPresetCatalog {
 
             // ---- Citizen Science (inventory rows 31-37) -------------------------------------------------
             preset("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE,
-                CITIZEN_SCIENCE_OUTPUT_COUNT_VIEWS, AVG_MEDIAN, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS, 10),
+                OUTPUT_COUNT_VIEWS_MAP_FULL_WIDTH, AVG_MEDIAN, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS, 10),
             preset("cs-2", "EU Countries with Policy on Citizen Science", CITIZEN_SCIENCE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_POLICY"), 20),
             preset("cs-3", "Financial investments in Citizen Science", CITIZEN_SCIENCE,
@@ -466,8 +466,8 @@ public class IndicatorPresetCatalog {
                 "TRAINING_MONITORING_INITIATIVE", 60),
 
             // ---- Open Software (inventory rows 53-59) -----------------------------------------------
-            presetFullWidth("sw-1", "Open Software sets published in EU Countries", OPEN_SOFTWARE,
-                OUTPUT_COUNT_VIEWS, AVG_MEDIAN, SOFTWARE_OPEN_SOURCE_SETS_COUNT, NO_FILTERS, 10),
+            preset("sw-1", "Open Software sets published in EU Countries", OPEN_SOFTWARE,
+                OUTPUT_COUNT_VIEWS_MAP_FULL_WIDTH, AVG_MEDIAN, SOFTWARE_OPEN_SOURCE_SETS_COUNT, NO_FILTERS, 10),
             preset("sw-2", "EU Countries with Policy on Open Software", OPEN_SOFTWARE,
                 EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_POLICY"), 20),
             preset("sw-3", "Financial investments in Open Software", OPEN_SOFTWARE,
