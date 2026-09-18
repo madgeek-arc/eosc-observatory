@@ -17,6 +17,8 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.domain.Stakeholder;
+import eu.openaire.observatory.permissions.Groups;
+import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -27,12 +29,15 @@ public class GroupService {
 
     private final CoordinatorService coordinatorService;
     private final StakeholderService stakeholderService;
+    private final AdministratorService administratorService;
 
 
     public GroupService(CoordinatorService coordinatorService,
-                        StakeholderService stakeholderService) {
+                        StakeholderService stakeholderService,
+                        AdministratorService administratorService) {
         this.coordinatorService = coordinatorService;
         this.stakeholderService = stakeholderService;
+        this.administratorService = administratorService;
     }
 
     public String getGroupName(String groupId) {
@@ -41,6 +46,8 @@ public class GroupService {
             groupName = stakeholderService.get(groupId).getName();
         } else if (groupId.startsWith("co-")) {
             groupName = coordinatorService.get(groupId).getName();
+        } else if (groupId.equals(Groups.ADMINISTRATOR.getKey())) {
+            groupName = "Administrators";
         }
         return groupName;
     }
@@ -53,7 +60,18 @@ public class GroupService {
             members.addAll(sh.getMembers());
         } else if (groupId.startsWith("co-")) {
             members.addAll(coordinatorService.get(groupId).getMembers());
+        } else if (groupId.equals(Groups.ADMINISTRATOR.getKey())) {
+            members.addAll(getAllAdministratorEmails());
         }
         return members;
+    }
+
+    private Set<String> getAllAdministratorEmails() {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        Set<String> emails = new HashSet<>();
+        administratorService.getAll(filter).getResults()
+                .forEach(admin -> emails.addAll(admin.getUsers()));
+        return emails;
     }
 }

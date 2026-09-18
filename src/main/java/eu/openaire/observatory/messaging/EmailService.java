@@ -97,6 +97,10 @@ public class EmailService implements EmailOperations {
 
         for (Map.Entry<String, Set<String>> entry : userGroupEmails.entrySet()) {
             entry.setValue(filterEmailAddressesBasedOnUserPreferences(entry.getValue()));
+            if (entry.getValue().isEmpty()) {
+                logger.warn("Skipping email for group '{}': it resolved to no recipient addresses.", entry.getKey());
+                continue;
+            }
             if (StringUtils.hasText(entry.getKey())) {
                 emails.add(createEmail(thread, sender, entry.getKey(), entry.getValue(), "emails/inlined-css/message.ftlh"));
             } else {
