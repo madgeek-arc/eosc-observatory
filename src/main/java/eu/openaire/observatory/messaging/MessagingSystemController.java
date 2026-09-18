@@ -41,6 +41,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -51,6 +53,8 @@ import java.util.List;
 
 @RestController
 public class MessagingSystemController extends MessagingController {
+
+    private static final Logger logger = LoggerFactory.getLogger(MessagingSystemController.class);
 
     private final MessagingService messagingService;
     private final EmailOperations emailOperations;
@@ -83,7 +87,7 @@ public class MessagingSystemController extends MessagingController {
                             emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
-                        .subscribe()
+                        .subscribe(v -> {}, error -> logger.error("Failed to process post-thread-update tasks for thread {}", t.getId(), error))
         );
     }
 
@@ -104,7 +108,7 @@ public class MessagingSystemController extends MessagingController {
                             emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
-                        .subscribe()
+                        .subscribe(v -> {}, error -> logger.error("Failed to process post-thread-update tasks for thread {}", t.getId(), error))
         );
     }
 
@@ -190,7 +194,7 @@ public class MessagingSystemController extends MessagingController {
                             emailOperations.sendEmails(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
-                        .subscribe()
+                        .subscribe(v -> {}, error -> logger.error("Failed to process post-thread-update tasks for thread {}", t.getId(), error))
         );
     }
 
@@ -203,7 +207,7 @@ public class MessagingSystemController extends MessagingController {
                             messagingService.updateUnread(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
-                        .subscribe());
+                        .subscribe(v -> {}, error -> logger.error("Failed to update unread state for thread {}", t.getId(), error)));
     }
 
     public Mono<UnreadThreads> getUnread(String email) {
