@@ -16,8 +16,8 @@
 
 package eu.openaire.observatory.configuration.logging;
 
-import eu.openaire.observatory.commenting.repository.ErasureRecordRepository;
 import eu.openaire.observatory.configuration.ApplicationProperties;
+import eu.openaire.observatory.erasure.repository.ErasureRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -29,11 +29,11 @@ import java.util.List;
 
 /**
  * Primes {@link ErasureLogMasking} once the Spring context is up: pushes the HMAC secret and the
- * subject references already on record into the static holder the log4j2 rewrite policy reads.
+ * subject references of successful erasures into the static holder the log4j2 rewrite policy reads.
  * {@code ErasureRegisterService} keeps the set current for erasures that happen after startup.
  *
  * <p>Runs on {@link ApplicationReadyEvent} rather than in a constructor so the {@code commenting}
- * datasource is fully initialised before {@code findAll()}. Log lines emitted during startup are not
+ * datasource is fully initialised before the erasure query. Log lines emitted during startup are not
  * masked, which is acceptable — no request is in flight, so none carry a {@code user} field.
  */
 @Component
@@ -60,7 +60,7 @@ public class ErasureLogMaskingConfig {
             return;
         }
         List<String> refs = new ArrayList<>();
-        erasureRecordRepository.findAll().forEach(record -> refs.add(record.getSubjectRef()));
+        erasureRecordRepository.findAllByOutcome("SUCCESS").forEach(record -> refs.add(record.getSubjectRef()));
         ErasureLogMasking.configure(secret, refs);
         logger.info("Erasure log masking primed with {} known subject(s).", refs.size());
     }

@@ -16,9 +16,9 @@
 
 package eu.openaire.observatory.service;
 
-import eu.openaire.observatory.commenting.domain.ErasureRecord;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.*;
+import eu.openaire.observatory.erasure.domain.ErasureRecord;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.utils.UserIds;
@@ -48,6 +48,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -239,12 +240,13 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
      * over HTTP, so no single transaction manager could cover all of it.
      * Instead, every step here is idempotent (group/permission removal and the placeholder
      * rewrites are no-ops when reapplied), so on partial failure it is safe to simply call
-     * purge() again — it will pick up wherever it left off. The one exception is the final
-     * delete(id): if a prior run already completed, retrying throws ResourceNotFoundException,
-     * which is the expected/idiomatic response for deleting an already-deleted resource.
+     * purge() again — it will pick up wherever it left off.
+     * A PENDING register entry permits retrying after deletion succeeded but recording completion
+     * failed. A fully completed deletion still returns ResourceNotFoundException on another retry.
      */
     @Override
     public void purge(String id) throws ResourceNotFoundException {
+        Instant startedAt = Instant.now();
         // Normalize up front: ids are stored in canonical form everywhere (see UserIds#normalize,
         // applied on every write path), but this id comes from a path variable and isn't guaranteed
         // to match. Every comparison/query below is an exact match against the stored form.
@@ -252,8 +254,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // Captured by the anonymizeVersions(...) lambdas below, which need an effectively-final reference.
         final String userId = id;
 
-        // Resolved up front, before anything is mutated. The report line at the end of this method is
-        // the only record that the erasure happened, so a misconfigured secret has to fail here —
+        // Resolve the register reference before anything is mutated: a misconfigured secret must fail here —
         // not two thirds of the way through, after the scrubs have run but before delete(id).
         String subjectRef = erasureSubjectReference.of(userId);
 
@@ -335,22 +336,8 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // Safety net: remove any remaining permissions
         permissionService.removeAll(id);
 
-        // TODO: switch Spring Session to indexed mode (spring.session.redis.repository-type=indexed) so this user's Redis-backed HTTP sessions can be found by principal and deleted here.
-
-        // Report what the purge touched, for audit/compliance purposes. Logged before the
-        // final delete() so the report is captured even if that last step fails.
-        // Deliberately omits the purged user's id/email from the log line — logging the
-        // identifier being purged would itself retain the PII this method exists to remove.
-        // The subject reference is a keyed HMAC, so it answers "was this person purged?" without
-        // storing a readable address; it is pseudonymous, not anonymous.
-        // The same figures are persisted to the durable erasure register just below — the log line
-        // ages out with log retention, the register row does not.
-        logger.info("Purge report: removed from stakeholder group(s) {}, coordinator group(s) {}, " +
-                        "administrator group(s) {}; anonymized {} survey answer(s), {} news item(s), {} survey " +
-                        "definition(s), {} document(s), {} messaging thread(s); anonymized comment authorship " +
-                        "and @mentions; removed residual permissions. subject={}",
-                stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized, newsItemsAnonymized,
-                surveyDefinitionsAnonymized, documentsAnonymized, messagingThreadsAnonymized, subjectRef);
+        // Session revocation is deliberately deferred: the coordinated erasure procedure requires
+        // logout on every device, closing all tabs, and no login until the operator confirms success.
 
         // Scrub the User resource's own version history before delete(id) below (which only
         // removes the current record; version rows persist and must be scrubbed in place).
@@ -358,26 +345,46 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // profile field is dropped automatically), and clears forwardEmails. policiesAccepted is
         // kept as consent proof. Must run before delete(id): a deleted resource is no longer
         // fetchable via getResource.
-        anonymizeVersions(this, id, (User u) -> {
-            u.setSub(null);
-            u.setEmail(null);
-            u.setName(DELETED_FIELD_PLACEHOLDER);
-            u.setSurname(DELETED_FIELD_PLACEHOLDER);
-            u.setFullname(DELETED_USER_PLACEHOLDER);
-            u.setProfile(null);
-            if (u.getSettings() != null && u.getSettings().getNotificationPreferences() != null) {
-                u.getSettings().getNotificationPreferences().setForwardEmails(null);
+        Resource userResource;
+        try {
+            userResource = getResource(id);
+        } catch (ResourceNotFoundException e) {
+            // A pending record is written only AFTER history scrubbing. It permits recovery when
+            // delete succeeded but committing SUCCESS failed, without claiming an unknown deletion.
+            if (!erasureRegisterService.isPending(subjectRef)) {
+                throw e;
             }
-            return true;
-        });
+            // An index miss is not proof of deletion. Only recover a pending attempt after
+            // checking the primary store; if the user survives, fail and retry after reindexing.
+            for (Resource persisted : resourceService.getResource(
+                    resourceTypeService.getResourceType(getResourceType()))) {
+                User user = parserPool.deserialize(persisted, User.class);
+                if (id.equals(UserIds.normalize(user.getId()))) {
+                    throw e;
+                }
+            }
+            userResource = null;
+        }
+        if (userResource != null) {
+            anonymizeVersions(userResource, (User u) -> {
+                u.setSub(null);
+                u.setEmail(null);
+                u.setName(DELETED_FIELD_PLACEHOLDER);
+                u.setSurname(DELETED_FIELD_PLACEHOLDER);
+                u.setFullname(DELETED_USER_PLACEHOLDER);
+                u.setProfile(null);
+                if (u.getSettings() != null && u.getSettings().getNotificationPreferences() != null) {
+                    u.getSettings().getNotificationPreferences().setForwardEmails(null);
+                }
+                return true;
+            });
+        }
 
-        // Durable erasure register (GDPR Art. 5(2)/24 accountability). Written last, just before
-        // delete(id): a failure in any earlier step aborts the method and leaves no "SUCCESS" row,
-        // and every step above is idempotent so a re-run reaches here again — the register does a
-        // check-then-insert on the HMAC key, so the first record stays authoritative.
-        boolean registered = erasureRegisterService.record(new ErasureRecord()
+        // Commit PENDING before deletion. A failed deletion or completion write must never leave
+        // SUCCESS for this attempt; retries retain the original pending attempt's figures.
+        UUID attemptId = erasureRegisterService.begin(new ErasureRecord()
                 .setSubjectRef(subjectRef)
-                .setErasedAt(Instant.now())
+                .setStartedAt(startedAt)
                 .setExecutedBy(resolveExecutedBy())
                 .setStakeholderGroups(stakeholderIds.size())
                 .setCoordinatorGroups(coordinatorIds.size())
@@ -387,13 +394,19 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                 .setSurveyDefinitions(surveyDefinitionsAnonymized)
                 .setDocuments(documentsAnonymized)
                 .setMessagingThreads(messagingThreadsAnonymized)
-                .setOutcome("SUCCESS"));
-        if (!registered) {
-            logger.info("Erasure register already held subject {} — purge re-run, original record kept.", subjectRef);
-        }
+                .setOutcome("PENDING"));
 
-        // Delete the user record
-        delete(id);
+        logger.info("Purge report: removed from stakeholder group(s) {}, coordinator group(s) {}, " +
+                        "administrator group(s) {}; anonymized {} survey answer(s), {} news item(s), {} survey " +
+                        "definition(s), {} document(s), {} messaging thread(s); anonymized comment authorship " +
+                        "and @mentions; removed residual permissions. subject={} attempt={}",
+                stakeholderIds, coordinatorIds, administratorIds, surveyAnswersAnonymized, newsItemsAnonymized,
+                surveyDefinitionsAnonymized, documentsAnonymized, messagingThreadsAnonymized, subjectRef, attemptId);
+
+        if (userResource != null) {
+            delete(id);
+        }
+        erasureRegisterService.complete(attemptId);
     }
 
     /**
@@ -483,6 +496,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     /**
      * A sweep filter sized to Elasticsearch's default max result window. 10000 is that default, not
      * an arbitrary cap; none of the swept resource types comes close to it.
+     * TODO: This is a single page, not a complete traversal. Above 10,000 resources of a type,
+     * purge can report success while identity references in omitted resources/versions survive.
+     * Implement pagination (or fail on an incomplete result) before reaching that size.
      */
     private static FacetFilter sweepFilter() {
         FacetFilter filter = new FacetFilter();

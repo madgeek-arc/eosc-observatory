@@ -1,5 +1,8 @@
 package eu.openaire.observatory.configuration.logging;
 
+import eu.openaire.observatory.configuration.ApplicationProperties;
+import eu.openaire.observatory.erasure.domain.ErasureRecord;
+import eu.openaire.observatory.erasure.repository.ErasureRecordRepository;
 import eu.openaire.observatory.service.ErasureSubjectReference;
 import eu.openaire.observatory.utils.UserIds;
 import org.junit.jupiter.api.AfterEach;
@@ -9,6 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.*;
 
 class ErasureLogMaskingTest {
 
@@ -21,6 +25,27 @@ class ErasureLogMaskingTest {
 
     private static String refFor(String userId) {
         return ErasureSubjectReference.hmacHex(SECRET, UserIds.normalize(userId));
+    }
+
+    @Test
+    void startupMasksOnlySuccessfulErasureSubjects() {
+        var properties = new ApplicationProperties();
+        properties.setErasureHashSecret(SECRET);
+        var repository = mock(
+                ErasureRecordRepository.class);
+        var successful = new ErasureRecord()
+                .setSubjectRef(refFor("alice@example.org")).setOutcome("SUCCESS");
+        var pending = new ErasureRecord()
+                .setSubjectRef(refFor("bob@example.org")).setOutcome("PENDING");
+        lenient().when(repository.findAll()).thenReturn(List.of(successful, pending));
+        when(repository.findAllByOutcome("SUCCESS")).thenReturn(List.of(successful));
+
+        new ErasureLogMaskingConfig(properties, repository).primeLogMasking();
+
+        assertEquals("erased:" + successful.getSubjectRef(),
+                ErasureLogMasking.maskedReferenceFor("alice@example.org"));
+        assertNull(ErasureLogMasking.maskedReferenceFor("bob@example.org"));
+        verify(repository).findAllByOutcome("SUCCESS");
     }
 
     @Test

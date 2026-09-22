@@ -1,9 +1,9 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.IntegrationTestConfig;
-import eu.openaire.observatory.commenting.domain.ErasureRecord;
-import eu.openaire.observatory.commenting.repository.ErasureRecordRepository;
 import eu.openaire.observatory.domain.History;
+import eu.openaire.observatory.erasure.domain.ErasureRecord;
+import eu.openaire.observatory.erasure.repository.ErasureRecordRepository;
 import eu.openaire.observatory.domain.NotificationPreferences;
 import eu.openaire.observatory.domain.Profile;
 import eu.openaire.observatory.domain.Settings;
@@ -34,7 +34,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import reactor.core.publisher.Mono;
 
-import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -280,24 +279,18 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
         stakeholderCrudService.update(stakeholder.getId(), stakeholder);
 
         String subjectRef = erasureSubjectReference.of(userId);
-        assertFalse(erasureRecordRepository.existsById(subjectRef), "no register row should exist before the purge");
+        assertTrue(erasureRecordRepository.findAllBySubjectRefOrderByStartedAtAsc(subjectRef).isEmpty(),
+                "no register row should exist before the purge");
 
         userService.purge(userId);
 
-        ErasureRecord record = erasureRecordRepository.findById(subjectRef).orElseThrow();
+        ErasureRecord record = erasureRecordRepository.findAllBySubjectRefOrderByStartedAtAsc(subjectRef).getFirst();
         assertEquals("SUCCESS", record.getOutcome());
-        assertNotNull(record.getErasedAt());
+        assertNotNull(record.getStartedAt());
+        assertNotNull(record.getCompletedAt());
         assertTrue(record.getStakeholderGroups() >= 1, "the user was a member of at least one stakeholder group");
 
-        // A purge re-run after a partial failure reaches record() again; the check-then-insert
-        // guard must keep the authoritative first row and its timestamp.
-        Instant firstErasedAt = record.getErasedAt();
-        boolean written = erasureRegisterService.record(new ErasureRecord()
-                .setSubjectRef(subjectRef)
-                .setErasedAt(Instant.now().plusSeconds(60))
-                .setOutcome("SUCCESS"));
-        assertFalse(written, "a second record() for the same subject must be a no-op");
-        assertEquals(firstErasedAt, erasureRecordRepository.findById(subjectRef).orElseThrow().getErasedAt());
+        assertFalse(erasureRegisterService.isPending(subjectRef));
     }
 
     /**

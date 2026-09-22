@@ -16,25 +16,23 @@
 
 package eu.openaire.observatory.service;
 
-import eu.openaire.observatory.commenting.domain.ErasureRecord;
-import eu.openaire.observatory.commenting.repository.ErasureRecordRepository;
 import eu.openaire.observatory.configuration.logging.ErasureLogMasking;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import eu.openaire.observatory.erasure.domain.ErasureRecord;
+import eu.openaire.observatory.erasure.repository.ErasureRecordRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Writes the durable erasure register row for {@link UserServiceImpl#purge}.
  *
- * <p>Carries its own {@code @Transactional} boundary on the {@code commenting} datasource because
- * {@code purge()} is deliberately not transactional (it spans several stores) — the same pattern by
- * which {@code purge()} already delegates to the transactional {@code SurveyAnswerCommentService}.
+ * <p>Carries its own {@code @Transactional} boundary on the {@code erasure} datasource because
+ * {@code purge()} is deliberately not transactional (it spans several stores).
  */
 @Service
 public class ErasureRegisterService {
-
-    private static final Logger logger = LoggerFactory.getLogger(ErasureRegisterService.class);
 
     private final ErasureRecordRepository repository;
 
@@ -42,23 +40,38 @@ public class ErasureRegisterService {
         this.repository = repository;
     }
 
-    /**
-     * Records an erasure, once per subject. Check-then-insert on the natural (HMAC) primary key, so a
-     * re-run of {@code purge()} after a partial failure — every step of which is idempotent — does
-     * not overwrite the authoritative first record.
-     *
-     * @return {@code true} if a new row was written, {@code false} if one already existed.
-     */
-    @Transactional("commentingTransactionManager")
-    public boolean record(ErasureRecord record) {
-        if (repository.existsById(record.getSubjectRef())) {
-            logger.debug("Erasure register already holds subject {}; leaving the original record untouched.",
-                    record.getSubjectRef());
-            return false;
+    /** Start a new erasure, or retain the figures of an unfinished attempt being retried. */
+    @Transactional("erasureTransactionManager")
+    public UUID begin(ErasureRecord record) {
+        // Hold through commit so competing starts observe and reuse the winning pending row.
+        repository.lockSubject(record.getSubjectRef());
+        var existing = repository.findBySubjectRefAndOutcome(record.getSubjectRef(), "PENDING");
+        if (existing.isPresent()) {
+            return existing.get().getAttemptId();
         }
+        record.setOutcome("PENDING").setCompletedAt(null);
         repository.save(record);
-        // Keep the log-masking layer current so this subject is masked in logs without a restart.
-        ErasureLogMasking.registerErased(record.getSubjectRef());
-        return true;
+        return record.getAttemptId();
     }
+
+    @Transactional(value = "erasureTransactionManager", readOnly = true)
+    public boolean isPending(String subjectRef) {
+        return repository.findBySubjectRefAndOutcome(subjectRef, "PENDING").isPresent();
+    }
+
+    /** Called only after deletion succeeds; failure leaves the committed PENDING row retryable. */
+    @Transactional("erasureTransactionManager")
+    public void complete(UUID attemptId) {
+        ErasureRecord record = repository.findById(attemptId).orElseThrow();
+        if ("SUCCESS".equals(record.getOutcome())) {
+            return; // A repeated completion must preserve the original completion time.
+        }
+        if (!"PENDING".equals(record.getOutcome())) {
+            throw new IllegalStateException("Only pending erasure attempts can be completed");
+        }
+        record.setOutcome("SUCCESS").setCompletedAt(Instant.now());
+        repository.save(record);
+        ErasureLogMasking.registerErased(record.getSubjectRef());
+    }
+
 }
