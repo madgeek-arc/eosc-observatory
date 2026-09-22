@@ -67,6 +67,11 @@ public class IntegrationTestConfig {
         registry.add("datasets.datasource.password", postgres::getPassword);
         registry.add("datasets.datasource.driverClassName", () -> "org.postgresql.Driver");
 
+        registry.add("erasure.datasource.url", postgres::getJdbcUrl);
+        registry.add("erasure.datasource.username", postgres::getUsername);
+        registry.add("erasure.datasource.password", postgres::getPassword);
+        registry.add("erasure.datasource.driverClassName", () -> "org.postgresql.Driver");
+
     }
 
 

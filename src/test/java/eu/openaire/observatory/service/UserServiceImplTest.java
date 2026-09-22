@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import eu.openaire.observatory.commenting.domain.ErasureRecord;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.Action;
 import eu.openaire.observatory.domain.Administrator;
@@ -21,6 +20,7 @@ import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
 import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.erasure.domain.ErasureRecord;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.resources.model.DocumentMetadata;
@@ -46,6 +46,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -87,6 +88,7 @@ import static org.mockito.Mockito.when;
 class UserServiceImplTest {
 
     private static final String USER_ID = "user@example.org";
+    private static final UUID ATTEMPT_ID = UUID.randomUUID();
 
     @Mock
     private ResourceTypeService resourceTypeService;
@@ -180,8 +182,7 @@ class UserServiceImplTest {
         // need a non-null Mono back, so stub it leniently here and override where it matters.
         lenient().when(messagingClient.anonymizeUser(anyString())).thenReturn(Mono.just(0));
 
-        // Every purge test reaches the erasure-register step; default it to "wrote a new row".
-        lenient().when(erasureRegisterService.record(any())).thenReturn(true);
+        lenient().when(erasureRegisterService.begin(any())).thenReturn(ATTEMPT_ID);
 
         // Default: no version history, so anonymizeVersions() is a no-op unless a test
         // overrides these with a Resource that actually has Versions on it.
@@ -511,11 +512,10 @@ class UserServiceImplTest {
     }
 
     /**
-     * The durable erasure register (GDPR Art. 5(2)/24 accountability) is written just before
-     * delete(id), carrying the same PII-free figures as the purge report line.
+     * Persist the retry marker before deletion, and report completion only afterwards.
      */
     @Test
-    void purgeWritesErasureRegisterRecordBeforeDeleting() throws ResourceNotFoundException {
+    void purgeRecordsPendingBeforeDeletingAndSuccessAfterwards() throws ResourceNotFoundException {
         when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
 
         Stakeholder stakeholder = new Stakeholder();
@@ -533,18 +533,136 @@ class UserServiceImplTest {
 
         ArgumentCaptor<ErasureRecord> captor = ArgumentCaptor.forClass(ErasureRecord.class);
         InOrder ordered = inOrder(erasureRegisterService, service);
-        ordered.verify(erasureRegisterService).record(captor.capture());
+        ordered.verify(erasureRegisterService).begin(captor.capture());
         ordered.verify(service).delete(USER_ID);
+        ordered.verify(erasureRegisterService).complete(ATTEMPT_ID);
 
         ErasureRecord record = captor.getValue();
         assertEquals("subject-hmac", record.getSubjectRef());
-        assertEquals("SUCCESS", record.getOutcome());
-        assertNotNull(record.getErasedAt());
+        assertEquals("PENDING", record.getOutcome());
+        assertNotNull(record.getStartedAt());
+        assertNull(record.getCompletedAt());
         assertEquals(1, record.getStakeholderGroups());
         assertEquals(0, record.getCoordinatorGroups());
         assertEquals(0, record.getAdministratorGroups());
         assertEquals(1, record.getSurveyAnswers());
         assertEquals(4, record.getMessagingThreads());
+    }
+
+    @Test
+    void pendingRecordFailureDoesNotDeleteUser() {
+        when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
+        doThrow(new IllegalStateException("register unavailable")).when(erasureRegisterService).begin(any());
+
+        assertThrows(IllegalStateException.class, () -> service.purge(USER_ID));
+
+        verify(service, never()).delete(USER_ID);
+        verify(erasureRegisterService, never()).complete(any());
+    }
+
+    @Test
+    void deletionFailureDoesNotRecordSuccess() {
+        when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
+        doThrow(new IllegalStateException("deletion failed")).when(service).delete(USER_ID);
+
+        assertThrows(IllegalStateException.class, () -> service.purge(USER_ID));
+
+        verify(erasureRegisterService).begin(any());
+        verify(erasureRegisterService, never()).complete(any());
+    }
+
+    @Test
+    void purgeReportSurvivesDeletionFailure() {
+        when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
+        var logger = (org.apache.logging.log4j.core.Logger)
+                org.apache.logging.log4j.LogManager.getLogger(UserServiceImpl.class);
+        var appender = mock(org.apache.logging.log4j.core.Appender.class);
+        when(appender.getName()).thenReturn("purge-report-test");
+        when(appender.isStarted()).thenReturn(true);
+        var previousLevel = logger.getLevel();
+        logger.addAppender(appender);
+        logger.setLevel(org.apache.logging.log4j.Level.INFO);
+        try {
+            doAnswer(invocation -> {
+                verify(appender).append(org.mockito.ArgumentMatchers.argThat(event ->
+                        event.getMessage().getFormattedMessage().startsWith("Purge report:")));
+                throw new IllegalStateException("deletion failed");
+            }).when(service).delete(USER_ID);
+
+            assertThrows(IllegalStateException.class, () -> service.purge(USER_ID));
+            verify(erasureRegisterService, never()).complete(any());
+        } finally {
+            logger.removeAppender(appender);
+            logger.setLevel(previousLevel);
+        }
+    }
+
+    @Test
+    void staleIndexCannotCompletePendingErasureWhilePrimaryUserSurvives() {
+        when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
+        when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
+        when(erasureRegisterService.isPending("subject-hmac")).thenReturn(true);
+        doThrow(new ResourceNotFoundException(USER_ID, "user")).when(service).getResource(USER_ID);
+        ResourceType type = new ResourceType();
+        when(resourceTypeService.getResourceType("user")).thenReturn(type);
+        Resource persisted = new Resource();
+        when(resourceService.getResource(type)).thenReturn(List.of(persisted));
+        User user = new User();
+        user.setId(USER_ID);
+        when(parserService.deserialize(persisted, User.class)).thenReturn(user);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.purge(USER_ID));
+
+        verify(resourceService).getResource(type);
+        verify(erasureRegisterService, never()).begin(any());
+        verify(erasureRegisterService, never()).complete(any());
+    }
+
+    @Test
+    void primaryStoreFailureCannotCompletePendingErasure() {
+        when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
+        when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
+        when(erasureRegisterService.isPending("subject-hmac")).thenReturn(true);
+        doThrow(new ResourceNotFoundException(USER_ID, "user")).when(service).getResource(USER_ID);
+        ResourceType type = new ResourceType();
+        when(resourceTypeService.getResourceType("user")).thenReturn(type);
+        when(resourceService.getResource(type)).thenThrow(new IllegalStateException("database unavailable"));
+
+        assertThrows(IllegalStateException.class, () -> service.purge(USER_ID));
+
+        verify(erasureRegisterService, never()).complete(any());
+    }
+
+    @Test
+    void retryCompletesPendingErasureWhenDeletionAlreadySucceeded() {
+        when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
+        when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
+        doReturn(new User()).when(service).delete(USER_ID);
+        doThrow(new IllegalStateException("register unavailable")).doNothing()
+                .when(erasureRegisterService).complete(ATTEMPT_ID);
+        assertThrows(IllegalStateException.class, () -> service.purge(USER_ID));
+
+        doThrow(new ResourceNotFoundException(USER_ID, "user")).when(service).getResource(USER_ID);
+        when(erasureRegisterService.isPending("subject-hmac")).thenReturn(true);
+        ResourceType type = new ResourceType();
+        when(resourceTypeService.getResourceType("user")).thenReturn(type);
+        when(resourceService.getResource(type)).thenReturn(List.of());
+        service.purge(USER_ID);
+        verify(resourceService).getResource(type);
+
+        verify(service).delete(USER_ID); // only the first attempt deletes
+        verify(erasureRegisterService, org.mockito.Mockito.times(2)).complete(ATTEMPT_ID);
+    }
+
+    @Test
+    void missingUserWithoutPendingAttemptCannotBeReportedAsSuccess() {
+        when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
+        doThrow(new ResourceNotFoundException(USER_ID, "user")).when(service).getResource(USER_ID);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.purge(USER_ID));
+
+        verify(erasureRegisterService, never()).begin(any());
+        verify(erasureRegisterService, never()).complete(any());
     }
 
     @Test
@@ -714,7 +832,7 @@ class UserServiceImplTest {
         assertEquals("clean-history", version.getPayload());
         assertCleanHistory(historical);
         verify(surveyAnswerCrudService, never()).saveScrubbed(anyString(), any());
-        verify(erasureRegisterService).record(any());
+        verify(erasureRegisterService).begin(any());
     }
 
     @Test
@@ -727,7 +845,7 @@ class UserServiceImplTest {
 
         assertThrows(ResourceNotFoundException.class, () -> service.purge(USER_ID));
 
-        verify(erasureRegisterService, never()).record(any());
+        verify(erasureRegisterService, never()).begin(any());
         verify(service, never()).delete(USER_ID);
     }
 

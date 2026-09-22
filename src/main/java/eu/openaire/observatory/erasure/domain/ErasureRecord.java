@@ -14,51 +14,62 @@
  * limitations under the License.
  */
 
-package eu.openaire.observatory.commenting.domain;
+package eu.openaire.observatory.erasure.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
- * Durable, append-only record that a user erasure ran — one row per erased data subject.
+ * Durable record of an erasure attempt. Completed attempts are never overwritten.
  *
- * <p>Art. 17 gives the erasure right, but Art. 5(2) and Art. 24 require the controller to be able to
- * <em>demonstrate</em> compliance afterwards, potentially long after the log line that
- * {@code UserServiceImpl#purge} writes has aged out of the log-retention window. This table is that
- * evidence.
+ * <p>Art. 17 gives the erasure right, but Art. 5(2) and Art. 24 require demonstrating compliance
+ * afterwards, potentially after the log line {@code UserServiceImpl#purge} writes has aged out of
+ * retention. This table is that evidence.
  *
- * <p>It holds no personal data of the erased subject: {@link #subjectRef} is the keyed HMAC produced
- * by {@code ErasureSubjectReference} (pseudonymous, not reversible from the row) and every other
- * column is a count or an outcome flag. {@link #executedBy} is the id of the administrator who ran
- * the erasure, retained as controller-accountability data.
+ * <p>The subject is represented by pseudonymous data: {@link #subjectRef} is the keyed HMAC produced
+ * by {@code ErasureSubjectReference}, alongside attempt identifiers, timestamps, and cleanup counts.
+ * {@link #executedBy} is the administrator who ran the erasure, retained as accountability data.
  *
- * <p>Rides the {@code commenting} datasource purely to reuse an existing app-owned JPA store on the
- * registry database; it is otherwise unrelated to commenting. Picked up with no extra configuration
- * by the {@code @EntityScan} / {@code @EnableJpaRepositories} in {@code CommentingDatasourceConfig};
- * the table is created by that datasource's {@code hbm2ddl.auto=update}.
+ * <p>Wired by {@code ErasureDatasourceConfig} onto its own {@code erasure} datasource and schema on
+ * the registry database, created by {@code hbm2ddl.auto=update}.
  *
  * <p>Field access (the {@code @Id} annotation is on a field), so the fluent setters below are
  * caller convenience only — Hibernate never invokes them.
  */
 @Entity
-@Table(name = "erasure_record", schema = "commenting")
+@Table(name = "erasure_record", schema = "erasure",
+        indexes = @Index(name = "erasure_record_subject_idx", columnList = "subject_ref"),
+        uniqueConstraints = @UniqueConstraint(name = "erasure_record_one_pending_subject",
+                columnNames = "pending_subject_ref"))
 public class ErasureRecord {
 
-    /**
-     * Keyed HMAC of the erased user id (see {@code ErasureSubjectReference}). Natural primary key:
-     * the same subject always maps to the same row, so re-running {@code purge()} after a partial
-     * failure cannot create a duplicate and the first record stays authoritative.
-     */
     @Id
+    @Column(name = "attempt_id", nullable = false, updatable = false)
+    private UUID attemptId = UUID.randomUUID();
+
+    /** Multiple completed attempts may belong to the same pseudonymous subject. */
     @Column(name = "subject_ref", nullable = false, updatable = false)
     private String subjectRef;
 
-    @Column(name = "erased_at", nullable = false, updatable = false)
-    private Instant erasedAt;
+    /** Database-derived: only pending attempts occupy the subject's unique slot. */
+    @Column(name = "pending_subject_ref", insertable = false, updatable = false,
+            columnDefinition = "varchar(255) GENERATED ALWAYS AS "
+                    + "(CASE WHEN outcome = 'PENDING' THEN subject_ref ELSE NULL END) STORED")
+    private String pendingSubjectRef;
+
+    @Column(name = "started_at", nullable = false, updatable = false)
+    private Instant startedAt;
+
+    /** Null until deletion and the completion transaction succeed. */
+    @Column(name = "completed_at")
+    private Instant completedAt;
 
     /** Id of the administrator who performed the erasure; null if it ran outside a security context. */
     @Column(name = "executed_by", updatable = false)
@@ -95,12 +106,16 @@ public class ErasureRecord {
     @Column(name = "messaging_threads", nullable = false, updatable = false)
     private int messagingThreads;
 
-    /** {@code "SUCCESS"} — the row is written only on the success path, just before {@code delete(id)}. */
-    @Column(name = "outcome", nullable = false, updatable = false)
+    /** PENDING until user deletion and the completion transaction both succeed; then SUCCESS. */
+    @Column(name = "outcome", nullable = false)
     private String outcome;
 
     public ErasureRecord() {
         // no-arg constructor for JPA
+    }
+
+    public UUID getAttemptId() {
+        return attemptId;
     }
 
     public String getSubjectRef() {
@@ -112,12 +127,21 @@ public class ErasureRecord {
         return this;
     }
 
-    public Instant getErasedAt() {
-        return erasedAt;
+    public Instant getStartedAt() {
+        return startedAt;
     }
 
-    public ErasureRecord setErasedAt(Instant erasedAt) {
-        this.erasedAt = erasedAt;
+    public ErasureRecord setStartedAt(Instant startedAt) {
+        this.startedAt = startedAt;
+        return this;
+    }
+
+    public Instant getCompletedAt() {
+        return completedAt;
+    }
+
+    public ErasureRecord setCompletedAt(Instant completedAt) {
+        this.completedAt = completedAt;
         return this;
     }
 
