@@ -1,28 +1,35 @@
 package eu.openaire.observatory.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import eu.openaire.observatory.commenting.domain.ErasureRecord;
 import eu.openaire.observatory.configuration.ApplicationProperties;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import eu.openaire.observatory.domain.Action;
 import eu.openaire.observatory.domain.Administrator;
 import eu.openaire.observatory.domain.Coordinator;
+import eu.openaire.observatory.domain.Editor;
 import eu.openaire.observatory.domain.History;
 import eu.openaire.observatory.domain.Metadata;
 import eu.openaire.observatory.domain.NewsItem;
 import eu.openaire.observatory.domain.NotificationPreferences;
 import eu.openaire.observatory.domain.Profile;
+import eu.openaire.observatory.domain.Revision;
 import eu.openaire.observatory.domain.Settings;
-import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.Stakeholder;
+import eu.openaire.observatory.domain.SurveyAnswer;
+import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.resources.model.DocumentMetadata;
+import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.athenarc.messaging.service.MessagingService;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
+import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
-import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Resource;
@@ -34,6 +41,16 @@ import gr.uoa.di.madgik.registry.service.ResourceService;
 import gr.uoa.di.madgik.registry.service.ResourceTypeService;
 import gr.uoa.di.madgik.registry.service.SearchService;
 import gr.uoa.di.madgik.registry.service.VersionService;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,25 +58,26 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import reactor.core.publisher.Mono;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -95,7 +113,7 @@ class UserServiceImplTest {
     @Mock
     private AdministratorService administratorService;
     @Mock
-    private CrudService<SurveyAnswer> surveyAnswerCrudService;
+    private SurveyAnswerCrudService surveyAnswerCrudService;
     @Mock
     private PermissionService permissionService;
     @Mock
@@ -117,6 +135,10 @@ class UserServiceImplTest {
     @Mock
     private ModelResponseValidator validator;
 
+    @Mock
+    private CacheService<String, SurveyAnswerRevisionsAggregation> revisionsCache;
+
+    private final SurveyAnswerLocks surveyAnswerLocks = new SurveyAnswerLocks();
     private UserServiceImpl service;
 
     @BeforeEach
@@ -144,8 +166,15 @@ class UserServiceImplTest {
                 messagingClient,
                 applicationProperties,
                 erasureRegisterService,
-                validator
+                validator,
+                surveyAnswerLocks,
+                revisionsCache
         ));
+
+        lenient().when(surveyAnswerCrudService.getPersisted(anyString())).thenAnswer(invocation ->
+                surveyAnswerCrudService.getAllPersisted(new FacetFilter()).getResults().stream()
+                        .filter(answer -> answer.getId().equals(invocation.getArgument(0)))
+                        .findFirst().orElseThrow());
 
         // Every purge test reaches the messaging step; the ones that don't assert on it still
         // need a non-null Mono back, so stub it leniently here and override where it matters.
@@ -181,7 +210,7 @@ class UserServiceImplTest {
         NewsItem authored = newsItem("news-1", USER_ID, USER_ID);
         NewsItem unrelated = newsItem("news-2", "someone-else@example.org", "someone-else@example.org");
         when(newsItemService.getAll(any(FacetFilter.class))).thenReturn(browsing(authored, unrelated));
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -205,7 +234,7 @@ class UserServiceImplTest {
     void purgeDoesNotPersistNewsItemsThroughUpdate() throws ResourceNotFoundException {
         NewsItem authored = newsItem("news-1", USER_ID, USER_ID);
         when(newsItemService.getAll(any(FacetFilter.class))).thenReturn(browsing(authored));
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -218,7 +247,7 @@ class UserServiceImplTest {
         Model authored = model("model-1", USER_ID, USER_ID);
         when(modelService.browse(any(FacetFilter.class))).thenReturn(browsing(authored));
         stubUntypedResource("model", "model-1");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -241,7 +270,7 @@ class UserServiceImplTest {
         Date originalModificationDate = authored.getModificationDate();
         when(modelService.browse(any(FacetFilter.class))).thenReturn(browsing(authored));
         stubUntypedResource("model", "model-1");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -256,7 +285,7 @@ class UserServiceImplTest {
         JsonNode docInfo = authored.getDocInfo();
         when(genericResourceService.getResults(any(FacetFilter.class))).thenReturn(browsing(authored));
         stubUntypedResource("document", "doc-1");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -326,7 +355,7 @@ class UserServiceImplTest {
         answeredAsCreator.getMetadata().setCreatedBy(USER_ID);
         SurveyAnswer answeredAsModifier = surveyAnswer("sa-3");
         answeredAsModifier.getMetadata().setModifiedBy(USER_ID);
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class)))
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class)))
                 .thenReturn(browsingOf(answeredAsEditor, answeredAsCreator, answeredAsModifier));
 
         doReturn(new User()).when(service).delete(USER_ID);
@@ -342,9 +371,9 @@ class UserServiceImplTest {
         assertEquals(UserServiceImpl.DELETED_USER_PLACEHOLDER, answeredAsEditor.getHistory().getEntries().getFirst().getEditors().getFirst().getUser());
         assertEquals(UserServiceImpl.DELETED_USER_PLACEHOLDER, answeredAsCreator.getMetadata().getCreatedBy());
         assertEquals(UserServiceImpl.DELETED_USER_PLACEHOLDER, answeredAsModifier.getMetadata().getModifiedBy());
-        verify(surveyAnswerCrudService).update("sa-1", answeredAsEditor);
-        verify(surveyAnswerCrudService).update("sa-2", answeredAsCreator);
-        verify(surveyAnswerCrudService).update("sa-3", answeredAsModifier);
+        verify(surveyAnswerCrudService).saveScrubbed("sa-1", answeredAsEditor);
+        verify(surveyAnswerCrudService).saveScrubbed("sa-2", answeredAsCreator);
+        verify(surveyAnswerCrudService).saveScrubbed("sa-3", answeredAsModifier);
 
         verify(commentService).anonymizeUser(USER_ID, UserServiceImpl.DELETED_USER_PLACEHOLDER);
         verify(permissionService).removeAll(USER_ID);
@@ -360,14 +389,14 @@ class UserServiceImplTest {
     void purgeScrubsUserOutOfCommaJoinedModifiedBy() throws ResourceNotFoundException {
         SurveyAnswer coEdited = surveyAnswer("sa-1");
         coEdited.getMetadata().setModifiedBy("alice@example.org," + USER_ID + ",bob@example.org");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf(coEdited));
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(coEdited));
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
 
         assertEquals("alice@example.org," + UserServiceImpl.DELETED_USER_PLACEHOLDER + ",bob@example.org",
                 coEdited.getMetadata().getModifiedBy());
-        verify(surveyAnswerCrudService).update("sa-1", coEdited);
+        verify(surveyAnswerCrudService).saveScrubbed("sa-1", coEdited);
     }
 
     /**
@@ -380,7 +409,7 @@ class UserServiceImplTest {
         SurveyAnswer coEdited = surveyAnswer("sa-1");
         coEdited.getMetadata().setModifiedBy(
                 "alice@example.org," + USER_ID + "," + UserServiceImpl.DELETED_USER_PLACEHOLDER);
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf(coEdited));
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(coEdited));
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -398,14 +427,14 @@ class UserServiceImplTest {
         SurveyAnswer alreadyScrubbed = surveyAnswer("sa-1");
         alreadyScrubbed.getMetadata().setModifiedBy(
                 "alice@example.org," + UserServiceImpl.DELETED_USER_PLACEHOLDER);
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf(alreadyScrubbed));
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(alreadyScrubbed));
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
 
         assertEquals("alice@example.org," + UserServiceImpl.DELETED_USER_PLACEHOLDER,
                 alreadyScrubbed.getMetadata().getModifiedBy());
-        verify(surveyAnswerCrudService, never()).update(eq("sa-1"), any());
+        verify(surveyAnswerCrudService, never()).saveScrubbed(eq("sa-1"), any());
     }
 
     /**
@@ -416,7 +445,7 @@ class UserServiceImplTest {
     void purgeMatchesNonCanonicalTokensInModifiedBy() throws ResourceNotFoundException {
         SurveyAnswer coEdited = surveyAnswer("sa-1");
         coEdited.getMetadata().setModifiedBy("alice@example.org, \"User@Example.ORG\"");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf(coEdited));
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(coEdited));
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -431,17 +460,17 @@ class UserServiceImplTest {
         unrelated.getHistory().addEntry("someone-else@example.org", "role", "comment", new java.util.Date(), History.HistoryAction.UPDATED);
         unrelated.getMetadata().setCreatedBy("someone-else@example.org");
         unrelated.getMetadata().setModifiedBy("someone-else@example.org");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf(unrelated));
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(unrelated));
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
 
-        verify(surveyAnswerCrudService, never()).update(eq("sa-1"), any());
+        verify(surveyAnswerCrudService, never()).saveScrubbed(eq("sa-1"), any());
     }
 
     @Test
     void purgeNormalizesIdCaseBeforeQuerying() throws ResourceNotFoundException {
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge("User@Example.ORG");
@@ -456,7 +485,7 @@ class UserServiceImplTest {
 
     @Test
     void purgeAnonymizesMessagingThreads() throws ResourceNotFoundException {
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         when(messagingClient.anonymizeUser(USER_ID)).thenReturn(Mono.just(3));
         doReturn(new User()).when(service).delete(USER_ID);
 
@@ -469,7 +498,7 @@ class UserServiceImplTest {
 
     @Test
     void purgeAbortsWithoutDeletingUserWhenMessagingFails() {
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         when(messagingClient.anonymizeUser(USER_ID))
                 .thenReturn(Mono.error(new IllegalStateException("messaging service unreachable")));
 
@@ -495,7 +524,7 @@ class UserServiceImplTest {
 
         SurveyAnswer answered = surveyAnswer("sa-1");
         answered.getMetadata().setCreatedBy(USER_ID);
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf(answered));
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(answered));
 
         when(messagingClient.anonymizeUser(USER_ID)).thenReturn(Mono.just(4));
         doReturn(new User()).when(service).delete(USER_ID);
@@ -542,7 +571,7 @@ class UserServiceImplTest {
         doReturn(Stakeholder.class).when(service).getClassFromResourceType("stakeholder");
         when(parserService.deserialize(stakeholderResource, Stakeholder.class)).thenReturn(historicalStakeholder);
         when(parserService.serialize(eq(historicalStakeholder), any())).thenReturn("new-payload");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
 
         doReturn(new User()).when(service).delete(USER_ID);
 
@@ -585,7 +614,7 @@ class UserServiceImplTest {
         doReturn(User.class).when(service).getClassFromResourceType("user");
         when(parserService.deserialize(userResource, User.class)).thenReturn(historicalUser);
         when(parserService.serialize(eq(historicalUser), any())).thenReturn("new-payload");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
 
         doReturn(new User()).when(service).delete(USER_ID);
 
@@ -626,7 +655,7 @@ class UserServiceImplTest {
         doReturn(Stakeholder.class).when(service).getClassFromResourceType("stakeholder");
         when(parserService.deserialize(resource, Stakeholder.class)).thenReturn(historical);
         when(parserService.serialize(eq(historical), any())).thenReturn("new-payload");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -659,7 +688,7 @@ class UserServiceImplTest {
         doReturn(Administrator.class).when(service).getClassFromResourceType("administrator");
         when(parserService.deserialize(resource, Administrator.class)).thenReturn(historical);
         when(parserService.serialize(eq(historical), any())).thenReturn("new-payload");
-        when(surveyAnswerCrudService.getAll(any(FacetFilter.class))).thenReturn(browsingOf());
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf());
         doReturn(new User()).when(service).delete(USER_ID);
 
         service.purge(USER_ID);
@@ -669,9 +698,231 @@ class UserServiceImplTest {
         assertFalse(historical.getAdmins().contains(USER_ID));
     }
 
+    @Test
+    void purgeScrubsHistoryWhenCurrentAnswerDisappearsDuringSweep() {
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class)))
+                .thenReturn(browsingOf(surveyAnswer("sa-deleted")));
+        doThrow(new ResourceNotFoundException())
+                .when(surveyAnswerCrudService).getPersisted("sa-deleted");
+        SurveyAnswer historical = answerWithNonCanonicalHistory("sa-deleted");
+        Version version = stubAnswerVersion("sa-deleted", historical);
+        doReturn(new User()).when(service).delete(USER_ID);
+
+        service.purge(USER_ID);
+
+        verify(versionService).updateVersion(version);
+        assertEquals("clean-history", version.getPayload());
+        assertCleanHistory(historical);
+        verify(surveyAnswerCrudService, never()).saveScrubbed(anyString(), any());
+        verify(erasureRegisterService).record(any());
+    }
+
+    @Test
+    void purgeFailsWithoutRecordingSuccessWhenDeletedAnswerHistoryCannotBeResolved() {
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class)))
+                .thenReturn(browsingOf(surveyAnswer("sa-deleted")));
+        doThrow(new ResourceNotFoundException())
+                .when(surveyAnswerCrudService).getPersisted("sa-deleted");
+        when(surveyAnswerCrudService.getResource("sa-deleted")).thenThrow(new ResourceNotFoundException());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.purge(USER_ID));
+
+        verify(erasureRegisterService, never()).record(any());
+        verify(service, never()).delete(USER_ID);
+    }
+
+    @Test
+    void purgeNormalizesHistoryIdentitiesInStoredAnswersDraftsAndVersions() {
+        SurveyAnswer persisted = answerWithNonCanonicalHistory("sa-1");
+        SurveyAnswer historical = answerWithNonCanonicalHistory("sa-1");
+        var draft = new SurveyAnswerRevisionsAggregation(answerWithNonCanonicalHistory("sa-1"));
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(persisted));
+        when(revisionsCache.fetch("sa-1")).thenReturn(draft);
+        Version version = stubAnswerVersion("sa-1", historical);
+        doReturn(new User()).when(service).delete(USER_ID);
+
+        service.purge(USER_ID);
+
+        assertCleanHistory(persisted);
+        assertCleanHistory(draft.getSurveyAnswer());
+        assertCleanHistory(historical);
+        verify(surveyAnswerCrudService).saveScrubbed("sa-1", persisted);
+        verify(revisionsCache).save("sa-1", draft);
+        verify(versionService).updateVersion(version);
+    }
+
+    private SurveyAnswer answerWithNonCanonicalHistory(String id) {
+        SurveyAnswer answer = surveyAnswer(id);
+        var entry = new eu.openaire.observatory.domain.HistoryEntry();
+        entry.setUserId("  " + USER_ID.toUpperCase(java.util.Locale.ROOT) + "  ");
+        entry.getEditors().add(new Editor().setUser(" \"" + USER_ID.toUpperCase(java.util.Locale.ROOT) + "\" "));
+        entry.getEditors().add(new Editor().setUser("other@example.org"));
+        entry.getEditors().add(new Editor());
+        answer.getHistory().getEntries().add(entry);
+        return answer;
+    }
+
+    private void assertCleanHistory(SurveyAnswer answer) {
+        var entry = answer.getHistory().getEntries().getFirst();
+        assertEquals(UserServiceImpl.DELETED_USER_PLACEHOLDER, entry.getUserId());
+        assertEquals(UserServiceImpl.DELETED_USER_PLACEHOLDER, entry.getEditors().getFirst().getUser());
+        assertEquals("other@example.org", entry.getEditors().get(1).getUser());
+        assertNull(entry.getEditors().get(2).getUser());
+    }
+
+    private Version stubAnswerVersion(String id, SurveyAnswer historical) {
+        Version version = new Version();
+        version.setPayload("old-history");
+        version.setResourceTypeName("survey_answer");
+        ResourceType type = new ResourceType();
+        type.setPayloadType("json");
+        version.setResourceType(type);
+        Resource resource = new Resource();
+        resource.setVersions(List.of(version));
+        when(surveyAnswerCrudService.getResource(id)).thenReturn(resource);
+        doReturn(SurveyAnswer.class).when(service).getClassFromResourceType("survey_answer");
+        when(parserService.deserialize(resource, SurveyAnswer.class)).thenReturn(historical);
+        when(parserService.serialize(eq(historical), any())).thenReturn("clean-history");
+        return version;
+    }
+
+    @Test
+    void purgeCleansPersistedAnswerEvenWhenDraftIsAlreadyClean() {
+        SurveyAnswer persisted = surveyAnswer("sa-1");
+        persisted.getMetadata().setCreatedBy(USER_ID);
+        var draft = new SurveyAnswerRevisionsAggregation(surveyAnswer("sa-1"));
+        draft.getSurveyAnswer().getAnswer().put("pending", "colleague's unsaved answer");
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(persisted));
+        when(revisionsCache.fetch("sa-1")).thenReturn(draft);
+        doReturn(new User()).when(service).delete(USER_ID);
+
+        service.purge(USER_ID);
+
+        assertEquals(UserServiceImpl.DELETED_USER_PLACEHOLDER, persisted.getMetadata().getCreatedBy());
+        assertEquals("colleague's unsaved answer", draft.getSurveyAnswer().getAnswer().get("pending"));
+        verify(surveyAnswerCrudService).saveScrubbed("sa-1", persisted);
+        verify(surveyAnswerCrudService, never()).update(anyString(), any());
+        verify(revisionsCache, never()).remove(anyString());
+        verify(revisionsCache, never()).save(anyString(), any());
+    }
+
+    @Test
+    void purgePreservesPendingChangesAndEditorListAcrossRealSerialization() throws Exception {
+        SurveyAnswer persisted = surveyAnswer("sa-1");
+        persisted.getAnswer().put("saved", "original answer");
+        persisted.getMetadata().setCreatedBy(USER_ID);
+        var draft = new SurveyAnswerRevisionsAggregation(surveyAnswer("sa-1"));
+        draft.applyRevision(revision("pending", "unsaved answer"), new Editor()
+                .setUser(USER_ID).setRole("manager").setUpdateDate(new java.util.Date(10_000)));
+        draft.applyRevision(revision("other", "colleague's edit"), new Editor()
+                .setUser("colleague@example.org").setRole("manager").setUpdateDate(new java.util.Date(20_000)));
+        draft.getCreated().setTime(12345);
+        var serializer = draftSerializer();
+        var bytes = new AtomicReference<>(serializer.serialize(draft));
+        when(revisionsCache.fetch("sa-1")).thenAnswer(i -> serializer.deserialize(bytes.get()));
+        when(revisionsCache.save(eq("sa-1"), any())).thenAnswer(i -> {
+            bytes.set(serializer.serialize(i.getArgument(1)));
+            return null;
+        });
+        when(revisionsCache.fetchKeys("sa-*")).thenReturn(Set.of("custom:cache:sa-1"));
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(persisted));
+        doReturn(new User()).when(service).delete(USER_ID);
+
+        service.purge(USER_ID);
+
+        var cleaned = (SurveyAnswerRevisionsAggregation) serializer.deserialize(bytes.get());
+        assertEquals(draft.getCreated(), cleaned.getCreated());
+        assertEquals(2, cleaned.getRevisions().size());
+        assertEquals(draft.getSurveyAnswer().getAnswer(), cleaned.getSurveyAnswer().getAnswer());
+        assertEquals(draft.getSurveyAnswer().getMetadata().getModificationDate(),
+                cleaned.getSurveyAnswer().getMetadata().getModificationDate());
+        assertEquals(1, cleaned.getSurveyAnswer().getHistory().getEntries().size());
+        assertEquals(UserServiceImpl.DELETED_USER_PLACEHOLDER, cleaned.getEditors().getFirst().getUser());
+        assertEquals("colleague@example.org", cleaned.getEditors().getLast().getUser());
+        assertFalse(new String(bytes.get(), StandardCharsets.UTF_8).contains(USER_ID));
+        // A subsequent colleague edit must not restore the erased user from the aggregate editor list.
+        cleaned.applyRevision(revision("later", "new edit"), new Editor()
+                .setUser("colleague@example.org").setRole("manager").setUpdateDate(new java.util.Date(30_000)));
+        assertFalse(cleaned.getSurveyAnswer().getMetadata().getModifiedBy().contains(USER_ID));
+        assertEquals("original answer", persisted.getAnswer().get("saved"));
+        assertFalse(persisted.getAnswer().containsKey("pending"));
+        verify(revisionsCache, never()).remove(anyString());
+        verify(surveyAnswerCrudService).saveScrubbed("sa-1", persisted);
+    }
+
+    @Test
+    void editWaitsForErasureThenUsesCleanedDraft() throws Exception {
+        SurveyAnswer persisted = surveyAnswer("sa-1");
+        persisted.getMetadata().setCreatedBy(USER_ID);
+        var draft = new SurveyAnswerRevisionsAggregation(surveyAnswer("sa-1"));
+        draft.applyRevision(revision("pending", "keep me"), new Editor()
+                .setUser(USER_ID).setRole("manager"));
+        var serializer = draftSerializer();
+        var bytes = new AtomicReference<>(serializer.serialize(draft));
+        when(revisionsCache.fetch("sa-1")).thenAnswer(i -> serializer.deserialize(bytes.get()));
+        when(revisionsCache.save(eq("sa-1"), any())).thenAnswer(i -> {
+            bytes.set(serializer.serialize(i.getArgument(1)));
+            return null;
+        });
+        when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(persisted));
+        doReturn(new User()).when(service).delete(USER_ID);
+        var cleaning = new CountDownLatch(1);
+        var finishCleaning = new CountDownLatch(1);
+        doAnswer(i -> {
+            cleaning.countDown();
+            assertTrue(finishCleaning.await(5, TimeUnit.SECONDS));
+            return persisted;
+        }).when(surveyAnswerCrudService).getPersisted("sa-1");
+        var editing = spy(new SurveyServiceImpl(stakeholderCrudService, surveyAnswerCrudService,
+                genericResourceService, permissionService, modelService, service,
+                new ObjectMapper(), revisionsCache,
+                mock(EmailSurveyService.class), mock(SurveySettingsService.class), surveyAnswerLocks));
+        doReturn("manager").when(editing).getUserRole(any(), any());
+        var authentication = OidcTestUtils.oidcAuthentication("colleague@example.org");
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var purge = executor.submit(() -> service.purge(USER_ID));
+            assertTrue(cleaning.await(5, TimeUnit.SECONDS));
+            var started = new CountDownLatch(1);
+            var edit = executor.submit(() -> {
+                started.countDown();
+                editing.edit("sa-1", revision("later", "arrived during erasure"), authentication);
+            });
+            assertTrue(started.await(5, TimeUnit.SECONDS));
+            assertThrows(TimeoutException.class,
+                    () -> edit.get(100, TimeUnit.MILLISECONDS));
+            finishCleaning.countDown();
+            purge.get(5, TimeUnit.SECONDS);
+            edit.get(5, TimeUnit.SECONDS);
+            var cleaned = (SurveyAnswerRevisionsAggregation) serializer.deserialize(bytes.get());
+            assertEquals("keep me", cleaned.getSurveyAnswer().getAnswer().get("pending"));
+            assertEquals("arrived during erasure", cleaned.getSurveyAnswer().getAnswer().get("later"));
+            assertFalse(new String(bytes.get(), StandardCharsets.UTF_8).contains(USER_ID));
+        } finally {
+            finishCleaning.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    private static Revision revision(String field, String value) {
+        var revision = new Revision();
+        revision.setField(field);
+        revision.setValue(value);
+        revision.setAction(new Action().setType(Action.Type.ADD));
+        return revision;
+    }
+
+    private static GenericJackson2JsonRedisSerializer draftSerializer() {
+        var mapper = Jackson2ObjectMapperBuilder.json().build();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.activateDefaultTyping(mapper.getPolymorphicTypeValidator(), ObjectMapper.DefaultTyping.NON_FINAL);
+        return new GenericJackson2JsonRedisSerializer(mapper);
+    }
+
     private SurveyAnswer surveyAnswer(String id) {
         SurveyAnswer answer = new SurveyAnswer();
         answer.setId(id);
+        answer.setAnswer(new org.json.simple.JSONObject());
         return answer;
     }
 

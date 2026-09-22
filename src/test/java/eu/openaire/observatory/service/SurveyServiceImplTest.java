@@ -67,7 +67,8 @@ class SurveyServiceImplTest {
                 new ObjectMapper(),
                 cacheService,
                 emailSurveyService,
-                surveySettingsService
+                surveySettingsService,
+                new SurveyAnswerLocks()
         ));
     }
 

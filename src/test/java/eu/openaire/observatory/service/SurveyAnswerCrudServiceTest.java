@@ -1,5 +1,4 @@
 package eu.openaire.observatory.service;
-
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
@@ -10,6 +9,15 @@ import gr.uoa.di.madgik.registry.domain.Resource;
 import gr.uoa.di.madgik.registry.domain.ResourceType;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.registry.service.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.json.simple.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,13 +26,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -49,6 +54,7 @@ class SurveyAnswerCrudServiceTest {
     @Mock
     private ModelResponseValidator validator;
 
+    private final SurveyAnswerLocks surveyAnswerLocks = new SurveyAnswerLocks();
     private SurveyAnswerCrudService service;
 
     @BeforeEach
@@ -61,7 +67,8 @@ class SurveyAnswerCrudServiceTest {
                 parserService,
                 idGenerator,
                 cacheService,
-                validator
+                validator,
+                surveyAnswerLocks
         ));
         service.setBrowseByMap(Map.of("survey_answer", List.of()));
         ReflectionTestUtils.setField(service, "labelsMap", Map.of("survey_answer", Map.of()));
@@ -130,6 +137,53 @@ class SurveyAnswerCrudServiceTest {
 
         verify(service).update("sa-1", staleAnswer);
         verify(cacheService).fetch("sa-2");
+    }
+
+    @Test
+    void autosaveWaitsBeforeReadingDraftAndUsesChangesMadeWhileWaiting() throws Exception {
+        var latest = new SurveyAnswerRevisionsAggregation(createSurveyAnswer("survey-1", "stakeholder-1", "sa-1"));
+        latest.getCreated().setTime(System.currentTimeMillis() - 700_000);
+        var scanned = new CountDownLatch(1);
+        when(cacheService.fetchKeys("sa-*")).thenAnswer(i -> {
+            scanned.countDown();
+            return Set.of("custom:cache:sa-1");
+        });
+        when(cacheService.fetch("custom:cache:sa-1")).thenReturn(latest);
+        doAnswer(i -> {
+            assertEquals("edit during cleanup", latest.getSurveyAnswer().getAnswer().get("pending"));
+            return latest.getSurveyAnswer();
+        }).when(service).update("sa-1", latest.getSurveyAnswer());
+        var executor = Executors.newSingleThreadExecutor();
+        Future<?> autosave;
+        try {
+            try (var ignored = surveyAnswerLocks.acquire("sa-1")) {
+                autosave = executor.submit(() -> service.autoSaveCache());
+                assertTrue(scanned.await(5, TimeUnit.SECONDS));
+                assertThrows(TimeoutException.class,
+                        () -> autosave.get(100, TimeUnit.MILLISECONDS));
+                verify(cacheService, never()).fetch(anyString());
+                latest.getSurveyAnswer().getAnswer().put("pending", "edit during cleanup");
+            }
+            autosave.get(5, TimeUnit.SECONDS);
+            verify(service).update("sa-1", latest.getSurveyAnswer());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void saveScrubbedPersistsOnlyStoredAnswerWithoutTouchingDraft() {
+        SurveyAnswer persisted = createSurveyAnswer("survey-1", "stakeholder-1", "sa-1");
+        Resource resource = new Resource();
+        resource.setId("sa-1");
+        when(resourceTypeService.getResourceType("survey_answer")).thenReturn(surveyAnswerResourceType());
+        when(searchService.searchFields(eq("survey_answer"), any(SearchService.KeyValue[].class))).thenReturn(resource);
+        when(parserService.serialize(any(SurveyAnswer.class), any(ParserService.ParserServiceTypes.class))).thenReturn("{}");
+
+        assertSame(persisted, service.saveScrubbed("sa-1", persisted));
+
+        verify(resourceService).updateResource(resource);
+        verifyNoInteractions(cacheService);
     }
 
     private ResourceType surveyAnswerResourceType() {

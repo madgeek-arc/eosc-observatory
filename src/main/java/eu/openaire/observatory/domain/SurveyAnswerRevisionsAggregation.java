@@ -35,6 +35,11 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
 //    private static final Configuration conf = Configuration.defaultConfiguration()
 //            .addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL);
 
+    /** Jackson must restore a draft without creating a new editing history entry. */
+    public SurveyAnswerRevisionsAggregation() {
+        this.revisions = new ArrayList<>();
+    }
+
     public SurveyAnswerRevisionsAggregation(SurveyAnswer surveyAnswer) {
         this.surveyAnswer = surveyAnswer;
         this.surveyAnswer.getHistory().getEntries().add(new HistoryEntry(editors, null, created.getTime(), History.HistoryAction.UPDATED));

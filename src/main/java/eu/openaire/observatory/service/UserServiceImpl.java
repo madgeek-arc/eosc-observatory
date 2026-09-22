@@ -78,7 +78,9 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private final StakeholderService stakeholderService;
     private final CoordinatorService coordinatorService;
     private final AdministratorService administratorService;
-    private final CrudService<SurveyAnswer> surveyAnswerCrudService;
+    private final SurveyAnswerCrudService surveyAnswerCrudService;
+    private final SurveyAnswerLocks surveyAnswerLocks;
+    private final CacheService<String, SurveyAnswerRevisionsAggregation> revisionsCache;
     private final PermissionService permissionService;
     private final SurveyAnswerCommentService commentService;
     private final NewsItemService newsItemService;
@@ -103,7 +105,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy StakeholderService stakeholderService,
                               @Lazy CoordinatorService coordinatorService,
                               @Lazy AdministratorService administratorService,
-                              @Lazy CrudService<SurveyAnswer> surveyAnswerCrudService,
+                              @Lazy SurveyAnswerCrudService surveyAnswerCrudService,
                               PermissionService permissionService,
                               @Lazy SurveyAnswerCommentService commentService,
                               @Lazy NewsItemService newsItemService,
@@ -113,8 +115,12 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               MessagingService messagingClient,
                               ApplicationProperties applicationProperties,
                               ErasureRegisterService erasureRegisterService,
-                              ModelResponseValidator validator) {
+                              ModelResponseValidator validator,
+                              SurveyAnswerLocks surveyAnswerLocks,
+                              CacheService<String, SurveyAnswerRevisionsAggregation> revisionsCache) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
+        this.surveyAnswerLocks = surveyAnswerLocks;
+        this.revisionsCache = revisionsCache;
         this.privacyPolicyService = privacyPolicyService;
         this.stakeholderCrudService = stakeholderCrudService;
         this.coordinatorCrudService = coordinatorCrudService;
@@ -251,7 +257,6 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // not two thirds of the way through, after the scrubs have run but before delete(id).
         String subjectRef = erasureSubjectReference.of(userId);
 
-        // TODO: scrub the Redis edit-session cache here (SurveyAnswerCrudService#autoSaveCache flushes a cached aggregate back over the erased record) — blocked because deserializing SurveyAnswerRevisionsAggregation invokes its single-arg constructor, which appends a HistoryEntry, so a fetch-mutate-save scrub would corrupt history; see RevisionsCacheRoundTripTest.
 
         // --- Live removal from the groups the user is CURRENTLY a member/admin of ---
         // removeMember/removeAdmin handle permission cleanup internally. Version-history scrubbing
@@ -290,8 +295,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         // Anonymize user identity from all survey answer history/metadata (current + versions).
         // A user can appear in an old version's history without appearing in the current payload
         // (e.g. later edited out by someone else), so every survey answer's versions are checked.
-        int surveyAnswersAnonymized = scrubAllOfType(surveyAnswerCrudService,
-                (SurveyAnswer a) -> scrubSurveyAnswerPii(a, userId));
+        int surveyAnswersAnonymized = scrubSurveyAnswers(userId);
 
         // News item authorship (metadata.createdBy/modifiedBy). Persisted through saveScrubbed
         // rather than update(): update() restores the stored metadata block and then re-stamps
@@ -628,6 +632,54 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     }
 
     /**
+     * Cleans drafts and stored answers independently while excluding edits, saves and restores.
+     * Returns the number of current persisted answers changed; drafts remain pending.
+     */
+    private int scrubSurveyAnswers(String userId) {
+        Set<String> ids = new HashSet<>();
+        for (SurveyAnswer answer : surveyAnswerCrudService.getAllPersisted(sweepFilter()).getResults()) {
+            ids.add(answer.getId());
+        }
+        for (String key : revisionsCache.fetchKeys("sa-*")) {
+            ids.add(SurveyAnswerLocks.answerId(key));
+        }
+        int modified = 0;
+        for (String id : ids) {
+            try (var ignored = surveyAnswerLocks.acquire(id)) {
+                // Fetch inside the lock: an edit/autosave may have completed since enumeration.
+                SurveyAnswerRevisionsAggregation draft = revisionsCache.fetch(id);
+                if (draft != null) {
+                    boolean changed = scrubSurveyAnswerPii(draft.getSurveyAnswer(), userId);
+                    for (Editor editor : draft.getEditors()) {
+                        if (userId.equals(UserIds.normalize(editor.getUser()))) {
+                            editor.setUser(DELETED_USER_PLACEHOLDER);
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        revisionsCache.save(id, draft);
+                    }
+                }
+                SurveyAnswer persisted;
+                try {
+                    persisted = surveyAnswerCrudService.getPersisted(id);
+                } catch (ResourceNotFoundException e) {
+                    // A missing current answer does not establish that its history is gone.
+                    persisted = null;
+                }
+                if (persisted != null && scrubSurveyAnswerPii(persisted, userId)) {
+                    surveyAnswerCrudService.saveScrubbed(id, persisted);
+                    modified++;
+                }
+                // Historical identity data must be cleaned even when the current answer is absent.
+                anonymizeVersions(surveyAnswerCrudService, id,
+                        (SurveyAnswer answer) -> scrubSurveyAnswerPii(answer, userId));
+            }
+        }
+        return modified;
+    }
+
+    /**
      * Scrubs {@code id} out of a SurveyAnswer's editor/creator/modifier fields, including the
      * deprecated {@link HistoryEntry#getUserId()} field (pre-dates the {@code editors} list;
      * older registry-core version snapshots may still carry the raw id there instead).
@@ -638,13 +690,13 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         boolean modified = false;
         if (answer.getHistory() != null && answer.getHistory().getEntries() != null) {
             for (HistoryEntry entry : answer.getHistory().getEntries()) {
-                if (id.equals(entry.getUserId())) {
+                if (id.equals(UserIds.normalize(entry.getUserId()))) {
                     entry.setUserId(DELETED_USER_PLACEHOLDER);
                     modified = true;
                 }
                 if (entry.getEditors() != null) {
                     for (Editor editor : entry.getEditors()) {
-                        if (id.equals(editor.getUser())) {
+                        if (id.equals(UserIds.normalize(editor.getUser()))) {
                             editor.setUser(DELETED_USER_PLACEHOLDER);
                             modified = true;
                         }

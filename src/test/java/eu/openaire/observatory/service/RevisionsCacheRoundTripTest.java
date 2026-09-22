@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * a real aggregate survives {@code GenericJackson2JsonRedisSerializer}. That matters because
  * fetch → mutate → save is the production edit path <em>and</em> what the purge cache scrub does,
  * and the class has two {@code final} fields with no setters ({@code editors}, {@code created}) plus
- * a single-argument constructor whose body appends a history entry.
+ * a constructor for new editing sessions whose body appends a history entry.
  *
  * <p>The serializer here is configured exactly as {@code RedisConfig#redisTemplate} configures it.
  */
@@ -56,30 +56,14 @@ class RevisionsCacheRoundTripTest {
         assertEquals(1, restored.getRevisions().size());
     }
 
-    /**
-     * Documents a defect, not a contract.
-     *
-     * <p>{@code SurveyAnswerRevisionsAggregation} has no no-arg constructor, so Jackson uses
-     * {@code SurveyAnswerRevisionsAggregation(SurveyAnswer)} as a creator — and that constructor's
-     * body appends a {@code HistoryEntry}. Every deserialization therefore grows the survey answer's
-     * history by one. Because {@code SurveyServiceImpl#getMostRecent} fetches from the cache on every
-     * edit request, this happens throughout a live editing session, not only here.
-     *
-     * <p>It is also why the purge's Redis cache scrub is parked: a fetch-mutate-save scrub would add
-     * an entry per cached aggregate per run.
-     *
-     * <p>TODO: give the class a no-arg constructor (or a {@code @JsonCreator}) so deserialization
-     * stops invoking the side-effecting one, then flip this test to assert the size is unchanged and
-     * unpark the cache scrub in {@code UserServiceImpl#purge}.
-     */
     @Test
-    void roundTripCurrentlyAppendsAHistoryEntry() {
+    void roundTripPreservesHistory() {
         SurveyAnswerRevisionsAggregation original = aggregationWithOneEdit();
         int before = original.getSurveyAnswer().getHistory().getEntries().size();
 
         SurveyAnswerRevisionsAggregation restored = roundTrip(original);
 
-        assertEquals(before + 1, restored.getSurveyAnswer().getHistory().getEntries().size());
+        assertEquals(before, restored.getSurveyAnswer().getHistory().getEntries().size());
     }
 
     /**
