@@ -35,6 +35,11 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
 //    private static final Configuration conf = Configuration.defaultConfiguration()
 //            .addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL);
 
+    /** Jackson must restore a draft without creating a new editing history entry. */
+    public SurveyAnswerRevisionsAggregation() {
+        this.revisions = new ArrayList<>();
+    }
+
     public SurveyAnswerRevisionsAggregation(SurveyAnswer surveyAnswer) {
         this.surveyAnswer = surveyAnswer;
         this.surveyAnswer.getHistory().getEntries().add(new HistoryEntry(editors, null, created.getTime(), History.HistoryAction.UPDATED));
@@ -77,7 +82,7 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
         entry.setTime(lastEditor.getUpdateDate().getTime());
         entry.setEditors(editors);
         historyEntryList.set(historyEntryList.size() - 1, entry);
-        surveyAnswer.getMetadata().setModifiedBy(String.join(", ", editors.stream().map(Editor::getUser).collect(Collectors.joining(","))));
+        surveyAnswer.getMetadata().setModifiedBy(editors.stream().map(Editor::getUser).collect(Collectors.joining(",")));
         surveyAnswer.getMetadata().setModificationDate(lastEditor.getUpdateDate());
     }
 
@@ -109,17 +114,17 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
      * @return
      */
     public SurveyAnswerRevisionsAggregation addEditor(Editor editor) {
-        if (!this.editors.isEmpty()) {
-            Editor latest = this.editors.get(this.editors.size() - 1);
-            if (latest.equals(editor)) {
-                if (editor.getUpdateDate().getTime() - latest.getUpdateDate().getTime() > 60_000) {
-                    this.editors.add(editor);
-                } else {
-                    latest.setUpdateDate(editor.getUpdateDate());
-                }
-            }
-        } else {
+        if (this.editors.isEmpty()) {
             this.editors.add(editor);
+            return this;
+        }
+        Editor latest = this.editors.get(this.editors.size() - 1);
+        if (!latest.equals(editor)) {
+            this.editors.add(editor);                     // different person (or role)
+        } else if (editor.getUpdateDate().getTime() - latest.getUpdateDate().getTime() > 60_000) {
+            this.editors.add(editor);                     // same person, new session
+        } else {
+            latest.setUpdateDate(editor.getUpdateDate()); // same person, still typing
         }
         return this;
     }

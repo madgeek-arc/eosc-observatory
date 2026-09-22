@@ -30,7 +30,7 @@ import java.util.Set;
 public class RedisCacheService<K, V> implements CacheService<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisCacheService.class);
-    private static final String PREFIX = "custom:cache:";
+    static final String PREFIX = "custom:cache:";
 
     private final RedisTemplate<String, V> redisTemplate;
     private final ValueOperations<String, V> valueOps;

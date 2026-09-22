@@ -17,6 +17,7 @@
 package eu.openaire.observatory.domain;
 
 import eu.openaire.observatory.service.Identifiable;
+import eu.openaire.observatory.utils.UserIds;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
@@ -49,14 +50,14 @@ public class User implements Identifiable<String> {
         } else if (auth.getPrincipal() instanceof OidcUser) {
             OidcUser principal = ((OidcUser) auth.getPrincipal());
             user.sub = principal.getSubject();
-            user.setEmail(principal.getEmail()); // setter normalizes to lowercase
+            user.setEmail(principal.getEmail()); // setter normalizes to the canonical id form
             user.name = principal.getGivenName();
             user.surname = principal.getFamilyName();
             user.fullname = principal.getFullName();
         } else if (auth instanceof OAuth2AuthenticationToken) {
             OAuth2User principal = ((OAuth2AuthenticationToken) auth).getPrincipal();
             user.sub = principal.getAttribute("subject");
-            user.setEmail(principal.getAttribute("email")); // setter normalizes to lowercase
+            user.setEmail(principal.getAttribute("email")); // setter normalizes to the canonical id form
             user.name = principal.getAttribute("givenName");
             user.surname = principal.getAttribute("familyName");
             user.fullname = principal.getAttribute("fullName");
@@ -79,10 +80,7 @@ public class User implements Identifiable<String> {
     }
 
     public void setEmail(String email) {
-        if (email != null) {
-            email = email.toLowerCase();
-        }
-        this.email = email;
+        this.email = UserIds.normalize(email);
     }
 
     public String getName() {
@@ -151,7 +149,7 @@ public class User implements Identifiable<String> {
             logger.error("Problem getting user id. Authentication: {}", auth);
             throw new InsufficientAuthenticationException("Could not obtain user id through authentication.");
         }
-        return id.toLowerCase();
+        return UserIds.normalize(id);
     }
 
     @Override

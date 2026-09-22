@@ -31,6 +31,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +39,7 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyAnswerCrudService.class);
 
+    private final SurveyAnswerLocks surveyAnswerLocks;
     private final IdGenerator<String> idGenerator;
     private final CacheService<String, SurveyAnswerRevisionsAggregation> cacheService;
 
@@ -48,8 +50,10 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
                                    ParserService parserService,
                                    IdGenerator<String> idGenerator,
                                    CacheService<String, SurveyAnswerRevisionsAggregation> cacheService,
-                                   ModelResponseValidator validator) {
+                                   ModelResponseValidator validator,
+                                   SurveyAnswerLocks surveyAnswerLocks) {
         super(resourceTypeService, resourceService, searchService, versionService, parserService, validator);
+        this.surveyAnswerLocks = surveyAnswerLocks;
         this.idGenerator = idGenerator;
         this.cacheService = cacheService;
     }
@@ -59,7 +63,7 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
     void autoSaveCache() throws ResourceNotFoundException {
         Set<String> keys = cacheService.fetchKeys("sa-*");
         for (String key : keys) {
-            try {
+            try (var ignored = surveyAnswerLocks.acquire(key)) {
                 SurveyAnswerRevisionsAggregation sara = cacheService.fetch(key);
                 if (sara != null) {
                     long active = System.currentTimeMillis() - sara.getCreated().getTime();
@@ -108,8 +112,10 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
 
     @Override // DO NOT REMOVE: needed to get caught from permissions aspect
     public SurveyAnswer delete(String id) {
-        cacheService.remove(id);
-        return super.delete(id);
+        try (var ignored = surveyAnswerLocks.acquire(id)) {
+            cacheService.remove(id);
+            return super.delete(id);
+        }
     }
 
     @Override
@@ -151,12 +157,38 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
 
     @Override
     public SurveyAnswer update(String id, SurveyAnswer resource) throws ResourceNotFoundException {
-        SurveyAnswerRevisionsAggregation cached = cacheService.fetch(id);
-        if (cached != null) {
-            super.update(id, cached.getSurveyAnswer());
-            cacheService.remove(id);
+        try (var ignored = surveyAnswerLocks.acquire(id)) {
+            SurveyAnswerRevisionsAggregation cached = cacheService.fetch(id);
+            if (cached != null) {
+                super.update(id, cached.getSurveyAnswer());
+                cacheService.remove(id);
+            }
+            return super.update(id, resource);
         }
-        return super.update(id, resource);
+    }
+
+    /** Persistence-only reads: erasure must not mistake a clean draft for clean stored data. */
+    public Browsing<SurveyAnswer> getAllPersisted(FacetFilter filter) {
+        return super.getAll(filter);
+    }
+
+    public SurveyAnswer getPersisted(String id) {
+        return super.get(id);
+    }
+
+    /** Caller holds the answer lock across reading, scrubbing and version cleanup. */
+    public SurveyAnswer saveScrubbed(String id, SurveyAnswer answer) {
+        try (var ignored = surveyAnswerLocks.acquire(id)) {
+            return super.update(id, answer);
+        }
+    }
+
+    @Override
+    public SurveyAnswer restore(String id, String versionId,
+                                UnaryOperator<SurveyAnswer> transform) {
+        try (var ignored = surveyAnswerLocks.acquire(id)) {
+            return super.restore(id, versionId, transform);
+        }
     }
 
     private SurveyAnswer resolveMostRecent(SurveyAnswer surveyAnswer) {
