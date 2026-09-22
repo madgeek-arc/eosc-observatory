@@ -208,9 +208,9 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer importAnswer(String surveyAnswerId, String modelFrom, Authentication authentication) throws ResourceNotFoundException {
+        Model modelToImport = modelService.get(modelFrom);
         try (var ignored = surveyAnswerLocks.acquire(surveyAnswerId)) {
             Date date = new Date();
-            Model modelToImport = modelService.get(modelFrom);
             SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
 
             Model model = modelService.get(surveyAnswer.getSurveyId());
@@ -389,25 +389,28 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer setAnswerValidated(String answerId, boolean validated, Authentication authentication) throws ResourceNotFoundException {
+        SurveyAnswer validatedAnswer;
+        String validatedBy;
         try (var ignored = surveyAnswerLocks.acquire(answerId)) {
             Date date = new Date();
             SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(answerId);
             User user = User.of(authentication);
             String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
-            if (surveyAnswer.isValidated() != validated) {
-                History.HistoryAction action = validated ? History.HistoryAction.VALIDATED : History.HistoryAction.INVALIDATED;
-                surveyAnswer.getHistory().addEntry(user.getId(), userRole, "", date, action);
-                surveyAnswer.getMetadata().setModifiedBy(user.getId());
-                surveyAnswer.getMetadata().setModificationDate(date);
-                if (!validated) {
-                    return invalidateAnswer(surveyAnswer);
-                }
-                SurveyAnswer validatedAnswer = validateAnswer(surveyAnswer);
-                notifyValidationIfNeeded(validatedAnswer, user.getId());
-                return validatedAnswer;
+            if (surveyAnswer.isValidated() == validated) {
+                return surveyAnswer;
             }
-            return surveyAnswer;
+            History.HistoryAction action = validated ? History.HistoryAction.VALIDATED : History.HistoryAction.INVALIDATED;
+            surveyAnswer.getHistory().addEntry(user.getId(), userRole, "", date, action);
+            surveyAnswer.getMetadata().setModifiedBy(user.getId());
+            surveyAnswer.getMetadata().setModificationDate(date);
+            if (!validated) {
+                return invalidateAnswer(surveyAnswer);
+            }
+            validatedAnswer = validateAnswer(surveyAnswer);
+            validatedBy = user.getId();
         }
+        notifyValidationIfNeeded(validatedAnswer, validatedBy);
+        return validatedAnswer;
     }
 
     /**
