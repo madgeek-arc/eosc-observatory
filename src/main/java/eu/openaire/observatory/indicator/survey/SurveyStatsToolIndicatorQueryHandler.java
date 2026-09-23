@@ -264,16 +264,20 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
                     year, questionCodeForInitiativeType(type), plan.definition().code());
 
                 if (byCountry) {
-                    // Per-country rows always include every requested country — a missing/no-answer
-                    // one still renders as 0% (STATUS_YES.equals(null) is false), same as an explicit
-                    // STATUS_NO/STATUS_AWAITING_DATA answer, rather than being dropped from the list.
+                    // Per-country rows always include every requested country, but one with no
+                    // usable answer (absent from the survey response, or STATUS_AWAITING_DATA)
+                    // reports as null rather than a computed percentage — only an explicit Yes/No
+                    // answer does; a country that explicitly answered No is a real 0%.
                     narrowToRequestedCountries(plan, fetch.byCountry()).forEach((country, status) -> {
                         Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                         dimensions.put(COUNTRY_DIMENSION, country);
                         if (byType) {
                             dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
                         }
-                        data.add(new IndicatorDataPoint(dimensions, RatioPercentage.of(STATUS_YES.equals(status) ? 1 : 0, 1)));
+                        Object value = status == null || STATUS_AWAITING_DATA.equals(status)
+                            ? null
+                            : RatioPercentage.of(STATUS_YES.equals(status) ? 1 : 0, 1);
+                        data.add(new IndicatorDataPoint(dimensions, value));
                     });
                 } else {
                     // The aggregate percentage, unlike the per-country listing above, still excludes a

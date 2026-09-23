@@ -8,6 +8,7 @@ import eu.openaire.observatory.indicator.model.IndicatorFormat;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.model.RenderStyle;
+import eu.openaire.observatory.indicator.model.RenderStyleOption;
 import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.model.ViewSelector;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
@@ -132,7 +133,7 @@ public class IndicatorPresetCatalog {
     private static List<PresetView> categoryDistributionViews(String selectorDimension, String selectorLabel) {
         ViewSelector selector = new ViewSelector(selectorDimension, selectorLabel, List.of());
         return List.of(
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, null),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_SERIES_LINE_CHART, selector),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_LINE_CHART, selector),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_LINE_CHARTS, selector));
@@ -141,6 +142,35 @@ public class IndicatorPresetCatalog {
     /** The {@code initiativeType} "Open Science area" selector carried by every by-area pivot view. */
     private static ViewSelector openScienceAreaSelector() {
         return new ViewSelector(INITIATIVE_TYPE_DIMENSION, "Open Science area", List.of());
+    }
+
+    /**
+     * The SELECTED_COUNTRIES/TIME_RANGE switcher every {@link #areaTrendViews} preset offers: the
+     * year each country adopted (with the {@code to}-year status alongside), the coverage trend
+     * alone, or a per-country yes/no snapshot of the latest year.
+     */
+    private static final List<RenderStyleOption> AREA_TREND_TIME_RANGE_STYLES = List.of(
+        new RenderStyleOption(RenderStyle.YEAR_ADOPTED_TABLE, "Year adopted"),
+        new RenderStyleOption(RenderStyle.COVERAGE_TREND, "Coverage trend"),
+        new RenderStyleOption(RenderStyle.LATEST_YEAR_YES_NO_TABLE, "Latest year"));
+
+    /** Like {@link #AREA_TREND_TIME_RANGE_STYLES}, but without the "Coverage trend" option — nm-1 only. */
+    private static final List<RenderStyleOption> AREA_TREND_TIME_RANGE_STYLES_WITHOUT_COVERAGE_TREND =
+        AREA_TREND_TIME_RANGE_STYLES.stream()
+            .filter(option -> option.style() != RenderStyle.COVERAGE_TREND)
+            .toList();
+
+    /**
+     * Replaces the SELECTED_COUNTRIES/TIME_RANGE cell of {@code views} with a switcher over
+     * {@code renderStyles} — same cell, same query, several renderings the UI toggles between.
+     * Every other cell in {@code views} passes through unchanged.
+     */
+    private static List<PresetView> withTimeRangeSwitcher(List<PresetView> views, List<RenderStyleOption> renderStyles) {
+        return views.stream()
+            .map(view -> view.countryScope() == CountryScope.SELECTED_COUNTRIES && view.timeScope() == TimeScope.TIME_RANGE
+                ? view.withRenderStyles(renderStyles)
+                : view)
+            .toList();
     }
 
     /**
@@ -156,7 +186,7 @@ public class IndicatorPresetCatalog {
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.BAR_CHART, selector),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_SERIES_BAR_CHART, selector),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.YES_NO_TABLE, selector),
-            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.YEAR_ADOPTED_COVERAGE_TREND, selector));
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.YEAR_ADOPTED_TABLE, selector));
     }
 
     /**
@@ -305,6 +335,36 @@ public class IndicatorPresetCatalog {
                         + view.countryScope() + "/" + view.timeScope() + " cell");
             }
             validateSelector(preset, definition, view.selector());
+            validateRenderStyles(preset, view);
+        }
+    }
+
+    /**
+     * A view offering more than one switchable render style must give every option a caption
+     * (the switcher's tab/button label) and must not mix styles that disagree on
+     * {@link RenderStyle#perCountryBreakdown()} — {@link IndicatorPreset#toIndicatorQuery} derives
+     * {@code groupBy} once per cell from the first style, so every style in the switcher has to
+     * agree on whether the shared response needs a per-country breakdown.
+     */
+    private static void validateRenderStyles(IndicatorPreset preset, PresetView view) {
+        List<RenderStyleOption> styles = view.renderStyles();
+        if (styles.size() < 2) {
+            return;
+        }
+        if (styles.stream().map(RenderStyleOption::style).distinct().count() != styles.size()) {
+            throw new IllegalStateException(
+                "Preset indicator '" + preset.id() + "' repeats a render style in its "
+                    + view.countryScope() + "/" + view.timeScope() + " switcher");
+        }
+        if (styles.stream().anyMatch(option -> option.label() == null || option.label().isBlank())) {
+            throw new IllegalStateException(
+                "Preset indicator '" + preset.id() + "' has a " + view.countryScope() + "/" + view.timeScope()
+                    + " switcher where not every render style carries a label");
+        }
+        if (styles.stream().map(option -> option.style().perCountryBreakdown()).distinct().count() > 1) {
+            throw new IllegalStateException(
+                "Preset indicator '" + preset.id() + "' has a " + view.countryScope() + "/" + view.timeScope()
+                    + " switcher whose render styles disagree on perCountryBreakdown()");
         }
     }
 
@@ -493,11 +553,14 @@ public class IndicatorPresetCatalog {
             // The "… by Areas" rows are eu_country_coverage pinned to every topic's *_POLICY /
             // *_FINANCIAL_STRATEGY member (an IN filter); the initiativeType selector on each view
             // makes the preset-query endpoint group by initiativeType, so one series comes back per area.
+            // The SELECTED_COUNTRIES/TIME_RANGE cell offers 3 renderings of the same
+            // initiativeType+country query response, switched client-side with no re-query — see
+            // IndicatorPreset.groupByFor, which derives groupBy from the cell/selector alone.
             presetFullWidth("ost-1", "Trends in National Open Science Policies by Areas", OPEN_SCIENCE_TRENDS,
-                areaTrendViews(openScienceAreaSelector()),
+                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(POLICY_AREA_TYPES), 10),
             presetFullWidth("ost-2", "Trends in Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_TRENDS,
-                areaTrendViews(openScienceAreaSelector()),
+                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES), 20),
             // ost-3/ost-4 back on publications.count / datasets.count grouped by accessStatus (the
             // *_access_status_share indicators can't fan out per access type — accessStatus is a
@@ -509,33 +572,35 @@ public class IndicatorPresetCatalog {
 
             // ---- National Monitoring (inventory rows 66-69, merged into 2 presets) ---------------
             presetFullWidth("nm-1", "National Monitoring of Open Science by Areas", NATIONAL_MONITORING,
-                areaTrendViews(openScienceAreaSelector()),
+                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES_WITHOUT_COVERAGE_TREND),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(MONITORING_AREA_TYPES), 10),
             presetFullWidth("nm-2", "National Monitoring (number of monitored areas per country)", NATIONAL_MONITORING,
                 areaCountViews(), NO_SERIES_AGGREGATIONS, MONITORED_AREAS_COUNT, NO_FILTERS, 20),
 
             // ---- Open Science Policies (inventory rows 70-75) ----------------------------------------
             presetFullWidth("osp-1", "National Open Science Policies by Areas", OPEN_SCIENCE_POLICIES,
-                areaTrendViews(openScienceAreaSelector()),
+                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(POLICY_AREA_TYPES), 10),
             presetFullWidth("osp-2", "Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_POLICIES,
-                areaTrendViews(openScienceAreaSelector()),
+                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES),
                 NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES), 20),
             presetFullWidth("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES,
                 areaCountViews(), NO_SERIES_AGGREGATIONS, POLICY_AREAS_COUNT, NO_FILTERS, 30),
+            // Pinned to a single initiativeType value, so no selector — grouping by initiativeType
+            // here would return one no-op series; groupByFor falls back to grouping by country.
             presetFullWidth("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES,
-                areaTrendViews(openScienceAreaSelector()), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
+                withTimeRangeSwitcher(areaTrendViews(null), AREA_TREND_TIME_RANGE_STYLES), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
                 initiativeType("OA_PUBLICATION_POLICY"), 40)
                 .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE)),
             // Registered for catalog completeness — not queryable yet, returns HTTP 501 (see
             // IndicatorDefinitionCatalog.researcherPolicyCoverage() / docs/INDICATOR_TODO.md).
             // researcher_policy_coverage has no initiativeType binding, so areaTrendViews takes no selector.
             presetFullWidth("osp-5", "Coverage of Researchers by National Open Science Policies in Europe", OPEN_SCIENCE_POLICIES,
-                areaTrendViews(null), NO_SERIES_AGGREGATIONS, RESEARCHER_POLICY_COVERAGE, NO_FILTERS, 50),
-            presetFullWidth("osp-6", "National Open Science Policies by Countries and Areas", OPEN_SCIENCE_POLICIES,
-                areaTrendViews(openScienceAreaSelector()), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
-                initiativeTypes(POLICY_AREA_TYPES), 60)
-                .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE))
+                withTimeRangeSwitcher(areaTrendViews(null), AREA_TREND_TIME_RANGE_STYLES), NO_SERIES_AGGREGATIONS, RESEARCHER_POLICY_COVERAGE, NO_FILTERS, 50)
+//            presetFullWidth("osp-6", "National Open Science Policies by Countries and Areas", OPEN_SCIENCE_POLICIES,
+//                areaTrendViews(openScienceAreaSelector()), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
+//                initiativeTypes(POLICY_AREA_TYPES), 60)
+//                .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE))
         );
     }
 

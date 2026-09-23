@@ -313,7 +313,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
-    void euCountryCoverageGroupedByCountryIncludesARequestedCountryWithNoDataAsZeroPercent() {
+    void euCountryCoverageGroupedByCountryIncludesARequestedCountryWithNoDataAsNull() {
         var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
         var filters = List.of(
             INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023,
@@ -325,7 +325,21 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         assertThat(result.data()).hasSize(2);
         assertThat(valueFor(result, "GR")).isEqualTo(100.0);
-        assertThat(valueFor(result, "XX")).isEqualTo(0.0);
+        assertThat(valueFor(result, "XX")).isNull();
+    }
+
+    @Test
+    void euCountryCoverageGroupedByCountryReportsAwaitingDataAsNull() {
+        var handler = handlerReturning(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"FR\",null]}]}}]}");
+        var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY, SURVEY_YEAR_2023);
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(euCountryCoverageDefinition(), filters, groupBy, null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(2);
+        assertThat(valueFor(result, "GR")).isEqualTo(100.0);
+        assertThat(valueFor(result, "FR")).isNull();
     }
 
     @Test

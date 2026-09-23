@@ -1,12 +1,15 @@
 package eu.openaire.observatory.indicator;
 
 import eu.openaire.observatory.indicator.model.AggregationType;
+import eu.openaire.observatory.indicator.model.CountryScope;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.IndicatorDefinition;
 import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.model.RenderStyle;
+import eu.openaire.observatory.indicator.model.RenderStyleOption;
+import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
@@ -475,6 +478,64 @@ class IndicatorPresetCatalogTest {
         assertThat(query.groupBy()).contains(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
         assertThat(query.filters()).anySatisfy(f ->
             assertThat(f.dimension()).isEqualTo(IndicatorCodes.INITIATIVE_TYPE_DIMENSION));
+    }
+
+    @Test
+    void ost1SelectedCountriesTimeRangeCellOffersARenderStyleSwitcherOverTheSameGroupBy() {
+        IndicatorPreset ost1 = catalog.get("ost-1");
+        PresetView switcherView = ost1.views().stream()
+            .filter(view -> view.countryScope() == CountryScope.SELECTED_COUNTRIES && view.timeScope() == TimeScope.TIME_RANGE)
+            .findFirst().orElseThrow();
+
+        assertThat(switcherView.renderStyles()).extracting(RenderStyleOption::style).containsExactly(
+            RenderStyle.YEAR_ADOPTED_TABLE, RenderStyle.COVERAGE_TREND, RenderStyle.LATEST_YEAR_YES_NO_TABLE);
+        assertThat(switcherView.renderStyles()).extracting(RenderStyleOption::label).containsExactly(
+            "Year adopted", "Coverage trend", "Latest year");
+
+        // groupBy is derived from the cell/selector, not from which switcher option is on screen.
+        IndicatorQuery query = catalog.toIndicatorQuery(ost1, List.of("GR", "IT"), 2019, 2023, List.of());
+        assertThat(query.groupBy()).containsExactly(
+            IndicatorCodes.INITIATIVE_TYPE_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+    }
+
+    @Test
+    void everyAreaTrendPresetOffersTheSameThreeWaySwitcherAsOst1() {
+        // nm-1 is the one exception — see nm1TimeRangeSwitcherOmitsCoverageTrend below.
+        List<String> areaTrendPresetIds = List.of("ost-1", "ost-2", "osp-1", "osp-2", "osp-4", "osp-5");
+        for (String id : areaTrendPresetIds) {
+            IndicatorPreset preset = catalog.get(id);
+            PresetView switcherView = preset.views().stream()
+                .filter(view -> view.countryScope() == CountryScope.SELECTED_COUNTRIES && view.timeScope() == TimeScope.TIME_RANGE)
+                .findFirst().orElseThrow();
+            assertThat(switcherView.renderStyles()).as("preset " + id).extracting(RenderStyleOption::style).containsExactly(
+                RenderStyle.YEAR_ADOPTED_TABLE, RenderStyle.COVERAGE_TREND, RenderStyle.LATEST_YEAR_YES_NO_TABLE);
+            assertThat(switcherView.renderStyles()).as("preset " + id).extracting(RenderStyleOption::label).containsExactly(
+                "Year adopted", "Coverage trend", "Latest year");
+        }
+    }
+
+    @Test
+    void nm1TimeRangeSwitcherOmitsCoverageTrend() {
+        IndicatorPreset nm1 = catalog.get("nm-1");
+        PresetView switcherView = nm1.views().stream()
+            .filter(view -> view.countryScope() == CountryScope.SELECTED_COUNTRIES && view.timeScope() == TimeScope.TIME_RANGE)
+            .findFirst().orElseThrow();
+
+        assertThat(switcherView.renderStyles()).extracting(RenderStyleOption::style).containsExactly(
+            RenderStyle.YEAR_ADOPTED_TABLE, RenderStyle.LATEST_YEAR_YES_NO_TABLE);
+        assertThat(switcherView.renderStyles()).extracting(RenderStyleOption::label).containsExactly(
+            "Year adopted", "Latest year");
+    }
+
+    @Test
+    void singleAreaPresetsGroupByCountryNotInitiativeType() {
+        // osp-4/osp-5 pin a single area (or have no area breakdown at all), so unlike the "by
+        // Areas" pivots they carry no initiativeType selector and group by country instead.
+        IndicatorQuery osp4Query = catalog.toIndicatorQuery(catalog.get("osp-4"), List.of("GR", "IT"), 2019, 2023, List.of());
+        assertThat(osp4Query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+
+        IndicatorQuery osp5Query = catalog.toIndicatorQuery(catalog.get("osp-5"), List.of("GR", "IT"), 2019, 2023, List.of());
+        assertThat(osp5Query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }
 
     @Test

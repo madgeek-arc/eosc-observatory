@@ -75,10 +75,19 @@ public enum RenderStyle {
      * Composite: the year each country adopted the initiative, paired with a coverage-over-time
      * trend — the status in the {@code to} year shown alongside.
      */
-    YEAR_ADOPTED_COVERAGE_TREND,
+    YEAR_ADOPTED_TABLE,
 
     /** The coverage-over-time trend panel on its own (the "only the coverage trend view" variant). */
     COVERAGE_TREND,
+
+    /**
+     * Table-like grid of per-country yes/no across the areas, with year as an added axis (one
+     * section per year in the selected range) instead of a single year.
+     */
+    YEAR_COUNTRY_AREA_TABLE,
+
+    /** {@link #YES_NO_TABLE}, computed from the same time-range response but showing only its most recent year. */
+    LATEST_YEAR_YES_NO_TABLE,
 
     /**
      * Per-area count of the countries answering Yes, with the average across areas called out on

@@ -51,11 +51,12 @@ class IndicatorPresetSerializationTest {
         assertThat(views.isArray()).isTrue();
         assertThat(views).hasSize(4);
         views.forEach(view -> assertThat(fieldNames(view))
-            .containsExactlyInAnyOrder("countryScope", "timeScope", "renderStyle", "fullWidth"));
+            .containsExactlyInAnyOrder("countryScope", "timeScope", "renderStyles", "fullWidth"));
 
         JsonNode allCountriesSingleYear = findView(views, "ALL_COUNTRIES", "SINGLE_YEAR");
-        assertThat(allCountriesSingleYear.get("renderStyle").asText()).isEqualTo("SCALAR");
-        assertThat(findView(views, "SELECTED_COUNTRIES", "SINGLE_YEAR").get("renderStyle").asText())
+        assertThat(allCountriesSingleYear.get("renderStyles")).hasSize(1);
+        assertThat(allCountriesSingleYear.get("renderStyles").get(0).get("style").asText()).isEqualTo("SCALAR");
+        assertThat(findView(views, "SELECTED_COUNTRIES", "SINGLE_YEAR").get("renderStyles").get(0).get("style").asText())
             .isEqualTo("PROGRESS_BARS");
     }
 
@@ -64,7 +65,30 @@ class IndicatorPresetSerializationTest {
         JsonNode view = objectMapper.valueToTree(
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.SCALAR));
 
-        assertThat(fieldNames(view)).containsExactlyInAnyOrder("countryScope", "timeScope", "renderStyle", "fullWidth");
+        assertThat(fieldNames(view)).containsExactlyInAnyOrder("countryScope", "timeScope", "renderStyles", "fullWidth");
+    }
+
+    @Test
+    void singleStyleViewOmitsTheLabelKey() {
+        JsonNode view = objectMapper.valueToTree(
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.SCALAR));
+
+        assertThat(fieldNames(view.get("renderStyles").get(0))).containsExactly("style");
+    }
+
+    @Test
+    void multiStyleViewSerializesEachOptionWithItsLabel() {
+        JsonNode views = objectMapper.valueToTree(catalog.get("ost-1")).get("views");
+        JsonNode selectedRange = findView(views, "SELECTED_COUNTRIES", "TIME_RANGE");
+
+        JsonNode renderStyles = selectedRange.get("renderStyles");
+        assertThat(renderStyles).hasSize(3);
+        assertThat(renderStyles.get(0).get("style").asText()).isEqualTo("YEAR_ADOPTED_TABLE");
+        assertThat(renderStyles.get(0).get("label").asText()).isEqualTo("Year adopted");
+        assertThat(renderStyles.get(1).get("style").asText()).isEqualTo("COVERAGE_TREND");
+        assertThat(renderStyles.get(1).get("label").asText()).isEqualTo("Coverage trend");
+        assertThat(renderStyles.get(2).get("style").asText()).isEqualTo("LATEST_YEAR_YES_NO_TABLE");
+        assertThat(renderStyles.get(2).get("label").asText()).isEqualTo("Latest year");
     }
 
     @Test
