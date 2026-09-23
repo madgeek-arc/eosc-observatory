@@ -52,9 +52,9 @@ public class ErasureLogMaskingConfig {
 
     @EventListener(ApplicationReadyEvent.class)
     void primeLogMasking() {
-        String secret = applicationProperties.getErasureHashSecret();
+        String secret = applicationProperties.getHmacSecret();
         if (secret == null || secret.isBlank()) {
-            logger.warn("Erasure log masking is disabled: observatory.erasureHashSecret is not set. "
+            logger.warn("Erasure log masking is disabled: observatory.hmacSecret is not set. "
                     + "An erased user's identifier will still appear in the 'user' log field.");
             ErasureLogMasking.configure(null, List.of());
             return;

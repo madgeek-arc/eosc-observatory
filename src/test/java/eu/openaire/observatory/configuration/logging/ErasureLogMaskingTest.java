@@ -30,7 +30,7 @@ class ErasureLogMaskingTest {
     @Test
     void startupMasksOnlySuccessfulErasureSubjects() {
         var properties = new ApplicationProperties();
-        properties.setErasureHashSecret(SECRET);
+        properties.setHmacSecret(SECRET);
         var repository = mock(
                 ErasureRecordRepository.class);
         var successful = new ErasureRecord()

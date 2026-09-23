@@ -61,7 +61,7 @@ class ResilientMailerTest {
 
     private static EmailMessage sampleEmail() {
         return new EmailMessage.EmailBuilder()
-                .setFrom("no-reply@openaire.eu")
+                .setFrom("no-reply@test.com")
                 .setBcc(List.of("a@test.com", "b@test.com"))
                 .setSubject("Answer validated")
                 .setText("<p>body</p>")

@@ -34,13 +34,15 @@ public class ApplicationProperties {
     private String jwsSigningSecret;
 
     /**
-     * HMAC key for the pseudonymous subject reference written to the purge report line.
+     * HMAC key for pseudonymizing user identifiers: the subject reference written to the purge
+     * report line, and any user email pseudonymized in general application logs.
      *
      * <p>Deliberately separate from {@link #jwsSigningSecret}: rotating the signing secret would
      * otherwise silently make every past erasure reference unmatchable. Losing or changing this key
-     * has the same effect, so it must be backed up with the same care as the records it indexes.
+     * has the same effect on both uses, so it must be backed up with the same care as the records
+     * and log lines it indexes.
      */
-    private String erasureHashSecret;
+    private String hmacSecret;
 
     /**
      * Cron expression for the daily survey lifecycle email notification scheduler
@@ -83,12 +85,12 @@ public class ApplicationProperties {
         this.jwsSigningSecret = jwsSigningSecret;
     }
 
-    public String getErasureHashSecret() {
-        return erasureHashSecret;
+    public String getHmacSecret() {
+        return hmacSecret;
     }
 
-    public void setErasureHashSecret(String erasureHashSecret) {
-        this.erasureHashSecret = erasureHashSecret;
+    public void setHmacSecret(String hmacSecret) {
+        this.hmacSecret = hmacSecret;
     }
 
     public String getSurveySchedulerCron() {

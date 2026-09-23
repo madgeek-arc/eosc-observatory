@@ -53,13 +53,14 @@ class EmailSurveyServiceTest {
     @Mock private Configuration freemarkerConfig;
     @Mock private Template template;
     @Mock private ApplicationProperties applicationProperties;
+    @Mock private ErasureSubjectReference erasureSubjectReference;
 
     private EmailSurveyService service;
 
     @BeforeEach
     void setUp() throws Exception {
         service = new EmailSurveyService(
-                mailDebugConfig.mailer(),
+                mailDebugConfig.mailer("no-reply@test.com"),
                 stakeholderCrudService,
                 modelService,
                 surveyService,
@@ -68,8 +69,9 @@ class EmailSurveyServiceTest {
                 coordinatorService,
                 administratorService,
                 freemarkerConfig,
-                "no-reply@openaire.eu",
-                applicationProperties
+                "no-reply@test.com",
+                applicationProperties,
+                erasureSubjectReference
         );
 
         when(freemarkerConfig.getTemplate(anyString())).thenReturn(template);
@@ -450,7 +452,8 @@ class EmailSurveyServiceTest {
         };
         EmailSurveyService svc = new EmailSurveyService(flaky, stakeholderCrudService, modelService,
                 surveyService, userService, surveyNotificationSettingsService, coordinatorService,
-                administratorService, freemarkerConfig, "no-reply@openaire.eu", applicationProperties);
+                administratorService, freemarkerConfig, "no-reply@test.com", applicationProperties,
+                erasureSubjectReference);
 
         SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
         stubValidationContext(a, "National Survey", "Greece",
@@ -478,7 +481,8 @@ class EmailSurveyServiceTest {
         };
         EmailSurveyService svc = new EmailSurveyService(flaky, stakeholderCrudService, modelService,
                 surveyService, userService, surveyNotificationSettingsService, coordinatorService,
-                administratorService, freemarkerConfig, "no-reply@openaire.eu", applicationProperties);
+                administratorService, freemarkerConfig, "no-reply@test.com", applicationProperties,
+                erasureSubjectReference);
 
         SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
         stubValidationContext(a, "National Survey", "Greece",
@@ -550,9 +554,9 @@ class EmailSurveyServiceTest {
         realConfig.setClassLoaderForTemplateLoading(getClass().getClassLoader(), "templates");
 
         EmailSurveyService realTemplateService = new EmailSurveyService(
-                mailDebugConfig.mailer(), stakeholderCrudService, modelService, surveyService, userService,
+                mailDebugConfig.mailer("no-reply@test.com"), stakeholderCrudService, modelService, surveyService, userService,
                 surveyNotificationSettingsService, coordinatorService, administratorService,
-                realConfig, "no-reply@openaire.eu", applicationProperties);
+                realConfig, "no-reply@test.com", applicationProperties, erasureSubjectReference);
 
         SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
         stubValidationContext(a, "National Survey", "Greece",

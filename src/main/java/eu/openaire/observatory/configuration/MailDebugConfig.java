@@ -16,10 +16,12 @@
 
 package eu.openaire.observatory.configuration;
 
+import eu.openaire.observatory.utils.EmailMasking;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
 import gr.athenarc.messaging.mailer.service.Mailer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -27,6 +29,7 @@ import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 @Configuration
 @Profile("mail-debug")
@@ -38,7 +41,7 @@ public class MailDebugConfig {
 
     @Bean
     @Primary
-    public Mailer mailer() {
+    public Mailer mailer(@Value("${mailer.from}") String systemEmail) {
         return email -> {
             capturedEmails.add(email);
             logger.info(
@@ -53,13 +56,27 @@ public class MailDebugConfig {
                     "  subject: \"{}\",\n" +
                     "  html:    {}\n" +
                     "}}",
-                    email.getFrom(),
-                    email.getTo(),
-                    email.getBcc(),
+                    maskEmail(email.getFrom(), systemEmail),
+                    maskEmails(email.getTo(), systemEmail),
+                    maskEmails(email.getBcc(), systemEmail),
                     email.getSubject(),
                     email.isHtml()
             );
         };
+    }
+
+    private static List<String> maskEmails(List<String> emails, String systemEmail) {
+        if (emails == null) {
+            return null;
+        }
+        return emails.stream().map(email -> maskEmail(email, systemEmail)).collect(Collectors.toList());
+    }
+
+    private static String maskEmail(String email, String systemEmail) {
+        if (email == null || email.equalsIgnoreCase(systemEmail)) {
+            return email;
+        }
+        return EmailMasking.mask(email);
     }
 
     public List<EmailMessage> getCapturedEmails() {

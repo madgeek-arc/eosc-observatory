@@ -17,6 +17,7 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.configuration.ApplicationProperties;
+import eu.openaire.observatory.utils.EmailMasking;
 import eu.openaire.observatory.utils.UserIds;
 import gr.uoa.di.madgik.registry.service.ServiceException;
 import org.springframework.stereotype.Component;
@@ -28,11 +29,14 @@ import java.security.GeneralSecurityException;
 import java.util.HexFormat;
 
 /**
- * Produces a stable, non-reversible reference to an erased data subject, for the purge report line.
+ * Produces a stable, non-reversible reference to a data subject: for the purge report line, and
+ * for a user identifier written to a general application log statement.
  *
  * <p>Art. 17 gives the erasure right, but Art. 5(2) and Art. 24 require the controller to be able to
  * <em>demonstrate</em> compliance — so erasing every trace of the erasure itself defeats the purpose.
- * This lets a report answer "was this person purged?" without retaining a readable address.
+ * This lets a report answer "was this person purged?" without retaining a readable address. The same
+ * reference, computed from the same key, also lets a log line be correlated to a specific user without
+ * that user's address ever being written to the log.
  *
  * <p>It is a keyed HMAC rather than a plain digest on purpose. Email addresses are low-entropy, so an
  * unsalted SHA-256 falls to a dictionary attack in seconds — that would be plaintext with extra
@@ -61,12 +65,25 @@ public class ErasureSubjectReference {
      * idempotent behaviour the purge is designed for.
      */
     public String of(String userId) {
-        String secret = applicationProperties.getErasureHashSecret();
+        String secret = applicationProperties.getHmacSecret();
         if (secret == null || secret.isBlank()) {
-            throw new ServiceException("observatory.erasureHashSecret is not configured; "
+            throw new ServiceException("observatory.hmacSecret is not configured; "
                     + "a purge cannot be recorded without it.");
         }
         return hmacHex(secret, UserIds.normalize(userId));
+    }
+
+    /**
+     * Same as {@link #of(String)} but never throws: falls back to a character-masked value (see
+     * {@link EmailMasking#mask}) when the secret isn't configured, since pseudonymizing a log field
+     * is peripheral and must never break the caller or swallow the exception it's logging alongside.
+     */
+    public String forLogging(String value) {
+        try {
+            return of(value);
+        } catch (ServiceException e) {
+            return EmailMasking.mask(value);
+        }
     }
 
     /**
