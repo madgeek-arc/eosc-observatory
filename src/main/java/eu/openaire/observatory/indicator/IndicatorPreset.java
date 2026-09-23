@@ -21,6 +21,7 @@ import eu.openaire.observatory.indicator.validation.PresetFilterConflictExceptio
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * One dashboard-ready preset indicator: a generic {@link IndicatorDefinition} with filter values
@@ -85,6 +86,90 @@ public record IndicatorPreset(
     public IndicatorPreset withValueLabels(PresetValueLabels labels) {
         return new IndicatorPreset(id, label, group, views, format, allowedSeriesAggregations,
             indicatorCode, presetFilters, labels, order);
+    }
+
+    /** Starts a fluent definition of a catalog preset — see {@link Builder}. */
+    public static Builder builder(String id, String label, IndicatorGroup group) {
+        return new Builder(id, label, group);
+    }
+
+    /**
+     * Fluent, named replacement for positionally assembling an {@link IndicatorPreset} — every field
+     * beyond {@code id}/{@code label}/{@code group} is set by a named call instead of an easily
+     * mis-ordered positional argument. {@code format} is never settable here: it is always {@code null}
+     * until {@link #resolvedAgainst} fills it in at catalog-construction time. Cross-definition
+     * invariants (id/order uniqueness, selector/render-style/value-label validity against the linked
+     * {@link IndicatorDefinition}) are still {@link IndicatorPresetCatalog}'s job, run once over the
+     * built catalog — {@link #build()} only enforces what is checkable without that definition.
+     */
+    public static final class Builder {
+        private final String id;
+        private final String label;
+        private final IndicatorGroup group;
+        private List<PresetView> views;
+        private List<AggregationType> allowedSeriesAggregations = List.of();
+        private String indicatorCode;
+        private Map<String, List<String>> presetFilters = Map.of();
+        private PresetValueLabels valueLabels = PresetValueLabels.NONE;
+        private boolean fullWidth = false;
+        private Integer order;
+
+        private Builder(String id, String label, IndicatorGroup group) {
+            this.id = Objects.requireNonNull(id, "id");
+            this.label = Objects.requireNonNull(label, "label");
+            this.group = Objects.requireNonNull(group, "group");
+        }
+
+        public Builder views(List<PresetView> views) {
+            this.views = views;
+            return this;
+        }
+
+        public Builder allowedSeriesAggregations(List<AggregationType> allowedSeriesAggregations) {
+            this.allowedSeriesAggregations = allowedSeriesAggregations;
+            return this;
+        }
+
+        public Builder indicatorCode(String indicatorCode) {
+            this.indicatorCode = indicatorCode;
+            return this;
+        }
+
+        public Builder presetFilters(Map<String, List<String>> presetFilters) {
+            this.presetFilters = presetFilters;
+            return this;
+        }
+
+        public Builder valueLabels(PresetValueLabels valueLabels) {
+            this.valueLabels = valueLabels;
+            return this;
+        }
+
+        /** Marks every view full-width, applied at {@link #build()} time. */
+        public Builder fullWidth() {
+            this.fullWidth = true;
+            return this;
+        }
+
+        public Builder order(int order) {
+            this.order = order;
+            return this;
+        }
+
+        public IndicatorPreset build() {
+            Objects.requireNonNull(indicatorCode, () -> "Preset '" + id + "' has no indicatorCode");
+            if (views == null || views.isEmpty()) {
+                throw new IllegalStateException("Preset '" + id + "' has no views");
+            }
+            if (order == null) {
+                throw new IllegalStateException("Preset '" + id + "' has no order");
+            }
+            List<PresetView> resolvedViews = fullWidth
+                ? views.stream().map(view -> view.withFullWidth(true)).toList()
+                : views;
+            return new IndicatorPreset(id, label, group, resolvedViews, null,
+                allowedSeriesAggregations, indicatorCode, presetFilters, valueLabels, order);
+        }
     }
 
     /**

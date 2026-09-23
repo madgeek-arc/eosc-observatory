@@ -59,9 +59,7 @@ import static eu.openaire.observatory.indicator.model.IndicatorGroup.REPOSITORIE
 @Service
 public class IndicatorPresetCatalog {
 
-    private static final Map<String, List<String>> NO_FILTERS = Map.of();
     private static final List<AggregationType> AVG_MEDIAN = List.of(AggregationType.AVG, AggregationType.MEDIAN);
-    private static final List<AggregationType> NO_SERIES_AGGREGATIONS = List.of();
 
     /**
      * The view templates the current presets fall into, keyed by the shape of the backing
@@ -407,147 +405,182 @@ public class IndicatorPresetCatalog {
         // in their group.
         return List.of(
             // ---- Open Access Publications (inventory rows 2-10) --------------------------------------
-            preset("oa-1", "OA Publication in Europe (OA vs Closed)", OPEN_ACCESS_PUBLICATIONS,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, PUBLICATIONS_ACCESS_STATUS_SHARE, accessStatus("OA"), 10),
-            preset("oa-2", "EU Countries with Policy on OA Publication", OPEN_ACCESS_PUBLICATIONS,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OA_PUBLICATION_POLICY"), 20),
-            preset("oa-3", "Financial investments in OA Publication", OPEN_ACCESS_PUBLICATIONS,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("OA_PUBLICATION"), 30),
-            preset("oa-4", "EU countries with Policy on Immediate OA Publications", OPEN_ACCESS_PUBLICATIONS,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("IMMEDIATE_OA_POLICY"), 40),
-            preset("oa-5", "EU Countries with Financial Strategy on OA Publication", OPEN_ACCESS_PUBLICATIONS,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FINANCIAL_STRATEGY"), 50),
-            preset("oa-6", "EU Countries with National OA Publication Monitoring Initiatives", OPEN_ACCESS_PUBLICATIONS,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("MONITORING_INITIATIVE"), 60),
+            IndicatorPreset.builder("oa-1", "OA Publication in Europe (OA vs Closed)", OPEN_ACCESS_PUBLICATIONS)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(PUBLICATIONS_ACCESS_STATUS_SHARE).presetFilters(accessStatus("OA")).order(10).build(),
+            IndicatorPreset.builder("oa-2", "EU Countries with Policy on OA Publication", OPEN_ACCESS_PUBLICATIONS)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("OA_PUBLICATION_POLICY")).order(20).build(),
+            IndicatorPreset.builder("oa-3", "Financial investments in OA Publication", OPEN_ACCESS_PUBLICATIONS)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).presetFilters(investmentArea("OA_PUBLICATION")).order(30).build(),
+            IndicatorPreset.builder("oa-4", "EU countries with Policy on Immediate OA Publications", OPEN_ACCESS_PUBLICATIONS)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("IMMEDIATE_OA_POLICY")).order(40).build(),
+            IndicatorPreset.builder("oa-5", "EU Countries with Financial Strategy on OA Publication", OPEN_ACCESS_PUBLICATIONS)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("FINANCIAL_STRATEGY")).order(50).build(),
+            IndicatorPreset.builder("oa-6", "EU Countries with National OA Publication Monitoring Initiatives", OPEN_ACCESS_PUBLICATIONS)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("MONITORING_INITIATIVE")).order(60).build(),
             nationalPolicyPreset("oa-7", "National Policy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                "OA_PUBLICATION_POLICY", 70),
+                "OA_PUBLICATION_POLICY").order(70).build(),
             nationalMonitoringPreset("oa-8", "National Monitoring on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                "MONITORING_INITIATIVE", 80),
-            presetFullWidth("oa-9", "Distribution of Open Access Types by Different Scholarly Publication Outputs",
-                OPEN_ACCESS_PUBLICATIONS, categoryDistributionViews(OA_LICENSE_STATUS_DIMENSION, "Access type"),
-                NO_SERIES_AGGREGATIONS, PUBLICATIONS_OA_LICENSE_STATUS_COUNT, NO_FILTERS, 90),
+                "MONITORING_INITIATIVE").order(80).build(),
+            IndicatorPreset.builder("oa-9", "Distribution of Open Access Types by Different Scholarly Publication Outputs", OPEN_ACCESS_PUBLICATIONS)
+                .views(categoryDistributionViews(OA_LICENSE_STATUS_DIMENSION, "Access type"))
+                .indicatorCode(PUBLICATIONS_OA_LICENSE_STATUS_COUNT).fullWidth().order(90).build(),
 
             // ---- Open Data (inventory rows 11-18) -------------------------------------------------------
-            preset("od-1", "Open Data in Europe (Open vs Closed)", OPEN_DATA,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, DATASETS_ACCESS_STATUS_SHARE, accessStatus("OA"), 10),
-            preset("od-2", "EU Countries with Policy on Open Data", OPEN_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_POLICY"), 20),
-            preset("od-3", "Financial investments in Open Data", OPEN_DATA,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("OPEN_DATA"), 30),
-            preset("od-4", "EU Countries with Financial Strategy on Open Data", OPEN_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_FINANCIAL_STRATEGY"), 40),
-            preset("od-5", "EU Countries with National Open Data Monitoring Initiatives", OPEN_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("OPEN_DATA_MONITORING_INITIATIVE"), 50),
-            nationalPolicyPreset("od-6", "National Policy on Open Data", OPEN_DATA,
-                "OPEN_DATA_POLICY", 60),
+            IndicatorPreset.builder("od-1", "Open Data in Europe (Open vs Closed)", OPEN_DATA)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(DATASETS_ACCESS_STATUS_SHARE).presetFilters(accessStatus("OA")).order(10).build(),
+            IndicatorPreset.builder("od-2", "EU Countries with Policy on Open Data", OPEN_DATA)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("OPEN_DATA_POLICY")).order(20).build(),
+            IndicatorPreset.builder("od-3", "Financial investments in Open Data", OPEN_DATA)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).presetFilters(investmentArea("OPEN_DATA")).order(30).build(),
+            IndicatorPreset.builder("od-4", "EU Countries with Financial Strategy on Open Data", OPEN_DATA)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("OPEN_DATA_FINANCIAL_STRATEGY")).order(40).build(),
+            IndicatorPreset.builder("od-5", "EU Countries with National Open Data Monitoring Initiatives", OPEN_DATA)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("OPEN_DATA_MONITORING_INITIATIVE")).order(50).build(),
+            nationalPolicyPreset("od-6", "National Policy on Open Data", OPEN_DATA, "OPEN_DATA_POLICY").order(60).build(),
             nationalMonitoringPreset("od-7", "National Monitoring on Open Data", OPEN_DATA,
-                "OPEN_DATA_MONITORING_INITIATIVE", 70),
-            presetFullWidth("od-8", "Distribution of Open Data Types by Different Document Type",
-                OPEN_DATA, categoryDistributionViews(ACCESS_STATUS_DIMENSION, "Access type"),
-                NO_SERIES_AGGREGATIONS, DATASETS_COUNT, NO_FILTERS, 80),
+                "OPEN_DATA_MONITORING_INITIATIVE").order(70).build(),
+            IndicatorPreset.builder("od-8", "Distribution of Open Data Types by Different Document Type", OPEN_DATA)
+                .views(categoryDistributionViews(ACCESS_STATUS_DIMENSION, "Access type"))
+                .indicatorCode(DATASETS_COUNT).fullWidth().order(80).build(),
 
             // ---- FAIR Data (inventory rows 19-24) -----------------------------------------------------
-            preset("fair-1", "EU Countries with Policy on FAIR Data", FAIR_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_POLICY"), 10),
-            preset("fair-2", "Financial investments in FAIR Data", FAIR_DATA,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("FAIR_DATA"), 20),
-            preset("fair-3", "EU Countries with Financial Strategy on FAIR Data", FAIR_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_FINANCIAL_STRATEGY"), 30),
-            preset("fair-4", "EU Countries with National FAIR Data Monitoring Initiatives", FAIR_DATA,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("FAIR_DATA_MONITORING_INITIATIVE"), 40),
-            nationalPolicyPreset("fair-5", "National Policy on FAIR Data", FAIR_DATA,
-                "FAIR_DATA_POLICY", 50),
+            IndicatorPreset.builder("fair-1", "EU Countries with Policy on FAIR Data", FAIR_DATA)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("FAIR_DATA_POLICY")).order(10).build(),
+            IndicatorPreset.builder("fair-2", "Financial investments in FAIR Data", FAIR_DATA)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).presetFilters(investmentArea("FAIR_DATA")).order(20).build(),
+            IndicatorPreset.builder("fair-3", "EU Countries with Financial Strategy on FAIR Data", FAIR_DATA)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("FAIR_DATA_FINANCIAL_STRATEGY")).order(30).build(),
+            IndicatorPreset.builder("fair-4", "EU Countries with National FAIR Data Monitoring Initiatives", FAIR_DATA)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("FAIR_DATA_MONITORING_INITIATIVE")).order(40).build(),
+            nationalPolicyPreset("fair-5", "National Policy on FAIR Data", FAIR_DATA, "FAIR_DATA_POLICY").order(50).build(),
             nationalMonitoringPreset("fair-6", "National Monitoring on FAIR Data", FAIR_DATA,
-                "FAIR_DATA_MONITORING_INITIATIVE", 60),
+                "FAIR_DATA_MONITORING_INITIATIVE").order(60).build(),
 
             // ---- Data Management (inventory rows 25-30) ---------------------------------------------
-            preset("dm-1", "EU Countries with Policy on Data Management", DATA_MANAGEMENT,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_POLICY"), 10),
-            preset("dm-2", "Financial investments in Data Management", DATA_MANAGEMENT,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("DATA_MANAGEMENT"), 20),
-            preset("dm-3", "EU Countries with Financial Strategy on Data Management", DATA_MANAGEMENT,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY"), 30),
-            preset("dm-4", "EU Countries with National Data Management Monitoring Initiatives", DATA_MANAGEMENT,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE"), 40),
-            nationalPolicyPreset("dm-5", "National Policy on Data Management", DATA_MANAGEMENT,
-                "DATA_MANAGEMENT_POLICY", 50),
+            IndicatorPreset.builder("dm-1", "EU Countries with Policy on Data Management", DATA_MANAGEMENT)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("DATA_MANAGEMENT_POLICY")).order(10).build(),
+            IndicatorPreset.builder("dm-2", "Financial investments in Data Management", DATA_MANAGEMENT)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).presetFilters(investmentArea("DATA_MANAGEMENT")).order(20).build(),
+            IndicatorPreset.builder("dm-3", "EU Countries with Financial Strategy on Data Management", DATA_MANAGEMENT)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("DATA_MANAGEMENT_FINANCIAL_STRATEGY")).order(30).build(),
+            IndicatorPreset.builder("dm-4", "EU Countries with National Data Management Monitoring Initiatives", DATA_MANAGEMENT)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("DATA_MANAGEMENT_MONITORING_INITIATIVE")).order(40).build(),
+            nationalPolicyPreset("dm-5", "National Policy on Data Management", DATA_MANAGEMENT, "DATA_MANAGEMENT_POLICY").order(50).build(),
             nationalMonitoringPreset("dm-6", "National Monitoring on Data Management", DATA_MANAGEMENT,
-                "DATA_MANAGEMENT_MONITORING_INITIATIVE", 60),
+                "DATA_MANAGEMENT_MONITORING_INITIATIVE").order(60).build(),
 
             // ---- Citizen Science (inventory rows 31-37) -------------------------------------------------
-            preset("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE,
-                OUTPUT_COUNT_VIEWS_MAP_FULL_WIDTH, AVG_MEDIAN, CITIZEN_SCIENCE_NEW_PROJECTS_COUNT, NO_FILTERS, 10),
-            preset("cs-2", "EU Countries with Policy on Citizen Science", CITIZEN_SCIENCE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_POLICY"), 20),
-            preset("cs-3", "Financial investments in Citizen Science", CITIZEN_SCIENCE,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("CITIZEN_SCIENCE"), 30),
-            preset("cs-4", "EU Countries with Financial Strategy on Citizen Science", CITIZEN_SCIENCE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY"), 40),
-            preset("cs-5", "EU Countries with Citizen Science Monitoring Initiatives", CITIZEN_SCIENCE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE"), 50),
-            nationalPolicyPreset("cs-6", "National Policy on Citizen Science", CITIZEN_SCIENCE,
-                "CITIZEN_SCIENCE_POLICY", 60),
+            IndicatorPreset.builder("cs-1", "New Citizen Science projects in EU Countries", CITIZEN_SCIENCE)
+                .views(OUTPUT_COUNT_VIEWS_MAP_FULL_WIDTH).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(CITIZEN_SCIENCE_NEW_PROJECTS_COUNT).order(10).build(),
+            IndicatorPreset.builder("cs-2", "EU Countries with Policy on Citizen Science", CITIZEN_SCIENCE)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("CITIZEN_SCIENCE_POLICY")).order(20).build(),
+            IndicatorPreset.builder("cs-3", "Financial investments in Citizen Science", CITIZEN_SCIENCE)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).presetFilters(investmentArea("CITIZEN_SCIENCE")).order(30).build(),
+            IndicatorPreset.builder("cs-4", "EU Countries with Financial Strategy on Citizen Science", CITIZEN_SCIENCE)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("CITIZEN_SCIENCE_FINANCIAL_STRATEGY")).order(40).build(),
+            IndicatorPreset.builder("cs-5", "EU Countries with Citizen Science Monitoring Initiatives", CITIZEN_SCIENCE)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("CITIZEN_SCIENCE_MONITORING_INITIATIVE")).order(50).build(),
+            nationalPolicyPreset("cs-6", "National Policy on Citizen Science", CITIZEN_SCIENCE, "CITIZEN_SCIENCE_POLICY").order(60).build(),
             nationalMonitoringPreset("cs-7", "National Monitoring on Citizen Science", CITIZEN_SCIENCE,
-                "CITIZEN_SCIENCE_MONITORING_INITIATIVE", 70),
+                "CITIZEN_SCIENCE_MONITORING_INITIATIVE").order(70).build(),
 
             // ---- Repositories (inventory rows 38-46; covers both Connecting Repositories to EOSC and
             //      Long-term Data Preservation sub-topics) --------------------------------------------
-            preset("repo-1", "Repositories offering long-term preservation in EU Countries", REPOSITORIES,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, LONG_TERM_PRESERVATION_COUNT, NO_FILTERS, 10),
-            preset("repo-2", "EU Countries with Policy on Connecting Repositories to EOSC", REPOSITORIES,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_POLICY"), 20),
-            preset("repo-3", "Financial investments in connecting repositories to EOSC", REPOSITORIES,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("REPOSITORIES_CONNECT"), 30),
-            preset("repo-4", "EU Countries with Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY"), 40),
-            preset("repo-5", "EU Countries with Monitoring Initiatives on Connecting Repositories to EOSC", REPOSITORIES,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE"), 50),
+            IndicatorPreset.builder("repo-1", "Repositories offering long-term preservation in EU Countries", REPOSITORIES)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(LONG_TERM_PRESERVATION_COUNT).order(10).build(),
+            IndicatorPreset.builder("repo-2", "EU Countries with Policy on Connecting Repositories to EOSC", REPOSITORIES)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("REPOSITORIES_CONNECT_POLICY")).order(20).build(),
+            IndicatorPreset.builder("repo-3", "Financial investments in connecting repositories to EOSC", REPOSITORIES)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).presetFilters(investmentArea("REPOSITORIES_CONNECT")).order(30).build(),
+            IndicatorPreset.builder("repo-4", "EU Countries with Financial Strategy on Connecting Repositories to EOSC", REPOSITORIES)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY")).order(40).build(),
+            IndicatorPreset.builder("repo-5", "EU Countries with Monitoring Initiatives on Connecting Repositories to EOSC", REPOSITORIES)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("REPOSITORIES_CONNECT_MONITORING_INITIATIVE")).order(50).build(),
             nationalPolicyPreset("repo-6", "National Policy on Connecting Repositories to EOSC", REPOSITORIES,
-                "REPOSITORIES_CONNECT_POLICY", 60),
+                "REPOSITORIES_CONNECT_POLICY").order(60).build(),
             nationalMonitoringPreset("repo-7", "National Monitoring on Connecting Repositories to EOSC", REPOSITORIES,
-                "REPOSITORIES_CONNECT_MONITORING_INITIATIVE", 70),
+                "REPOSITORIES_CONNECT_MONITORING_INITIATIVE").order(70).build(),
             nationalPolicyPreset("repo-8", "National Policy on Long-term Data Preservation", REPOSITORIES,
-                "REPOSITORIES_PRESERVATION_POLICY", 80),
+                "REPOSITORIES_PRESERVATION_POLICY").order(80).build(),
             nationalMonitoringPreset("repo-9", "National Monitoring on Long-term Data Preservation", REPOSITORIES,
-                "REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE", 90),
+                "REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE").order(90).build(),
 
             // ---- Open Science Training (inventory rows 47-52) ----------------------------------------
-            preset("train-1", "EU Countries with Policy on skills/training for Open Science", OPEN_SCIENCE_TRAINING,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_POLICY"), 10),
-            preset("train-2", "Financial investments in skills/training for Open Science", OPEN_SCIENCE_TRAINING,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("TRAINING"), 20),
-            preset("train-3", "EU Countries with Financial Strategy on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_FINANCIAL_STRATEGY"), 30),
-            preset("train-4", "EU Countries with Monitoring Initiatives on skills/training in Open Science", OPEN_SCIENCE_TRAINING,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("TRAINING_MONITORING_INITIATIVE"), 40),
+            IndicatorPreset.builder("train-1", "EU Countries with Policy on skills/training for Open Science", OPEN_SCIENCE_TRAINING)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("TRAINING_POLICY")).order(10).build(),
+            IndicatorPreset.builder("train-2", "Financial investments in skills/training for Open Science", OPEN_SCIENCE_TRAINING)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).presetFilters(investmentArea("TRAINING")).order(20).build(),
+            IndicatorPreset.builder("train-3", "EU Countries with Financial Strategy on skills/training in Open Science", OPEN_SCIENCE_TRAINING)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("TRAINING_FINANCIAL_STRATEGY")).order(30).build(),
+            IndicatorPreset.builder("train-4", "EU Countries with Monitoring Initiatives on skills/training in Open Science", OPEN_SCIENCE_TRAINING)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("TRAINING_MONITORING_INITIATIVE")).order(40).build(),
             nationalPolicyPreset("train-5", "National Policy on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
-                "TRAINING_POLICY", 50),
+                "TRAINING_POLICY").order(50).build(),
             nationalMonitoringPreset("train-6", "National Monitoring on Skills/Training in Open Science", OPEN_SCIENCE_TRAINING,
-                "TRAINING_MONITORING_INITIATIVE", 60),
+                "TRAINING_MONITORING_INITIATIVE").order(60).build(),
 
             // ---- Open Software (inventory rows 53-59) -----------------------------------------------
-            preset("sw-1", "Open Software sets published in EU Countries", OPEN_SOFTWARE,
-                OUTPUT_COUNT_VIEWS_MAP_FULL_WIDTH, AVG_MEDIAN, SOFTWARE_OPEN_SOURCE_SETS_COUNT, NO_FILTERS, 10),
-            preset("sw-2", "EU Countries with Policy on Open Software", OPEN_SOFTWARE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_POLICY"), 20),
-            preset("sw-3", "Financial investments in Open Software", OPEN_SOFTWARE,
-                MAGNITUDE_VIEWS, AVG_MEDIAN, FINANCIAL_INVESTMENT, investmentArea("SOFTWARE"), 30),
-            preset("sw-4", "EU Countries with Financial Strategy on Open Software", OPEN_SOFTWARE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_FINANCIAL_STRATEGY"), 40),
-            preset("sw-5", "EU Countries with Monitoring Initiatives on Open Software", OPEN_SOFTWARE,
-                EU_COVERAGE_VIEWS, NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeType("SOFTWARE_MONITORING_INITIATIVE"), 50),
-            nationalPolicyPreset("sw-6", "National Policy on Open Source Software", OPEN_SOFTWARE,
-                "SOFTWARE_POLICY", 60),
+            IndicatorPreset.builder("sw-1", "Open Software sets published in EU Countries", OPEN_SOFTWARE)
+                .views(OUTPUT_COUNT_VIEWS_MAP_FULL_WIDTH).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(SOFTWARE_OPEN_SOURCE_SETS_COUNT).order(10).build(),
+            IndicatorPreset.builder("sw-2", "EU Countries with Policy on Open Software", OPEN_SOFTWARE)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("SOFTWARE_POLICY")).order(20).build(),
+            IndicatorPreset.builder("sw-3", "Financial investments in Open Software", OPEN_SOFTWARE)
+                .views(MAGNITUDE_VIEWS).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).presetFilters(investmentArea("SOFTWARE")).order(30).build(),
+            IndicatorPreset.builder("sw-4", "EU Countries with Financial Strategy on Open Software", OPEN_SOFTWARE)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("SOFTWARE_FINANCIAL_STRATEGY")).order(40).build(),
+            IndicatorPreset.builder("sw-5", "EU Countries with Monitoring Initiatives on Open Software", OPEN_SOFTWARE)
+                .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
+                .presetFilters(initiativeType("SOFTWARE_MONITORING_INITIATIVE")).order(50).build(),
+            nationalPolicyPreset("sw-6", "National Policy on Open Source Software", OPEN_SOFTWARE, "SOFTWARE_POLICY").order(60).build(),
             nationalMonitoringPreset("sw-7", "National Monitoring on Open Source Software", OPEN_SOFTWARE,
-                "SOFTWARE_MONITORING_INITIATIVE", 70),
+                "SOFTWARE_MONITORING_INITIATIVE").order(70).build(),
 
             // ---- Investments in EOSC page (inventory rows 64-65) -----------------------------------
-            presetFullWidth("inv-1", "Total amount of investments in EOSC and Open Science", INVESTMENTS_IN_EOSC,
-                totalInvestmentViews(), AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 10),
+            IndicatorPreset.builder("inv-1", "Total amount of investments in EOSC and Open Science", INVESTMENTS_IN_EOSC)
+                .views(totalInvestmentViews()).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).fullWidth().order(10).build(),
             // Same oa.financial_investment indicator as inv-1, broken out per investment area — the
             // definition is groupable by investmentArea (see IndicatorDefinitionCatalog.financialInvestment).
-            presetFullWidth("inv-2", "Investments in EOSC and Open Science (by Open Science area)", INVESTMENTS_IN_EOSC,
-                investmentByAreaViews(), AVG_MEDIAN, FINANCIAL_INVESTMENT, NO_FILTERS, 20),
+            IndicatorPreset.builder("inv-2", "Investments in EOSC and Open Science (by Open Science area)", INVESTMENTS_IN_EOSC)
+                .views(investmentByAreaViews()).allowedSeriesAggregations(AVG_MEDIAN)
+                .indicatorCode(FINANCIAL_INVESTMENT).fullWidth().order(20).build(),
 
             // ---- Open Science Trends (inventory rows 60-63) ----------------------------------------
             // The "… by Areas" rows are eu_country_coverage pinned to every topic's *_POLICY /
@@ -556,83 +589,69 @@ public class IndicatorPresetCatalog {
             // The SELECTED_COUNTRIES/TIME_RANGE cell offers 3 renderings of the same
             // initiativeType+country query response, switched client-side with no re-query — see
             // IndicatorPreset.groupByFor, which derives groupBy from the cell/selector alone.
-            presetFullWidth("ost-1", "Trends in National Open Science Policies by Areas", OPEN_SCIENCE_TRENDS,
-                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES),
-                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(POLICY_AREA_TYPES), 10),
-            presetFullWidth("ost-2", "Trends in Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_TRENDS,
-                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES),
-                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES), 20),
+            IndicatorPreset.builder("ost-1", "Trends in National Open Science Policies by Areas", OPEN_SCIENCE_TRENDS)
+                .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES))
+                .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(POLICY_AREA_TYPES)).fullWidth().order(10).build(),
+            IndicatorPreset.builder("ost-2", "Trends in Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_TRENDS)
+                .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES))
+                .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES)).fullWidth().order(20).build(),
             // ost-3/ost-4 back on publications.count / datasets.count grouped by accessStatus (the
             // *_access_status_share indicators can't fan out per access type — accessStatus is a
             // required filter-only binding there). Every view carries an accessStatus selector.
-            preset("ost-3", "Trend of Open Access Publications", OPEN_SCIENCE_TRENDS,
-                accessTypeTrendViews(), AVG_MEDIAN, PUBLICATIONS_COUNT, NO_FILTERS, 30),
-            presetFullWidth("ost-4", "Trend of Open Data", OPEN_SCIENCE_TRENDS,
-                accessTypeTrendViews(), AVG_MEDIAN, DATASETS_COUNT, NO_FILTERS, 40),
+            IndicatorPreset.builder("ost-3", "Trend of Open Access Publications", OPEN_SCIENCE_TRENDS)
+                .views(accessTypeTrendViews()).allowedSeriesAggregations(AVG_MEDIAN).indicatorCode(PUBLICATIONS_COUNT).order(30).build(),
+            IndicatorPreset.builder("ost-4", "Trend of Open Data", OPEN_SCIENCE_TRENDS)
+                .views(accessTypeTrendViews()).allowedSeriesAggregations(AVG_MEDIAN).indicatorCode(DATASETS_COUNT).fullWidth().order(40).build(),
 
             // ---- National Monitoring (inventory rows 66-69, merged into 2 presets) ---------------
-            presetFullWidth("nm-1", "National Monitoring of Open Science by Areas", NATIONAL_MONITORING,
-                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES_WITHOUT_COVERAGE_TREND),
-                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(MONITORING_AREA_TYPES), 10),
-            presetFullWidth("nm-2", "National Monitoring (number of monitored areas per country)", NATIONAL_MONITORING,
-                areaCountViews(), NO_SERIES_AGGREGATIONS, MONITORED_AREAS_COUNT, NO_FILTERS, 20),
+            IndicatorPreset.builder("nm-1", "National Monitoring of Open Science by Areas", NATIONAL_MONITORING)
+                .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES_WITHOUT_COVERAGE_TREND))
+                .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(MONITORING_AREA_TYPES)).fullWidth().order(10).build(),
+            IndicatorPreset.builder("nm-2", "National Monitoring (number of monitored areas per country)", NATIONAL_MONITORING)
+                .views(areaCountViews()).indicatorCode(MONITORED_AREAS_COUNT).fullWidth().order(20).build(),
 
             // ---- Open Science Policies (inventory rows 70-75) ----------------------------------------
-            presetFullWidth("osp-1", "National Open Science Policies by Areas", OPEN_SCIENCE_POLICIES,
-                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES),
-                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(POLICY_AREA_TYPES), 10),
-            presetFullWidth("osp-2", "Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_POLICIES,
-                withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES),
-                NO_SERIES_AGGREGATIONS, EU_COUNTRY_COVERAGE, initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES), 20),
-            presetFullWidth("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES,
-                areaCountViews(), NO_SERIES_AGGREGATIONS, POLICY_AREAS_COUNT, NO_FILTERS, 30),
+            IndicatorPreset.builder("osp-1", "National Open Science Policies by Areas", OPEN_SCIENCE_POLICIES)
+                .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES))
+                .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(POLICY_AREA_TYPES)).fullWidth().order(10).build(),
+            IndicatorPreset.builder("osp-2", "Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_POLICIES)
+                .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES))
+                .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES)).fullWidth().order(20).build(),
+            IndicatorPreset.builder("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES)
+                .views(areaCountViews()).indicatorCode(POLICY_AREAS_COUNT).fullWidth().order(30).build(),
             // Pinned to a single initiativeType value, so no selector — grouping by initiativeType
             // here would return one no-op series; groupByFor falls back to grouping by country.
-            presetFullWidth("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES,
-                withTimeRangeSwitcher(areaTrendViews(null), AREA_TREND_TIME_RANGE_STYLES), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
-                initiativeType("OA_PUBLICATION_POLICY"), 40)
-                .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE)),
+            IndicatorPreset.builder("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES)
+                .views(withTimeRangeSwitcher(areaTrendViews(null), AREA_TREND_TIME_RANGE_STYLES))
+                .indicatorCode(COUNTRY_POLICY_STATUS).presetFilters(initiativeType("OA_PUBLICATION_POLICY"))
+                .valueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE)).fullWidth().order(40).build(),
             // Registered for catalog completeness — not queryable yet, returns HTTP 501 (see
             // IndicatorDefinitionCatalog.researcherPolicyCoverage() / docs/INDICATOR_TODO.md).
             // researcher_policy_coverage has no initiativeType binding, so areaTrendViews takes no selector.
-            presetFullWidth("osp-5", "Coverage of Researchers by National Open Science Policies in Europe", OPEN_SCIENCE_POLICIES,
-                withTimeRangeSwitcher(areaTrendViews(null), AREA_TREND_TIME_RANGE_STYLES), NO_SERIES_AGGREGATIONS, RESEARCHER_POLICY_COVERAGE, NO_FILTERS, 50)
-//            presetFullWidth("osp-6", "National Open Science Policies by Countries and Areas", OPEN_SCIENCE_POLICIES,
-//                areaTrendViews(openScienceAreaSelector()), NO_SERIES_AGGREGATIONS, COUNTRY_POLICY_STATUS,
-//                initiativeTypes(POLICY_AREA_TYPES), 60)
-//                .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE))
+            IndicatorPreset.builder("osp-5", "Coverage of Researchers by National Open Science Policies in Europe", OPEN_SCIENCE_POLICIES)
+                .views(withTimeRangeSwitcher(areaTrendViews(null), AREA_TREND_TIME_RANGE_STYLES))
+                .indicatorCode(RESEARCHER_POLICY_COVERAGE).fullWidth().order(50).build()
+//            IndicatorPreset.builder("osp-6", "National Open Science Policies by Countries and Areas", OPEN_SCIENCE_POLICIES)
+//                .views(areaTrendViews(openScienceAreaSelector()))
+//                .indicatorCode(COUNTRY_POLICY_STATUS).presetFilters(initiativeTypes(POLICY_AREA_TYPES))
+//                .valueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE)).fullWidth().order(60).build()
         );
-    }
-
-    private static IndicatorPreset preset(
-            String id, String label, IndicatorGroup group, List<PresetView> views,
-            List<AggregationType> allowedSeriesAggregations, String indicatorCode,
-            Map<String, List<String>> presetFilters, int order) {
-        // format is null here — IndicatorPresetCatalog fills it from the linked definition.
-        return new IndicatorPreset(id, label, group, views, null,
-            allowedSeriesAggregations, indicatorCode, presetFilters, PresetValueLabels.NONE, order);
-    }
-
-    /** Like {@link #preset}, but for the handful of presets whose views need the whole dashboard width. */
-    private static IndicatorPreset presetFullWidth(
-            String id, String label, IndicatorGroup group, List<PresetView> views,
-            List<AggregationType> allowedSeriesAggregations, String indicatorCode,
-            Map<String, List<String>> presetFilters, int order) {
-        List<PresetView> fullWidthViews = views.stream().map(view -> view.withFullWidth(true)).toList();
-        return preset(id, label, group, fullWidthViews, allowedSeriesAggregations, indicatorCode, presetFilters, order);
     }
 
     /**
      * "National Policy on &lt;topic&gt;" preset: national-status views over
      * {@code oa.country_policy_status}, pinned to the {@code *_POLICY} {@code initiativeType}
      * member {@code policyType}. Its raw values are display-ready, so only the gap-filled
-     * {@code null} is relabeled (to {@value #NOT_AVAILABLE}).
+     * {@code null} is relabeled (to {@value #NOT_AVAILABLE}). Returns a {@link IndicatorPreset.Builder}
+     * rather than a finished preset — the caller still chains {@code .order(...).build()}.
      */
-    private static IndicatorPreset nationalPolicyPreset(
-            String id, String label, IndicatorGroup group, String policyType, int order) {
-        return preset(id, label, group, NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS,
-                COUNTRY_POLICY_STATUS, initiativeType(policyType), order)
-            .withValueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE));
+    private static IndicatorPreset.Builder nationalPolicyPreset(
+            String id, String label, IndicatorGroup group, String policyType) {
+        return IndicatorPreset.builder(id, label, group)
+            .views(NATIONAL_STATUS_VIEWS)
+            .indicatorCode(COUNTRY_POLICY_STATUS)
+            .presetFilters(initiativeType(policyType))
+            .valueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE));
     }
 
     /**
@@ -640,13 +659,16 @@ public class IndicatorPresetCatalog {
      * {@code oa.country_initiative_status}, pinned to the {@code *_MONITORING_INITIATIVE}
      * {@code initiativeType} member {@code monitoringType}. Its raw
      * {@code YES}/{@code NO}/{@code AWAITING_DATA} values (and the gap-filled {@code null}) map to
-     * the {@link #MONITORING_STATUS_LABELS} legend labels.
+     * the {@link #MONITORING_STATUS_LABELS} legend labels. Returns a {@link IndicatorPreset.Builder}
+     * rather than a finished preset — the caller still chains {@code .order(...).build()}.
      */
-    private static IndicatorPreset nationalMonitoringPreset(
-            String id, String label, IndicatorGroup group, String monitoringType, int order) {
-        return preset(id, label, group, NATIONAL_STATUS_VIEWS, NO_SERIES_AGGREGATIONS,
-                COUNTRY_INITIATIVE_STATUS, initiativeType(monitoringType), order)
-            .withValueLabels(new PresetValueLabels(MONITORING_STATUS_LABELS, NOT_AVAILABLE));
+    private static IndicatorPreset.Builder nationalMonitoringPreset(
+            String id, String label, IndicatorGroup group, String monitoringType) {
+        return IndicatorPreset.builder(id, label, group)
+            .views(NATIONAL_STATUS_VIEWS)
+            .indicatorCode(COUNTRY_INITIATIVE_STATUS)
+            .presetFilters(initiativeType(monitoringType))
+            .valueLabels(new PresetValueLabels(MONITORING_STATUS_LABELS, NOT_AVAILABLE));
     }
 
     private static Map<String, List<String>> accessStatus(String value) {
