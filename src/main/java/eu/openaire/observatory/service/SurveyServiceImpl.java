@@ -36,6 +36,7 @@ import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
 import eu.openaire.observatory.utils.JSONObjectUtils;
+import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
@@ -583,7 +584,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     private boolean fieldIsAnswered(UiField field, Map<String, ?> chapterAnswer, Map<String, UiField> allFields) {
         if (chapterAnswer != null && !chapterAnswer.isEmpty()) {
-            if (!"composite".equals(field.getTypeInfo().getType())) {
+            if (field.getTypeInfo().getType() != FieldType.composite) {
                 return getValueFromAnswer(field, chapterAnswer, allFields) != null;
             }
             for (UiField f : field.getSubFields()) {
