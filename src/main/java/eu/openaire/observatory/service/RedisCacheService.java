@@ -36,9 +36,10 @@ public class RedisCacheService<K, V> implements CacheService<K, V> {
      * singleton shared by every {@code CacheService<K, V>} injection point regardless of
      * K/V (the class is never resolved to concrete type parameters), so callers reusing it
      * for unrelated data must keep their own keys distinct from each other to avoid
-     * collisions within this shared namespace.
+     * collisions within this shared namespace. Package-private so callers in this package
+     * (e.g. {@code SurveyAnswerLocks}) can strip it back off a key read from Redis.
      */
-    private static final String PREFIX = "observatory:cache:";
+    static final String PREFIX = "observatory:cache:";
 
     private final RedisTemplate<String, V> redisTemplate;
     private final ValueOperations<String, V> valueOps;
