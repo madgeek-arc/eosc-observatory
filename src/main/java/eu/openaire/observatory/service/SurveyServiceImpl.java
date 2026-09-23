@@ -40,6 +40,7 @@ import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
+import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.catalogue.ui.domain.Section;
 import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
@@ -552,7 +553,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     private boolean fieldIsAnswered(UiField field, Map<String, ?> chapterAnswer, Map<String, UiField> allFields) {
         if (chapterAnswer != null && !chapterAnswer.isEmpty()) {
-            if (!"composite".equals(field.getTypeInfo().getType())) {
+            if (field.getTypeInfo().getType() != FieldType.composite) {
                 return getValueFromAnswer(field, chapterAnswer, allFields) != null;
             }
             for (UiField f : field.getSubFields()) {
@@ -674,7 +675,9 @@ public class SurveyServiceImpl implements SurveyService {
             User user;
             String userId = ((SurveyAnswer) object).getMetadata().getModifiedBy();
             try {
-                userId = userId.split(",", 2)[0];
+                if (userId != null) {
+                    userId = userId.split(",", 2)[0];
+                }
                 user = userService.get(userId);
             } catch (ResourceNotFoundException e) {
                 user = new User();
@@ -696,10 +699,12 @@ public class SurveyServiceImpl implements SurveyService {
             if (entry.getAction() == History.HistoryAction.UPDATED
                     || entry.getAction() == History.HistoryAction.VALIDATED) {
                 if (entry.getUserId() != null) { // TODO: added for backward compatibility
-                    editors.putIfAbsent(entry.getUserId(), userService.get(entry.getUserId()));
+                    editors.putIfAbsent(entry.getUserId(), userService.getUser(entry.getUserId()));
                 }
                 for (Editor editor : Objects.requireNonNullElse(entry.getEditors(), new ArrayList<Editor>())) {
-                    editors.putIfAbsent(editor.getUser(), userService.get(editor.getUser()));
+                    if (editor.getUser() != null) {
+                        editors.putIfAbsent(editor.getUser(), userService.getUser(editor.getUser()));
+                    }
                 }
             }
         }

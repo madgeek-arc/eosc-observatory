@@ -27,12 +27,15 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -171,6 +174,26 @@ class UserServiceImplTest {
         verify(commentService).anonymizeUser(USER_ID, UserServiceImpl.DELETED_USER_PLACEHOLDER);
         verify(permissionService).removeAll(USER_ID);
         verify(service).delete(USER_ID);
+    }
+
+    @Test
+    void getThrowsResourceNotFoundForNullIdWithoutSearching() {
+        assertThrows(ResourceNotFoundException.class, () -> service.get(null));
+        verifyNoInteractions(searchService);
+    }
+
+    @Test
+    void getThrowsResourceNotFoundForBlankIdWithoutSearching() {
+        assertThrows(ResourceNotFoundException.class, () -> service.get(""));
+        verifyNoInteractions(searchService);
+    }
+
+    @Test
+    void getUserReturnsPlaceholderForNullId() {
+        User user = service.getUser(null);
+
+        assertNull(user.getEmail());
+        verifyNoInteractions(searchService);
     }
 
     private SurveyAnswer surveyAnswer(String id) {

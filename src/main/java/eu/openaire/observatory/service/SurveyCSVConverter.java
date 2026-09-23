@@ -18,6 +18,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.CsvBuilder;
 import eu.openaire.observatory.domain.*;
+import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.catalogue.ui.domain.Section;
 import gr.uoa.di.madgik.catalogue.ui.domain.StyledString;
@@ -222,7 +223,7 @@ public class SurveyCSVConverter implements CSVConverter {
                 .collect(Collectors.toSet());
         return contributorIds
                 .stream()
-                .map(userService::get)
+                .map(userService::getUser)
                 .map(user -> String.format("%s (%s)", user.getFullname(), user.getId()))
                 .collect(Collectors.joining(DELIMITER_SECONDARY));
     }
@@ -329,7 +330,7 @@ public class SurveyCSVConverter implements CSVConverter {
 
             if (temp instanceof JSONObject && ((JSONObject) temp).containsKey(field.getName())) {
                 temp = ((JSONObject) temp).get(field.getName());
-                if (field.getTypeInfo().isMultiplicity() && field.getTypeInfo().getType().equals("composite") && temp != null) {
+                if (field.getTypeInfo().isMultiplicity() && field.getTypeInfo().getType() == FieldType.composite && temp != null) {
                     for (Object item : (JSONArray) temp) {
                         createValues(key, fieldsToLeaf.subList(fieldsToLeaf.indexOf(field) + 1, fieldsToLeaf.size()), (JSONObject) item, index);
                     }

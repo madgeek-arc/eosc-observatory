@@ -16,6 +16,8 @@
 
 package eu.openaire.observatory;
 
+import eu.openaire.documentanalyzer.analyze.service.DocumentAnalyzerService;
+import eu.openaire.documentanalyzer.enrich.service.DocumentContentProcessor;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -34,6 +36,12 @@ public class IntegrationTestConfig {
 
     @MockBean
     RestHighLevelClient restHighLevelClient;
+
+    @MockBean
+    DocumentAnalyzerService documentAnalyzerService;
+
+    @MockBean
+    DocumentContentProcessor documentContentProcessor;
 
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
