@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class RedisCacheServiceTest {
 
-    private static final String TEST_KEY = "custom:cache:key";
+    private static final String TEST_KEY = "observatory:cache:key";
 
     @Mock
     private RedisTemplate<String, String> redisTemplate;
@@ -87,11 +87,11 @@ class RedisCacheServiceTest {
 
     @Test
     void fetchKeysPassesPrefixedPatternToRedis() {
-        when(redisTemplate.keys("custom:cache:sa-*")).thenReturn(Set.of("custom:cache:sa-1"));
+        when(redisTemplate.keys("observatory:cache:sa-*")).thenReturn(Set.of("observatory:cache:sa-1"));
 
         Set<String> keys = service.fetchKeys("sa-*");
 
-        assertEquals(Set.of("custom:cache:sa-1"), keys);
-        verify(redisTemplate).keys("custom:cache:sa-*");
+        assertEquals(Set.of("observatory:cache:sa-1"), keys);
+        verify(redisTemplate).keys("observatory:cache:sa-*");
     }
 }
