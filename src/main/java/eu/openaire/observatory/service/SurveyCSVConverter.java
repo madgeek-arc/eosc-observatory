@@ -141,11 +141,11 @@ public class SurveyCSVConverter implements CSVConverter {
     }
 
     @Override
-    public String convertToCSV(String modelId, boolean includeSensitiveData, Date from, Date to) {
+    public String convertToCSV(String modelId, boolean includeSensitiveData, boolean validatedOnly, Date from, Date to) {
         Model model = modelService.get(modelId);
         List<List<UiField>> fieldHierarchy = getFieldHierarchy(model);
 
-        List<SurveyAnswer> answerSet = getSurveyAnswers(model, from, to);
+        List<SurveyAnswer> answerSet = getSurveyAnswers(model, validatedOnly, from, to);
         int index = 0;
         List<String> creationDates = answerSet
                 .stream()
@@ -181,7 +181,7 @@ public class SurveyCSVConverter implements CSVConverter {
         return this.csvBuilder.toCsv();
     }
 
-    private List<SurveyAnswer> getSurveyAnswers(Model model, Date from, Date to) {
+    private List<SurveyAnswer> getSurveyAnswers(Model model, boolean validatedOnly, Date from, Date to) {
         Set<SurveyAnswer> answerSet = new HashSet<>();
         if (from == null || to == null) {
             Set<Stakeholder> stakeholders = stakeholderService.getWithFilter("type", model.getType());
@@ -210,7 +210,11 @@ public class SurveyCSVConverter implements CSVConverter {
             return date;
         });
 
-        return answerSet.stream().filter(Objects::nonNull).sorted(comparator).toList();
+        return answerSet.stream()
+                .filter(Objects::nonNull)
+                .filter(a -> !validatedOnly || a.isValidated())
+                .sorted(comparator)
+                .toList();
     }
 
     private String getContributorsInfo(SurveyAnswer answer) {
