@@ -146,9 +146,9 @@ class SurveyAnswerCrudServiceTest {
         var scanned = new CountDownLatch(1);
         when(cacheService.fetchKeys("sa-*")).thenAnswer(i -> {
             scanned.countDown();
-            return Set.of("custom:cache:sa-1");
+            return Set.of(RedisCacheService.PREFIX + "sa-1");
         });
-        when(cacheService.fetch("custom:cache:sa-1")).thenReturn(latest);
+        when(cacheService.fetch(RedisCacheService.PREFIX + "sa-1")).thenReturn(latest);
         doAnswer(i -> {
             assertEquals("edit during cleanup", latest.getSurveyAnswer().getAnswer().get("pending"));
             return latest.getSurveyAnswer();

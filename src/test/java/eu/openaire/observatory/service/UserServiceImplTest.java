@@ -942,7 +942,7 @@ class UserServiceImplTest {
             bytes.set(serializer.serialize(i.getArgument(1)));
             return null;
         });
-        when(revisionsCache.fetchKeys("sa-*")).thenReturn(Set.of("custom:cache:sa-1"));
+        when(revisionsCache.fetchKeys("sa-*")).thenReturn(Set.of(RedisCacheService.PREFIX + "sa-1"));
         when(surveyAnswerCrudService.getAllPersisted(any(FacetFilter.class))).thenReturn(browsingOf(persisted));
         doReturn(new User()).when(service).delete(USER_ID);
 
