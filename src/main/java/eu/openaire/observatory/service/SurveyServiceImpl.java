@@ -110,10 +110,6 @@ public class SurveyServiceImpl implements SurveyService {
         if (stakeholderId != null && !"".equals(stakeholderId)) {
             Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
             filter.addFilter("type", stakeholder.getType());
-            // TODO: need to implement OR filter
-//            if (stakeholder.getSubType() != null && !"".equals(stakeholder.getSubType())) {
-//                filter.setKeyword("chapterSubTypes=" + stakeholder.getSubType());
-//            }
         }
         Browsing<Model> surveyBrowsing = this.genericResourceService.getResults(filter);
         return surveyBrowsing;
@@ -182,7 +178,6 @@ public class SurveyServiceImpl implements SurveyService {
         ReentrantLock lock = surveyAnswerLocks.computeIfAbsent(id, ignored -> new ReentrantLock());
         lock.lock();
         try {
-            // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
             SurveyAnswerRevisionsAggregation sara = getMostRecent(id);
             User user = User.of(authentication);
             Editor editor = new Editor();
@@ -199,7 +194,6 @@ public class SurveyServiceImpl implements SurveyService {
     }
 
     private SurveyAnswerRevisionsAggregation getMostRecent(String surveyAnswerId) {
-        // TODO: find survey answer in Redis Cache or fetch it from db (only if not validated)
         SurveyAnswerRevisionsAggregation sara = cacheService.fetch(surveyAnswerId);
         if (sara == null) {
             sara = new SurveyAnswerRevisionsAggregation(surveyAnswerCrudService.get(surveyAnswerId));
@@ -398,12 +392,6 @@ public class SurveyServiceImpl implements SurveyService {
             return validated ? validateAnswer(surveyAnswer) : invalidateAnswer(surveyAnswer);
         }
         return surveyAnswer;
-    }
-
-    @Override
-    public SurveyAnswer setAnswerPublished(String answerId, boolean published, Authentication authentication) throws ResourceNotFoundException {
-        throw new UnsupportedOperationException("Not implemented yet...");
-        // TODO: implement this method
     }
 
     @Override
@@ -698,7 +686,7 @@ public class SurveyServiceImpl implements SurveyService {
         for (HistoryEntry entry : surveyAnswer.getHistory().getEntries()) {
             if (entry.getAction() == History.HistoryAction.UPDATED
                     || entry.getAction() == History.HistoryAction.VALIDATED) {
-                if (entry.getUserId() != null) { // TODO: added for backward compatibility
+                if (entry.getUserId() != null) { // userId is legacy; entries created after the editors list existed never populate it
                     editors.putIfAbsent(entry.getUserId(), userService.getUser(entry.getUserId()));
                 }
                 for (Editor editor : Objects.requireNonNullElse(entry.getEditors(), new ArrayList<Editor>())) {
