@@ -16,14 +16,18 @@
 
 package eu.openaire.observatory.configuration.security;
 
+import eu.openaire.observatory.configuration.ApplicationProperties;
+import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.resources.model.Document;
 import eu.openaire.observatory.service.SecurityService;
+import eu.openaire.observatory.utils.HmacUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.access.expression.SecurityExpressionRoot;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 
 import java.io.Serializable;
@@ -36,6 +40,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     private final MethodSecurityExpressions securityExpressions;
     private final SecurityService securityService;
+    private final ApplicationProperties applicationProperties;
 
     private Object filterObject;
     private Object returnObject;
@@ -43,11 +48,13 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     public CustomMethodSecurityExpressionRoot(Authentication authentication,
                                               MethodSecurityExpressions securityExpressions,
-                                              SecurityService securityService) {
+                                              SecurityService securityService,
+                                              ApplicationProperties applicationProperties) {
         super(authentication);
         this.setPermissionEvaluator(this);
         this.securityExpressions = securityExpressions;
         this.securityService = securityService;
+        this.applicationProperties = applicationProperties;
     }
 
 
@@ -93,7 +100,10 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     @Override
     public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
-        logger.debug("hasPermission(auth, targetDomainObject, permission)\nAuthentication: {}\nObject: {}\nPermission: {}", authentication, targetDomainObject, permission);
+        if (logger.isDebugEnabled()) {
+            logger.debug("hasPermission(auth, targetDomainObject, permission)\nUser: {}\nObject: {}\nPermission: {}",
+                    getUserEmailHmac(authentication), targetDomainObject, permission);
+        }
         if ((getAuthentication() == null) || (targetDomainObject == null) || !(permission instanceof String)) {
             return false;
         }
@@ -254,5 +264,13 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     private String getResourceId(Object resource) {
         return SecurityUtils.getResourceId(resource, logger);
+    }
+
+    private String getUserEmailHmac(Authentication authentication) {
+        try {
+            return HmacUtils.hmacSha256Hex(applicationProperties.getJwsSigningSecret(), User.getId(authentication));
+        } catch (InsufficientAuthenticationException e) {
+            return "unknown";
+        }
     }
 }
