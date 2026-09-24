@@ -95,15 +95,12 @@ class SurveyAnswerCrudServiceTest {
     }
 
     @Test
-    void updateFlushesCachedVersionBeforePersistingNewResource() throws ResourceNotFoundException {
-        SurveyAnswer cachedAnswer = createSurveyAnswer("survey-1", "stakeholder-1", "sa-1");
+    void updateRemovesCacheAndPersistsResourceOnce() throws ResourceNotFoundException {
         SurveyAnswer incoming = createSurveyAnswer("survey-1", "stakeholder-1", "sa-1");
-        SurveyAnswerRevisionsAggregation cached = new SurveyAnswerRevisionsAggregation(cachedAnswer);
         ResourceType resourceType = surveyAnswerResourceType();
         Resource resource = new Resource();
         resource.setId("sa-1");
 
-        when(cacheService.fetch("sa-1")).thenReturn(cached);
         when(resourceTypeService.getResourceType("survey_answer")).thenReturn(resourceType);
         when(searchService.searchFields(eq("survey_answer"), any(SearchService.KeyValue[].class))).thenReturn(resource);
         when(parserService.serialize(any(SurveyAnswer.class), any(ParserService.ParserServiceTypes.class))).thenReturn("{}");
@@ -111,7 +108,7 @@ class SurveyAnswerCrudServiceTest {
         SurveyAnswer result = service.update("sa-1", incoming);
 
         assertSame(incoming, result);
-        verify(resourceService, times(2)).updateResource(resource);
+        verify(resourceService, times(1)).updateResource(resource);
         verify(cacheService).remove("sa-1");
     }
 
