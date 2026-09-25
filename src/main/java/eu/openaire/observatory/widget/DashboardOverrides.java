@@ -1,6 +1,5 @@
 package eu.openaire.observatory.widget;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.openaire.observatory.service.Identifiable;
 
 import java.util.List;
@@ -9,8 +8,9 @@ import java.util.List;
 public class DashboardOverrides implements Identifiable<String> {
 
     private String id;
-    private String code;
-    private String stakeholderId;
+    private DashboardCode code;
+    private String type;
+    private String groupId;
     private List<Widget> widgets;
 
     public DashboardOverrides() {
@@ -26,28 +26,34 @@ public class DashboardOverrides implements Identifiable<String> {
         this.id = id;
     }
 
-    public String getCode() {
+    public DashboardCode getCode() {
         return code;
     }
 
-    public void setCode(String code) {
+    public void setCode(DashboardCode code) {
         this.code = code;
     }
 
-    public String getStakeholderId() {
-        return stakeholderId;
+    public String getType() {
+        return type;
     }
 
-    public void setStakeholderId(String stakeholderId) {
-        this.stakeholderId = stakeholderId;
+    public void setType(String type) {
+        this.type = type;
     }
 
-    @JsonProperty("indicators")
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
+    }
+
     public List<Widget> getWidgets() {
         return widgets;
     }
 
-    @JsonProperty("indicators")
     public void setWidgets(List<Widget> widgets) {
         this.widgets = widgets;
     }

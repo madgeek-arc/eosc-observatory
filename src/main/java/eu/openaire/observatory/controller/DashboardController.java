@@ -3,9 +3,11 @@ package eu.openaire.observatory.controller;
 import eu.openaire.observatory.dto.DashboardOverrideSummary;
 import eu.openaire.observatory.service.DashboardDefaultsService;
 import eu.openaire.observatory.service.DashboardOverrideService;
+import eu.openaire.observatory.widget.DashboardCode;
 import eu.openaire.observatory.widget.Widget;
 import eu.openaire.observatory.widget.DashboardDefaults;
 import eu.openaire.observatory.widget.DashboardOverrides;
+import gr.uoa.di.madgik.registry.exception.ResourceException;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,13 +15,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
-@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "dashboards", produces = MediaType.APPLICATION_JSON_VALUE)
 public class DashboardController {
-
-    private static final String COUNTRY_PAGES_CODE = "country-pages";
 
     private final DashboardDefaultsService defaultsService;
     private final DashboardOverrideService overrideService;
@@ -30,71 +31,117 @@ public class DashboardController {
         this.overrideService = overrideService;
     }
 
+    private static DashboardCode resolve(String codeValue) {
+        try {
+            return DashboardCode.fromWireValue(codeValue);
+        } catch (IllegalArgumentException e) {
+            throw new ResourceException("Unknown dashboard code: " + codeValue, HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<List<String>> getDashboardCodes() {
+        return ResponseEntity.ok(Arrays.stream(DashboardCode.values()).map(DashboardCode::wireValue).toList());
+    }
+
     /*---------------------------*/
-    /*     Default Indicators    */
+    /*     Default Widgets       */
     /*---------------------------*/
 
-    @GetMapping("indicators/defaults/{type}")
-    public ResponseEntity<DashboardDefaults> getDefaults(@PathVariable("type") String type) {
-        return defaultsService.getByCodeAndType(COUNTRY_PAGES_CODE, type)
+    @GetMapping("{code}/types")
+    public ResponseEntity<List<DashboardDefaults>> getDefaultsForDashboard(@PathVariable("code") String codeValue) {
+        DashboardCode code = resolve(codeValue);
+        return ResponseEntity.ok(defaultsService.getByCode(code));
+    }
+
+    @GetMapping("{code}/types/{type}")
+    public ResponseEntity<DashboardDefaults> getDefaults(@PathVariable("code") String codeValue,
+                                                       @PathVariable("type") String type) {
+        DashboardCode code = resolve(codeValue);
+        return defaultsService.getByCodeAndType(code, type)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("indicators/defaults")
+    @PostMapping("{code}/types")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#defaults.getType()) or isAdministratorOfType(#defaults.getType())")
-    public ResponseEntity<DashboardDefaults> createDefaults(@RequestBody DashboardDefaults defaults) {
-        defaults.setCode(COUNTRY_PAGES_CODE);
+    public ResponseEntity<DashboardDefaults> createDefaults(@PathVariable("code") String codeValue,
+                                                          @RequestBody DashboardDefaults defaults) {
+        DashboardCode code = resolve(codeValue);
+        defaults.setCode(code);
         return new ResponseEntity<>(defaultsService.add(defaults), HttpStatus.CREATED);
     }
 
-    @PutMapping("indicators/defaults/{type}")
+    @PutMapping("{code}/types/{type}")
     @PreAuthorize("hasAuthority('ADMIN') or isCoordinatorOfType(#type) or isAdministratorOfType(#type)")
-    public ResponseEntity<DashboardDefaults> updateDefaults(@PathVariable("type") String type,
+    public ResponseEntity<DashboardDefaults> updateDefaults(@PathVariable("code") String codeValue,
+                                                          @PathVariable("type") String type,
                                                           @RequestBody DashboardDefaults defaults) throws ResourceNotFoundException {
-        defaults.setCode(COUNTRY_PAGES_CODE);
-        return ResponseEntity.ok(defaultsService.updateByCodeAndType(COUNTRY_PAGES_CODE, type, defaults));
+        DashboardCode code = resolve(codeValue);
+        defaults.setCode(code);
+        defaults.setType(type);
+        return ResponseEntity.ok(defaultsService.upsertByCodeAndType(code, type, defaults));
     }
 
-    @DeleteMapping("indicators/defaults/{type}")
+    @DeleteMapping("{code}/types/{type}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<DashboardDefaults> deleteDefaults(@PathVariable("type") String type) throws ResourceNotFoundException {
-        return ResponseEntity.ok(defaultsService.deleteByCodeAndType(COUNTRY_PAGES_CODE, type));
+    public ResponseEntity<DashboardDefaults> deleteDefaults(@PathVariable("code") String codeValue,
+                                                          @PathVariable("type") String type) throws ResourceNotFoundException {
+        DashboardCode code = resolve(codeValue);
+        return ResponseEntity.ok(defaultsService.deleteByCodeAndType(code, type));
     }
 
     /*---------------------------*/
-    /*   Stakeholder Indicators  */
+    /*     Group Overrides       */
     /*---------------------------*/
 
-    @GetMapping("stakeholders/types/{type}/indicators/overrides")
-    public ResponseEntity<List<DashboardOverrideSummary>> getStakeholdersOverrideStatus(@PathVariable("type") String type) {
-        return ResponseEntity.ok(overrideService.getStakeholdersWithOverrideStatus(COUNTRY_PAGES_CODE, type));
+    @GetMapping("{code}/types/{type}/groups")
+    public ResponseEntity<List<DashboardOverrideSummary>> getGroupsOverrideStatus(@PathVariable("code") String codeValue,
+                                                                                @PathVariable("type") String type) {
+        DashboardCode code = resolve(codeValue);
+        return ResponseEntity.ok(overrideService.getGroupsWithOverrideStatus(code, type));
     }
 
-    @GetMapping("stakeholders/{stakeholderId}/indicators")
-    public ResponseEntity<List<Widget>> getEffectiveIndicators(@PathVariable("stakeholderId") String stakeholderId) {
-        return ResponseEntity.ok(overrideService.getEffectiveWidgets(COUNTRY_PAGES_CODE, stakeholderId));
+    @GetMapping("{code}/types/{type}/groups/{group}/widgets")
+    public ResponseEntity<List<Widget>> getEffectiveWidgets(@PathVariable("code") String codeValue,
+                                                           @PathVariable("type") String type,
+                                                           @PathVariable("group") String group) throws ResourceNotFoundException {
+        DashboardCode code = resolve(codeValue);
+        overrideService.requireGroupOfType(type, group);
+        return ResponseEntity.ok(overrideService.getEffectiveWidgets(code, type, group));
     }
 
-    @GetMapping("stakeholders/{stakeholderId}/indicators/overrides")
-    public ResponseEntity<DashboardOverrides> getOverrides(@PathVariable("stakeholderId") String stakeholderId) {
-        return overrideService.getByCodeAndStakeholderId(COUNTRY_PAGES_CODE, stakeholderId)
+    @GetMapping("{code}/types/{type}/groups/{group}/widgets/overrides")
+    public ResponseEntity<DashboardOverrides> getOverrides(@PathVariable("code") String codeValue,
+                                                         @PathVariable("type") String type,
+                                                         @PathVariable("group") String group) throws ResourceNotFoundException {
+        DashboardCode code = resolve(codeValue);
+        overrideService.requireGroupOfType(type, group);
+        return overrideService.getByCodeAndTypeAndGroupId(code, type, group)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("stakeholders/{stakeholderId}/indicators/overrides")
-    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
-    public ResponseEntity<DashboardOverrides> upsertOverrides(@PathVariable("stakeholderId") String stakeholderId,
-                                                           @RequestBody DashboardOverrides overrides) throws ResourceNotFoundException {
-        overrides.setStakeholderId(stakeholderId);
-        overrides.setCode(COUNTRY_PAGES_CODE);
+    @PutMapping("{code}/types/{type}/groups/{group}/widgets/overrides")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#group) or isCoordinatorOfStakeholder(#group)")
+    public ResponseEntity<DashboardOverrides> upsertOverrides(@PathVariable("code") String codeValue,
+                                                            @PathVariable("type") String type,
+                                                            @PathVariable("group") String group,
+                                                            @RequestBody DashboardOverrides overrides) throws ResourceNotFoundException {
+        DashboardCode code = resolve(codeValue);
+        overrides.setCode(code);
+        overrides.setType(type);
+        overrides.setGroupId(group);
         return ResponseEntity.ok(overrideService.upsert(overrides));
     }
 
-    @DeleteMapping("stakeholders/{stakeholderId}/indicators/overrides")
-    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#stakeholderId) or isCoordinatorOfStakeholder(#stakeholderId)")
-    public ResponseEntity<DashboardOverrides> deleteOverrides(@PathVariable("stakeholderId") String stakeholderId) throws ResourceNotFoundException {
-        return ResponseEntity.ok(overrideService.deleteByCodeAndStakeholderId(COUNTRY_PAGES_CODE, stakeholderId));
+    @DeleteMapping("{code}/types/{type}/groups/{group}/widgets/overrides")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministratorOfStakeholder(#group) or isCoordinatorOfStakeholder(#group)")
+    public ResponseEntity<DashboardOverrides> deleteOverrides(@PathVariable("code") String codeValue,
+                                                            @PathVariable("type") String type,
+                                                            @PathVariable("group") String group) throws ResourceNotFoundException {
+        DashboardCode code = resolve(codeValue);
+        overrideService.requireGroupOfType(type, group);
+        return ResponseEntity.ok(overrideService.deleteByCodeAndTypeAndGroupId(code, type, group));
     }
 }

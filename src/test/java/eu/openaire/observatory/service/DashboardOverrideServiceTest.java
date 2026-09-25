@@ -1,6 +1,7 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.domain.Stakeholder;
+import eu.openaire.observatory.widget.DashboardCode;
 import eu.openaire.observatory.widget.Widget;
 import eu.openaire.observatory.widget.DashboardDefaults;
 import eu.openaire.observatory.widget.DashboardOverrides;
@@ -27,8 +28,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class DashboardOverrideServiceTest {
 
-    private static final String RESOURCE_TYPE = "stakeholder_indicators";
-    private static final String CODE = "country-pages";
+    private static final String RESOURCE_TYPE = "dashboard_overrides";
+    private static final DashboardCode CODE = DashboardCode.COUNTRY_PAGES;
+    private static final String TYPE = "country";
 
     @Mock ResourceTypeService resourceTypeService;
     @Mock ResourceService resourceService;
@@ -52,22 +54,27 @@ class DashboardOverrideServiceTest {
     // --- createId ---
 
     @Test
-    void createId_combinesCodeStakeholderTypeAndCountry() {
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
+    void createId_combinesCodeTypeAndGroupId() {
+        DashboardOverrides override = overrideWith("sh-1");
 
-        DashboardOverrides override = new DashboardOverrides();
-        override.setCode(CODE);
-        override.setStakeholderId("sh-1");
-
-        assertEquals("i-country-pages-country-GR", service.createId(override));
+        assertEquals("d-country-pages-country-sh-1", service.createId(override));
     }
 
     // --- add validation ---
 
     @Test
-    void add_rejectsBlankCode() {
+    void add_rejectsNullCode() {
         DashboardOverrides override = overrideWith("sh-1", widget("w-1"));
-        override.setCode(" ");
+        override.setCode(null);
+
+        assertThrows(ValidationException.class, () -> service.add(override));
+        verifyNoInteractions(resourceService, stakeholderService, defaultsService);
+    }
+
+    @Test
+    void add_rejectsBlankType() {
+        DashboardOverrides override = overrideWith("sh-1", widget("w-1"));
+        override.setType(" ");
 
         assertThrows(ValidationException.class, () -> service.add(override));
         verifyNoInteractions(resourceService, stakeholderService, defaultsService);
@@ -94,9 +101,8 @@ class DashboardOverrideServiceTest {
     @Test
     void add_rejectsOverrideWithIdNotPresentInDefaults() {
         DashboardOverrides override = overrideWith("sh-1", widget("w-1"), widget("unknown"));
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country"))
-                .thenReturn(Optional.of(defaultsWith("country", widget("w-1"))));
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, widget("w-1"))));
 
         ValidationException ex = assertThrows(ValidationException.class, () -> service.add(override));
         assertTrue(ex.getMessage().contains("unknown"));
@@ -106,8 +112,7 @@ class DashboardOverrideServiceTest {
     @Test
     void add_withNoDefaultsConfigured_skipsUnknownIdCheck() {
         DashboardOverrides override = overrideWith("sh-1", widget("any-id"));
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country")).thenReturn(Optional.empty());
+        when(defaultsService.getByCodeAndType(CODE, TYPE)).thenReturn(Optional.empty());
         setupForAdd();
 
         assertDoesNotThrow(() -> service.add(override));
@@ -117,9 +122,8 @@ class DashboardOverrideServiceTest {
     @Test
     void add_withValidOverrides_persists() {
         DashboardOverrides override = overrideWith("sh-1", widget("w-1"), widget("w-2"));
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country"))
-                .thenReturn(Optional.of(defaultsWith("country", widget("w-1"), widget("w-2"), widget("w-3"))));
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, widget("w-1"), widget("w-2"), widget("w-3"))));
         setupForAdd();
 
         DashboardOverrides result = service.add(override);
@@ -132,8 +136,8 @@ class DashboardOverrideServiceTest {
     void add_withNullWidgetList_skipsListValidationAndPersists() {
         DashboardOverrides override = new DashboardOverrides();
         override.setCode(CODE);
-        override.setStakeholderId("sh-1");
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
+        override.setType(TYPE);
+        override.setGroupId("sh-1");
         setupForAdd();
 
         service.add(override);
@@ -147,22 +151,21 @@ class DashboardOverrideServiceTest {
     @Test
     void update_rejectsDuplicateWidgetIds() {
         DashboardOverrides override = overrideWith("sh-1", widget("w-1"), widget("w-1"));
-        override.setId("i-country-pages-country-GR");
+        override.setId("i-country-pages-country-sh-1");
 
-        assertThrows(ValidationException.class, () -> service.update("i-country-pages-country-GR", override));
+        assertThrows(ValidationException.class, () -> service.update("i-country-pages-country-sh-1", override));
         verifyNoInteractions(resourceService, stakeholderService, defaultsService);
     }
 
     @Test
     void update_withValidOverrides_persists() throws ResourceNotFoundException {
         DashboardOverrides override = overrideWith("sh-1", widget("w-1"));
-        override.setId("i-country-pages-country-GR");
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country"))
-                .thenReturn(Optional.of(defaultsWith("country", widget("w-1"), widget("w-2"))));
-        setupForUpdate("i-country-pages-country-GR");
+        override.setId("i-country-pages-country-sh-1");
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, widget("w-1"), widget("w-2"))));
+        setupForUpdate("i-country-pages-country-sh-1");
 
-        service.update("i-country-pages-country-GR", override);
+        service.update("i-country-pages-country-sh-1", override);
 
         verify(resourceService).updateResource(any());
     }
@@ -173,12 +176,11 @@ class DashboardOverrideServiceTest {
     void getEffectiveWidgets_returnsDefaultsWhenNoOverrideExists() {
         Widget w1 = fullWidget("w-1", "Label 1", true, "number", "Open Data");
         Widget w2 = fullWidget("w-2", "Label 2", false, "percentage", "Open Software");
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country"))
-                .thenReturn(Optional.of(defaultsWith("country", w1, w2)));
-        doReturn(Optional.empty()).when(service).getByCodeAndStakeholderId(CODE, "sh-1");
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, w1, w2)));
+        doReturn(Optional.empty()).when(service).getByCodeAndTypeAndGroupId(CODE, TYPE, "sh-1");
 
-        List<Widget> result = service.getEffectiveWidgets(CODE, "sh-1");
+        List<Widget> result = service.getEffectiveWidgets(CODE, TYPE, "sh-1");
 
         assertEquals(2, result.size());
         assertSame(w1, result.get(0));
@@ -188,15 +190,12 @@ class DashboardOverrideServiceTest {
     @Test
     void getEffectiveWidgets_returnsDefaultsWhenOverrideHasNullWidgets() {
         Widget w1 = fullWidget("w-1", "Label 1", true, "number", "Open Data");
-        DashboardOverrides override = new DashboardOverrides();
-        override.setCode(CODE);
-        override.setStakeholderId("sh-1");
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country"))
-                .thenReturn(Optional.of(defaultsWith("country", w1)));
-        doReturn(Optional.of(override)).when(service).getByCodeAndStakeholderId(CODE, "sh-1");
+        DashboardOverrides override = overrideWith("sh-1");
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, w1)));
+        doReturn(Optional.of(override)).when(service).getByCodeAndTypeAndGroupId(CODE, TYPE, "sh-1");
 
-        List<Widget> result = service.getEffectiveWidgets(CODE, "sh-1");
+        List<Widget> result = service.getEffectiveWidgets(CODE, TYPE, "sh-1");
 
         assertEquals(1, result.size());
         assertSame(w1, result.get(0));
@@ -206,12 +205,11 @@ class DashboardOverrideServiceTest {
     void getEffectiveWidgets_appliesVisibilityOverride() {
         Widget defaultWidget = fullWidget("w-1", "Label 1", true, "number", "Open Data");
         DashboardOverrides override = overrideWith("sh-1", visibilityOverride("w-1", false));
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country"))
-                .thenReturn(Optional.of(defaultsWith("country", defaultWidget)));
-        doReturn(Optional.of(override)).when(service).getByCodeAndStakeholderId(CODE, "sh-1");
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, defaultWidget)));
+        doReturn(Optional.of(override)).when(service).getByCodeAndTypeAndGroupId(CODE, TYPE, "sh-1");
 
-        List<Widget> result = service.getEffectiveWidgets(CODE, "sh-1");
+        List<Widget> result = service.getEffectiveWidgets(CODE, TYPE, "sh-1");
 
         assertEquals(1, result.size());
         assertEquals("w-1", result.get(0).getId());
@@ -225,12 +223,11 @@ class DashboardOverrideServiceTest {
     void getEffectiveWidgets_overrideMakesHiddenWidgetVisible() {
         Widget defaultWidget = fullWidget("w-1", "Label 1", false, "chart", "Open Software");
         DashboardOverrides override = overrideWith("sh-1", visibilityOverride("w-1", true));
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country"))
-                .thenReturn(Optional.of(defaultsWith("country", defaultWidget)));
-        doReturn(Optional.of(override)).when(service).getByCodeAndStakeholderId(CODE, "sh-1");
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, defaultWidget)));
+        doReturn(Optional.of(override)).when(service).getByCodeAndTypeAndGroupId(CODE, TYPE, "sh-1");
 
-        List<Widget> result = service.getEffectiveWidgets(CODE, "sh-1");
+        List<Widget> result = service.getEffectiveWidgets(CODE, TYPE, "sh-1");
 
         assertTrue(result.get(0).isVisible());
     }
@@ -240,19 +237,79 @@ class DashboardOverrideServiceTest {
         Widget w1 = fullWidget("w-1", "Label 1", true, "number", "Open Data");
         Widget w2 = fullWidget("w-2", "Label 2", true, "percentage", "Open Data");
         DashboardOverrides override = overrideWith("sh-1", visibilityOverride("w-1", false));
-        when(stakeholderService.get("sh-1")).thenReturn(stakeholder("country", "GR"));
-        when(defaultsService.getByCodeAndType(CODE, "country"))
-                .thenReturn(Optional.of(defaultsWith("country", w1, w2)));
-        doReturn(Optional.of(override)).when(service).getByCodeAndStakeholderId(CODE, "sh-1");
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, w1, w2)));
+        doReturn(Optional.of(override)).when(service).getByCodeAndTypeAndGroupId(CODE, TYPE, "sh-1");
 
-        List<Widget> result = service.getEffectiveWidgets(CODE, "sh-1");
+        List<Widget> result = service.getEffectiveWidgets(CODE, TYPE, "sh-1");
 
         assertEquals(2, result.size());
         assertFalse(result.get(0).isVisible(), "w-1 overridden to hidden");
         assertSame(w2, result.get(1), "w-2 not overridden — original returned");
     }
 
+    @Test
+    void getEffectiveWidgets_overriddenWidgetKeepsEveryDefaultField() {
+        Widget defaultWidget = fullWidget("w-1", "Label 1", true, "number", "Open Data");
+        DashboardOverrides override = overrideWith("sh-1", visibilityOverride("w-1", false));
+        when(defaultsService.getByCodeAndType(CODE, TYPE))
+                .thenReturn(Optional.of(defaultsWith(TYPE, defaultWidget)));
+        doReturn(Optional.of(override)).when(service).getByCodeAndTypeAndGroupId(CODE, TYPE, "sh-1");
+
+        Widget effective = service.getEffectiveWidgets(CODE, TYPE, "sh-1").get(0);
+
+        assertNotSame(defaultWidget, effective);
+        assertTrue(defaultWidget.isVisible(), "default widget must not be mutated");
+    }
+
+    // --- requireGroupOfType ---
+
+    @Test
+    void requireGroupOfType_acceptsMatchingType() {
+        when(stakeholderService.get("sh-1")).thenReturn(stakeholderOfType(TYPE));
+
+        assertDoesNotThrow(() -> service.requireGroupOfType(TYPE, "sh-1"));
+    }
+
+    @Test
+    void requireGroupOfType_rejectsTypeMismatch() {
+        when(stakeholderService.get("sh-1")).thenReturn(stakeholderOfType("eosc-sb"));
+
+        assertThrows(ResourceNotFoundException.class, () -> service.requireGroupOfType(TYPE, "sh-1"));
+    }
+
+    @Test
+    void requireGroupOfType_rejectsUnknownGroup() {
+        when(stakeholderService.get("missing")).thenReturn(null);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.requireGroupOfType(TYPE, "missing"));
+    }
+
+    @Test
+    void upsert_rejectsNullCodeWithValidationException() {
+        DashboardOverrides override = overrideWith("sh-1", widget("w-1"));
+        override.setCode(null);
+
+        assertThrows(ValidationException.class, () -> service.upsert(override));
+        verifyNoInteractions(resourceService, stakeholderService);
+    }
+
+    @Test
+    void upsert_rejectsTypeMismatchBeforeWriting() {
+        when(stakeholderService.get("sh-1")).thenReturn(stakeholderOfType("eosc-sb"));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.upsert(overrideWith("sh-1", widget("w-1"))));
+        verifyNoInteractions(resourceService);
+    }
+
     // --- helpers ---
+
+    private Stakeholder stakeholderOfType(String type) {
+        Stakeholder s = new Stakeholder();
+        s.setType(type);
+        return s;
+    }
 
     private void setupForAdd() {
         ResourceType rt = resourceType();
@@ -274,13 +331,6 @@ class DashboardOverrideServiceTest {
         return rt;
     }
 
-    private Stakeholder stakeholder(String type, String country) {
-        Stakeholder sh = new Stakeholder();
-        sh.setType(type);
-        sh.setCountry(country);
-        return sh;
-    }
-
     private DashboardDefaults defaultsWith(String type, Widget... widgets) {
         DashboardDefaults d = new DashboardDefaults();
         d.setCode(CODE);
@@ -289,10 +339,11 @@ class DashboardOverrideServiceTest {
         return d;
     }
 
-    private DashboardOverrides overrideWith(String stakeholderId, Widget... widgets) {
+    private DashboardOverrides overrideWith(String groupId, Widget... widgets) {
         DashboardOverrides o = new DashboardOverrides();
         o.setCode(CODE);
-        o.setStakeholderId(stakeholderId);
+        o.setType(TYPE);
+        o.setGroupId(groupId);
         o.setWidgets(List.of(widgets));
         return o;
     }

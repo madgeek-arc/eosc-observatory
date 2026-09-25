@@ -1,5 +1,6 @@
 package eu.openaire.observatory.service;
 
+import eu.openaire.observatory.widget.DashboardCode;
 import eu.openaire.observatory.widget.Widget;
 import eu.openaire.observatory.widget.DashboardDefaults;
 import gr.uoa.di.madgik.catalogue.exception.ValidationException;
@@ -24,7 +25,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class DashboardDefaultsServiceTest {
 
-    private static final String RESOURCE_TYPE = "default_indicators";
+    private static final String RESOURCE_TYPE = "dashboard_defaults";
 
     @Mock ResourceTypeService resourceTypeService;
     @Mock ResourceService resourceService;
@@ -45,16 +46,32 @@ class DashboardDefaultsServiceTest {
     @Test
     void createId_combinesCodeAndType() {
         DashboardDefaults d = new DashboardDefaults();
-        d.setCode("country-pages");
+        d.setCode(DashboardCode.COUNTRY_PAGES);
         d.setType("country");
 
-        assertEquals("i-country-pages-country", service.createId(d));
+        assertEquals("d-country-pages-country", service.createId(d));
     }
 
     @Test
-    void add_rejectsBlankCode() {
+    void add_rejectsNullCode() {
         DashboardDefaults d = defaultsWith("country", widget("w-1", true));
-        d.setCode(" ");
+        d.setCode(null);
+
+        assertThrows(ValidationException.class, () -> service.add(d));
+        verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void add_rejectsBlankType() {
+        DashboardDefaults d = defaultsWith(" ", widget("w-1", true));
+
+        assertThrows(ValidationException.class, () -> service.add(d));
+        verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void add_rejectsNullType() {
+        DashboardDefaults d = defaultsWith(null, widget("w-1", true));
 
         assertThrows(ValidationException.class, () -> service.add(d));
         verifyNoInteractions(resourceService);
@@ -91,7 +108,7 @@ class DashboardDefaultsServiceTest {
     @Test
     void add_withNullWidgetList_skipsListValidationAndPersists() {
         DashboardDefaults d = new DashboardDefaults();
-        d.setCode("country-pages");
+        d.setCode(DashboardCode.COUNTRY_PAGES);
         d.setType("country");
         setupForAdd();
 
@@ -160,7 +177,7 @@ class DashboardDefaultsServiceTest {
 
     private DashboardDefaults defaultsWith(String type, Widget... widgets) {
         DashboardDefaults d = new DashboardDefaults();
-        d.setCode("country-pages");
+        d.setCode(DashboardCode.COUNTRY_PAGES);
         d.setType(type);
         d.setWidgets(List.of(widgets));
         return d;

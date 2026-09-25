@@ -15,6 +15,14 @@ public class Widget {
     public Widget() {
     }
 
+    public Widget(Widget other) {
+        this.id = other.id;
+        this.label = other.label;
+        this.visible = other.visible;
+        this.format = other.format;
+        this.group = other.group;
+    }
+
     public String getId() {
         return id;
     }
