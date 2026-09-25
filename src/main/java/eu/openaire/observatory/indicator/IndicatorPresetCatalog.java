@@ -207,6 +207,16 @@ public class IndicatorPresetCatalog {
      * {@code publications.count} / {@code datasets.count} grouped by {@code accessStatus}. Every
      * cell carries an {@code accessStatus} selector so the preset-query endpoint fans out one
      * series per access type (and adds {@code country} for the selected-countries cells).
+     *
+     * <p>The {@code SELECTED_COUNTRIES}/{@code TIME_RANGE} cell offers a switcher over that same
+     * {@code [accessStatus, country]}-grouped response: {@code MULTI_STACKED_COLUMNS} ("By access
+     * type") draws every access-type series stacked per country, while {@code
+     * MULTI_SERIES_LINE_CHART} ("Open Access share") draws one line per country computed
+     * client-side as {@code OA count ÷ sum of all accessStatus counts} for that country/year — a
+     * percentage, unlike the preset's own {@code COUNT} format, and never re-queried when the
+     * actor switches tabs. {@code MULTI_STACKED_COLUMNS} (not {@code STACKED_COLUMN}) is
+     * deliberate: {@code STACKED_COLUMN} as the default style would trigger {@code groupByFor}'s
+     * classification add-on for indicators that bind it, which this cell doesn't want.
      */
     private static List<PresetView> accessTypeTrendViews() {
         ViewSelector selector = new ViewSelector(ACCESS_STATUS_DIMENSION, "Access type", List.of());
@@ -214,7 +224,11 @@ public class IndicatorPresetCatalog {
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_BAR_WITH_PROGRESS, selector),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS, selector),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MULTI_STACKED_BARS, selector),
-            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_COLUMNS_AND_MULTI_SERIES_LINE, selector));
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE,
+                List.of(
+                    new RenderStyleOption(RenderStyle.MULTI_STACKED_COLUMNS, "By access type"),
+                    new RenderStyleOption(RenderStyle.MULTI_SERIES_LINE_CHART, "Open Access share")),
+                selector, false));
     }
 
     /** "Total amount of investments in EOSC and Open Science" ({@code inv-1}). No selector — one summed figure. */

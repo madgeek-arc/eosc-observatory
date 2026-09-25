@@ -499,6 +499,26 @@ class IndicatorPresetCatalogTest {
     }
 
     @Test
+    void ost3AndOst4SelectedCountriesTimeRangeCellOffersAnAccessTypeAndOpenAccessShareSwitcher() {
+        for (String id : List.of("ost-3", "ost-4")) {
+            IndicatorPreset preset = catalog.get(id);
+            PresetView switcherView = preset.views().stream()
+                .filter(view -> view.countryScope() == CountryScope.SELECTED_COUNTRIES && view.timeScope() == TimeScope.TIME_RANGE)
+                .findFirst().orElseThrow();
+
+            assertThat(switcherView.renderStyles()).as(id).extracting(RenderStyleOption::style).containsExactly(
+                RenderStyle.MULTI_STACKED_COLUMNS, RenderStyle.MULTI_SERIES_LINE_CHART);
+            assertThat(switcherView.renderStyles()).as(id).extracting(RenderStyleOption::label).containsExactly(
+                "By access type", "Open Access share");
+
+            // groupBy stays [accessStatus, country] regardless of which switcher option is on screen.
+            IndicatorQuery query = catalog.toIndicatorQuery(preset, List.of("GR", "IT"), 2019, 2023, List.of());
+            assertThat(query.groupBy()).as(id).containsExactly(
+                IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+        }
+    }
+
+    @Test
     void everyAreaTrendPresetOffersTheSameThreeWaySwitcherAsOst1() {
         // nm-1 is the one exception — see nm1TimeRangeSwitcherOmitsCoverageTrend below.
         List<String> areaTrendPresetIds = List.of("ost-1", "ost-2", "osp-1", "osp-2", "osp-4", "osp-5");

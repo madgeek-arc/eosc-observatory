@@ -108,15 +108,18 @@ public enum RenderStyle {
     MULTI_STACKED_BARS,
 
     /**
+     * One stacked column chart per country, across the year range — {@link #MULTI_STACKED_BARS}'s
+     * time-range counterpart. Deliberately distinct from {@link #STACKED_COLUMN}: unlike that
+     * style, this one does not trigger {@code groupByFor}'s classification add-on, since here the
+     * stack is the selector's dimension, not a classification breakdown.
+     */
+    MULTI_STACKED_COLUMNS,
+
+    /**
      * Pie chart paired with a companion list of progress bars carrying both the percentages and the
      * absolute numbers, for a single year.
      */
     PIE_WITH_PROGRESS_BARS,
-
-    /**
-     * Composite: per-country column charts as one view, a multi-series line chart as the other.
-     */
-    COMPOSITE_COLUMNS_AND_MULTI_SERIES_LINE,
 
     /**
      * Composite: a per-year / cumulative toggle over multi-series line charts.
