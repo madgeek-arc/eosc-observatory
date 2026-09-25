@@ -1,6 +1,10 @@
-package eu.openaire.observatory.domain;
+package eu.openaire.observatory.widget;
 
-public class Indicator {
+/**
+ * One toggleable card on a stakeholder-facing page (a chart, a number/percentage figure,
+ * or a plain informational card), with its section grouping and visibility.
+ */
+public class Widget {
 
     private String id;
     private String label;
@@ -8,7 +12,7 @@ public class Indicator {
     private String format;
     private String group;
 
-    public Indicator() {
+    public Widget() {
     }
 
     public String getId() {

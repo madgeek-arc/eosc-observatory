@@ -9,6 +9,13 @@
     },
     {
       "multivalued": false,
+      "name": "code",
+      "label": "Catalog code",
+      "path": "$.code",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
       "name": "type",
       "label": "Type",
       "path": "$.type",
@@ -34,7 +41,7 @@
   "aliases": ["resourceTypes"],
   "payloadType": "json",
   "properties": {
-    "class": "eu.openaire.observatory.domain.DefaultIndicators"
+    "class": "eu.openaire.observatory.widget.DashboardDefaults"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/\"\n}"
 }

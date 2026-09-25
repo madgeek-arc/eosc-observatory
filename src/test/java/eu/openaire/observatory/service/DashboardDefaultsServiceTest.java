@@ -1,7 +1,7 @@
 package eu.openaire.observatory.service;
 
-import eu.openaire.observatory.domain.DefaultIndicators;
-import eu.openaire.observatory.domain.Indicator;
+import eu.openaire.observatory.widget.Widget;
+import eu.openaire.observatory.widget.DashboardDefaults;
 import gr.uoa.di.madgik.catalogue.exception.ValidationException;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.Resource;
@@ -22,7 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class DefaultIndicatorsServiceTest {
+class DashboardDefaultsServiceTest {
 
     private static final String RESOURCE_TYPE = "default_indicators";
 
@@ -33,92 +33,103 @@ class DefaultIndicatorsServiceTest {
     @Mock ParserService parserService;
     @Mock ModelResponseValidator validator;
 
-    private DefaultIndicatorsService service;
+    private DashboardDefaultsService service;
 
     @BeforeEach
     void setUp() {
-        service = spy(new DefaultIndicatorsService(
+        service = spy(new DashboardDefaultsService(
                 resourceTypeService, resourceService, searchService,
                 versionService, parserService, validator));
     }
 
     @Test
-    void createId_usesType() {
-        DefaultIndicators d = new DefaultIndicators();
+    void createId_combinesCodeAndType() {
+        DashboardDefaults d = new DashboardDefaults();
+        d.setCode("country-pages");
         d.setType("country");
 
-        assertEquals("i-country", service.createId(d));
+        assertEquals("i-country-pages-country", service.createId(d));
     }
 
     @Test
-    void add_rejectsBlankIndicatorId() {
-        DefaultIndicators d = defaultsWith("country", indicator(null, true), indicator("ind-1", true));
+    void add_rejectsBlankCode() {
+        DashboardDefaults d = defaultsWith("country", widget("w-1", true));
+        d.setCode(" ");
 
         assertThrows(ValidationException.class, () -> service.add(d));
         verifyNoInteractions(resourceService);
     }
 
     @Test
-    void add_rejectsEmptyIndicatorId() {
-        DefaultIndicators d = defaultsWith("country", indicator("  ", true));
+    void add_rejectsBlankWidgetId() {
+        DashboardDefaults d = defaultsWith("country", widget(null, true), widget("w-1", true));
 
         assertThrows(ValidationException.class, () -> service.add(d));
         verifyNoInteractions(resourceService);
     }
 
     @Test
-    void add_rejectsDuplicateIndicatorIds() {
-        DefaultIndicators d = defaultsWith("country",
-                indicator("ind-1", true),
-                indicator("ind-2", false),
-                indicator("ind-1", false));
+    void add_rejectsEmptyWidgetId() {
+        DashboardDefaults d = defaultsWith("country", widget("  ", true));
+
+        assertThrows(ValidationException.class, () -> service.add(d));
+        verifyNoInteractions(resourceService);
+    }
+
+    @Test
+    void add_rejectsDuplicateWidgetIds() {
+        DashboardDefaults d = defaultsWith("country",
+                widget("w-1", true),
+                widget("w-2", false),
+                widget("w-1", false));
 
         ValidationException ex = assertThrows(ValidationException.class, () -> service.add(d));
-        assertTrue(ex.getMessage().contains("ind-1"));
+        assertTrue(ex.getMessage().contains("w-1"));
         verifyNoInteractions(resourceService);
     }
 
     @Test
-    void add_withNullIndicatorList_skipsValidationAndPersists() {
-        DefaultIndicators d = new DefaultIndicators();
+    void add_withNullWidgetList_skipsListValidationAndPersists() {
+        DashboardDefaults d = new DashboardDefaults();
+        d.setCode("country-pages");
         d.setType("country");
         setupForAdd();
 
-        DefaultIndicators result = service.add(d);
+        DashboardDefaults result = service.add(d);
 
         assertSame(d, result);
         verify(resourceService).addResource(any());
     }
 
     @Test
-    void add_withValidIndicators_persists() {
-        DefaultIndicators d = defaultsWith("country", indicator("ind-1", true), indicator("ind-2", false));
+    void add_withValidWidgets_persists() {
+        DashboardDefaults d = defaultsWith("country", widget("w-1", true), widget("w-2", false));
         setupForAdd();
 
-        DefaultIndicators result = service.add(d);
+        DashboardDefaults result = service.add(d);
 
         assertSame(d, result);
         verify(resourceService).addResource(any());
     }
 
     @Test
-    void update_rejectsDuplicateIndicatorIds() throws ResourceNotFoundException {
-        DefaultIndicators d = defaultsWith("country",
-                indicator("ind-1", true),
-                indicator("ind-1", false));
-        d.setId("i-country");
+    void update_rejectsDuplicateWidgetIds() throws ResourceNotFoundException {
+        DashboardDefaults d = defaultsWith("country",
+                widget("w-1", true),
+                widget("w-1", false));
+        d.setId("i-country-pages-country");
 
-        assertThrows(ValidationException.class, () -> service.update("i-country", d));
+        assertThrows(ValidationException.class, () -> service.update("i-country-pages-country", d));
         verifyNoInteractions(resourceService);
     }
 
     @Test
-    void update_withValidIndicators_persists() throws ResourceNotFoundException {
-        DefaultIndicators d = defaultsWith("country", indicator("ind-1", true), indicator("ind-2", false));
-        d.setId("i-country");
-        setupForUpdate("i-country");
+    void update_withValidWidgets_persists() throws ResourceNotFoundException {
+        DashboardDefaults d = defaultsWith("country", widget("w-1", true), widget("w-2", false));
+        d.setId("i-country-pages-country");
+        setupForUpdate("i-country-pages-country");
 
-        DefaultIndicators result = service.update("i-country", d);
+        DashboardDefaults result = service.update("i-country-pages-country", d);
 
         assertSame(d, result);
         verify(resourceService).updateResource(any());
@@ -147,17 +158,18 @@ class DefaultIndicatorsServiceTest {
         return rt;
     }
 
-    private DefaultIndicators defaultsWith(String type, Indicator... indicators) {
-        DefaultIndicators d = new DefaultIndicators();
+    private DashboardDefaults defaultsWith(String type, Widget... widgets) {
+        DashboardDefaults d = new DashboardDefaults();
+        d.setCode("country-pages");
         d.setType(type);
-        d.setIndicators(List.of(indicators));
+        d.setWidgets(List.of(widgets));
         return d;
     }
 
-    private Indicator indicator(String id, boolean visible) {
-        Indicator i = new Indicator();
-        i.setId(id);
-        i.setVisible(visible);
-        return i;
+    private Widget widget(String id, boolean visible) {
+        Widget w = new Widget();
+        w.setId(id);
+        w.setVisible(visible);
+        return w;
     }
 }

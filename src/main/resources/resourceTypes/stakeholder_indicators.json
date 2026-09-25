@@ -9,6 +9,13 @@
     },
     {
       "multivalued": false,
+      "name": "code",
+      "label": "Catalog code",
+      "path": "$.code",
+      "type": "java.lang.String"
+    },
+    {
+      "multivalued": false,
       "name": "stakeholderId",
       "label": "Stakeholder ID",
       "path": "$.stakeholderId",
@@ -27,7 +34,7 @@
   "aliases": ["resourceTypes"],
   "payloadType": "json",
   "properties": {
-    "class": "eu.openaire.observatory.domain.StakeholderIndicatorsOverride"
+    "class": "eu.openaire.observatory.widget.DashboardOverrides"
   },
   "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/\"\n}"
 }
