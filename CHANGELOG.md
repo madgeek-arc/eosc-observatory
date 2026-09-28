@@ -49,7 +49,7 @@
 
 ### Bug Fixes
 
-* log errors from fire-and-forget post-thread-update tasks ([21eea3b](https://github.com/madgeek-arc/eosc-observatory/commit/21eea3b8783bd816083d05eabfce7b0c24d48422))
+* log errors from fire-and-forget post-thread-update tasks ([d112a52](https://github.com/madgeek-arc/eosc-observatory/commit/d112a527462f6494329c403928f5e4fe0f2cb2ac))
 
 ## [4.4.1](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.0...4.4.1) (2026-09-11)
 
@@ -57,7 +57,7 @@
 ### Bug Fixes
 
 * allow coordinators to update stakeholder users ([8c0515f](https://github.com/madgeek-arc/eosc-observatory/commit/8c0515f0a9d2ed9e27bcbcd6601e2a5a63eb21ba))
-* compare TypeInfo.getType() == FieldType.composite instead of string equals ([ad7e201](https://github.com/madgeek-arc/eosc-observatory/commit/ad7e2017ec1c3cd03ec7b5d26bc7d14cec6b506c))
+* compare TypeInfo.getType() == FieldType.composite instead of string equals ([39a9490](https://github.com/madgeek-arc/eosc-observatory/commit/39a949040ba4ca5c5da9e6a5b9bcd5a70f73a454))
 * null-guard user id/email lookups in survey history and CSV export ([de60b25](https://github.com/madgeek-arc/eosc-observatory/commit/de60b252a07d777d1ddca0fa54a5992239a15d26))
 * throw error instead of hiding it ([8d72803](https://github.com/madgeek-arc/eosc-observatory/commit/8d728035e1109bb52cb83809e3c8e384ab435c21))
 * use setter to set email so it will be lowercased ([23183ca](https://github.com/madgeek-arc/eosc-observatory/commit/23183ca2008be23cf564ff89fbaa28071b63e3c4))
