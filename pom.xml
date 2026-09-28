@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>eu.openaire</groupId>
 	<artifactId>observatory</artifactId>
-	<version>4.5.0</version>
+	<version>4.5.1-SNAPSHOT</version>
 	<name>observatory</name>
 	<description>EOSC Observatory</description>
 
@@ -28,7 +28,7 @@
 		<dependency-check.version>12.2.2</dependency-check.version>
 		<tomcat.version>11.0.24</tomcat.version>
 		<postgresql.version>42.7.13</postgresql.version>
-		<argLine></argLine>
+		<argLine/>
 	</properties>
 
 	<dependencies>
