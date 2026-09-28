@@ -144,7 +144,7 @@ class SurveyCSVConverterTest {
         SurveyAnswer surveyAnswer = answer("sh-1", answerData);
         mockAnswers(model, surveyAnswer);
 
-        String csv = converter.convertToCSV(model.getId(), false, FROM, TO);
+        String csv = converter.convertToCSV(model.getId(), false, false, FROM, TO);
 
         String expectedHeader = "Practices->Question89->84. How many repositories offered long-term data preservation in your country in 2024?";
         assertThat(csv).contains(expectedHeader);
@@ -180,7 +180,7 @@ class SurveyCSVConverterTest {
         SurveyAnswer surveyAnswer = answer("sh-1", answerData);
         mockAnswers(model, surveyAnswer);
 
-        String csv = converter.convertToCSV(model.getId(), false, FROM, TO);
+        String csv = converter.convertToCSV(model.getId(), false, false, FROM, TO);
 
         String baseHeader = "Practices->Question55->50.1. Please provide a short description of the use case";
         assertThat(csv).contains(baseHeader);
@@ -225,7 +225,7 @@ class SurveyCSVConverterTest {
         SurveyAnswer surveyAnswer = answer("sh-1", answerData);
         mockAnswers(model, surveyAnswer);
 
-        String csv = converter.convertToCSV(model.getId(), false, FROM, TO);
+        String csv = converter.convertToCSV(model.getId(), false, false, FROM, TO);
 
         String expectedHeader = "Practices->Question55->50.2.1. Which repositories do you use?";
         assertThat(csv).contains(expectedHeader);

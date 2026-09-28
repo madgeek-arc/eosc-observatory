@@ -107,25 +107,24 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
     @Override
     public Stakeholder updateContributors(String stakeholderId, Set<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
-        Set<String> previousContributors = stakeholder.getMembers();
+        Set<String> previousContributors = new HashSet<>(stakeholder.getMembers() != null ? stakeholder.getMembers() : Set.of());
 
-        if (userIds != null && previousContributors != null) {
-            for (String contributor : userIds) {
-                previousContributors.remove(contributor);
-            }
+        if (userIds != null) {
+            previousContributors.removeAll(userIds);
         }
 
-        permissionService.removeAll(previousContributors, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+        List<SurveyAnswer> allAnswers = surveyService.getAllByStakeholder(stakeholderId);
+        List<String> allResourceIds = getSurveyAnswerIds(allAnswers);
+        permissionService.removePermissions(previousContributors,
+                List.of(Permissions.READ.getKey(), Permissions.WRITE.getKey()),
+                allResourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
         stakeholder.setMembers(userIds);
 
         // read access for all resources
-        List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerIds(answers);
         addContributorPermissions(userIds, allResourceIds);
 
         // all contributor permissions for active resource
-        answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerIds(answers);
+        List<String> resourceIds = getSurveyAnswerIds(surveyService.getActive(stakeholderId));
         addContributorFullPermissions(userIds, resourceIds);
 
         return update(stakeholderId, stakeholder);
@@ -155,27 +154,31 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
 
     @Override
     public SortedSet<String> removeMember(String stakeholderId, String memberId) {
-        permissionService.removeAll(memberId, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
+        List<String> resourceIds = getSurveyAnswerIds(surveyService.getAllByStakeholder(stakeholderId));
+        permissionService.removePermissions(Collections.singleton(memberId),
+                List.of(Permissions.READ.getKey(), Permissions.WRITE.getKey()),
+                resourceIds, Groups.STAKEHOLDER_CONTRIBUTOR.getKey());
         return super.removeMember(stakeholderId, memberId);
     }
 
     @Override
     public Stakeholder updateManagers(String stakeholderId, Set<String> userIds) {
         Stakeholder stakeholder = get(stakeholderId);
-        Set<String> previousManagers = stakeholder.getAdmins();
+        Set<String> previousManagers = new HashSet<>(stakeholder.getAdmins() != null ? stakeholder.getAdmins() : Set.of());
 
-        if (userIds != null && previousManagers != null) {
-            for (String manager : userIds) {
-                previousManagers.remove(manager);
-            }
+        if (userIds != null) {
+            previousManagers.removeAll(userIds);
         }
 
-        permissionService.removeAll(previousManagers, Groups.STAKEHOLDER_MANAGER.getKey());
+        List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
+        List<String> allResourceIds = getSurveyAnswerIds(answers);
+        permissionService.removePermissions(previousManagers,
+                List.of(Permissions.READ.getKey(), Permissions.WRITE.getKey(),
+                        Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey()),
+                allResourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
         stakeholder.setAdmins(userIds);
 
         // read/manage/publish access for all resources
-        List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerIds(answers);
         addManagerPermissions(userIds, allResourceIds);
 
         // all manager permissions for active resources
@@ -208,20 +211,24 @@ public class StakeholderServiceImpl extends AbstractUserGroupService<Stakeholder
 
         // read/manage/publish access for all resources
         List<SurveyAnswer> answers = surveyService.getAllByStakeholder(stakeholderId);
-        List<String> allResourceIds = getSurveyAnswerIds(answers);
-        addManagerPermissions(Collections.singleton(userId), allResourceIds);
+        List<String> allAnswerIds = getSurveyAnswerIds(answers);
+        addManagerPermissions(Collections.singleton(userId), allAnswerIds);
 
         // all manager permissions for active resource
         answers = surveyService.getActive(stakeholderId);
-        List<String> resourceIds = getSurveyAnswerIds(answers);
-        addManagerFullPermissions(Collections.singleton(userId), resourceIds);
+        List<String> activeAnswerIds = getSurveyAnswerIds(answers);
+        addManagerFullPermissions(Collections.singleton(userId), activeAnswerIds);
 
         return stakeholder.getAdmins();
     }
 
     @Override
     public SortedSet<String> removeAdmin(String stakeholderId, String adminId) {
-        permissionService.removeAll(adminId, Groups.STAKEHOLDER_MANAGER.getKey());
+        List<String> resourceIds = getSurveyAnswerIds(surveyService.getAllByStakeholder(stakeholderId));
+        permissionService.removePermissions(Collections.singleton(adminId),
+                List.of(Permissions.READ.getKey(), Permissions.WRITE.getKey(),
+                        Permissions.MANAGE.getKey(), Permissions.PUBLISH.getKey()),
+                resourceIds, Groups.STAKEHOLDER_MANAGER.getKey());
         return super.removeAdmin(stakeholderId, adminId);
     }
 

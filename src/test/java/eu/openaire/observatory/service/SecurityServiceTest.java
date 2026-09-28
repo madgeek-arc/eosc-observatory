@@ -2,6 +2,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.permissions.PermissionService;
+import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,13 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,7 +32,7 @@ class SecurityServiceTest {
     @BeforeEach
     void setUp() {
         service = new SecurityService(permissionService, userService);
-        authentication = oidcAuthentication("user@example.org");
+        authentication = OidcTestUtils.oidcAuthentication("user@example.org");
         user = new User();
         user.setEmail("user@example.org");
     }
@@ -98,28 +92,4 @@ class SecurityServiceTest {
         assertFalse(service.hasPermission(authentication, "publish", "res-1"));
     }
 
-    private Authentication oidcAuthentication(String email) {
-        OidcIdToken idToken = new OidcIdToken(
-                "token",
-                Instant.now(),
-                Instant.now().plusSeconds(300),
-                Map.of(
-                        "sub", "sub-1",
-                        "email", email,
-                        "given_name", "User",
-                        "family_name", "Example",
-                        "name", "User Example"
-                )
-        );
-        DefaultOidcUser principal = new DefaultOidcUser(
-                List.of(new OidcUserAuthority(idToken)),
-                idToken,
-                "email"
-        );
-        return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                principal,
-                "token",
-                principal.getAuthorities()
-        );
-    }
 }

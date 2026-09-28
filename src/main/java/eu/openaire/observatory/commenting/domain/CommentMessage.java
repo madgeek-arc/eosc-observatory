@@ -93,7 +93,7 @@ public class CommentMessage {
         List<MessageMention> mentions = new ArrayList<>();
         if (mentionedUsers != null) {
             for (String mentionedUser : mentionedUsers) {
-                MessageMention mention = new MessageMention(this, mentionedUser);
+                MessageMention mention = new MessageMention(this, mentionedUser.toLowerCase());
                 mentions.add(mention);
             }
         }

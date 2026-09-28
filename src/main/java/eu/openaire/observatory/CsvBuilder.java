@@ -53,9 +53,9 @@ public class CsvBuilder {
     public CsvBuilder addColumn(String label, List<String> data) {
         if (!columns.isEmpty()) {
             if (data.size() != columnSize) {
-                throw new RuntimeException("Cannot add column of different size.");
+                throw new IllegalArgumentException("Cannot add column of different size.");
             } else if (columns.containsKey(label)) {
-                throw new RuntimeException("Column with the specified label already exists.");
+                throw new IllegalStateException("Column with the specified label already exists.");
             }
         } else {
             columnSize = data.size();

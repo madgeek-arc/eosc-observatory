@@ -148,7 +148,9 @@ public class User implements Identifiable<String> {
             throw new InsufficientAuthenticationException("Insufficient user authentication");
         }
         if (id == null || "".equals(id)) {
-            logger.error("Problem getting user id. Authentication: {}", auth);
+            logger.error("Problem getting user id. Authentication type: {}, Principal type: {}",
+                    auth.getClass().getSimpleName(),
+                    auth.getPrincipal() != null ? auth.getPrincipal().getClass().getSimpleName() : "null");
             throw new InsufficientAuthenticationException("Could not obtain user id through authentication.");
         }
         return id.toLowerCase();

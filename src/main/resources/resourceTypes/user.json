@@ -64,5 +64,5 @@
   "properties": {
     "class": "eu.openaire.observatory.domain.User"
   },
-  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/\"\n}"
 }

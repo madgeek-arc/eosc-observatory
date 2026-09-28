@@ -14,10 +14,16 @@
  * limitations under the License.
  */
 
-package eu.openaire.observatory.domain;
+package eu.openaire.observatory.service;
 
-public class SteeringBoardStakeholder extends Stakeholder {
+import eu.openaire.observatory.domain.SurveySettings;
+import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 
-    public SteeringBoardStakeholder() {
-    }
+public interface SurveySettingsService extends CrudService<SurveySettings> {
+
+    SurveySettings getByType(String surveyType);
+
+    SurveySettings upsert(SurveySettings settings);
+
+    SurveySettings deleteByType(String surveyType) throws ResourceNotFoundException;
 }

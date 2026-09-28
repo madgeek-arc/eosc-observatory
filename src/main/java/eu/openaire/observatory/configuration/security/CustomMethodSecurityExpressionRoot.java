@@ -16,20 +16,21 @@
 
 package eu.openaire.observatory.configuration.security;
 
+import eu.openaire.observatory.configuration.ApplicationProperties;
+import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.resources.model.Document;
-import eu.openaire.observatory.service.Identifiable;
 import eu.openaire.observatory.service.SecurityService;
-import gr.uoa.di.madgik.catalogue.utils.ReflectUtils;
+import eu.openaire.observatory.utils.HmacUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.access.expression.SecurityExpressionRoot;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 
 import java.io.Serializable;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
 public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
@@ -39,6 +40,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     private final MethodSecurityExpressions securityExpressions;
     private final SecurityService securityService;
+    private final ApplicationProperties applicationProperties;
 
     private Object filterObject;
     private Object returnObject;
@@ -46,11 +48,13 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     public CustomMethodSecurityExpressionRoot(Authentication authentication,
                                               MethodSecurityExpressions securityExpressions,
-                                              SecurityService securityService) {
+                                              SecurityService securityService,
+                                              ApplicationProperties applicationProperties) {
         super(authentication);
         this.setPermissionEvaluator(this);
         this.securityExpressions = securityExpressions;
         this.securityService = securityService;
+        this.applicationProperties = applicationProperties;
     }
 
 
@@ -96,7 +100,10 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     @Override
     public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
-        logger.debug("hasPermission(auth, targetDomainObject, permission)\nAuthentication: {}\nObject: {}\nPermission: {}", authentication, targetDomainObject, permission);
+        if (logger.isDebugEnabled()) {
+            logger.debug("hasPermission(auth, targetDomainObject, permission)\nUser: {}\nObject: {}\nPermission: {}",
+                    getUserEmailHmac(authentication), targetDomainObject, permission);
+        }
         if ((getAuthentication() == null) || (targetDomainObject == null) || !(permission instanceof String)) {
             return false;
         }
@@ -171,8 +178,8 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     }
 
     @Override
-    public boolean isAdministratorOfStakeholder(String stakehodlerId) {
-        return securityExpressions.isAdministratorOfStakeholder(stakehodlerId);
+    public boolean isAdministratorOfStakeholder(String stakeholderId) {
+        return securityExpressions.isAdministratorOfStakeholder(stakeholderId);
     }
 
     @Override
@@ -191,13 +198,13 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     }
 
     @Override
-    public boolean userIsCoordinatorOfStakeholder(String userId, String stakehodlerId) {
-        return securityExpressions.userIsCoordinatorOfStakeholder(userId, stakehodlerId);
+    public boolean userIsCoordinatorOfStakeholder(String userId, String stakeholderId) {
+        return securityExpressions.userIsCoordinatorOfStakeholder(userId, stakeholderId);
     }
 
     @Override
-    public boolean isCoordinatorOfStakeholder(String stakehodlerId) {
-        return securityExpressions.isCoordinatorOfStakeholder(stakehodlerId);
+    public boolean isCoordinatorOfStakeholder(String stakeholderId) {
+        return securityExpressions.isCoordinatorOfStakeholder(stakeholderId);
     }
 
     @Override
@@ -256,19 +263,14 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     /* ********************************************** */
 
     private String getResourceId(Object resource) {
-        // get resource id
-        String resourceId = null;
-        if (resource instanceof String) {
-            resourceId = resource.toString();
-        } else if (resource instanceof Identifiable) {
-            resourceId = ((Identifiable<String>) resource).getId();
-        } else {
-            try {
-                resourceId = ReflectUtils.getId(resource.getClass(), resource);
-            } catch (NoSuchFieldException | NoSuchMethodException | InvocationTargetException e) {
-                logger.error(e.getMessage(), e);
-            }
+        return SecurityUtils.getResourceId(resource, logger);
+    }
+
+    private String getUserEmailHmac(Authentication authentication) {
+        try {
+            return HmacUtils.hmacSha256Hex(applicationProperties.getJwsSigningSecret(), User.getId(authentication));
+        } catch (InsufficientAuthenticationException e) {
+            return "unknown";
         }
-        return resourceId;
     }
 }

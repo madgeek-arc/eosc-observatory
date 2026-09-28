@@ -1,11 +1,17 @@
 def DOCKER_IMAGE = null
 def DOCKER_TAG = ''
+def DOCKER_IMAGE_SHA = ''
 
 pipeline {
   agent { label 'master' }
 
+  tools {
+    jdk 'OpenJDK 21'
+  }
+
   options {
-    buildDiscarder(logRotator(numToKeepStr: '20'))
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+    disableConcurrentBuilds(abortPrevious: true)
     timeout(time: 60, unit: 'MINUTES')
     timestamps()
   }
@@ -21,36 +27,123 @@ pipeline {
     stage('Determine Docker Tag') {
       steps {
         script {
-          DOCKER_TAG = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
+          DOCKER_TAG = sh(script: "./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
           echo "Docker tag: ${DOCKER_TAG}"
           currentBuild.displayName = "${currentBuild.displayName}-${DOCKER_TAG}"
         }
       }
     }
 
-    stage('Build & Test') {
+    stage('Package') {
       steps {
-        sh 'mvn -B clean package'
-      }
-      post {
-        always {
-          junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml, **/target/failsafe-reports/TEST-*.xml'
-        }
+        sh './mvnw -B package -DskipTests'
       }
     }
-    stage('Build Image') {
-      when {
-        expression {
-          return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
+
+    stage('Test and Build Image') {
+      parallel {
+
+        stage('Run Tests') {
+          when { expression { return env.TAG_NAME == null } }
+          stages {
+
+            stage('Unit Tests') {
+              steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                  sh './mvnw -B jacoco:prepare-agent surefire:test'
+                  sh './mvnw -B jacoco:report'
+                }
+              }
+              post {
+                always {
+                  junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml'
+                }
+              }
+            }
+            stage('Integration Tests') {
+              steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                  sh './mvnw -B jacoco:prepare-agent-integration failsafe:integration-test failsafe:verify'
+                  sh './mvnw -B jacoco:report-integration'
+                }
+              }
+              post {
+                always {
+                  junit allowEmptyResults: true, testResults: '**/target/failsafe-reports/TEST-*.xml'
+                }
+              }
+            }
+
+          }
+          post {
+            always {
+              recordCoverage(
+                tools: [[parser: 'JACOCO', pattern: '**/target/site/jacoco/jacoco.xml, **/target/site/jacoco-it/jacoco.xml']],
+                sourceDirectories: [[path: 'src/main/java']]
+              )
+            }
+          }
         }
-      }
-      steps{
-        script {
-          // Requires a Dockerfile with only the runtime stage (no Maven build)
-          DOCKER_IMAGE = docker.build("${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG}", "--label job=${env.JOB_NAME} -f Dockerfile .")
+
+        // Check dependency vulnerabilities using OWASP
+        stage('Dependency Check') {
+          steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                sh './mvnw -B dependency-check:check -DnvdApiKey=$NVD_API_KEY'
+              }
+            }
+          }
+          post {
+            always {
+              archiveArtifacts allowEmptyArchive: true, artifacts: '**/dependency-check-report.*'
+              dependencyCheckPublisher(
+                pattern: '**/dependency-check-report.xml',
+                unstableTotalCritical: 1,
+                unstableTotalHigh: 3
+              )
+            }
+          }
         }
+
+        // Lint with MegaLinter: https://megalinter.io/
+        stage('MegaLinter') {
+          agent {
+            docker {
+              image 'oxsecurity/megalinter-java:latest'
+              args "-u root -e VALIDATE_ALL_CODEBASE=true -v ${WORKSPACE}:/tmp/lint --entrypoint=''"
+              reuseNode true
+            }
+          }
+          steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              sh '/entrypoint.sh'
+            }
+          }
+          post {
+            always {
+              archiveArtifacts allowEmptyArchive: true, artifacts: 'mega-linter.log,megalinter-reports/**/*', defaultExcludes: false, followSymlinks: false
+              sh "sed -i 's|file:///tmp/lint|file://${WORKSPACE}|g' megalinter-reports/megalinter-report.sarif || true"
+              recordIssues(
+                tools: [sarif(pattern: 'megalinter-reports/megalinter-report.sarif')],
+                qualityGates: [[threshold: 1, type: 'NEW', unstable: true]]
+              )
+            }
+          }
+        }
+
+        stage('Build Image') {
+          steps {
+            script {
+              DOCKER_IMAGE = docker.build("${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG}", "--label job=${env.JOB_NAME} -f Dockerfile .")
+              DOCKER_IMAGE_SHA = sh(script: "docker inspect --format='{{.Id}}' ${DOCKER_IMAGE.id}", returnStdout: true).trim()
+            }
+          }
+        }
+
       }
     }
+
     stage('Upload Image') {
       when { // upload images only from 'develop', 'main' or tags
         expression {
@@ -60,20 +153,21 @@ pipeline {
       steps{
         script {
           withCredentials([usernamePassword(credentialsId: "${REGISTRY_CRED}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-              echo "Pushing image: ${DOCKER_IMAGE.id}"
-              sh 'echo "$DOCKER_PASS" | docker login $REGISTRY -u "$DOCKER_USER" --password-stdin'
-              DOCKER_IMAGE.push()
-              if (env.TAG_NAME) {
-                def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
-                DOCKER_IMAGE.push(minorTag)
-                DOCKER_IMAGE.push("latest")
-              } else if (DOCKER_TAG.endsWith('-SNAPSHOT')) {
-                DOCKER_IMAGE.push("dev")
-              }
+            echo "Pushing image: ${DOCKER_IMAGE.id}"
+            sh 'echo "$DOCKER_PASS" | docker login $REGISTRY -u "$DOCKER_USER" --password-stdin'
+            DOCKER_IMAGE.push()
+            if (env.TAG_NAME) {
+              def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
+              DOCKER_IMAGE.push(minorTag)
+              DOCKER_IMAGE.push("latest")
+            } else if (DOCKER_TAG.endsWith('-SNAPSHOT')) {
+              DOCKER_IMAGE.push("dev")
+            }
           }
         }
       }
     }
+
     stage('Handle Releases') {
       when {
         allOf {
@@ -110,9 +204,8 @@ pipeline {
   post {
     always {
       script {
-        if (DOCKER_IMAGE) {
-          sh "docker rmi -f ${DOCKER_IMAGE.id}"
-          sh "docker image prune -f --filter label=job=${env.JOB_NAME}"
+        if (DOCKER_IMAGE_SHA) {
+          sh "docker rmi -f ${DOCKER_IMAGE_SHA} || true"
         }
       }
     }

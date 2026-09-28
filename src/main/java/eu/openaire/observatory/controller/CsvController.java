@@ -50,19 +50,19 @@ public class CsvController {
     )
     @PreAuthorize("hasAuthority('ADMIN') or hasCoordinatorAccessOnSurvey(#modelId) or hasStakeholderManagerAccessOnSurvey(#modelId)")
     public ResponseEntity<byte[]> exportSurveysToCsv(@PathVariable("id") String modelId,
+                                                     @RequestParam(value = "validatedOnly", defaultValue = "false") boolean validatedOnly,
                                                      @RequestParam(value = "dateFrom", required = false) String dateFrom,
                                                      @RequestParam(value = "dateTo", required = false) String dateTo,
                                                      HttpServletResponse response) throws ParseException {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-        Date from = dateFrom != null ? formatter.parse(dateFrom) : null;
-        Date to = dateTo != null ? formatter.parse(dateTo) : null;
+        Date[] dates = parseDateRange(dateFrom, dateTo);
 
         StringBuilder filename = new StringBuilder();
         filename.append(modelId);
+        filename.append(validatedOnly ? "_validated" : "");
         filename.append(".tsv");
         response.setHeader("Content-disposition", "attachment; filename=" + filename);
 
-        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, false, from, to).getBytes());
+        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, false, validatedOnly, dates[0], dates[1]).getBytes());
     }
 
     @GetMapping(
@@ -72,20 +72,28 @@ public class CsvController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<byte[]> exportExtendedSurveysToCsv(@PathVariable("id") String modelId,
                                                              @RequestParam(value = "includeUsers", defaultValue = "false") boolean includeUsers,
+                                                             @RequestParam(value = "validatedOnly", defaultValue = "false") boolean validatedOnly,
                                                              @RequestParam(value = "dateFrom", required = false) String dateFrom,
                                                              @RequestParam(value = "dateTo", required = false) String dateTo,
                                                              HttpServletResponse response) throws ParseException {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-        Date from = dateFrom != null ? formatter.parse(dateFrom) : null;
-        Date to = dateTo != null ? formatter.parse(dateTo) : null;
+        Date[] dates = parseDateRange(dateFrom, dateTo);
 
         StringBuilder filename = new StringBuilder();
         filename.append(modelId);
         filename.append(includeUsers ? "_users" : "");
+        filename.append(validatedOnly ? "_validated" : "");
         filename.append(".tsv");
         response.setHeader("Content-disposition", "attachment; filename=" + filename);
 
-        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, includeUsers, from, to).getBytes());
+        return ResponseEntity.ok(csvConverter.convertToCSV(modelId, includeUsers, validatedOnly, dates[0], dates[1]).getBytes());
+    }
+
+    private Date[] parseDateRange(String dateFrom, String dateTo) throws ParseException {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        return new Date[]{
+            dateFrom != null ? formatter.parse(dateFrom) : null,
+            dateTo != null ? formatter.parse(dateTo) : null
+        };
     }
 
     @PostMapping(value = "/import/answers/{id}")

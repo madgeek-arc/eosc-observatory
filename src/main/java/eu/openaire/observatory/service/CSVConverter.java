@@ -21,7 +21,7 @@ import java.util.List;
 
 public interface CSVConverter {
 
-    String convertToCSV(String modelId, boolean includeSensitiveData, Date from, Date to);
+    String convertToCSV(String modelId, boolean includeSensitiveData, boolean validatedOnly, Date from, Date to);
 
     List<?> ingestFromCSV(String modelId, String data);
 

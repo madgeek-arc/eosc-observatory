@@ -29,5 +29,5 @@
   "properties": {
     "class": "eu.openaire.observatory.domain.PrivacyPolicy"
   },
-  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/schema\"\n}"
+  "schema": "{\n\t\"$schema\": \"https://json-schema.org/draft/2019-09/\"\n}"
 }

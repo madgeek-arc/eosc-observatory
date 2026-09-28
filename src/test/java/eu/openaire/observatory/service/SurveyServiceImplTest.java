@@ -5,11 +5,13 @@ import eu.openaire.observatory.domain.History;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
+import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.dto.EditorDTO;
 import eu.openaire.observatory.dto.HistoryActionDTO;
 import eu.openaire.observatory.dto.HistoryDTO;
 import eu.openaire.observatory.dto.HistoryEntryDTO;
 import eu.openaire.observatory.permissions.PermissionService;
+import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
@@ -20,14 +22,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 
-import java.time.Instant;
+import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -125,48 +124,63 @@ class SurveyServiceImplTest {
         verify(surveyAnswerCrudService).get("sa-1");
     }
 
-    @Test
-    void getHistoryHandlesEditorWithNullEmailWithoutThrowing() throws ResourceNotFoundException {
-        EditorDTO editorDTO = new EditorDTO();
-        editorDTO.setEmail(null);
-        HistoryEntryDTO entryDTO = new HistoryEntryDTO();
-        entryDTO.setEditors(List.of(editorDTO));
-        entryDTO.setAction(HistoryActionDTO.of(History.HistoryAction.UPDATED, null));
-        HistoryDTO historyDTO = new HistoryDTO(List.of(entryDTO));
+    // enrichHistory tests — exercised via getHistory(), which calls enrichHistory() internally
 
-        when(surveyAnswerCrudService.getHistory(org.mockito.ArgumentMatchers.eq("sa-1"), org.mockito.ArgumentMatchers.any()))
-                .thenReturn(historyDTO);
-        // Mirrors the null-guard added in UserServiceImpl.get(): a null id is "not found", not a search error.
-        when(userService.get(org.mockito.ArgumentMatchers.isNull()))
-                .thenThrow(new ResourceNotFoundException(null, "user"));
+    @Test
+    void getHistorySetsFulnameToUnknownWhenEditorEmailIsNull() {
+        HistoryDTO historyDTO = historyWithEditors(new EditorDTO(null, "manager", new Date()));
+        when(surveyAnswerCrudService.getHistory(eq("sa-1"), any())).thenReturn(historyDTO);
 
         HistoryDTO result = service.getHistory("sa-1");
 
-        assertEquals("unknown", result.getEntries().get(0).getEditors().get(0).getFullname());
+        assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("unknown");
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void getHistorySetsFulnameToUnknownWhenEditorEmailIsEmpty() {
+        HistoryDTO historyDTO = historyWithEditors(new EditorDTO("", "manager", new Date()));
+        when(surveyAnswerCrudService.getHistory(eq("sa-1"), any())).thenReturn(historyDTO);
+
+        HistoryDTO result = service.getHistory("sa-1");
+
+        assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("unknown");
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void getHistoryResolvesFullnameFromUserServiceWhenEmailIsPresent() {
+        HistoryDTO historyDTO = historyWithEditors(new EditorDTO("alice@example.com", "manager", new Date()));
+        User alice = new User();
+        alice.setEmail("alice@example.com");
+        alice.setFullname("Alice Smith");
+        when(surveyAnswerCrudService.getHistory(eq("sa-1"), any())).thenReturn(historyDTO);
+        when(userService.get("alice@example.com")).thenReturn(alice);
+
+        HistoryDTO result = service.getHistory("sa-1");
+
+        assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("Alice Smith");
+    }
+
+    @Test
+    void getHistorySetsFulnameToUnknownWhenUserNotFoundInRegistry() {
+        HistoryDTO historyDTO = historyWithEditors(new EditorDTO("ghost@example.com", "manager", new Date()));
+        when(surveyAnswerCrudService.getHistory(eq("sa-1"), any())).thenReturn(historyDTO);
+        when(userService.get("ghost@example.com")).thenThrow(new ResourceNotFoundException("ghost@example.com", "user"));
+
+        HistoryDTO result = service.getHistory("sa-1");
+
+        assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("unknown");
+    }
+
+    private static HistoryDTO historyWithEditors(EditorDTO... editors) {
+        HistoryEntryDTO entry = new HistoryEntryDTO();
+        entry.setEditors(List.of(editors));
+        entry.setAction(HistoryActionDTO.of(History.HistoryAction.UPDATED, null));
+        return new HistoryDTO(List.of(entry));
     }
 
     private Authentication oidcAuthentication() {
-        OidcIdToken idToken = new OidcIdToken(
-                "token",
-                Instant.now(),
-                Instant.now().plusSeconds(300),
-                Map.of(
-                        "sub", "sub-1",
-                        "email", "user@example.org",
-                        "given_name", "User",
-                        "family_name", "Example",
-                        "name", "User Example"
-                )
-        );
-        DefaultOidcUser principal = new DefaultOidcUser(
-                List.of(new OidcUserAuthority(idToken)),
-                idToken,
-                "email"
-        );
-        return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                principal,
-                "token",
-                principal.getAuthorities()
-        );
+        return OidcTestUtils.oidcAuthentication("user@example.org");
     }
 }

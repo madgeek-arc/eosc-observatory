@@ -151,11 +151,7 @@ public class SurveyAnswerCrudService extends AbstractCrudService<SurveyAnswer> i
 
     @Override
     public SurveyAnswer update(String id, SurveyAnswer resource) throws ResourceNotFoundException {
-        SurveyAnswerRevisionsAggregation cached = cacheService.fetch(id);
-        if (cached != null) {
-            super.update(id, cached.getSurveyAnswer());
-            cacheService.remove(id);
-        }
+        cacheService.remove(id);
         return super.update(id, resource);
     }
 

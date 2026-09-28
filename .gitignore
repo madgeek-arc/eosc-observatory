@@ -6,6 +6,8 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 logs/
+megalinter-reports/
+mega-linter.log
 
 ### STS ###
 .apt_generated

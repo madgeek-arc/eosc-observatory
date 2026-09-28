@@ -3,6 +3,7 @@ package eu.openaire.observatory.statistics;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openaire.observatory.configuration.security.MethodSecurityExpressions;
 import eu.openaire.observatory.domain.UserGroup;
+import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,13 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -39,7 +35,7 @@ class StatsQuerySecurityTest {
 
     @BeforeEach
     void setUp() {
-        authentication = oidcAuthentication();
+        authentication = OidcTestUtils.oidcAuthentication("user@example.org");
 
         service = new StatsQuerySecurity(
                 securityExpressions,
@@ -121,24 +117,4 @@ class StatsQuerySecurityTest {
                 """.formatted(name);
     }
 
-    private Authentication oidcAuthentication() {
-        OidcIdToken idToken = new OidcIdToken(
-                "token",
-                Instant.now(),
-                Instant.now().plusSeconds(60),
-                Map.of(
-                        "sub", "sub-1",
-                        "email", "user@example.org",
-                        "given_name", "User",
-                        "family_name", "Example",
-                        "name", "User Example"
-                )
-        );
-        DefaultOidcUser principal = new DefaultOidcUser(List.of(new OidcUserAuthority(idToken)), idToken, "email");
-        return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                principal,
-                "token",
-                principal.getAuthorities()
-        );
-    }
 }

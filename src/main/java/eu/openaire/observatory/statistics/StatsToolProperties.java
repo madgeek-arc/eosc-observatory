@@ -162,7 +162,7 @@ public class StatsToolProperties {
         }
         errors.append('\n');
         if (StringUtils.hasText(errors)) {
-            throw new Exception("Could not start service because there are missing properties.\nMissing properties: " + errors);
+            throw new IllegalStateException("Could not start service because there are missing properties.\nMissing properties: " + errors);
         }
     }
 }
