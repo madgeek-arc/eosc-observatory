@@ -1,66 +1,46 @@
-## [4.1.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.0.0...4.1.0) (2026-02-19)
-
-### Features
-
-* Adds creation date in thread and returns threads ordered on get methods ([e53902e](https://github.com/madgeek-arc/eosc-observatory/commit/e53902e966a9af4428273f4655de31afb6631380))
-* Adds model name in metadata and functionality to regenerate document if different model is set ([e83ab4d](https://github.com/madgeek-arc/eosc-observatory/commit/e83ab4d336db55cdda54d394beaeb857b96a951b))
-* Adds submission start/close dates to SurveyAnswerInfo. ([efe07fe](https://github.com/madgeek-arc/eosc-observatory/commit/efe07fea1a53efb53be03a9a39257b6bc68c7336))
-* Adds target to comments and mentions to messages ([6772453](https://github.com/madgeek-arc/eosc-observatory/commit/67724535ff9bdab488308c4b80134eb8c8ea2c54))
-* Creates domain classes and persistence for commenting ([36570d1](https://github.com/madgeek-arc/eosc-observatory/commit/36570d14d7db122fbd2e0dee25163d69034d920f))
-* Enables authorization when retrieving documents from resources-registry ([7fc4b8a](https://github.com/madgeek-arc/eosc-observatory/commit/7fc4b8a72f3a2331975d0421b7d02ca0b958d94a))
-* Introduces csrf protection ([37124a4](https://github.com/madgeek-arc/eosc-observatory/commit/37124a418e692ea942a52d442e9a6106bf3f9b6f))
-* Members of a group are sorted ([c35323d](https://github.com/madgeek-arc/eosc-observatory/commit/c35323d0c81a0b9eca5fbe976a88a1a671c22064))
-* Public method returning stakeholder managers' basic information ([3bfeb82](https://github.com/madgeek-arc/eosc-observatory/commit/3bfeb829cc256995c3283d48bda5905adc3cd6ef))
-* Resources registry document generation for surveyId ([3511e10](https://github.com/madgeek-arc/eosc-observatory/commit/3511e100d96bb0dbc3529af7df269137af3a3d15))
-* **resources-registry,recommendations:** Implements recommendation mechanism for resources-registry ([7a89c50](https://github.com/madgeek-arc/eosc-observatory/commit/7a89c507504f8d6ce174d135f07e70dd2d1d842d))
-* Updates catalogue dependency ([17b783b](https://github.com/madgeek-arc/eosc-observatory/commit/17b783b09757b601d4dab72d6484f4710ce92daa))
-
-### Bug Fixes
-
-* Adds authorization to non-approved document recommendations ([59b74eb](https://github.com/madgeek-arc/eosc-observatory/commit/59b74eb801d8b799b41d0ffe33705b3a00984826))
-* Adds exception handler for failures ([52925ba](https://github.com/madgeek-arc/eosc-observatory/commit/52925ba7145070dc5690427cea97903bf926cfa2))
-* adds json annotations to fix comment creation ([2a9b5fc](https://github.com/madgeek-arc/eosc-observatory/commit/2a9b5fc57102de593f7f6116072e4b6d7a7361c7))
-* Adds property fixing registry dump ([1fd0329](https://github.com/madgeek-arc/eosc-observatory/commit/1fd0329042fb468865f9739d2ddbddcf62872bda))
-* Administrators can retrieve survey answers info ([28c8ae0](https://github.com/madgeek-arc/eosc-observatory/commit/28c8ae06ce253eb6eb744d08a59ae2d99bc7d7fe))
-* Assigns permission to admins to generate answers ([43fba43](https://github.com/madgeek-arc/eosc-observatory/commit/43fba437ef33e01b8d01c92f824c02905ea40eb8))
-* Bumps registry dependency version ([5f9c9b9](https://github.com/madgeek-arc/eosc-observatory/commit/5f9c9b945436d8e4faebcf6e8e4b59d0f0ac34e2))
-* Calls save() method when editing a comment ([d6f84c0](https://github.com/madgeek-arc/eosc-observatory/commit/d6f84c0410148bb0744a4cfd2e93c4fc6b995496))
-* Changes user group permissions ([c5fd08a](https://github.com/madgeek-arc/eosc-observatory/commit/c5fd08a01084062067d1efab186a1e208daabc70))
-* Checks for null mentions ([e3cba66](https://github.com/madgeek-arc/eosc-observatory/commit/e3cba6607c575ba3cafbd914bf70b2572d07c55b))
-* Correction in security expression ([cae1ccc](https://github.com/madgeek-arc/eosc-observatory/commit/cae1ccc3bdd3f44af6592e8b854208fed9e995a4))
-* corrects targetId type from UUID to String ([be678c6](https://github.com/madgeek-arc/eosc-observatory/commit/be678c65f81f7706f4e63afcff4c10ff1dc76df8))
-* Corrects topic sending deleted comment threads ([1835c51](https://github.com/madgeek-arc/eosc-observatory/commit/1835c519a5eebfe49adc81ba1cd79cfc39327fa7))
-* Creates cookie with csrf token and enables csrf in swagger-ui ([d8ce636](https://github.com/madgeek-arc/eosc-observatory/commit/d8ce636802070627a701fd2a99ddd303f6a85940))
-* Creates metadata class specifically for the resources registry ([e440329](https://github.com/madgeek-arc/eosc-observatory/commit/e44032966219ba059ac012dd97a57b758abe4a2b))
-* Deleting comment thread sends to separate topic ([197515b](https://github.com/madgeek-arc/eosc-observatory/commit/197515b7fb273cc04b2a1a7e28ea8ef8aadd2259))
-* Fixes case where infinite loop might occur ([ffb5666](https://github.com/madgeek-arc/eosc-observatory/commit/ffb5666c68ebced6ad63006f9b60411f1bd992d8))
-* Public method returning stakeholder managers ignores users with missing name and surname ([76e6dcf](https://github.com/madgeek-arc/eosc-observatory/commit/76e6dcf382c9f64fdebd3cd177e4bd40d6f5c9fc))
-* Secures generic controller ([a3884a9](https://github.com/madgeek-arc/eosc-observatory/commit/a3884a9c10660a0bc5428bd767d773f0394910d8))
-* Secures methods retrieving documents by id and migrating to another resource type ([356ff88](https://github.com/madgeek-arc/eosc-observatory/commit/356ff88ef389212bbd4e437c37bfee98e2a5a282))
-* Secures update/delete actions on comments ([4aa5949](https://github.com/madgeek-arc/eosc-observatory/commit/4aa5949020315bb686bbb900fb60e9c922bf7999))
-* **security:** Removes access token from cookie ([0feccf9](https://github.com/madgeek-arc/eosc-observatory/commit/0feccf90eac7fb9f27cd5c953439816d4ea15be5))
-* Updates registry dependency fixing issue of lazy initialization of resource type aliases - removed workaround properties ([3da55db](https://github.com/madgeek-arc/eosc-observatory/commit/3da55dbbe302cee838d67cfebcea1d9c5db4c8cf))
-* Updates resources-registry document generation template ([0dd3149](https://github.com/madgeek-arc/eosc-observatory/commit/0dd3149e448f2d1239754904eee2e6e29b1e3137))
-* Updating a document sets 'curated' flag to true ([7059b69](https://github.com/madgeek-arc/eosc-observatory/commit/7059b69426a7c1fb7097a4d94ea8a26b2a942bc4))
-* Updating a message method uses findWithCommentById() method which initializes the comment thread - fixes lazy initialization outside of session when mapping to dto ([ba39258](https://github.com/madgeek-arc/eosc-observatory/commit/ba39258da2ccaceb1096d6d629d364aff20ad48f))
-
 ## [4.5.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.2...4.5.0) (2026-09-28)
 
 
 ### Features
 
+* add 2 more notification settings and refactor API ([4a66f52](https://github.com/madgeek-arc/eosc-observatory/commit/4a66f52efad8f257a8310ec26bf61d635bd95b3a))
+* add indicator management and overrides API ([b5b18db](https://github.com/madgeek-arc/eosc-observatory/commit/b5b18db7096a59e69f89468db4345e9ea2953db0))
+* add survey type settings with per-type email notification flags and deadline approaching days ([d2ffb7e](https://github.com/madgeek-arc/eosc-observatory/commit/d2ffb7e37ead69e2f404e1c40d9b6d06f74f7265))
 * add validatedOnly option to survey answer tsv export ([84d0200](https://github.com/madgeek-arc/eosc-observatory/commit/84d02005e0bb5fdfe8aca382dbee5d1798d388d7))
+* added check for user settings ([5f9bb15](https://github.com/madgeek-arc/eosc-observatory/commit/5f9bb1572814cd0a0a868d5778f20887c12316a0))
+* added user settings ([dc4112e](https://github.com/madgeek-arc/eosc-observatory/commit/dc4112e12c4dabb6b00e0dbeb4ae0f42e0589335))
+* added user settings ([6c96e7b](https://github.com/madgeek-arc/eosc-observatory/commit/6c96e7b13ad3234f17a4542f396a3cac367992d4))
+* create method returning the list of stakeholders of a type and whether they have overridden the defaults ([6b1def8](https://github.com/madgeek-arc/eosc-observatory/commit/6b1def86a62701637b3c1f998737ba170d7161ba))
+* emails work for mentions, fixes in email subject, body and button ([944ea56](https://github.com/madgeek-arc/eosc-observatory/commit/944ea5656ea062da00be4e96e48cc83ce9671b7a))
+* implement GDPR user purge endpoint ([8f11993](https://github.com/madgeek-arc/eosc-observatory/commit/8f1199348221819083b483a2b85823bf19b729ec))
+* **indicators:** create default indicators and per-stakeholder overrides ([58df6af](https://github.com/madgeek-arc/eosc-observatory/commit/58df6afe93ad5e3e59c3a6fd7389e54eb4f2b9a3))
+* log a GDPR-safe purge report, no user identifier included ([51b91f2](https://github.com/madgeek-arc/eosc-observatory/commit/51b91f234e6a1ba43f0d9d896eda5846d83033ce))
+* resolve field path and fix logo link in mention notifications ([ee0caae](https://github.com/madgeek-arc/eosc-observatory/commit/ee0caaecd938eb7b6062fec5fe3a9489ff76113b))
+* survey email scheduler operational ([797915f](https://github.com/madgeek-arc/eosc-observatory/commit/797915f7f12556c97c2fcfc573863f0291940b14))
 
 
 ### Bug Fixes
 
+* anonymize purged user's email embedded in comment mention text ([5d929dc](https://github.com/madgeek-arc/eosc-observatory/commit/5d929dc059c3448827796539ed4bacd16ef4e905))
+* avoid mention PK collision when purging multiple users from same message ([1eaee4c](https://github.com/madgeek-arc/eosc-observatory/commit/1eaee4caccaa118d608e46e404bd9d83a4d20401))
+* break circular bean dependency between UserServiceImpl and SurveyAnswerCommentService ([4521b6a](https://github.com/madgeek-arc/eosc-observatory/commit/4521b6a0be3b82265ca66729fab9d7e4cd07c082))
 * bump registry version including embedding model warmup ([2636880](https://github.com/madgeek-arc/eosc-observatory/commit/2636880908cede1958cea370be87c2a84686d5b1))
 * **changelog:** point 4.4.1/4.4.2 commit links at their current main SHAs ([20ab3c6](https://github.com/madgeek-arc/eosc-observatory/commit/20ab3c6a4d43394296f0501fec9108a70180d368))
+* correct issues of upsert method and throw not found when settings are missing ([47c5245](https://github.com/madgeek-arc/eosc-observatory/commit/47c5245636c62dc660315e989cfafe9c9c1172b6))
+* correct REST API paths ([aa74e8d](https://github.com/madgeek-arc/eosc-observatory/commit/aa74e8dab550e5b4177aa683b081ce03fdb24f18))
 * **erasure:** re-authorize live survey-answer edits over WebSocket per message ([e5b0774](https://github.com/madgeek-arc/eosc-observatory/commit/e5b0774148bce14bcaa1c55b98b1383196c45955))
+* indicator view overrides authorization ([fecd615](https://github.com/madgeek-arc/eosc-observatory/commit/fecd6158cdd17e22cac3fd5c9e58c694eb511fd8))
+* make enrich editor history more resilient ([46b132d](https://github.com/madgeek-arc/eosc-observatory/commit/46b132d2d0b059b28e47c0be059bfdc15eb9fdde))
+* match mention-scrub regex to curly-brace format and normalize mention emails ([f040963](https://github.com/madgeek-arc/eosc-observatory/commit/f040963f8191f4d632cbf2d079b2e38680dac070))
+* normalize user id case before GDPR purge queries ([31ddee4](https://github.com/madgeek-arc/eosc-observatory/commit/31ddee45f3aa7cf98653e1c99f920a262b749a11))
+* **permissions:** scope permission removal to the target stakeholder's resources to allow a user to participate in multiple stakeholders ([d7cd79a](https://github.com/madgeek-arc/eosc-observatory/commit/d7cd79ac00da661fcbca14745ba371bee7eb2e3e))
+* **privacy:** harden DataPrivacyAdvice against auth bypass and error leaks ([32dec22](https://github.com/madgeek-arc/eosc-observatory/commit/32dec22c3833e986e8d5c5e866a7d3387e46a03f))
+* removed preheader from email ([5a8ceff](https://github.com/madgeek-arc/eosc-observatory/commit/5a8ceff3b7b53b0999ee7286b3cf7a93e6f1b82e))
 * **security:** stop logging raw Authentication objects ([e8f9198](https://github.com/madgeek-arc/eosc-observatory/commit/e8f9198d8db7d76399e9318726f5a5894ac1f7f4))
 * **survey:** don't record 'unknown' editor in history ([405a011](https://github.com/madgeek-arc/eosc-observatory/commit/405a011e2ef8069710ecddd28349c51a8b50e968))
 * **survey:** persist survey answer updates once instead of twice ([a1d2df1](https://github.com/madgeek-arc/eosc-observatory/commit/a1d2df115c75304f88ef29ecf27ddbb12b085f49))
 * update SurveyCSVConverterTest for validatedOnly parameter ([58543a8](https://github.com/madgeek-arc/eosc-observatory/commit/58543a84ebb9ebcdd7136c865227bf5ab567c833))
+* update the deserialization class to SurveySettings ([1572c8f](https://github.com/madgeek-arc/eosc-observatory/commit/1572c8f548a2ade1327f3e5bfde710ed5e0446a2))
 
 ## [4.4.2](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.1...4.4.2) (2026-09-18)
 
@@ -126,6 +106,52 @@
 ### Miscellaneous Chores
 
 * release 4.3.0 ([9bac44e](https://github.com/madgeek-arc/eosc-observatory/commit/9bac44e3114a2a98c8fddb7a64b5e046e827480c))
+
+## [4.1.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.0.0...4.1.0) (2026-02-19)
+
+### Features
+
+* Adds creation date in thread and returns threads ordered on get methods ([e53902e](https://github.com/madgeek-arc/eosc-observatory/commit/e53902e966a9af4428273f4655de31afb6631380))
+* Adds model name in metadata and functionality to regenerate document if different model is set ([e83ab4d](https://github.com/madgeek-arc/eosc-observatory/commit/e83ab4d336db55cdda54d394beaeb857b96a951b))
+* Adds submission start/close dates to SurveyAnswerInfo. ([efe07fe](https://github.com/madgeek-arc/eosc-observatory/commit/efe07fea1a53efb53be03a9a39257b6bc68c7336))
+* Adds target to comments and mentions to messages ([6772453](https://github.com/madgeek-arc/eosc-observatory/commit/67724535ff9bdab488308c4b80134eb8c8ea2c54))
+* Creates domain classes and persistence for commenting ([36570d1](https://github.com/madgeek-arc/eosc-observatory/commit/36570d14d7db122fbd2e0dee25163d69034d920f))
+* Enables authorization when retrieving documents from resources-registry ([7fc4b8a](https://github.com/madgeek-arc/eosc-observatory/commit/7fc4b8a72f3a2331975d0421b7d02ca0b958d94a))
+* Introduces csrf protection ([37124a4](https://github.com/madgeek-arc/eosc-observatory/commit/37124a418e692ea942a52d442e9a6106bf3f9b6f))
+* Members of a group are sorted ([c35323d](https://github.com/madgeek-arc/eosc-observatory/commit/c35323d0c81a0b9eca5fbe976a88a1a671c22064))
+* Public method returning stakeholder managers' basic information ([3bfeb82](https://github.com/madgeek-arc/eosc-observatory/commit/3bfeb829cc256995c3283d48bda5905adc3cd6ef))
+* Resources registry document generation for surveyId ([3511e10](https://github.com/madgeek-arc/eosc-observatory/commit/3511e100d96bb0dbc3529af7df269137af3a3d15))
+* **resources-registry,recommendations:** Implements recommendation mechanism for resources-registry ([7a89c50](https://github.com/madgeek-arc/eosc-observatory/commit/7a89c507504f8d6ce174d135f07e70dd2d1d842d))
+* Updates catalogue dependency ([17b783b](https://github.com/madgeek-arc/eosc-observatory/commit/17b783b09757b601d4dab72d6484f4710ce92daa))
+
+### Bug Fixes
+
+* Adds authorization to non-approved document recommendations ([59b74eb](https://github.com/madgeek-arc/eosc-observatory/commit/59b74eb801d8b799b41d0ffe33705b3a00984826))
+* Adds exception handler for failures ([52925ba](https://github.com/madgeek-arc/eosc-observatory/commit/52925ba7145070dc5690427cea97903bf926cfa2))
+* adds json annotations to fix comment creation ([2a9b5fc](https://github.com/madgeek-arc/eosc-observatory/commit/2a9b5fc57102de593f7f6116072e4b6d7a7361c7))
+* Adds property fixing registry dump ([1fd0329](https://github.com/madgeek-arc/eosc-observatory/commit/1fd0329042fb468865f9739d2ddbddcf62872bda))
+* Administrators can retrieve survey answers info ([28c8ae0](https://github.com/madgeek-arc/eosc-observatory/commit/28c8ae06ce253eb6eb744d08a59ae2d99bc7d7fe))
+* Assigns permission to admins to generate answers ([43fba43](https://github.com/madgeek-arc/eosc-observatory/commit/43fba437ef33e01b8d01c92f824c02905ea40eb8))
+* Bumps registry dependency version ([5f9c9b9](https://github.com/madgeek-arc/eosc-observatory/commit/5f9c9b945436d8e4faebcf6e8e4b59d0f0ac34e2))
+* Calls save() method when editing a comment ([d6f84c0](https://github.com/madgeek-arc/eosc-observatory/commit/d6f84c0410148bb0744a4cfd2e93c4fc6b995496))
+* Changes user group permissions ([c5fd08a](https://github.com/madgeek-arc/eosc-observatory/commit/c5fd08a01084062067d1efab186a1e208daabc70))
+* Checks for null mentions ([e3cba66](https://github.com/madgeek-arc/eosc-observatory/commit/e3cba6607c575ba3cafbd914bf70b2572d07c55b))
+* Correction in security expression ([cae1ccc](https://github.com/madgeek-arc/eosc-observatory/commit/cae1ccc3bdd3f44af6592e8b854208fed9e995a4))
+* corrects targetId type from UUID to String ([be678c6](https://github.com/madgeek-arc/eosc-observatory/commit/be678c65f81f7706f4e63afcff4c10ff1dc76df8))
+* Corrects topic sending deleted comment threads ([1835c51](https://github.com/madgeek-arc/eosc-observatory/commit/1835c519a5eebfe49adc81ba1cd79cfc39327fa7))
+* Creates cookie with csrf token and enables csrf in swagger-ui ([d8ce636](https://github.com/madgeek-arc/eosc-observatory/commit/d8ce636802070627a701fd2a99ddd303f6a85940))
+* Creates metadata class specifically for the resources registry ([e440329](https://github.com/madgeek-arc/eosc-observatory/commit/e44032966219ba059ac012dd97a57b758abe4a2b))
+* Deleting comment thread sends to separate topic ([197515b](https://github.com/madgeek-arc/eosc-observatory/commit/197515b7fb273cc04b2a1a7e28ea8ef8aadd2259))
+* Fixes case where infinite loop might occur ([ffb5666](https://github.com/madgeek-arc/eosc-observatory/commit/ffb5666c68ebced6ad63006f9b60411f1bd992d8))
+* Public method returning stakeholder managers ignores users with missing name and surname ([76e6dcf](https://github.com/madgeek-arc/eosc-observatory/commit/76e6dcf382c9f64fdebd3cd177e4bd40d6f5c9fc))
+* Secures generic controller ([a3884a9](https://github.com/madgeek-arc/eosc-observatory/commit/a3884a9c10660a0bc5428bd767d773f0394910d8))
+* Secures methods retrieving documents by id and migrating to another resource type ([356ff88](https://github.com/madgeek-arc/eosc-observatory/commit/356ff88ef389212bbd4e437c37bfee98e2a5a282))
+* Secures update/delete actions on comments ([4aa5949](https://github.com/madgeek-arc/eosc-observatory/commit/4aa5949020315bb686bbb900fb60e9c922bf7999))
+* **security:** Removes access token from cookie ([0feccf9](https://github.com/madgeek-arc/eosc-observatory/commit/0feccf90eac7fb9f27cd5c953439816d4ea15be5))
+* Updates registry dependency fixing issue of lazy initialization of resource type aliases - removed workaround properties ([3da55db](https://github.com/madgeek-arc/eosc-observatory/commit/3da55dbbe302cee838d67cfebcea1d9c5db4c8cf))
+* Updates resources-registry document generation template ([0dd3149](https://github.com/madgeek-arc/eosc-observatory/commit/0dd3149e448f2d1239754904eee2e6e29b1e3137))
+* Updating a document sets 'curated' flag to true ([7059b69](https://github.com/madgeek-arc/eosc-observatory/commit/7059b69426a7c1fb7097a4d94ea8a26b2a942bc4))
+* Updating a message method uses findWithCommentById() method which initializes the comment thread - fixes lazy initialization outside of session when mapping to dto ([ba39258](https://github.com/madgeek-arc/eosc-observatory/commit/ba39258da2ccaceb1096d6d629d364aff20ad48f))
 
 ## [4.0.0](https://github.com/madgeek-arc/eosc-observatory/compare/3.2.0...4.0.0) (2025-12-23)
 
