@@ -44,6 +44,50 @@
 * Updating a document sets 'curated' flag to true ([7059b69](https://github.com/madgeek-arc/eosc-observatory/commit/7059b69426a7c1fb7097a4d94ea8a26b2a942bc4))
 * Updating a message method uses findWithCommentById() method which initializes the comment thread - fixes lazy initialization outside of session when mapping to dto ([ba39258](https://github.com/madgeek-arc/eosc-observatory/commit/ba39258da2ccaceb1096d6d629d364aff20ad48f))
 
+## [4.5.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.2...4.5.0) (2026-09-28)
+
+
+### Features
+
+* add 2 more notification settings and refactor API ([4a66f52](https://github.com/madgeek-arc/eosc-observatory/commit/4a66f52efad8f257a8310ec26bf61d635bd95b3a))
+* add indicator management and overrides API ([b5b18db](https://github.com/madgeek-arc/eosc-observatory/commit/b5b18db7096a59e69f89468db4345e9ea2953db0))
+* add survey type settings with per-type email notification flags and deadline approaching days ([d2ffb7e](https://github.com/madgeek-arc/eosc-observatory/commit/d2ffb7e37ead69e2f404e1c40d9b6d06f74f7265))
+* add validatedOnly option to survey answer tsv export ([84d0200](https://github.com/madgeek-arc/eosc-observatory/commit/84d02005e0bb5fdfe8aca382dbee5d1798d388d7))
+* added check for user settings ([5f9bb15](https://github.com/madgeek-arc/eosc-observatory/commit/5f9bb1572814cd0a0a868d5778f20887c12316a0))
+* added user settings ([dc4112e](https://github.com/madgeek-arc/eosc-observatory/commit/dc4112e12c4dabb6b00e0dbeb4ae0f42e0589335))
+* added user settings ([6c96e7b](https://github.com/madgeek-arc/eosc-observatory/commit/6c96e7b13ad3234f17a4542f396a3cac367992d4))
+* create method returning the list of stakeholders of a type and whether they have overridden the defaults ([6b1def8](https://github.com/madgeek-arc/eosc-observatory/commit/6b1def86a62701637b3c1f998737ba170d7161ba))
+* emails work for mentions, fixes in email subject, body and button ([944ea56](https://github.com/madgeek-arc/eosc-observatory/commit/944ea5656ea062da00be4e96e48cc83ce9671b7a))
+* implement GDPR user purge endpoint ([8f11993](https://github.com/madgeek-arc/eosc-observatory/commit/8f1199348221819083b483a2b85823bf19b729ec))
+* **indicators:** create default indicators and per-stakeholder overrides ([58df6af](https://github.com/madgeek-arc/eosc-observatory/commit/58df6afe93ad5e3e59c3a6fd7389e54eb4f2b9a3))
+* log a GDPR-safe purge report, no user identifier included ([51b91f2](https://github.com/madgeek-arc/eosc-observatory/commit/51b91f234e6a1ba43f0d9d896eda5846d83033ce))
+* resolve field path and fix logo link in mention notifications ([ee0caae](https://github.com/madgeek-arc/eosc-observatory/commit/ee0caaecd938eb7b6062fec5fe3a9489ff76113b))
+* survey email scheduler operational ([797915f](https://github.com/madgeek-arc/eosc-observatory/commit/797915f7f12556c97c2fcfc573863f0291940b14))
+
+
+### Bug Fixes
+
+* anonymize purged user's email embedded in comment mention text ([5d929dc](https://github.com/madgeek-arc/eosc-observatory/commit/5d929dc059c3448827796539ed4bacd16ef4e905))
+* avoid mention PK collision when purging multiple users from same message ([1eaee4c](https://github.com/madgeek-arc/eosc-observatory/commit/1eaee4caccaa118d608e46e404bd9d83a4d20401))
+* break circular bean dependency between UserServiceImpl and SurveyAnswerCommentService ([4521b6a](https://github.com/madgeek-arc/eosc-observatory/commit/4521b6a0be3b82265ca66729fab9d7e4cd07c082))
+* bump registry version including embedding model warmup ([2636880](https://github.com/madgeek-arc/eosc-observatory/commit/2636880908cede1958cea370be87c2a84686d5b1))
+* **changelog:** point 4.4.1/4.4.2 commit links at their current main SHAs ([20ab3c6](https://github.com/madgeek-arc/eosc-observatory/commit/20ab3c6a4d43394296f0501fec9108a70180d368))
+* correct issues of upsert method and throw not found when settings are missing ([47c5245](https://github.com/madgeek-arc/eosc-observatory/commit/47c5245636c62dc660315e989cfafe9c9c1172b6))
+* correct REST API paths ([aa74e8d](https://github.com/madgeek-arc/eosc-observatory/commit/aa74e8dab550e5b4177aa683b081ce03fdb24f18))
+* **erasure:** re-authorize live survey-answer edits over WebSocket per message ([e5b0774](https://github.com/madgeek-arc/eosc-observatory/commit/e5b0774148bce14bcaa1c55b98b1383196c45955))
+* indicator view overrides authorization ([fecd615](https://github.com/madgeek-arc/eosc-observatory/commit/fecd6158cdd17e22cac3fd5c9e58c694eb511fd8))
+* make enrich editor history more resilient ([46b132d](https://github.com/madgeek-arc/eosc-observatory/commit/46b132d2d0b059b28e47c0be059bfdc15eb9fdde))
+* match mention-scrub regex to curly-brace format and normalize mention emails ([f040963](https://github.com/madgeek-arc/eosc-observatory/commit/f040963f8191f4d632cbf2d079b2e38680dac070))
+* normalize user id case before GDPR purge queries ([31ddee4](https://github.com/madgeek-arc/eosc-observatory/commit/31ddee45f3aa7cf98653e1c99f920a262b749a11))
+* **permissions:** scope permission removal to the target stakeholder's resources to allow a user to participate in multiple stakeholders ([d7cd79a](https://github.com/madgeek-arc/eosc-observatory/commit/d7cd79ac00da661fcbca14745ba371bee7eb2e3e))
+* **privacy:** harden DataPrivacyAdvice against auth bypass and error leaks ([32dec22](https://github.com/madgeek-arc/eosc-observatory/commit/32dec22c3833e986e8d5c5e866a7d3387e46a03f))
+* removed preheader from email ([5a8ceff](https://github.com/madgeek-arc/eosc-observatory/commit/5a8ceff3b7b53b0999ee7286b3cf7a93e6f1b82e))
+* **security:** stop logging raw Authentication objects ([e8f9198](https://github.com/madgeek-arc/eosc-observatory/commit/e8f9198d8db7d76399e9318726f5a5894ac1f7f4))
+* **survey:** don't record 'unknown' editor in history ([405a011](https://github.com/madgeek-arc/eosc-observatory/commit/405a011e2ef8069710ecddd28349c51a8b50e968))
+* **survey:** persist survey answer updates once instead of twice ([a1d2df1](https://github.com/madgeek-arc/eosc-observatory/commit/a1d2df115c75304f88ef29ecf27ddbb12b085f49))
+* update SurveyCSVConverterTest for validatedOnly parameter ([58543a8](https://github.com/madgeek-arc/eosc-observatory/commit/58543a84ebb9ebcdd7136c865227bf5ab567c833))
+* update the deserialization class to SurveySettings ([1572c8f](https://github.com/madgeek-arc/eosc-observatory/commit/1572c8f548a2ade1327f3e5bfde710ed5e0446a2))
+
 ## [4.4.2](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.1...4.4.2) (2026-09-18)
 
 
