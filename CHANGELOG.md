@@ -44,6 +44,24 @@
 * Updating a document sets 'curated' flag to true ([7059b69](https://github.com/madgeek-arc/eosc-observatory/commit/7059b69426a7c1fb7097a4d94ea8a26b2a942bc4))
 * Updating a message method uses findWithCommentById() method which initializes the comment thread - fixes lazy initialization outside of session when mapping to dto ([ba39258](https://github.com/madgeek-arc/eosc-observatory/commit/ba39258da2ccaceb1096d6d629d364aff20ad48f))
 
+## [4.5.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.2...4.5.0) (2026-09-28)
+
+
+### Features
+
+* add validatedOnly option to survey answer tsv export ([84d0200](https://github.com/madgeek-arc/eosc-observatory/commit/84d02005e0bb5fdfe8aca382dbee5d1798d388d7))
+
+
+### Bug Fixes
+
+* bump registry version including embedding model warmup ([2636880](https://github.com/madgeek-arc/eosc-observatory/commit/2636880908cede1958cea370be87c2a84686d5b1))
+* **changelog:** point 4.4.1/4.4.2 commit links at their current main SHAs ([20ab3c6](https://github.com/madgeek-arc/eosc-observatory/commit/20ab3c6a4d43394296f0501fec9108a70180d368))
+* **erasure:** re-authorize live survey-answer edits over WebSocket per message ([e5b0774](https://github.com/madgeek-arc/eosc-observatory/commit/e5b0774148bce14bcaa1c55b98b1383196c45955))
+* **security:** stop logging raw Authentication objects ([e8f9198](https://github.com/madgeek-arc/eosc-observatory/commit/e8f9198d8db7d76399e9318726f5a5894ac1f7f4))
+* **survey:** don't record 'unknown' editor in history ([405a011](https://github.com/madgeek-arc/eosc-observatory/commit/405a011e2ef8069710ecddd28349c51a8b50e968))
+* **survey:** persist survey answer updates once instead of twice ([a1d2df1](https://github.com/madgeek-arc/eosc-observatory/commit/a1d2df115c75304f88ef29ecf27ddbb12b085f49))
+* update SurveyCSVConverterTest for validatedOnly parameter ([58543a8](https://github.com/madgeek-arc/eosc-observatory/commit/58543a84ebb9ebcdd7136c865227bf5ab567c833))
+
 ## [4.4.2](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.1...4.4.2) (2026-09-18)
 
 
