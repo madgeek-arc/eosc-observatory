@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>eu.openaire</groupId>
 	<artifactId>observatory</artifactId>
-	<version>4.4.1-SNAPSHOT</version>
+	<version>4.5.1-SNAPSHOT</version>
 	<name>observatory</name>
 	<description>EOSC Observatory</description>
 
@@ -22,13 +22,13 @@
 
 	<properties>
 		<java.version>21</java.version>
-		<registry-core.version>4.2.1-SNAPSHOT</registry-core.version>
+		<registry-core.version>4.3.1</registry-core.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<log4j2.version>2.26.1</log4j2.version>
 		<dependency-check.version>12.2.2</dependency-check.version>
 		<tomcat.version>11.0.24</tomcat.version>
 		<postgresql.version>42.7.13</postgresql.version>
-		<argLine></argLine>
+		<argLine/>
 	</properties>
 
 	<dependencies>
@@ -347,6 +347,13 @@
 							<groupId>org.mapstruct</groupId>
 							<artifactId>mapstruct-processor</artifactId>
 							<version>${mapstruct.version}</version>
+						</path>
+						<!-- Generates the Log4j2Plugins.dat descriptor for our custom
+						     ErasureMaskingRewritePolicy so log4j2 finds it without package scanning. -->
+						<path>
+							<groupId>org.apache.logging.log4j</groupId>
+							<artifactId>log4j-core</artifactId>
+							<version>${log4j2.version}</version>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>

@@ -20,7 +20,7 @@ class ErasureSubjectReferenceTest {
     @BeforeEach
     void setUp() {
         properties = new ApplicationProperties();
-        properties.setErasureHashSecret("test-erasure-secret");
+        properties.setHmacSecret("test-erasure-secret");
         reference = new ErasureSubjectReference(properties);
     }
 
@@ -64,15 +64,27 @@ class ErasureSubjectReferenceTest {
     void referenceDependsOnTheSecret() {
         String withFirstSecret = reference.of(USER_ID);
 
-        properties.setErasureHashSecret("a-different-secret");
+        properties.setHmacSecret("a-different-secret");
 
         assertNotEquals(withFirstSecret, reference.of(USER_ID));
     }
 
     @Test
     void missingSecretFailsLoudlyRatherThanRecordingAnUnkeyedHash() {
-        properties.setErasureHashSecret("  ");
+        properties.setHmacSecret("  ");
 
         assertThrows(ServiceException.class, () -> reference.of(USER_ID));
+    }
+
+    @Test
+    void forLoggingMatchesOfWhenSecretIsConfigured() {
+        assertEquals(reference.of(USER_ID), reference.forLogging(USER_ID));
+    }
+
+    @Test
+    void forLoggingFallsBackToAMaskedValueRatherThanThrowing() {
+        properties.setHmacSecret("  ");
+
+        assertEquals("j*****@example.org", reference.forLogging(USER_ID));
     }
 }

@@ -2,6 +2,8 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.IntegrationTestConfig;
 import eu.openaire.observatory.domain.History;
+import eu.openaire.observatory.erasure.domain.ErasureRecord;
+import eu.openaire.observatory.erasure.repository.ErasureRecordRepository;
 import eu.openaire.observatory.domain.NotificationPreferences;
 import eu.openaire.observatory.domain.Profile;
 import eu.openaire.observatory.domain.Settings;
@@ -38,7 +40,9 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -70,6 +74,15 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
 
     @Autowired
     private ParserService parserService;
+
+    @Autowired
+    private ErasureRecordRepository erasureRecordRepository;
+
+    @Autowired
+    private ErasureSubjectReference erasureSubjectReference;
+
+    @Autowired
+    private ErasureRegisterService erasureRegisterService;
 
     // These tests are specifically about registry-core version history, not caching or
     // permissions. IntegrationTestConfig provides no Redis container (SurveyAnswerCrudService's
@@ -251,6 +264,33 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
             assertTrue(versionsAfterPurge.stream().noneMatch(v -> v.getPayload().contains("secret-forward-marker@example.org")),
                     "purge() should have scrubbed this user's forwardEmails out of every historical User version");
         }
+    }
+
+    @Test
+    void purgeWritesADurableErasureRecord() throws ResourceNotFoundException {
+        // A dedicated id: the erasure_record table is durable (no per-test rollback) and every
+        // other method here purges the shared USER_ID, so a unique subject keeps this assertion
+        // independent of test ordering.
+        String userId = "purge-register-test-" + UUID.randomUUID() + "@example.org";
+        persistUser(userId);
+        Stakeholder stakeholder = persistStakeholderBypassingSurveyGeneration(
+                "purge-versions-test-register-stakeholder-" + UUID.randomUUID());
+        stakeholder.setMembers(new TreeSet<>(Set.of(userId)));
+        stakeholderCrudService.update(stakeholder.getId(), stakeholder);
+
+        String subjectRef = erasureSubjectReference.of(userId);
+        assertTrue(erasureRecordRepository.findAllBySubjectRefOrderByStartedAtAsc(subjectRef).isEmpty(),
+                "no register row should exist before the purge");
+
+        userService.purge(userId);
+
+        ErasureRecord record = erasureRecordRepository.findAllBySubjectRefOrderByStartedAtAsc(subjectRef).getFirst();
+        assertEquals("SUCCESS", record.getOutcome());
+        assertNotNull(record.getStartedAt());
+        assertNotNull(record.getCompletedAt());
+        assertTrue(record.getStakeholderGroups() >= 1, "the user was a member of at least one stakeholder group");
+
+        assertFalse(erasureRegisterService.isPending(subjectRef));
     }
 
     /**

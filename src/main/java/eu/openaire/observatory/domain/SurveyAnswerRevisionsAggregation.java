@@ -20,6 +20,8 @@ import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.PathNotFoundException;
 import eu.openaire.observatory.utils.JSONObjectUtils;
 import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
@@ -27,17 +29,24 @@ import java.util.stream.Collectors;
 
 public class SurveyAnswerRevisionsAggregation implements Serializable {
 
+    private static final Logger logger = LoggerFactory.getLogger(SurveyAnswerRevisionsAggregation.class);
+
     private SurveyAnswer surveyAnswer;
     private List<Revision> revisions;
     private final List<Editor> editors = new ArrayList<>();
     private final Date created = new Date();
+    private boolean historyEntryAdded = false;
 
 //    private static final Configuration conf = Configuration.defaultConfiguration()
 //            .addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL);
 
+    /** Jackson must restore a draft without creating a new editing history entry. */
+    public SurveyAnswerRevisionsAggregation() {
+        this.revisions = new ArrayList<>();
+    }
+
     public SurveyAnswerRevisionsAggregation(SurveyAnswer surveyAnswer) {
         this.surveyAnswer = surveyAnswer;
-        this.surveyAnswer.getHistory().getEntries().add(new HistoryEntry(editors, null, created.getTime(), History.HistoryAction.UPDATED));
         this.revisions = new ArrayList<>();
     }
 
@@ -53,13 +62,23 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
                     ans = JSONObjectUtils.add(revision.getField(), revision.getValue(), ans);
                 }
             }
-            case DELETE -> ans = JsonPath.parse(ans).delete(revision.getField()).json();
+            case DELETE -> {
+                try {
+                    ans = JsonPath.parse(ans).delete(revision.getField()).json();
+                } catch (PathNotFoundException e) {
+                    logger.warn("Revision tried to delete missing field '{}'; skipping.", revision.getField());
+                }
+            }
             case MOVE -> {
-                String destination = revision.getField().replaceAll("\\[\\d+\\]$", "[" + revision.getAction().getIndex() + "]");
-                Object from = JsonPath.parse(ans).read(revision.getField());
-                Object to = JsonPath.parse(ans).read(destination);
-                ans = JsonPath.parse(ans).set(revision.getField(), to).json();
-                ans = JsonPath.parse(ans).set(destination, from).json();
+                try {
+                    String destination = revision.getField().replaceAll("\\[\\d+\\]$", "[" + revision.getAction().getIndex() + "]");
+                    Object from = JsonPath.parse(ans).read(revision.getField());
+                    Object to = JsonPath.parse(ans).read(destination);
+                    ans = JsonPath.parse(ans).set(revision.getField(), to).json();
+                    ans = JsonPath.parse(ans).set(destination, from).json();
+                } catch (PathNotFoundException e) {
+                    logger.warn("Revision tried to move missing field '{}'; skipping.", revision.getField());
+                }
             }
         }
 
@@ -71,13 +90,18 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
 
     private void updateHistory() {
         Editor lastEditor = this.editors.get(this.editors.size() - 1);
-
         List<HistoryEntry> historyEntryList = surveyAnswer.getHistory().getEntries();
-        HistoryEntry entry = historyEntryList.get(historyEntryList.size() - 1);
-        entry.setTime(lastEditor.getUpdateDate().getTime());
-        entry.setEditors(editors);
-        historyEntryList.set(historyEntryList.size() - 1, entry);
-        surveyAnswer.getMetadata().setModifiedBy(editors.stream().map(Editor::getUser).collect(Collectors.joining(",")));
+
+        if (!historyEntryAdded) {
+            historyEntryList.add(new HistoryEntry(editors, null, lastEditor.getUpdateDate().getTime(), History.HistoryAction.UPDATED));
+            historyEntryAdded = true;
+        } else {
+            HistoryEntry entry = historyEntryList.get(historyEntryList.size() - 1);
+            entry.setTime(lastEditor.getUpdateDate().getTime());
+            entry.setEditors(editors);
+            historyEntryList.set(historyEntryList.size() - 1, entry);
+        }
+        surveyAnswer.getMetadata().setModifiedBy(String.join(", ", editors.stream().map(Editor::getUser).collect(Collectors.joining(","))));
         surveyAnswer.getMetadata().setModificationDate(lastEditor.getUpdateDate());
     }
 

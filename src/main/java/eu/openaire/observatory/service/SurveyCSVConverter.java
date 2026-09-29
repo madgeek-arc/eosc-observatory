@@ -18,6 +18,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.CsvBuilder;
 import eu.openaire.observatory.domain.*;
+import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.catalogue.ui.domain.Section;
 import gr.uoa.di.madgik.catalogue.ui.domain.StyledString;
@@ -140,11 +141,11 @@ public class SurveyCSVConverter implements CSVConverter {
     }
 
     @Override
-    public String convertToCSV(String modelId, boolean includeSensitiveData, Date from, Date to) {
+    public String convertToCSV(String modelId, boolean includeSensitiveData, boolean validatedOnly, Date from, Date to) {
         Model model = modelService.get(modelId);
         List<List<UiField>> fieldHierarchy = getFieldHierarchy(model);
 
-        List<SurveyAnswer> answerSet = getSurveyAnswers(model, from, to);
+        List<SurveyAnswer> answerSet = getSurveyAnswers(model, validatedOnly, from, to);
         int index = 0;
         List<String> creationDates = answerSet
                 .stream()
@@ -180,7 +181,7 @@ public class SurveyCSVConverter implements CSVConverter {
         return this.csvBuilder.toCsv();
     }
 
-    private List<SurveyAnswer> getSurveyAnswers(Model model, Date from, Date to) {
+    private List<SurveyAnswer> getSurveyAnswers(Model model, boolean validatedOnly, Date from, Date to) {
         Set<SurveyAnswer> answerSet = new HashSet<>();
         if (from == null || to == null) {
             Set<Stakeholder> stakeholders = stakeholderService.getWithFilter("type", model.getType());
@@ -209,7 +210,11 @@ public class SurveyCSVConverter implements CSVConverter {
             return date;
         });
 
-        return answerSet.stream().filter(Objects::nonNull).sorted(comparator).toList();
+        return answerSet.stream()
+                .filter(Objects::nonNull)
+                .filter(a -> !validatedOnly || a.isValidated())
+                .sorted(comparator)
+                .toList();
     }
 
     private String getContributorsInfo(SurveyAnswer answer) {
@@ -222,7 +227,7 @@ public class SurveyCSVConverter implements CSVConverter {
                 .collect(Collectors.toSet());
         return contributorIds
                 .stream()
-                .map(userService::get)
+                .map(userService::getUser)
                 .map(user -> String.format("%s (%s)", user.getFullname(), user.getId()))
                 .collect(Collectors.joining(DELIMITER_SECONDARY));
     }
@@ -329,7 +334,7 @@ public class SurveyCSVConverter implements CSVConverter {
 
             if (temp instanceof JSONObject && ((JSONObject) temp).containsKey(field.getName())) {
                 temp = ((JSONObject) temp).get(field.getName());
-                if (field.getTypeInfo().isMultiplicity() && field.getTypeInfo().getType().equals("composite") && temp != null) {
+                if (field.getTypeInfo().isMultiplicity() && field.getTypeInfo().getType() == FieldType.composite && temp != null) {
                     for (Object item : (JSONArray) temp) {
                         createValues(key, fieldsToLeaf.subList(fieldsToLeaf.indexOf(field) + 1, fieldsToLeaf.size()), (JSONObject) item, index);
                     }

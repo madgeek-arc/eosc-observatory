@@ -83,8 +83,6 @@ public interface SurveyService {
 
     SurveyAnswer setAnswerValidated(String surveyAnswerId, boolean validated, Authentication authentication) throws ResourceNotFoundException;
 
-    SurveyAnswer setAnswerPublished(String surveyAnswerId, boolean published, Authentication authentication) throws ResourceNotFoundException;
-
     List<SurveyAnswer> generateAnswers(String surveyId, Authentication authentication);
 
     SurveyAnswer generateStakeholderAnswer(String stakeholderId, String surveyId, Authentication authentication);

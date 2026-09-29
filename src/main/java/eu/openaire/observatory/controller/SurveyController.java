@@ -169,15 +169,6 @@ public class SurveyController {
         return new ResponseEntity<>(surveyService.setAnswerValidated(surveyAnswerId, validated, authentication), HttpStatus.OK);
     }
 
-    @PatchMapping("answers/{id}/publish")
-    @PreAuthorize("hasPermission(#surveyAnswerId, 'publish')")
-    public ResponseEntity<SurveyAnswer> publishAnswer(@PathVariable("id") String surveyAnswerId,
-                                                      @RequestParam(value = "published") boolean published,
-                                                      @Parameter(hidden = true) Authentication authentication) throws ResourceNotFoundException {
-        SurveyAnswer surveyAnswers = surveyService.setAnswerPublished(surveyAnswerId, published, authentication);
-        return new ResponseEntity<>(surveyAnswers, HttpStatus.OK);
-    }
-
     @GetMapping("answers")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Browsing<SurveyAnswer>> getAnswers(@Parameter(hidden = true) @RequestParam MultiValueMap<String, Object> allRequestParams) {

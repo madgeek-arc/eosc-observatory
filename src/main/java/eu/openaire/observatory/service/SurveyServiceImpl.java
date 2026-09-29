@@ -36,10 +36,12 @@ import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
 import eu.openaire.observatory.utils.JSONObjectUtils;
+import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
+import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.catalogue.ui.domain.Section;
 import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
@@ -54,9 +56,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -73,7 +72,9 @@ public class SurveyServiceImpl implements SurveyService {
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final CacheService<String, SurveyAnswerRevisionsAggregation> cacheService;
-    private final ConcurrentMap<String, ReentrantLock> surveyAnswerLocks = new ConcurrentHashMap<>();
+    private final EmailSurveyService emailSurveyService;
+    private final SurveySettingsService surveySettingsService;
+    private final SurveyAnswerLocks surveyAnswerLocks;
 
     public SurveyServiceImpl(CrudService<Stakeholder> stakeholderCrudService,
                              CrudService<SurveyAnswer> surveyAnswerCrudService,
@@ -82,7 +83,10 @@ public class SurveyServiceImpl implements SurveyService {
                              ModelService modelService,
                              UserService userService,
                              ObjectMapper objectMapper,
-                             CacheService<String, SurveyAnswerRevisionsAggregation> cacheService) {
+                             CacheService<String, SurveyAnswerRevisionsAggregation> cacheService,
+                             EmailSurveyService emailSurveyService,
+                             SurveySettingsService surveySettingsService,
+                             SurveyAnswerLocks surveyAnswerLocks) {
         this.stakeholderCrudService = stakeholderCrudService;
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.genericResourceService = genericResourceService;
@@ -91,6 +95,9 @@ public class SurveyServiceImpl implements SurveyService {
         this.userService = userService;
         this.objectMapper = objectMapper;
         this.cacheService = cacheService;
+        this.emailSurveyService = emailSurveyService;
+        this.surveySettingsService = surveySettingsService;
+        this.surveyAnswerLocks = surveyAnswerLocks;
     }
 
     @Override
@@ -109,10 +116,6 @@ public class SurveyServiceImpl implements SurveyService {
         if (stakeholderId != null && !"".equals(stakeholderId)) {
             Stakeholder stakeholder = stakeholderCrudService.get(stakeholderId);
             filter.addFilter("type", stakeholder.getType());
-            // TODO: need to implement OR filter
-//            if (stakeholder.getSubType() != null && !"".equals(stakeholder.getSubType())) {
-//                filter.setKeyword("chapterSubTypes=" + stakeholder.getSubType());
-//            }
         }
         Browsing<Model> surveyBrowsing = this.genericResourceService.getResults(filter);
         return surveyBrowsing;
@@ -164,24 +167,23 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer update(String id, SurveyAnswer surveyAnswer, String comment, Authentication authentication) throws ResourceNotFoundException {
-        Date date = new Date();
-        SurveyAnswer existing = surveyAnswerCrudService.get(id);
-        User user = User.of(authentication);
-        String userRole = getUserRole(authentication, existing.getStakeholderId());
+        try (var ignored = surveyAnswerLocks.acquire(id)) {
+            Date date = new Date();
+            SurveyAnswer existing = surveyAnswerCrudService.get(id);
+            User user = User.of(authentication);
+            String userRole = getUserRole(authentication, existing.getStakeholderId());
 
-        surveyAnswer.setHistory(existing.getHistory());
-        surveyAnswer.getHistory().addEntry(user.getId(), userRole, comment, date, History.HistoryAction.UPDATED);
-        surveyAnswer.getMetadata().setModifiedBy(user.getId());
-        surveyAnswer.getMetadata().setModificationDate(date);
-        return surveyAnswerCrudService.update(id, surveyAnswer);
+            surveyAnswer.setHistory(existing.getHistory());
+            surveyAnswer.getHistory().addEntry(user.getId(), userRole, comment, date, History.HistoryAction.UPDATED);
+            surveyAnswer.getMetadata().setModifiedBy(user.getId());
+            surveyAnswer.getMetadata().setModificationDate(date);
+            return surveyAnswerCrudService.update(id, surveyAnswer);
+        }
     }
 
     @Override
     public void edit(String id, Revision revision, Authentication authentication) {
-        ReentrantLock lock = surveyAnswerLocks.computeIfAbsent(id, ignored -> new ReentrantLock());
-        lock.lock();
-        try {
-            // TODO: add authentication or user in revision or in a new history entry (*) will show correct editors at any time and SARA is no longer needed.
+        try (var ignored = surveyAnswerLocks.acquire(id)) {
             SurveyAnswerRevisionsAggregation sara = getMostRecent(id);
             User user = User.of(authentication);
             Editor editor = new Editor();
@@ -189,16 +191,10 @@ public class SurveyServiceImpl implements SurveyService {
             editor.setRole(getUserRole(authentication, sara.getSurveyAnswer().getStakeholderId()));
             sara.applyRevision(revision, editor);
             cacheService.save(sara.getSurveyAnswer().getId(), sara);
-        } finally {
-            lock.unlock();
-            if (!lock.hasQueuedThreads()) {
-                surveyAnswerLocks.remove(id, lock);
-            }
         }
     }
 
     private SurveyAnswerRevisionsAggregation getMostRecent(String surveyAnswerId) {
-        // TODO: find survey answer in Redis Cache or fetch it from db (only if not validated)
         SurveyAnswerRevisionsAggregation sara = cacheService.fetch(surveyAnswerId);
         if (sara == null) {
             sara = new SurveyAnswerRevisionsAggregation(surveyAnswerCrudService.get(surveyAnswerId));
@@ -208,22 +204,24 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer importAnswer(String surveyAnswerId, String modelFrom, Authentication authentication) throws ResourceNotFoundException {
-        Date date = new Date();
         Model modelToImport = modelService.get(modelFrom);
-        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
+        try (var ignored = surveyAnswerLocks.acquire(surveyAnswerId)) {
+            Date date = new Date();
+            SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
 
-        Model model = modelService.get(surveyAnswer.getSurveyId());
-        validateImportCompatibility(model, modelToImport);
+            Model model = modelService.get(surveyAnswer.getSurveyId());
+            validateImportCompatibility(model, modelToImport);
 
-        prefill(modelToImport, surveyAnswer);
+            prefill(modelToImport, surveyAnswer);
 
-        User user = User.of(authentication);
-        String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
+            User user = User.of(authentication);
+            String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
 
-        surveyAnswer.getHistory().addEntry(user.getId(), userRole, String.format("Imported data from '%s'", modelToImport.getName()), date, History.HistoryAction.IMPORTED);
-        surveyAnswer.getMetadata().setModifiedBy(user.getId());
-        surveyAnswer.getMetadata().setModificationDate(date);
-        return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
+            surveyAnswer.getHistory().addEntry(user.getId(), userRole, String.format("Imported data from '%s'", modelToImport.getName()), date, History.HistoryAction.IMPORTED);
+            surveyAnswer.getMetadata().setModifiedBy(user.getId());
+            surveyAnswer.getMetadata().setModificationDate(date);
+            return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
+        }
     }
 
     /**
@@ -311,19 +309,21 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer updateAnswer(String surveyAnswerId, JSONObject answer, String comment, Authentication authentication) throws ResourceNotFoundException {
-        Date date = new Date();
-        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
-        if (!hasChanged(surveyAnswer.getAnswer(), answer)) {
-            return surveyAnswer;
-        }
-        User user = User.of(authentication);
-        String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
+        try (var ignored = surveyAnswerLocks.acquire(surveyAnswerId)) {
+            Date date = new Date();
+            SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(surveyAnswerId);
+            if (!hasChanged(surveyAnswer.getAnswer(), answer)) {
+                return surveyAnswer;
+            }
+            User user = User.of(authentication);
+            String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
 
-        surveyAnswer.setAnswer(answer);
-        surveyAnswer.getHistory().addEntry(user.getId(), userRole, comment, date, History.HistoryAction.UPDATED);
-        surveyAnswer.getMetadata().setModifiedBy(user.getId());
-        surveyAnswer.getMetadata().setModificationDate(date);
-        return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
+            surveyAnswer.setAnswer(answer);
+            surveyAnswer.getHistory().addEntry(user.getId(), userRole, comment, date, History.HistoryAction.UPDATED);
+            surveyAnswer.getMetadata().setModifiedBy(user.getId());
+            surveyAnswer.getMetadata().setModificationDate(date);
+            return surveyAnswerCrudService.update(surveyAnswerId, surveyAnswer);
+        }
     }
 
     @Override
@@ -385,24 +385,57 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer setAnswerValidated(String answerId, boolean validated, Authentication authentication) throws ResourceNotFoundException {
-        Date date = new Date();
-        SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(answerId);
-        User user = User.of(authentication);
-        String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
-        if (surveyAnswer.isValidated() != validated) {
+        SurveyAnswer validatedAnswer;
+        String validatedBy;
+        try (var ignored = surveyAnswerLocks.acquire(answerId)) {
+            Date date = new Date();
+            SurveyAnswer surveyAnswer = surveyAnswerCrudService.get(answerId);
+            User user = User.of(authentication);
+            String userRole = getUserRole(authentication, surveyAnswer.getStakeholderId());
+            if (surveyAnswer.isValidated() == validated) {
+                return surveyAnswer;
+            }
             History.HistoryAction action = validated ? History.HistoryAction.VALIDATED : History.HistoryAction.INVALIDATED;
             surveyAnswer.getHistory().addEntry(user.getId(), userRole, "", date, action);
             surveyAnswer.getMetadata().setModifiedBy(user.getId());
             surveyAnswer.getMetadata().setModificationDate(date);
-            return validated ? validateAnswer(surveyAnswer) : invalidateAnswer(surveyAnswer);
+            if (!validated) {
+                return invalidateAnswer(surveyAnswer);
+            }
+            validatedAnswer = validateAnswer(surveyAnswer);
+            validatedBy = user.getId();
         }
-        return surveyAnswer;
+        notifyValidationIfNeeded(validatedAnswer, validatedBy);
+        return validatedAnswer;
     }
 
-    @Override
-    public SurveyAnswer setAnswerPublished(String answerId, boolean published, Authentication authentication) throws ResourceNotFoundException {
-        throw new UnsupportedOperationException("Not implemented yet...");
-        // TODO: implement this method
+    /**
+     * <p>Notifies the Coordinators and Administrators of the answer's type that it has been validated.</p>
+     * <p>Skipped only when the survey type's {@link SurveySettings#isNotifyOnValidation() notifyOnValidation}
+     * flag is explicitly disabled.</p>
+     */
+    private void notifyValidationIfNeeded(SurveyAnswer answer, String validatedBy) {
+        try {
+            if (!shouldNotifyOnValidation(answer.getType())) return;
+            emailSurveyService.notifyAnswerValidated(answer, validatedBy);
+        } catch (Exception e) {
+            logger.warn("Failed to send answer validated email [answerId={}]", answer.getId(), e);
+        }
+    }
+
+    /**
+     * <p>{@link SurveySettingsService#getByType(String) getByType} throws when no settings record exists
+     * for the type rather than returning null. A missing record means "not configured" and defaults to
+     * notifying &mdash; treating it as "do not notify" would silence the feature everywhere, since no
+     * survey type has a settings record until someone creates one.</p>
+     */
+    private boolean shouldNotifyOnValidation(String surveyType) {
+        try {
+            SurveySettings settings = surveySettingsService.getByType(surveyType);
+            return settings == null || settings.isNotifyOnValidation();
+        } catch (ResourceNotFoundException e) {
+            return true;
+        }
     }
 
     @Override
@@ -552,7 +585,7 @@ public class SurveyServiceImpl implements SurveyService {
 
     private boolean fieldIsAnswered(UiField field, Map<String, ?> chapterAnswer, Map<String, UiField> allFields) {
         if (chapterAnswer != null && !chapterAnswer.isEmpty()) {
-            if (!"composite".equals(field.getTypeInfo().getType())) {
+            if (field.getTypeInfo().getType() != FieldType.composite) {
                 return getValueFromAnswer(field, chapterAnswer, allFields) != null;
             }
             for (UiField f : field.getSubFields()) {
@@ -719,11 +752,13 @@ public class SurveyServiceImpl implements SurveyService {
         for (HistoryEntry entry : surveyAnswer.getHistory().getEntries()) {
             if (entry.getAction() == History.HistoryAction.UPDATED
                     || entry.getAction() == History.HistoryAction.VALIDATED) {
-                if (entry.getUserId() != null) { // TODO: added for backward compatibility
-                    editors.putIfAbsent(entry.getUserId(), userService.get(entry.getUserId()));
+                if (entry.getUserId() != null) { // userId is legacy; entries created after the editors list existed never populate it
+                    editors.putIfAbsent(entry.getUserId(), userService.getUser(entry.getUserId()));
                 }
                 for (Editor editor : Objects.requireNonNullElse(entry.getEditors(), new ArrayList<Editor>())) {
-                    editors.putIfAbsent(editor.getUser(), userService.get(editor.getUser()));
+                    if (editor.getUser() != null) {
+                        editors.putIfAbsent(editor.getUser(), userService.getUser(editor.getUser()));
+                    }
                 }
             }
         }
@@ -797,7 +832,9 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public SurveyAnswer restore(String surveyAnswerId, String versionId) {
-        return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRestoreHistory(a, versionId));
+        try (var ignored = surveyAnswerLocks.acquire(surveyAnswerId)) {
+            return surveyAnswerCrudService.restore(surveyAnswerId, versionId, a -> createRestoreHistory(a, versionId));
+        }
     }
 
     private SurveyAnswer createRestoreHistory(SurveyAnswer answer, String version) {

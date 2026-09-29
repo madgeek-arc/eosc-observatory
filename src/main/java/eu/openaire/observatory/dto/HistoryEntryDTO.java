@@ -52,10 +52,14 @@ public class HistoryEntryDTO {
 //        }
         if (historyEntry.getEditors() != null && !historyEntry.getEditors().isEmpty()) {
             entry.setEditors(historyEntry.getEditors().stream().map(u -> new EditorDTO(u.getUser(), u.getRole(), u.getUpdateDate())).toList());
-        } else {
-            EditorDTO editorDTO = new EditorDTO(historyEntry.getUserId(), historyEntry.getUserRole(), Date.from(Instant.ofEpochSecond(historyEntry.getTime())));
+        } else if (historyEntry.getUserId() != null) {
+            EditorDTO editorDTO = new EditorDTO(historyEntry.getUserId(), historyEntry.getUserRole(), Date.from(Instant.ofEpochMilli(historyEntry.getTime())));
             entry.setEditors(new ArrayList<>());
             entry.getEditors().add(editorDTO);
+        } else {
+            // Legacy/unresolved entry: no recorded editors and no deprecated userId to fall back on.
+            // Leave editors empty rather than fabricating an "unknown" editor.
+            entry.setEditors(new ArrayList<>());
         }
         entry.setComment(historyEntry.getComment());
         entry.setAction(HistoryActionDTO.of(historyEntry.getAction(), historyEntry.getRegistryVersion()));

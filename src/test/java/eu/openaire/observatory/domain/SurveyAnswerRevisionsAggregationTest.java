@@ -12,23 +12,21 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 class SurveyAnswerRevisionsAggregationTest {
 
     @Test
-    void constructorInitializesHistoryAndDefaults() {
+    void constructorDoesNotAddHistoryEntryUntilFirstRevision() {
         SurveyAnswer surveyAnswer = new SurveyAnswer();
 
         SurveyAnswerRevisionsAggregation aggregation = new SurveyAnswerRevisionsAggregation(surveyAnswer);
 
         assertSame(surveyAnswer, aggregation.getSurveyAnswer());
         assertNotNull(aggregation.getCreated());
-        assertEquals(1, surveyAnswer.getHistory().getEntries().size());
-        assertEquals(History.HistoryAction.UPDATED, surveyAnswer.getHistory().getEntries().getFirst().getAction());
+        assertEquals(0, surveyAnswer.getHistory().getEntries().size());
     }
 
     @Test
     void applyRevisionAddsMissingFieldAndUpdatesHistoryMetadata() {
         SurveyAnswer surveyAnswer = createSurveyAnswer();
+        surveyAnswer.getHistory().addEntry("seed", "manager", "", new Date(1_000L), History.HistoryAction.UPDATED);
         SurveyAnswerRevisionsAggregation aggregation = new SurveyAnswerRevisionsAggregation(surveyAnswer);
-        aggregation.getSurveyAnswer().getHistory().getEntries().clear();
-        aggregation.getSurveyAnswer().getHistory().addEntry("seed", "manager", "", new Date(1_000L), History.HistoryAction.UPDATED);
 
         Revision revision = new Revision();
         revision.setField("section.question");
@@ -48,9 +46,20 @@ class SurveyAnswerRevisionsAggregationTest {
         assertEquals(editor, aggregation.getEditors().getFirst());
         assertEquals("editor@example.org", aggregation.getSurveyAnswer().getMetadata().getModifiedBy());
         assertEquals(editor.getUpdateDate(), aggregation.getSurveyAnswer().getMetadata().getModificationDate());
-        assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().size());
-        assertEquals(editor.getUpdateDate().getTime(), aggregation.getSurveyAnswer().getHistory().getEntries().getFirst().getTime());
-        assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().getFirst().getEditors().size());
+        // the pre-existing "seed" entry is untouched; applyRevision appends its own new entry
+        assertEquals(2, aggregation.getSurveyAnswer().getHistory().getEntries().size());
+        assertEquals(History.HistoryAction.UPDATED, aggregation.getSurveyAnswer().getHistory().getEntries().getLast().getAction());
+        assertEquals(editor.getUpdateDate().getTime(), aggregation.getSurveyAnswer().getHistory().getEntries().getLast().getTime());
+        assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().getLast().getEditors().size());
+
+        // a second revision from the same aggregation mutates its own entry in place rather than adding another
+        Editor secondEditor = new Editor()
+                .setUser("editor@example.org")
+                .setRole("manager")
+                .setUpdateDate(new Date(130_000L));
+        aggregation.applyRevision(revision, secondEditor);
+        assertEquals(2, aggregation.getSurveyAnswer().getHistory().getEntries().size());
+        assertEquals(secondEditor.getUpdateDate().getTime(), aggregation.getSurveyAnswer().getHistory().getEntries().getLast().getTime());
     }
 
     @Test
@@ -91,33 +100,68 @@ class SurveyAnswerRevisionsAggregationTest {
         assertEquals(2, aggregation.getEditors().size());
     }
 
-    /**
-     * The branch that was missing entirely: {@code addEditor} guarded on {@code latest.equals(editor)}
-     * with no else, so a <em>different</em> editor was silently discarded. Only the first person to
-     * touch an answer was ever recorded, and {@code updateHistory} then stamped everyone else's edits
-     * with that person's identity and timestamp — breaking the audit in exactly the concurrent-edit
-     * scenario the aggregation exists for.
-     */
     @Test
-    void addEditorRecordsADifferentEditor() {
+    void addEditorAppendsDifferentConcurrentEditor() {
         SurveyAnswerRevisionsAggregation aggregation = new SurveyAnswerRevisionsAggregation(createSurveyAnswer());
         aggregation.getEditors().clear();
 
-        Editor alice = new Editor()
+        Editor first = new Editor()
                 .setUser("alice@example.org")
                 .setRole("manager")
                 .setUpdateDate(new Date(10_000L));
-        Editor bob = new Editor()
+        Editor different = new Editor()
                 .setUser("bob@example.org")
-                .setRole("manager")
-                .setUpdateDate(new Date(12_000L));
+                .setRole("contributor")
+                .setUpdateDate(new Date(10_500L));
 
-        aggregation.addEditor(alice);
-        aggregation.addEditor(bob);
+        aggregation.addEditor(first);
+        aggregation.addEditor(different);
 
         assertEquals(2, aggregation.getEditors().size());
         assertEquals("alice@example.org", aggregation.getEditors().get(0).getUser());
         assertEquals("bob@example.org", aggregation.getEditors().get(1).getUser());
+    }
+
+    @Test
+    void applyRevisionDeleteOfMissingFieldDoesNotThrowAndStillRecordsHistory() {
+        SurveyAnswer surveyAnswer = createSurveyAnswer();
+        SurveyAnswerRevisionsAggregation aggregation = new SurveyAnswerRevisionsAggregation(surveyAnswer);
+
+        Revision revision = new Revision();
+        revision.setField("section.missing");
+        revision.setAction(new Action().setType(Action.Type.DELETE));
+
+        Editor editor = new Editor()
+                .setUser("editor@example.org")
+                .setRole("manager")
+                .setUpdateDate(new Date(5_000L));
+
+        aggregation.applyRevision(revision, editor);
+
+        assertEquals(1, aggregation.getRevisions().size());
+        assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().size());
+        assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().getFirst().getEditors().size());
+    }
+
+    @Test
+    void applyRevisionMoveOfMissingFieldDoesNotThrowAndStillRecordsHistory() {
+        SurveyAnswer surveyAnswer = createSurveyAnswer();
+        SurveyAnswerRevisionsAggregation aggregation = new SurveyAnswerRevisionsAggregation(surveyAnswer);
+
+        Revision revision = new Revision();
+        revision.setField("section.items[0]");
+        revision.setAction(new Action().setType(Action.Type.MOVE).setIndex(1));
+
+        Editor editor = new Editor()
+                .setUser("editor@example.org")
+                .setRole("manager")
+                .setUpdateDate(new Date(5_000L));
+
+        aggregation.applyRevision(revision, editor);
+
+        assertEquals(1, aggregation.getRevisions().size());
+        assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().size());
+        assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().getFirst().getEditors().size());
     }
 
     @Test
@@ -138,8 +182,7 @@ class SurveyAnswerRevisionsAggregationTest {
     }
 
     /**
-     * With more than one editor recorded, {@code updateHistory} joins them into {@code modifiedBy} —
-     * which is why the purge scrub cannot use a whole-string equals against that field.
+     * With more than one editor recorded, {@code updateHistory} joins them into {@code modifiedBy}.
      */
     @Test
     void updateHistoryJoinsMultipleEditorsIntoModifiedBy() {
@@ -161,7 +204,6 @@ class SurveyAnswerRevisionsAggregationTest {
                 .setUpdateDate(new Date(12_000L)));
 
         assertEquals("alice@example.org,bob@example.org", surveyAnswer.getMetadata().getModifiedBy());
-        // The entry timestamp tracks the most recent editor, not the first one.
         assertEquals(12_000L, surveyAnswer.getHistory().getEntries().getLast().getTime());
     }
 

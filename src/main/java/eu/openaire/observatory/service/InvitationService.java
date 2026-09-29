@@ -16,17 +16,29 @@
 
 package eu.openaire.observatory.service;
 
+import eu.openaire.observatory.domain.Invitation;
 import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.dto.InvitationResultDTO;
 import org.springframework.security.core.Authentication;
 
 import java.util.Date;
 
 public interface InvitationService {
 
-    String createInvitation(User inviter, String inviteeEmail, String role, String stakeholderId);
+    /**
+     * Creates an invitation token and emails the accept link to the invitee. The invitation is
+     * self-contained in the token; nothing is stored.
+     */
+    InvitationResultDTO createInvitation(User inviter, String inviteeEmail, String role, Invitation.Group group, String groupId);
 
-    String createInvitation(User inviter, String inviteeEmail, String role, String stakeholderId, Date expiration);
+    InvitationResultDTO createInvitation(User inviter, String inviteeEmail, String role, Invitation.Group group, String groupId, Date expiration);
 
-    boolean acceptInvitation(String invitation, Authentication authentication);
+    /**
+     * Accepts the invitation for the authenticated user.
+     *
+     * @return false if the token is invalid, tampered, expired, addressed to another user, or the
+     * inviter no longer has the right to invite.
+     */
+    boolean acceptInvitation(String token, Authentication authentication);
 
 }

@@ -18,6 +18,7 @@ package eu.openaire.observatory.configuration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.time.Duration;
 import java.util.Set;
 
 @ConfigurationProperties(prefix = "observatory")
@@ -34,13 +35,26 @@ public class ApplicationProperties {
     private String jwsSigningSecret;
 
     /**
-     * HMAC key for the pseudonymous subject reference written to the purge report line.
+     * How long an invitation stays valid after creation.
+     */
+    private Duration invitationTtl = Duration.ofDays(7);
+
+    /**
+     * Base64-encoded 256-bit key that encrypts invitation tokens. Generate with
+     * {@code openssl rand -base64 32}. Changing it invalidates every outstanding invitation.
+     */
+    private String invitationKey;
+
+    /**
+     * HMAC key for pseudonymizing user identifiers: the subject reference written to the purge
+     * report line, and any user email pseudonymized in general application logs.
      *
      * <p>Deliberately separate from {@link #jwsSigningSecret}: rotating the signing secret would
      * otherwise silently make every past erasure reference unmatchable. Losing or changing this key
-     * has the same effect, so it must be backed up with the same care as the records it indexes.
+     * has the same effect on both uses, so it must be backed up with the same care as the records
+     * and log lines it indexes.
      */
-    private String erasureHashSecret;
+    private String hmacSecret;
 
     /**
      * Cron expression for the daily survey lifecycle email notification scheduler
@@ -83,12 +97,28 @@ public class ApplicationProperties {
         this.jwsSigningSecret = jwsSigningSecret;
     }
 
-    public String getErasureHashSecret() {
-        return erasureHashSecret;
+    public Duration getInvitationTtl() {
+        return invitationTtl;
     }
 
-    public void setErasureHashSecret(String erasureHashSecret) {
-        this.erasureHashSecret = erasureHashSecret;
+    public void setInvitationTtl(Duration invitationTtl) {
+        this.invitationTtl = invitationTtl;
+    }
+
+    public String getInvitationKey() {
+        return invitationKey;
+    }
+
+    public void setInvitationKey(String invitationKey) {
+        this.invitationKey = invitationKey;
+    }
+
+    public String getHmacSecret() {
+        return hmacSecret;
+    }
+
+    public void setHmacSecret(String hmacSecret) {
+        this.hmacSecret = hmacSecret;
     }
 
     public String getSurveySchedulerCron() {
