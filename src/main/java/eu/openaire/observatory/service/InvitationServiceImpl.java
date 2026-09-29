@@ -28,6 +28,7 @@ import eu.openaire.observatory.domain.Roles;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.domain.UserGroup;
 import eu.openaire.observatory.dto.InvitationResultDTO;
+import gr.uoa.di.madgik.registry.exception.ResourceAlreadyExistsException;
 import gr.uoa.di.madgik.registry.exception.ResourceException;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import gr.uoa.di.madgik.registry.service.ServiceException;
@@ -152,7 +153,11 @@ public class InvitationServiceImpl implements InvitationService {
         } else {
             groupService.addMember(invitation.getGroupId(), invitation.getInvitee());
         }
-        userService.add(authenticatedUser);
+        try {
+            userService.add(authenticatedUser);
+        } catch (ResourceAlreadyExistsException e) {
+            // the user is already registered
+        }
         return true;
     }
 

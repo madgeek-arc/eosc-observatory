@@ -26,6 +26,7 @@ import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.dto.InvitationResultDTO;
 import eu.openaire.observatory.utils.OidcTestUtils;
+import gr.uoa.di.madgik.registry.exception.ResourceAlreadyExistsException;
 import gr.uoa.di.madgik.registry.exception.ResourceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,6 +106,16 @@ class InvitationServiceTest {
         assertFalse(result.emailSent());
         assertNotNull(result.token());
         verify(emailService).send(any(Invitation.class), anyString(), eq("Greece"), eq(result.token()));
+    }
+
+    @Test
+    void acceptSucceedsWhenUserAlreadyExists() {
+        allowManager();
+        doThrow(new ResourceAlreadyExistsException("invitee@example.org", "user")).when(userService).add(any(User.class));
+        String token = create("manager@example.org", "invitee@example.org", "contributor", Group.STAKEHOLDER, "sh-1").token();
+
+        assertTrue(service.acceptInvitation(token, auth("invitee@example.org")));
+        assertTrue(service.acceptInvitation(token, auth("invitee@example.org")));
     }
 
     @Test
