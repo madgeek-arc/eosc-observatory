@@ -17,10 +17,12 @@
 package eu.openaire.observatory.controller;
 
 import eu.openaire.observatory.service.CSVConverter;
+import gr.uoa.di.madgik.registry.exception.ResourceException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,7 +30,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 @RestController
@@ -89,11 +93,22 @@ public class CsvController {
     }
 
     private Date[] parseDateRange(String dateFrom, String dateTo) throws ParseException {
+        // a range is only valid when both dates are given, otherwise it is ignored
+        if (dateFrom == null || dateFrom.isBlank() || dateTo == null || dateTo.isBlank()) {
+            return new Date[]{null, null};
+        }
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-        return new Date[]{
-            dateFrom != null ? formatter.parse(dateFrom) : null,
-            dateTo != null ? formatter.parse(dateTo) : null
-        };
+        Date from = formatter.parse(dateFrom);
+        Date to = formatter.parse(dateTo);
+        if (from.after(to)) {
+            throw new ResourceException("dateFrom must not be after dateTo.", HttpStatus.BAD_REQUEST);
+        }
+        // dateTo covers its whole day: move it to the last millisecond of that day
+        Calendar endOfDay = new GregorianCalendar();
+        endOfDay.setTime(to);
+        endOfDay.add(Calendar.DAY_OF_MONTH, 1);
+        endOfDay.add(Calendar.MILLISECOND, -1);
+        return new Date[]{from, endOfDay.getTime()};
     }
 
     @PostMapping(value = "/import/answers/{id}")
