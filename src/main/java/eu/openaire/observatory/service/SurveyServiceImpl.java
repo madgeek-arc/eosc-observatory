@@ -709,15 +709,15 @@ public class SurveyServiceImpl implements SurveyService {
 
     @Override
     public List<String> getCountriesWithValidatedAnswer(String surveyId) {
-        FacetFilter filter = new FacetFilter();
-        filter.setQuantity(10000);
-        filter.addFilter("surveyId", surveyId);
-        filter.addFilter("validated", true);
-        return surveyAnswerCrudService
-                .getAll(filter)
-                .getResults()
+        Model survey = genericResourceService.get("model", surveyId);
+        // same rule as the tsv export: a stakeholder counts only if its latest answer is validated right now
+        return stakeholderCrudService.getWithFilter("type", survey.getType())
                 .stream()
-                .map(a -> stakeholderCrudService.get(a.getStakeholderId()).getCountry())
+                .filter(sh -> {
+                    SurveyAnswer latest = getLatest(surveyId, sh.getId());
+                    return latest != null && latest.isValidated();
+                })
+                .map(Stakeholder::getCountry)
                 .sorted()
                 .collect(Collectors.toList());
     }
