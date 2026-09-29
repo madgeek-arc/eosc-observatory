@@ -18,6 +18,7 @@ package eu.openaire.observatory.configuration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.time.Duration;
 import java.util.Set;
 
 @ConfigurationProperties(prefix = "observatory")
@@ -32,6 +33,17 @@ public class ApplicationProperties {
     private String logoutRedirect;
 
     private String jwsSigningSecret;
+
+    /**
+     * How long an invitation stays valid after creation.
+     */
+    private Duration invitationTtl = Duration.ofDays(7);
+
+    /**
+     * Base64-encoded 256-bit key that encrypts invitation tokens. Generate with
+     * {@code openssl rand -base64 32}. Changing it invalidates every outstanding invitation.
+     */
+    private String invitationKey;
 
     /**
      * Cron expression for the daily survey lifecycle email notification scheduler
@@ -72,6 +84,22 @@ public class ApplicationProperties {
 
     public void setJwsSigningSecret(String jwsSigningSecret) {
         this.jwsSigningSecret = jwsSigningSecret;
+    }
+
+    public Duration getInvitationTtl() {
+        return invitationTtl;
+    }
+
+    public void setInvitationTtl(Duration invitationTtl) {
+        this.invitationTtl = invitationTtl;
+    }
+
+    public String getInvitationKey() {
+        return invitationKey;
+    }
+
+    public void setInvitationKey(String invitationKey) {
+        this.invitationKey = invitationKey;
     }
 
     public String getSurveySchedulerCron() {
