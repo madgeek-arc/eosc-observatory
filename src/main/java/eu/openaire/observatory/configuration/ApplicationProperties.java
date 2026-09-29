@@ -46,6 +46,17 @@ public class ApplicationProperties {
     private String invitationKey;
 
     /**
+     * HMAC key for pseudonymizing user identifiers: the subject reference written to the purge
+     * report line, and any user email pseudonymized in general application logs.
+     *
+     * <p>Deliberately separate from {@link #jwsSigningSecret}: rotating the signing secret would
+     * otherwise silently make every past erasure reference unmatchable. Losing or changing this key
+     * has the same effect on both uses, so it must be backed up with the same care as the records
+     * and log lines it indexes.
+     */
+    private String hmacSecret;
+
+    /**
      * Cron expression for the daily survey lifecycle email notification scheduler
      * (survey start, end, deadline approaching). Set to '-' to disable.
      * Example: 0 0 10 * * * (daily at 10:00)
@@ -100,6 +111,14 @@ public class ApplicationProperties {
 
     public void setInvitationKey(String invitationKey) {
         this.invitationKey = invitationKey;
+    }
+
+    public String getHmacSecret() {
+        return hmacSecret;
+    }
+
+    public void setHmacSecret(String hmacSecret) {
+        this.hmacSecret = hmacSecret;
     }
 
     public String getSurveySchedulerCron() {

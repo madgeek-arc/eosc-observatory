@@ -187,7 +187,7 @@
 		<dependency>
 			<groupId>gr.athenarc</groupId>
 			<artifactId>messaging-client</artifactId>
-			<version>0.0.2-SNAPSHOT</version>
+			<version>0.1.0-SNAPSHOT</version>
 			<scope>compile</scope>
 		</dependency>
 
@@ -347,6 +347,13 @@
 							<groupId>org.mapstruct</groupId>
 							<artifactId>mapstruct-processor</artifactId>
 							<version>${mapstruct.version}</version>
+						</path>
+						<!-- Generates the Log4j2Plugins.dat descriptor for our custom
+						     ErasureMaskingRewritePolicy so log4j2 finds it without package scanning. -->
+						<path>
+							<groupId>org.apache.logging.log4j</groupId>
+							<artifactId>log4j-core</artifactId>
+							<version>${log4j2.version}</version>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>

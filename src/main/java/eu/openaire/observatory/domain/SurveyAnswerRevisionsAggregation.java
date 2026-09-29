@@ -40,6 +40,11 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
 //    private static final Configuration conf = Configuration.defaultConfiguration()
 //            .addOptions(Option.DEFAULT_PATH_LEAF_TO_NULL);
 
+    /** Jackson must restore a draft without creating a new editing history entry. */
+    public SurveyAnswerRevisionsAggregation() {
+        this.revisions = new ArrayList<>();
+    }
+
     public SurveyAnswerRevisionsAggregation(SurveyAnswer surveyAnswer) {
         this.surveyAnswer = surveyAnswer;
         this.revisions = new ArrayList<>();
@@ -128,19 +133,17 @@ public class SurveyAnswerRevisionsAggregation implements Serializable {
      * @return
      */
     public SurveyAnswerRevisionsAggregation addEditor(Editor editor) {
-        if (!this.editors.isEmpty()) {
-            Editor latest = this.editors.get(this.editors.size() - 1);
-            if (latest.equals(editor)) {
-                if (editor.getUpdateDate().getTime() - latest.getUpdateDate().getTime() > 60_000) {
-                    this.editors.add(editor);
-                } else {
-                    latest.setUpdateDate(editor.getUpdateDate());
-                }
-            } else {
-                this.editors.add(editor);
-            }
-        } else {
+        if (this.editors.isEmpty()) {
             this.editors.add(editor);
+            return this;
+        }
+        Editor latest = this.editors.get(this.editors.size() - 1);
+        if (!latest.equals(editor)) {
+            this.editors.add(editor);                     // different person (or role)
+        } else if (editor.getUpdateDate().getTime() - latest.getUpdateDate().getTime() > 60_000) {
+            this.editors.add(editor);                     // same person, new session
+        } else {
+            latest.setUpdateDate(editor.getUpdateDate()); // same person, still typing
         }
         return this;
     }

@@ -18,6 +18,7 @@ package eu.openaire.observatory.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import eu.openaire.observatory.service.Identifiable;
+import eu.openaire.observatory.utils.UserIds;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -67,7 +68,7 @@ public class UserGroup implements Identifiable<String> {
     public void setAdmins(Set<String> admins) {
         this.admins = admins == null ? null : admins
                 .stream()
-                .map(String::toLowerCase)
+                .map(UserIds::normalize)
                 .collect(Collectors.toCollection(TreeSet::new));
     }
 
@@ -78,7 +79,7 @@ public class UserGroup implements Identifiable<String> {
     public void setMembers(Set<String> members) {
         this.members = members == null ? null : members
                 .stream()
-                .map(String::toLowerCase)
+                .map(UserIds::normalize)
                 .collect(Collectors.toCollection(TreeSet::new));
     }
 

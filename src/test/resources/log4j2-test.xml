@@ -1,31 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Mirrors the main log4j2.xml Rewrite wiring so the full-context integration tests exercise the
+     same ErasureMaskingRewritePolicy plugin. -->
 <Configuration status="WARN">
     <Properties>
-        <Property name="LOG_PATTERN">%d{HH:mm:ss.SSS} %-5level [%t] %c{1.} : %m%n%ex</Property>
+        <Property name="LOG_PATTERN">%d{HH:mm:ss.SSS} %-5level [%t] %notEmpty{%X{user} }%c{1.} : %m%n%ex</Property>
     </Properties>
 
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="${LOG_PATTERN}"/>
         </Console>
+        <Rewrite name="ConsoleMasked">
+            <AppenderRef ref="Console"/>
+            <ErasureMaskingRewritePolicy/>
+        </Rewrite>
     </Appenders>
 
     <Loggers>
         <Root level="warn">
-            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ConsoleMasked"/>
         </Root>
 
         <Logger name="org.springframework" level="error" additivity="false">
-            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ConsoleMasked"/>
         </Logger>
         <Logger name="org.hibernate" level="error" additivity="false">
-            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ConsoleMasked"/>
         </Logger>
         <Logger name="org.testcontainers" level="error" additivity="false">
-            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ConsoleMasked"/>
         </Logger>
         <Logger name="com.github.dockerjava" level="error" additivity="false">
-            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ConsoleMasked"/>
         </Logger>
     </Loggers>
 </Configuration>
