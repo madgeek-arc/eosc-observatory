@@ -112,13 +112,13 @@ public class AdministratorController {
 
 
     @PostMapping("{id}/members")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministrator(#administratorId)")
     public ResponseEntity<Set<String>> addMember(@PathVariable("id") String administratorId, @RequestBody String email) {
         return new ResponseEntity<>(administratorService.addMember(administratorId, email), HttpStatus.OK);
     }
 
     @DeleteMapping("{id}/members/{memberId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or isAdministrator(#administratorId)")
     public ResponseEntity<Set<String>> removeMember(@PathVariable("id") String administratorId, @PathVariable("memberId") String memberId) {
         return new ResponseEntity<>(administratorService.removeMember(administratorId, memberId), HttpStatus.OK);
     }
