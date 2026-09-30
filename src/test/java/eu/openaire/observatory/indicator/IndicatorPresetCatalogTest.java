@@ -463,7 +463,7 @@ class IndicatorPresetCatalogTest {
         assertThat(euSingle.filters()).anySatisfy(f -> {
             assertThat(f.dimension()).isEqualTo(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
             assertThat(f.operator()).isEqualTo(FilterOperator.IN);
-            assertThat(f.values()).hasSize(9);
+            assertThat(f.values()).hasSize(12);
         });
 
         // selected countries -> initiativeType + country

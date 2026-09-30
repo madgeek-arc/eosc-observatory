@@ -130,7 +130,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     void countryInitiativeStatusUsesTheQuestionCodeForTheRequestedInitiativeType() {
         var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
         var filters = List.of(
-            new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("FINANCIAL_STRATEGY")),
+            new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_FINANCIAL_STRATEGY")),
             SURVEY_YEAR_2023
         );
 
@@ -830,10 +830,10 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
 
-        // 8 investmentArea members, each contributing FI=10M from the stubbed response -> 80M summed.
-        assertThat(capturedRequests).hasSize(8);
+        // 12 investmentArea members, each contributing FI=10M from the stubbed response -> 120M summed.
+        assertThat(capturedRequests).hasSize(12);
         assertThat(result.dimensions()).isEmpty();
-        assertThat(result.data().get(0).value()).isEqualTo(80_000_000.0);
+        assertThat(result.data().get(0).value()).isEqualTo(120_000_000.0);
     }
 
     @Test
@@ -958,9 +958,9 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(monitoredAreasCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.NONE));
 
-        // 9 real topic areas each have a "*_MONITORING_INITIATIVE" member -> GR answers Yes to all 9, DE to none.
-        assertThat(capturedRequests).hasSize(9);
-        assertThat(valueFor(result, "GR")).isEqualTo(9L);
+        // 12 areas each have a "*_MONITORING_INITIATIVE" member -> GR answers Yes to all 12, DE to none.
+        assertThat(capturedRequests).hasSize(12);
+        assertThat(valueFor(result, "GR")).isEqualTo(12L);
         assertThat(valueFor(result, "DE")).isEqualTo(0L);
     }
 
@@ -970,10 +970,10 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(policyAreasCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.NONE));
 
-        // 9 real topic areas each have a "*_POLICY" member (IMMEDIATE_OA_POLICY is a Publications
-        // variant, not counted separately) -> GR answers Yes to all 9, DE to none.
-        assertThat(capturedRequests).hasSize(9);
-        assertThat(valueFor(result, "GR")).isEqualTo(9L);
+        // 12 areas each have a "*_POLICY" member (IMMEDIATE_OA_POLICY is a Publications
+        // variant, not counted separately) -> GR answers Yes to all 12, DE to none.
+        assertThat(capturedRequests).hasSize(12);
+        assertThat(valueFor(result, "GR")).isEqualTo(12L);
         assertThat(valueFor(result, "DE")).isEqualTo(0L);
     }
 
@@ -1121,7 +1121,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION, "period");
         assertThat(result.data()).hasSize(4);
         assertThat(result.data()).filteredOn(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION).equals("GR"))
-            .allSatisfy(dp -> assertThat(dp.value()).isEqualTo(9L)); // Yes for all 9 monitoring topic members
+            .allSatisfy(dp -> assertThat(dp.value()).isEqualTo(12L)); // Yes for all 12 monitoring members
         assertThat(result.data()).filteredOn(dp -> dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION).equals("DE"))
             .allSatisfy(dp -> assertThat(dp.value()).isEqualTo(0L));
     }

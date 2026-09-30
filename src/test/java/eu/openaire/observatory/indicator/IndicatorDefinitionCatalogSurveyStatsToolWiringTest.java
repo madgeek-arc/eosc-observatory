@@ -69,7 +69,7 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
             .withFilters(
                 new IndicatorFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")),
-                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
+                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_MONITORING_INITIATIVE")),
                 SURVEY_YEAR_2023
             )
             .build();
@@ -82,7 +82,7 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
     @Test
     void euCountryCoverageAcceptsAnOptionalCountryGroupBy() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
-            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")), SURVEY_YEAR_2023)
+            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_MONITORING_INITIATIVE")), SURVEY_YEAR_2023)
             .withGroupBy(IndicatorCodes.COUNTRY_DIMENSION)
             .build();
 
@@ -95,7 +95,7 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
     void countryInitiativeStatusWithInitiativeTypeAndSurveyYearFiltersValidates() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.COUNTRY_INITIATIVE_STATUS)
             .withFilters(
-                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
+                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_MONITORING_INITIATIVE")),
                 SURVEY_YEAR_2023
             )
             .build();
@@ -130,7 +130,7 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
         // surveyYear is optional now, but a query with neither it nor a timeSeries range has no
         // year to resolve — rejected as a 400 rather than left to blow up in the handler.
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
-            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
+            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_MONITORING_INITIATIVE")))
             .build();
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
@@ -151,7 +151,7 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
     void aSurveyYearFilterAloneStillSatisfiesTheTwoPerCountryStatusIndicators(String indicatorCode) {
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
             .withFilters(
-                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")),
+                new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_MONITORING_INITIATIVE")),
                 SURVEY_YEAR_2023
             )
             .build();
@@ -181,7 +181,7 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
     @Test
     void euCountryCoverageSurveyYearFilterIsOptionalAndTimeSeriesIsAccepted() {
         var query = IndicatorQueryBuilder.forIndicator(IndicatorCodes.EU_COUNTRY_COVERAGE)
-            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
+            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_MONITORING_INITIATIVE")))
             .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
             .build();
 
@@ -213,7 +213,7 @@ class IndicatorDefinitionCatalogSurveyStatsToolWiringTest {
     @ValueSource(strings = {IndicatorCodes.COUNTRY_INITIATIVE_STATUS, IndicatorCodes.COUNTRY_POLICY_STATUS})
     void timeSeriesIsAcceptedOnTheTwoPerCountryStatusIndicators(String indicatorCode) {
         var query = IndicatorQueryBuilder.forIndicator(indicatorCode)
-            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("MONITORING_INITIATIVE")))
+            .withFilters(new IndicatorFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("OA_PUBLICATION_MONITORING_INITIATIVE")))
             .withTimeSeries(new TimeSeriesRequest(2022, 2023, null))
             .build();
 

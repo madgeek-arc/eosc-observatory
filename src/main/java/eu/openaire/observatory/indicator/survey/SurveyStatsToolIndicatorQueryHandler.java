@@ -1,6 +1,7 @@
 package eu.openaire.observatory.indicator.survey;
 
 import eu.openaire.observatory.indicator.IndicatorCodes;
+import eu.openaire.observatory.indicator.dimension.OpenScienceArea;
 import eu.openaire.observatory.indicator.handler.AbstractIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.handler.RatioPercentage;
 import eu.openaire.observatory.indicator.handler.RemoteIndicatorClient;
@@ -88,76 +89,14 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     public static final String POLICY_STATUS_AWAITING_DATA = "Awaiting data";
 
     /**
-     * One survey question per fixed initiativeType member — confirmed live, cross-referenced
-     * against observatory-ui's report-chart.configuration.ts (OA_PUBLICATION_POLICY/
-     * IMMEDIATE_OA_POLICY/FINANCIAL_STRATEGY/MONITORING_INITIATIVE) and, for every other member,
-     * against the real m-eosc-sb-2022/2023/2024/2025 registry survey models directly (same question
-     * numbering confirmed stable across all 4 years) plus a live raw?json= call per code against both
-     * the 2022 and 2023 survey years (the years this catalog actually serves). Every "*_POLICY"
-     * member's mandatory sub-question is derivable as questionCode + ".1" (e.g. Question18 ->
-     * Question18.1) — see {@link #mandatoryQuestionCode}, same live-verified.
+     * One survey question per fixed initiativeType member. Every "*_POLICY" member's mandatory
+     * sub-question is derivable as questionCode + ".1" (e.g. Question18 -> Question18.1) — see
+     * {@link #mandatoryQuestionCode}.
      */
-    private static final Map<String, String> QUESTION_CODE_BY_INITIATIVE_TYPE = Map.ofEntries(
-        Map.entry("OA_PUBLICATION_POLICY", "Question6"),
-        Map.entry("IMMEDIATE_OA_POLICY", "Question6.3"),
-        Map.entry("FINANCIAL_STRATEGY", "Question7"),
-        Map.entry("MONITORING_INITIATIVE", "Question54"),
-        Map.entry("OPEN_DATA_POLICY", "Question18"),
-        Map.entry("OPEN_DATA_FINANCIAL_STRATEGY", "Question19"),
-        Map.entry("OPEN_DATA_MONITORING_INITIATIVE", "Question66"),
-        Map.entry("FAIR_DATA_POLICY", "Question14"),
-        Map.entry("FAIR_DATA_FINANCIAL_STRATEGY", "Question15"),
-        Map.entry("FAIR_DATA_MONITORING_INITIATIVE", "Question62"),
-        Map.entry("DATA_MANAGEMENT_POLICY", "Question10"),
-        Map.entry("DATA_MANAGEMENT_FINANCIAL_STRATEGY", "Question11"),
-        Map.entry("DATA_MANAGEMENT_MONITORING_INITIATIVE", "Question58"),
-        Map.entry("CITIZEN_SCIENCE_POLICY", "Question50"),
-        Map.entry("CITIZEN_SCIENCE_FINANCIAL_STRATEGY", "Question51"),
-        Map.entry("CITIZEN_SCIENCE_MONITORING_INITIATIVE", "Question98"),
-        Map.entry("REPOSITORIES_CONNECT_POLICY", "Question30"),
-        Map.entry("REPOSITORIES_CONNECT_FINANCIAL_STRATEGY", "Question31"),
-        Map.entry("REPOSITORIES_CONNECT_MONITORING_INITIATIVE", "Question78"),
-        Map.entry("REPOSITORIES_PRESERVATION_POLICY", "Question38"),
-        Map.entry("REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE", "Question86"),
-        Map.entry("TRAINING_POLICY", "Question42"),
-        Map.entry("TRAINING_FINANCIAL_STRATEGY", "Question43"),
-        Map.entry("TRAINING_MONITORING_INITIATIVE", "Question90"),
-        Map.entry("SOFTWARE_POLICY", "Question22"),
-        Map.entry("SOFTWARE_FINANCIAL_STRATEGY", "Question23"),
-        Map.entry("SOFTWARE_MONITORING_INITIATIVE", "Question70")
-    );
+    private static final Map<String, String> QUESTION_CODE_BY_INITIATIVE_TYPE = OpenScienceArea.initiativeQuestionCodes();
 
-    /**
-     * The 9 real topic areas (independent of the initiativeType/investmentArea dimension's own
-     * finer-grained naming, e.g. "IMMEDIATE_OA_POLICY" is a Publications-topic variant, not its own
-     * topic area) — used only by {@link #queryAreasCount} to build each topic's "*_POLICY"/
-     * "*_MONITORING_INITIATIVE" key without double-counting variants or picking up unrelated
-     * "*_FINANCIAL_STRATEGY" keys via naive suffix matching.
-     */
-    private static final List<String> TOPIC_AREAS = List.of(
-        "OA_PUBLICATION", "OPEN_DATA", "FAIR_DATA", "DATA_MANAGEMENT", "CITIZEN_SCIENCE",
-        "REPOSITORIES_CONNECT", "REPOSITORIES_PRESERVATION", "TRAINING", "SOFTWARE"
-    );
-
-    /**
-     * One survey question per investmentArea member — a separate numeric ("in millions of Euros")
-     * question series from QUESTION_CODE_BY_INITIATIVE_TYPE's Yes/No ones. Numbering is the same in the
-     * m-eosc-sb-2023/2024/2025 registry survey models.
-     */
-    private static final Map<String, String> QUESTION_CODE_BY_INVESTMENT_AREA = Map.ofEntries(
-        Map.entry("OA_PUBLICATION", "Question56"),
-        Map.entry("OPEN_DATA", "Question68"),
-        Map.entry("FAIR_DATA", "Question64"),
-        Map.entry("DATA_MANAGEMENT", "Question60"),
-        Map.entry("CITIZEN_SCIENCE", "Question100"),
-        Map.entry("SERVICES", "Question76"),
-        Map.entry("REPOSITORIES_CONNECT", "Question80"),
-        Map.entry("DATA_STEWARDSHIP", "Question84"),
-        Map.entry("REPOSITORIES_PRESERVATION", "Question88"),
-        Map.entry("TRAINING", "Question92"),
-        Map.entry("ASSESSMENT", "Question96"),
-        Map.entry("SOFTWARE", "Question72")
-    );
+    /** One numeric ("in millions of Euros") survey question per investmentArea member. */
+    private static final Map<String, String> QUESTION_CODE_BY_INVESTMENT_AREA = OpenScienceArea.investmentQuestionCodes();
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyStatsToolIndicatorQueryHandler.class);
 
@@ -196,8 +135,8 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             case IndicatorCodes.COUNTRY_INITIATIVE_STATUS -> queryCountryInitiativeStatus(plan);
             case IndicatorCodes.EU_COUNTRY_COVERAGE -> queryEuCountryCoverage(plan);
             case IndicatorCodes.COUNTRY_POLICY_STATUS -> queryCountryPolicyStatus(plan);
-            case IndicatorCodes.MONITORED_AREAS_COUNT -> queryAreasCount(plan, "_MONITORING_INITIATIVE");
-            case IndicatorCodes.POLICY_AREAS_COUNT -> queryAreasCount(plan, "_POLICY");
+            case IndicatorCodes.MONITORED_AREAS_COUNT -> queryAreasCount(plan, OpenScienceArea.InitiativeKind.MONITORING_INITIATIVE);
+            case IndicatorCodes.POLICY_AREAS_COUNT -> queryAreasCount(plan, OpenScienceArea.InitiativeKind.POLICY);
             case IndicatorCodes.LONG_TERM_PRESERVATION_COUNT -> queryCountByQuestion(plan, LONG_TERM_PRESERVATION_QUESTION_CODE);
             case IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT -> queryCountByQuestion(plan, CITIZEN_SCIENCE_NEW_PROJECTS_QUESTION_CODE);
             case IndicatorCodes.SOFTWARE_OPEN_SOURCE_SETS_COUNT -> queryCountByQuestion(plan, SOFTWARE_OPEN_SOURCE_SETS_QUESTION_CODE);
@@ -367,19 +306,15 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     /**
      * Cross-topic composite for the "National Monitoring (number of monitored areas per country)" /
      * "National Policies (number of policy areas per country)" rows: for one country, how many of
-     * the 9 real topic areas' "*_MONITORING_INITIATIVE" (or "*_POLICY") initiativeType member did it
-     * answer Yes to — built from {@link #TOPIC_AREAS}, not a naive suffix scan over every
-     * initiativeType member, since e.g. "IMMEDIATE_OA_POLICY" is a Publications-topic variant that
-     * would otherwise double-count that one topic. memberSuffix selects Monitoring vs Policy —
-     * mixing the two into one count wouldn't be a meaningful number. A country not answering a given
-     * area's question simply doesn't contribute a Yes for that area (same "no answer" handling as
-     * everywhere else in this handler) rather than being excluded from the result outright.
+     * the {@link OpenScienceArea}s' monitoring (or policy) initiative did it answer Yes to. One
+     * member per area is counted, so variants such as {@code IMMEDIATE_OA_POLICY} don't double-count
+     * their area. {@code kind} selects Monitoring vs Policy — mixing the two into one count wouldn't
+     * be a meaningful number. A country not answering a given area's question simply doesn't
+     * contribute a Yes for that area (same "no answer" handling as everywhere else in this handler)
+     * rather than being excluded from the result outright.
      */
-    private IndicatorResult queryAreasCount(IndicatorExecutionPlan plan, String memberSuffix) {
-        List<String> types = TOPIC_AREAS.stream()
-            .map(topic -> areaMemberKey(topic, memberSuffix))
-            .filter(QUESTION_CODE_BY_INITIATIVE_TYPE::containsKey)
-            .toList();
+    private IndicatorResult queryAreasCount(IndicatorExecutionPlan plan, OpenScienceArea.InitiativeKind kind) {
+        List<String> types = OpenScienceArea.initiativeTypes(kind);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
         for (int year : resolveYears(plan)) {
@@ -605,19 +540,6 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             }
         }
         return byCountry;
-    }
-
-    /**
-     * OA_PUBLICATION's monitoring member predates the topic-prefixed naming convention every other
-     * topic uses ("MONITORING_INITIATIVE", not "OA_PUBLICATION_MONITORING_INITIATIVE") — kept as-is
-     * rather than renamed, since that vocabulary is already live elsewhere (dimension search,
-     * observatory-ui). This maps a topic + suffix to the initiativeType key that actually exists.
-     */
-    private static String areaMemberKey(String topic, String suffix) {
-        if (topic.equals("OA_PUBLICATION") && suffix.equals("_MONITORING_INITIATIVE")) {
-            return "MONITORING_INITIATIVE";
-        }
-        return topic + suffix;
     }
 
     private static List<String> groupByCodes(IndicatorExecutionPlan plan) {

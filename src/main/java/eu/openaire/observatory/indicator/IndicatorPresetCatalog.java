@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator;
 
+import eu.openaire.observatory.indicator.dimension.OpenScienceArea;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.model.CountryScope;
 import eu.openaire.observatory.indicator.model.DimensionUsage;
@@ -254,24 +255,9 @@ public class IndicatorPresetCatalog {
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_COMPOSITION_AND_PER_AREA, selector));
     }
 
-    /** The one "*_POLICY" initiativeType member per real topic area (matches the per-topic "National Policy on …" presets). */
-    private static final List<String> POLICY_AREA_TYPES = List.of(
-        "OA_PUBLICATION_POLICY", "OPEN_DATA_POLICY", "FAIR_DATA_POLICY", "DATA_MANAGEMENT_POLICY",
-        "CITIZEN_SCIENCE_POLICY", "REPOSITORIES_CONNECT_POLICY", "REPOSITORIES_PRESERVATION_POLICY",
-        "TRAINING_POLICY", "SOFTWARE_POLICY");
-
-    /** The one "*_MONITORING_INITIATIVE" initiativeType member per real topic area. */
-    private static final List<String> MONITORING_AREA_TYPES = List.of(
-        "MONITORING_INITIATIVE", "OPEN_DATA_MONITORING_INITIATIVE", "FAIR_DATA_MONITORING_INITIATIVE",
-        "DATA_MANAGEMENT_MONITORING_INITIATIVE", "CITIZEN_SCIENCE_MONITORING_INITIATIVE",
-        "REPOSITORIES_CONNECT_MONITORING_INITIATIVE", "REPOSITORIES_PRESERVATION_MONITORING_INITIATIVE",
-        "TRAINING_MONITORING_INITIATIVE", "SOFTWARE_MONITORING_INITIATIVE");
-
-    /** The "*_FINANCIAL_STRATEGY" initiativeType members that map to a survey question (no preservation one exists). */
-    private static final List<String> FINANCIAL_STRATEGY_AREA_TYPES = List.of(
-        "FINANCIAL_STRATEGY", "OPEN_DATA_FINANCIAL_STRATEGY", "FAIR_DATA_FINANCIAL_STRATEGY",
-        "DATA_MANAGEMENT_FINANCIAL_STRATEGY", "CITIZEN_SCIENCE_FINANCIAL_STRATEGY",
-        "REPOSITORIES_CONNECT_FINANCIAL_STRATEGY", "TRAINING_FINANCIAL_STRATEGY", "SOFTWARE_FINANCIAL_STRATEGY");
+    private static final List<String> POLICY_AREA_TYPES = OpenScienceArea.initiativeTypes(OpenScienceArea.InitiativeKind.POLICY);
+    private static final List<String> MONITORING_AREA_TYPES = OpenScienceArea.initiativeTypes(OpenScienceArea.InitiativeKind.MONITORING_INITIATIVE);
+    private static final List<String> FINANCIAL_STRATEGY_AREA_TYPES = OpenScienceArea.initiativeTypes(OpenScienceArea.InitiativeKind.FINANCIAL_STRATEGY);
 
     /** {@code getAll()} contract: preset indicators grouped by {@link IndicatorGroup#order()}, then by {@link IndicatorPreset#order()} within a group. */
     private static final Comparator<IndicatorPreset> DISPLAY_ORDER =
@@ -433,14 +419,14 @@ public class IndicatorPresetCatalog {
                 .presetFilters(initiativeType("IMMEDIATE_OA_POLICY")).order(40).build(),
             IndicatorPreset.builder("oa-5", "EU Countries with Financial Strategy on OA Publication", OPEN_ACCESS_PUBLICATIONS)
                 .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
-                .presetFilters(initiativeType("FINANCIAL_STRATEGY")).order(50).build(),
+                .presetFilters(initiativeType("OA_PUBLICATION_FINANCIAL_STRATEGY")).order(50).build(),
             IndicatorPreset.builder("oa-6", "EU Countries with National OA Publication Monitoring Initiatives", OPEN_ACCESS_PUBLICATIONS)
                 .views(EU_COVERAGE_VIEWS).indicatorCode(EU_COUNTRY_COVERAGE)
-                .presetFilters(initiativeType("MONITORING_INITIATIVE")).order(60).build(),
+                .presetFilters(initiativeType("OA_PUBLICATION_MONITORING_INITIATIVE")).order(60).build(),
             nationalPolicyPreset("oa-7", "National Policy on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
                 "OA_PUBLICATION_POLICY").order(70).build(),
             nationalMonitoringPreset("oa-8", "National Monitoring on Open Access Publications", OPEN_ACCESS_PUBLICATIONS,
-                "MONITORING_INITIATIVE").order(80).build(),
+                "OA_PUBLICATION_MONITORING_INITIATIVE").order(80).build(),
             IndicatorPreset.builder("oa-9", "Distribution of Open Access Types by Different Scholarly Publication Outputs", OPEN_ACCESS_PUBLICATIONS)
                 .views(categoryDistributionViews(OA_LICENSE_STATUS_DIMENSION, "Access type"))
                 .indicatorCode(PUBLICATIONS_OA_LICENSE_STATUS_COUNT).fullWidth().order(90).build(),

@@ -1,6 +1,7 @@
 package eu.openaire.observatory.indicator.survey;
 
 import eu.openaire.observatory.indicator.IndicatorCodes;
+import eu.openaire.observatory.indicator.dimension.OpenScienceArea;
 import eu.openaire.observatory.indicator.handler.AbstractIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.handler.IndicatorQueryHandler;
 import eu.openaire.observatory.indicator.handler.RatioPercentage;
@@ -23,9 +24,9 @@ import java.util.Map;
  * traffic and {@link SurveyStatsToolIndicatorQueryHandler} is untouched and remains the real
  * handler for these indicators.
  *
- * <p>Question-code-to-initiativeType mapping and Yes/No row processing are duplicated from
- * {@link SurveyStatsToolIndicatorQueryHandler} rather than shared, so each handler does its own
- * real work end-to-end and a benchmark between the two is apples-to-apples.
+ * <p>Yes/No row processing is duplicated from {@link SurveyStatsToolIndicatorQueryHandler} rather
+ * than shared, so each handler does its own real work end-to-end and a benchmark between the two
+ * is apples-to-apples.
  */
 @Service
 public class LocalSurveyStatsIndicatorQueryHandler extends AbstractIndicatorQueryHandler implements IndicatorQueryHandler {
@@ -38,13 +39,8 @@ public class LocalSurveyStatsIndicatorQueryHandler extends AbstractIndicatorQuer
 
     private static final String SURVEY_ID_PREFIX = "m-eosc-sb-";
 
-    /** One survey question per fixed initiativeType member — same mapping as SurveyStatsToolIndicatorQueryHandler. */
-    private static final Map<String, String> QUESTION_CODE_BY_INITIATIVE_TYPE = Map.of(
-        "OA_PUBLICATION_POLICY", "Question6",
-        "IMMEDIATE_OA_POLICY", "Question6.3",
-        "FINANCIAL_STRATEGY", "Question7",
-        "MONITORING_INITIATIVE", "Question54"
-    );
+    /** One survey question per fixed initiativeType member. */
+    private static final Map<String, String> QUESTION_CODE_BY_INITIATIVE_TYPE = OpenScienceArea.initiativeQuestionCodes();
 
     private final SurveyService surveyService;
 

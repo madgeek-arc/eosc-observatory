@@ -540,7 +540,7 @@ public class IndicatorDefinitionCatalog {
     /**
      * Legacy id 66 — "National Monitoring (number of monitored areas per country)": for one
      * country, how many of every "*_MONITORING_INITIATIVE" initiativeType member did it answer Yes
-     * to, out of all 9 topic areas. No initiativeType filter — the subset is fixed by this
+     * to, out of all 12 topic areas. No initiativeType filter — the subset is fixed by this
      * indicator's own code, unlike countryInitiativeStatus()/euCountryCoverage(). Always one row
      * per country, same as countryInitiativeStatus() — no aggregation. Also filterable/groupable by
      * country, narrowing (or, since every row is already per-country, redundantly re-confirming)
