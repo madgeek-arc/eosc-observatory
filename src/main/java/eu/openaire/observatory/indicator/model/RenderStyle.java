@@ -26,6 +26,9 @@ public enum RenderStyle {
     /** One bar per country with the value printed on the right. */
     PROGRESS_BARS,
 
+    /** One bar per country with the value printed on the right. */
+    PROGRESS_BARS_NUM_PERCENTAGE,
+
     /** One line series per selected country over the year range. */
     MULTI_SERIES_LINE_CHART,
 

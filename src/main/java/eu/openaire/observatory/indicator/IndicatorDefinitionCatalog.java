@@ -386,9 +386,9 @@ public class IndicatorDefinitionCatalog {
     /**
      * Legacy id 69 — "Financial investments in OA Publication", generalized to an optional,
      * groupable investmentArea filter so the same indicator serves every topic area's
-     * financial-investment question (survey Question56/68/64/60/100/80/92/72 for
-     * OA_PUBLICATION/OPEN_DATA/FAIR_DATA/DATA_MANAGEMENT/CITIZEN_SCIENCE/REPOSITORIES_CONNECT/
-     * TRAINING/SOFTWARE — see SurveyStatsToolIndicatorQueryHandler.QUESTION_CODE_BY_INVESTMENT_AREA)
+     * financial-investment question (survey Question56/68/64/60/100/76/80/84/88/92/96/72 for
+     * OA_PUBLICATION/OPEN_DATA/FAIR_DATA/DATA_MANAGEMENT/CITIZEN_SCIENCE/SERVICES/REPOSITORIES_CONNECT/
+     * DATA_STEWARDSHIP/REPOSITORIES_PRESERVATION/TRAINING/ASSESSMENT/SOFTWARE — see SurveyStatsToolIndicatorQueryHandler.QUESTION_CODE_BY_INVESTMENT_AREA)
      * rather than being OA-Publication-only. SurveyStatsToolIndicatorQueryHandler applies the
      * ×1,000,000 scale so the returned value is in euros. Filterable/groupable by country (absent
      * country filter aggregates all countries with an answer, per the requested AggregationPolicy —
