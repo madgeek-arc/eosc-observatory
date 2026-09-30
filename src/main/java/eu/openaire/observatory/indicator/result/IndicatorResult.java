@@ -11,14 +11,22 @@ public record IndicatorResult(
     // Whole-series summary statistics (e.g. AVG/MEDIAN across every period in the queried range) —
     // see TimeSeriesAggregationCalculator. Empty unless the query set seriesAggregations; never
     // replaces `data`.
-    List<IndicatorDataPoint> summary
+    List<IndicatorDataPoint> summary,
+    // Dimension members left out of `data` for a period, e.g. because their survey question was paused.
+    List<IndicatorExclusion> exclusions
 ) {
     public IndicatorResult {
         summary = summary != null ? summary : List.of();
+        exclusions = exclusions != null ? exclusions : List.of();
+    }
+
+    public IndicatorResult(IndicatorMetadata metadata, List<String> dimensions, List<IndicatorDataPoint> data,
+                            QueryExecutionMetadata execution, List<IndicatorDataPoint> summary) {
+        this(metadata, dimensions, data, execution, summary, List.of());
     }
 
     public IndicatorResult(IndicatorMetadata metadata, List<String> dimensions, List<IndicatorDataPoint> data,
                             QueryExecutionMetadata execution) {
-        this(metadata, dimensions, data, execution, List.of());
+        this(metadata, dimensions, data, execution, List.of(), List.of());
     }
 }

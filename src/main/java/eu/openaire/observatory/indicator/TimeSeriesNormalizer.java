@@ -33,6 +33,10 @@ import java.util.Map;
  * synthetic rows with no real precedent for "expected". A plain aggregate result with no grouping
  * dimension at all is unaffected: zero rows there already gets null/zero-filled across the whole
  * requested range, since there's no group identity involved.
+ *
+ * <p>A missing period that the result lists in {@link IndicatorResult#exclusions()} for that group
+ * stays null even under ZERO_FILL: the value could not be collected, which is not the same as being
+ * zero. An exclusion that names a dimension the group is not split by applies to every group.
  */
 @Service
 public class TimeSeriesNormalizer {
@@ -84,14 +88,17 @@ public class TimeSeriesNormalizer {
                     filled.add(existing);
                     continue;
                 }
-                Object value = timeRange.missingPeriods() == MissingPeriodHandling.ZERO_FILL ? 0 : null;
+                Object value = timeRange.missingPeriods() == MissingPeriodHandling.ZERO_FILL
+                    && result.exclusions().stream().noneMatch(exclusion -> exclusion.appliesTo(groupKey, period))
+                    ? 0 : null;
                 Map<String, Object> dimensions = new LinkedHashMap<>(groupKey);
                 dimensions.put(PERIOD_DIMENSION, period);
                 filled.add(new IndicatorDataPoint(dimensions, value));
             }
         }
 
-        return new IndicatorResult(result.metadata(), result.dimensions(), filled, result.execution());
+        return new IndicatorResult(result.metadata(), result.dimensions(), filled, result.execution(),
+            result.summary(), result.exclusions());
     }
 
     /**

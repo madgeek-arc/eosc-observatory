@@ -397,7 +397,8 @@ public class IndicatorDefinitionCatalog {
      * grouping by it instead fans out into one point per area ("...by Open Science area" — legacy id
      * 64); both compose with country grouping the same way country grouping alone already did.
      * Supports a real multi-year trend: a timeSeries request fetches one point per year; without
-     * one, the (optional) surveyYear filter picks a single year.
+     * one, the (optional) surveyYear filter picks a single year. A question paused in that year's
+     * survey model contributes nothing for that year — see PausedSurveyQuestions.
      */
     private static IndicatorDefinition financialInvestment() {
         return definition(

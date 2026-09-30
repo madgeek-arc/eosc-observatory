@@ -1,6 +1,7 @@
 package eu.openaire.observatory.indicator.handler;
 
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
+import eu.openaire.observatory.indicator.result.IndicatorExclusion;
 import eu.openaire.observatory.indicator.result.IndicatorMetadata;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.result.QueryExecutionMetadata;
@@ -51,10 +52,16 @@ public abstract class AbstractIndicatorQueryHandler implements IndicatorQueryHan
     }
 
     protected static IndicatorResult buildResult(IndicatorExecutionPlan plan, List<String> dimensionKeys, List<IndicatorDataPoint> data) {
+        return buildResult(plan, dimensionKeys, data, List.of());
+    }
+
+    protected static IndicatorResult buildResult(IndicatorExecutionPlan plan, List<String> dimensionKeys,
+                                                 List<IndicatorDataPoint> data, List<IndicatorExclusion> exclusions) {
         IndicatorMetadata metadata = new IndicatorMetadata(
             plan.definition().code(), plan.definition().label(), plan.definition().valueType(),
             plan.definition().unit(), plan.aggregation()
         );
-        return new IndicatorResult(metadata, dimensionKeys, data, new QueryExecutionMetadata(Instant.now(), false));
+        return new IndicatorResult(metadata, dimensionKeys, data, new QueryExecutionMetadata(Instant.now(), false),
+            List.of(), exclusions);
     }
 }

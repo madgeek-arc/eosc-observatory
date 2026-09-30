@@ -7,6 +7,7 @@ import eu.openaire.observatory.indicator.handler.RatioPercentage;
 import eu.openaire.observatory.indicator.handler.RemoteIndicatorClient;
 import eu.openaire.observatory.indicator.model.AggregationType;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
+import eu.openaire.observatory.indicator.result.IndicatorExclusion;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
 import eu.openaire.observatory.indicator.validation.ResolvedDimension;
@@ -41,6 +42,8 @@ import java.util.stream.IntStream;
  * "Question56" aren't registered at all) a value that can't be read as the expected Yes/No or
  * number — that country/period simply carries no answer, which composes into {@code null} values
  * rather than an error. Each missing {@code (year, question)} is logged once (WARN) per process.
+ * A question paused in that year's survey model (see {@link PausedSurveyQuestions}) is treated the
+ * same way: it is not fetched and carries no answer.
  *
  * <p>Every indicator here supports a real multi-year trend (TimePolicy(supported=true)): when the
  * plan carries a timeSeries range, {@link #resolveYears} fetches one point per year instead of
@@ -102,13 +105,48 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
 
     private final SurveyStatsToolQueryBuilder queryBuilder;
     private final SurveyStatsToolClient client;
+    private final PausedSurveyQuestions pausedQuestions;
 
     /** {@code year|questionCode} pairs already logged as missing, so the WARN fires once per process. */
     private final Set<String> loggedMissingData = ConcurrentHashMap.newKeySet();
 
-    public SurveyStatsToolIndicatorQueryHandler(SurveyStatsToolQueryBuilder queryBuilder, SurveyStatsToolClient client) {
+    /** {@code year|questionCode} pairs already logged as paused, so the INFO fires once per process. */
+    private final Set<String> loggedPausedQuestions = ConcurrentHashMap.newKeySet();
+
+    public SurveyStatsToolIndicatorQueryHandler(SurveyStatsToolQueryBuilder queryBuilder, SurveyStatsToolClient client,
+                                                PausedSurveyQuestions pausedQuestions) {
         this.queryBuilder = queryBuilder;
         this.client = client;
+        this.pausedQuestions = pausedQuestions;
+    }
+
+    /**
+     * Fetches one question's per-country rows for a year, or empty when there is nothing to count: the
+     * question is paused in that year's survey, or the stats-tool has no data for it.
+     */
+    private Optional<List<List<String>>> fetchQuestionRows(PausedSurveyQuestions.Snapshot paused, int year, String questionCode, String indicatorCode) {
+        if (paused.isPaused(year, questionCode)) {
+            if (loggedPausedQuestions.add(year + "|" + questionCode)) {
+                logger.info("Skipping paused survey question {} for {} (indicator {})", questionCode, year, indicatorCode);
+            }
+            return Optional.empty();
+        }
+        Optional<List<List<String>>> maybeRows = client.fetchRowsIfAvailable(
+            queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+        if (maybeRows.isEmpty()) {
+            warnNoData(year, questionCode, indicatorCode);
+        }
+        return maybeRows;
+    }
+
+    /** Whether the member's question is paused that year; if so, records the exclusion. */
+    private boolean excludeIfPaused(PausedSurveyQuestions.Snapshot paused, List<IndicatorExclusion> exclusions, int year,
+                                    String dimension, String member, String questionCode) {
+        if (!paused.isPaused(year, questionCode)) {
+            return false;
+        }
+        exclusions.add(IndicatorExclusion.questionPaused(year, dimension, member));
+        return true;
     }
 
     private void warnNoData(int year, String questionCode, String indicatorCode) {
@@ -162,11 +200,15 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         boolean byType = groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (int year : resolveYears(plan)) {
+        List<IndicatorExclusion> exclusions = new ArrayList<>();
+        List<Integer> years = resolveYears(plan);
+        PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
+        for (int year : years) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
             for (String type : types) {
+                excludeIfPaused(paused, exclusions, year, INITIATIVE_TYPE_DIMENSION, type, questionCodeForInitiativeType(type));
                 InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(
-                    year, questionCodeForInitiativeType(type), plan.definition().code());
+                paused, year, questionCodeForInitiativeType(type), plan.definition().code());
                 narrowToRequestedCountries(plan, fetch.byCountry(), STATUS_AWAITING_DATA).forEach((country, status) -> {
                     Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                     dimensions.put(COUNTRY_DIMENSION, country);
@@ -179,7 +221,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         }
         List<String> dimensionKeys = byType
             ? List.of(COUNTRY_DIMENSION, INITIATIVE_TYPE_DIMENSION) : List.of(COUNTRY_DIMENSION);
-        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data, exclusions);
     }
 
     /**
@@ -199,11 +241,15 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         boolean byCountry = groupByCodes(plan).contains(COUNTRY_DIMENSION);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (int year : resolveYears(plan)) {
+        List<IndicatorExclusion> exclusions = new ArrayList<>();
+        List<Integer> years = resolveYears(plan);
+        PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
+        for (int year : years) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
             for (String type : types) {
+                excludeIfPaused(paused, exclusions, year, INITIATIVE_TYPE_DIMENSION, type, questionCodeForInitiativeType(type));
                 InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(
-                    year, questionCodeForInitiativeType(type), plan.definition().code());
+                paused, year, questionCodeForInitiativeType(type), plan.definition().code());
 
                 if (byCountry) {
                     // Per-country rows always include every requested country, but one with no
@@ -246,7 +292,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         if (byCountry) {
             dimensionKeys.add(COUNTRY_DIMENSION);
         }
-        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data, exclusions);
     }
 
     /**
@@ -268,15 +314,19 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         boolean byType = groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (int year : resolveYears(plan)) {
+        List<IndicatorExclusion> exclusions = new ArrayList<>();
+        List<Integer> years = resolveYears(plan);
+        PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
+        for (int year : years) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
             for (String type : types) {
                 String questionCode = questionCodeForInitiativeType(type);
+                excludeIfPaused(paused, exclusions, year, INITIATIVE_TYPE_DIMENSION, type, questionCode);
                 String indicatorCode = plan.definition().code();
                 Map<String, String> baseByCountry = narrowToRequestedCountries(
-                    plan, fetchInitiativeStatusByCountry(year, questionCode, indicatorCode).byCountry(), STATUS_AWAITING_DATA);
+                    plan, fetchInitiativeStatusByCountry(paused, year, questionCode, indicatorCode).byCountry(), STATUS_AWAITING_DATA);
                 Map<String, String> mandatoryByCountry = fetchInitiativeStatusByCountry(
-                    year, mandatoryQuestionCode(questionCode), indicatorCode).byCountry();
+                paused, year, mandatoryQuestionCode(questionCode), indicatorCode).byCountry();
 
                 baseByCountry.forEach((country, baseStatus) -> {
                     String status = switch (baseStatus) {
@@ -300,7 +350,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         }
         List<String> dimensionKeys = byType
             ? List.of(COUNTRY_DIMENSION, INITIATIVE_TYPE_DIMENSION) : List.of(COUNTRY_DIMENSION);
-        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data, exclusions);
     }
 
     /**
@@ -317,11 +367,18 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<String> types = OpenScienceArea.initiativeTypes(kind);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (int year : resolveYears(plan)) {
+        List<IndicatorExclusion> exclusions = new ArrayList<>();
+        List<Integer> years = resolveYears(plan);
+        PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
+        for (int year : years) {
             Map<String, Long> countByCountry = new LinkedHashMap<>();
+            int totalAreas = 0;
             for (String type : types) {
+                if (!excludeIfPaused(paused, exclusions, year, INITIATIVE_TYPE_DIMENSION, type, questionCodeForInitiativeType(type))) {
+                    totalAreas++;
+                }
                 InitiativeStatusFetch fetch = fetchInitiativeStatusByCountry(
-                    year, questionCodeForInitiativeType(type), plan.definition().code());
+                paused, year, questionCodeForInitiativeType(type), plan.definition().code());
                 fetch.byCountry().forEach((country, status) -> {
                     if (STATUS_YES.equals(status)) {
                         countByCountry.merge(country, 1L, Long::sum);
@@ -331,13 +388,14 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
                 });
             }
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
+            long total = totalAreas;
             narrowToRequestedCountries(plan, countByCountry).forEach((country, count) -> {
                 Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
                 dimensions.put(COUNTRY_DIMENSION, country);
-                data.add(new IndicatorDataPoint(dimensions, count));
+                data.add(new IndicatorDataPoint(dimensions, count, total));
             });
         }
-        return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), data);
+        return buildResult(plan, dimensionKeysFor(List.of(COUNTRY_DIMENSION), plan), data, exclusions);
     }
 
     /**
@@ -349,11 +407,9 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
      * than this 3-value set (confirmed live: every policy/monitoring question is a flat Yes/No radio
      * field, see IndicatorDefinitionCatalog.countryInitiativeStatus() javadoc).
      */
-    private InitiativeStatusFetch fetchInitiativeStatusByCountry(int year, String questionCode, String indicatorCode) {
-        Optional<List<List<String>>> maybeRows = client.fetchRowsIfAvailable(
-            queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+    private InitiativeStatusFetch fetchInitiativeStatusByCountry(PausedSurveyQuestions.Snapshot paused, int year, String questionCode, String indicatorCode) {
+        Optional<List<List<String>>> maybeRows = fetchQuestionRows(paused, year, questionCode, indicatorCode);
         if (maybeRows.isEmpty()) {
-            warnNoData(year, questionCode, indicatorCode);
             return new InitiativeStatusFetch(Map.of(), 0);
         }
         List<List<String>> rows = maybeRows.get();
@@ -401,14 +457,18 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         boolean byArea = groupByCodes(plan).contains(INVESTMENT_AREA_DIMENSION);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (int year : resolveYears(plan)) {
+        List<IndicatorExclusion> exclusions = new ArrayList<>();
+        List<Integer> years = resolveYears(plan);
+        PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
+        for (int year : years) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
 
             Map<String, Map<String, Double>> millionsByCountryPerArea = new LinkedHashMap<>();
             Map<String, Double> millionsByCountryAllAreas = new LinkedHashMap<>();
             for (String area : areas) {
+                excludeIfPaused(paused, exclusions, year, INVESTMENT_AREA_DIMENSION, area, questionCodeForInvestmentArea(area));
                 Map<String, Double> millionsByCountry = fetchDoublesByCountry(
-                    year, questionCodeForInvestmentArea(area), plan.definition().code());
+                paused, year, questionCodeForInvestmentArea(area), plan.definition().code());
                 millionsByCountryPerArea.put(area, millionsByCountry);
                 millionsByCountry.forEach((country, millions) -> millionsByCountryAllAreas.merge(country, millions, Double::sum));
             }
@@ -447,7 +507,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         if (byCountry) {
             dimensionKeys.add(COUNTRY_DIMENSION);
         }
-        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data);
+        return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data, exclusions);
     }
 
     private Object aggregatedEuros(IndicatorExecutionPlan plan, Map<String, Double> millionsByCountry) {
@@ -456,11 +516,9 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         return aggregatedMillions == null ? null : toEuros(aggregatedMillions);
     }
 
-    private Map<String, Double> fetchDoublesByCountry(int year, String questionCode, String indicatorCode) {
-        Optional<List<List<String>>> maybeRows = client.fetchRowsIfAvailable(
-            queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+    private Map<String, Double> fetchDoublesByCountry(PausedSurveyQuestions.Snapshot paused, int year, String questionCode, String indicatorCode) {
+        Optional<List<List<String>>> maybeRows = fetchQuestionRows(paused, year, questionCode, indicatorCode);
         if (maybeRows.isEmpty()) {
-            warnNoData(year, questionCode, indicatorCode);
             return Map.of();
         }
         Map<String, Double> byCountry = new LinkedHashMap<>();
@@ -497,8 +555,14 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         boolean byCountry = groupByCodes(plan).contains(COUNTRY_DIMENSION);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
-        for (int year : resolveYears(plan)) {
-            Map<String, Long> countByCountry = fetchCountsByCountry(year, questionCode, plan.definition().code());
+        List<IndicatorExclusion> exclusions = new ArrayList<>();
+        List<Integer> years = resolveYears(plan);
+        PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
+        for (int year : years) {
+            if (paused.isPaused(year, questionCode)) {
+                exclusions.add(IndicatorExclusion.questionPaused(year));
+            }
+            Map<String, Long> countByCountry = fetchCountsByCountry(paused, year, questionCode, plan.definition().code());
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
 
             if (byCountry) {
@@ -513,14 +577,12 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
                 data.add(new IndicatorDataPoint(periodDimensions, aggregated));
             }
         }
-        return buildResult(plan, dimensionKeysFor(byCountry ? List.of(COUNTRY_DIMENSION) : List.of(), plan), data);
+        return buildResult(plan, dimensionKeysFor(byCountry ? List.of(COUNTRY_DIMENSION) : List.of(), plan), data, exclusions);
     }
 
-    private Map<String, Long> fetchCountsByCountry(int year, String questionCode, String indicatorCode) {
-        Optional<List<List<String>>> maybeRows = client.fetchRowsIfAvailable(
-            queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+    private Map<String, Long> fetchCountsByCountry(PausedSurveyQuestions.Snapshot paused, int year, String questionCode, String indicatorCode) {
+        Optional<List<List<String>>> maybeRows = fetchQuestionRows(paused, year, questionCode, indicatorCode);
         if (maybeRows.isEmpty()) {
-            warnNoData(year, questionCode, indicatorCode);
             return Map.of();
         }
         Map<String, Long> byCountry = new LinkedHashMap<>();

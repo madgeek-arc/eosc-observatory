@@ -31,6 +31,7 @@ import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.model.ZeroDenominatorHandling;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQueryBuilder;
+import eu.openaire.observatory.indicator.result.IndicatorExclusion;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.AllowAllIndicatorAuthorizationService;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
@@ -576,6 +577,122 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         });
     }
 
+    @Test
+    void financialInvestmentSkipsAreasWhoseQuestionIsPausedForThatYear() {
+        var handler = handlerWithPausedQuestions(year -> year == 2023 ? Set.of("Question56", "Question76") : Set.of(),
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}");
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
+
+        assertThat(capturedRequests).hasSize(10)
+            .noneMatch(r -> r.contains("Question56\"") || r.contains("Question76\""));
+        assertThat(result.data().get(0).value()).isEqualTo(100_000_000.0);
+    }
+
+    @Test
+    void financialInvestmentCountsAPausedQuestionInAYearWhereItIsNotPaused() {
+        var handler = handlerWithPausedQuestions(year -> year == 2023 ? Set.of("Question56") : Set.of(),
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}");
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2022")),
+            INVESTMENT_AREA_OA_PUBLICATION);
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), filters, List.of(), null, AggregationType.SUM));
+
+        assertThat(capturedRequests).hasSize(1);
+        assertThat(result.data().get(0).value()).isEqualTo(10_000_000.0);
+    }
+
+    @Test
+    void monitoredAreasCountReportsTheAreasCountedAsTheTotalAndTheOnesLeftOutAsExclusions() {
+        var handler = handlerWithPausedQuestions(year -> year == 2023 ? Set.of("Question74", "Question78") : Set.of(),
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+
+        var paused = handler.execute(plan(monitoredAreasCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.NONE));
+        var unpaused = handler.execute(plan(monitoredAreasCountDefinition(),
+            List.of(new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2022"))),
+            List.of(), null, AggregationType.NONE));
+
+        assertThat(paused.data()).singleElement().satisfies(dp -> {
+            assertThat(dp.value()).isEqualTo(10L);
+            assertThat(dp.total()).isEqualTo(10L);
+        });
+        assertThat(paused.exclusions()).containsExactlyInAnyOrder(
+            IndicatorExclusion.questionPaused(2023, IndicatorCodes.INITIATIVE_TYPE_DIMENSION, "SERVICES_MONITORING_INITIATIVE"),
+            IndicatorExclusion.questionPaused(2023, IndicatorCodes.INITIATIVE_TYPE_DIMENSION, "REPOSITORIES_CONNECT_MONITORING_INITIATIVE"));
+        assertThat(unpaused.data()).singleElement().satisfies(dp -> {
+            assertThat(dp.value()).isEqualTo(12L);
+            assertThat(dp.total()).isEqualTo(12L);
+        });
+        assertThat(unpaused.exclusions()).isEmpty();
+    }
+
+    @Test
+    void financialInvestmentReportsThePausedAreasItLeftOut() {
+        var handler = handlerWithPausedQuestions(year -> Set.of("Question76", "Question80"),
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}");
+
+        var result = handler.execute(plan(financialInvestmentDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
+
+        assertThat(result.exclusions()).containsExactlyInAnyOrder(
+            IndicatorExclusion.questionPaused(2023, IndicatorCodes.INVESTMENT_AREA_DIMENSION, "SERVICES"),
+            IndicatorExclusion.questionPaused(2023, IndicatorCodes.INVESTMENT_AREA_DIMENSION, "REPOSITORIES_CONNECT"));
+    }
+
+    @Test
+    void countByQuestionReportsAWholeValueExclusionForAPausedQuestion() {
+        var handler = handlerWithPausedQuestions(year -> Set.of("Question89"),
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"FI\",\"10\"]}]}}]}");
+
+        var result = handler.execute(plan(longTermPreservationCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
+
+        assertThat(capturedRequests).isEmpty();
+        assertThat(result.exclusions()).containsExactly(IndicatorExclusion.questionPaused(2023));
+        assertThat(result.data().get(0).value()).isNull();
+    }
+
+    @Test
+    void initiativeIndicatorsReportThePausedMember() {
+        var handler = handlerWithPausedQuestions(year -> Set.of("Question26"),
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+        var servicesPolicy = new ResolvedFilter(
+            IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("SERVICES_POLICY"));
+        var filters = List.of(SURVEY_YEAR_2023, servicesPolicy);
+        var expected = IndicatorExclusion.questionPaused(2023, IndicatorCodes.INITIATIVE_TYPE_DIMENSION, "SERVICES_POLICY");
+
+        var coverage = handler.execute(plan(euCountryCoverageDefinition(), filters, List.of(), null, AggregationType.NONE));
+        var status = handler.execute(plan(countryPolicyStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(capturedRequests).isEmpty();
+        assertThat(coverage.exclusions()).containsExactly(expected);
+        assertThat(status.exclusions()).containsExactly(expected);
+    }
+
+    @Test
+    void aSubQuestionOfAPausedQuestionIsPausedToo() {
+        PausedSurveyQuestions paused = new PausedSurveyQuestions(year -> Set.of("Question30"));
+
+        assertThat(paused.isPaused(2025, "Question30.1")).isTrue();
+        assertThat(paused.isPaused(2025, "Question300")).isFalse();
+    }
+
+    private SurveyStatsToolIndicatorQueryHandler handlerWithPausedQuestions(
+            java.util.function.IntFunction<Set<String>> paused, String responseJson) {
+        WebClient.Builder builder = WebClient.builder().exchangeFunction(request -> {
+            capturedRequests.add(URLDecoder.decode(
+                request.url().getRawQuery().substring("json=".length()), StandardCharsets.UTF_8));
+            return Mono.just(ClientResponse.create(HttpStatus.OK)
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE).body(responseJson).build());
+        });
+        StatsToolProperties properties = new StatsToolProperties()
+            .setEndpoint("https://survey-stats.test/stats-api/")
+            .setSurveyProfile("eosc-obs");
+        return new SurveyStatsToolIndicatorQueryHandler(
+            new SurveyStatsToolQueryBuilder(new ObjectMapper(), properties),
+            new SurveyStatsToolClient(builder, properties),
+            new PausedSurveyQuestions(paused));
+    }
+
     private SurveyStatsToolIndicatorQueryHandler handlerReturning(String responseJson) {
         return handlerReturningEachInTurn(List.of(responseJson));
     }
@@ -597,7 +714,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             .setSurveyProfile("eosc-obs");
         SurveyStatsToolClient client = new SurveyStatsToolClient(builder, properties);
         SurveyStatsToolQueryBuilder queryBuilder = new SurveyStatsToolQueryBuilder(new ObjectMapper(), properties);
-        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client);
+        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client, PausedSurveyQuestions.none());
     }
 
     /** Each call to the stubbed client returns the next response in order — for tests needing distinct answers per fetch (e.g. countryPolicyStatus's base + mandatory sub-question). The last response repeats once the list is exhausted. */
@@ -618,7 +735,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             .setSurveyProfile("eosc-obs");
         SurveyStatsToolClient client = new SurveyStatsToolClient(builder, properties);
         SurveyStatsToolQueryBuilder queryBuilder = new SurveyStatsToolQueryBuilder(new ObjectMapper(), properties);
-        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client);
+        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client, PausedSurveyQuestions.none());
     }
 
     private static IndicatorExecutionPlan plan(IndicatorDefinition definition, List<ResolvedFilter> filters,

@@ -7,6 +7,7 @@ import eu.openaire.observatory.indicator.dimension.DimensionMembers;
 import eu.openaire.observatory.indicator.model.FilterOperator;
 import eu.openaire.observatory.indicator.model.MissingPeriodHandling;
 import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
+import eu.openaire.observatory.indicator.result.IndicatorExclusion;
 import eu.openaire.observatory.indicator.result.IndicatorMetadata;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.result.QueryExecutionMetadata;
@@ -61,6 +62,50 @@ class TimeSeriesNormalizerTest {
         assertThat(valueFor(normalized, "2020")).isEqualTo(10);
         assertThat(valueFor(normalized, "2021")).isEqualTo(0);
         assertThat(valueFor(normalized, "2022")).isEqualTo(20);
+    }
+
+    @Test
+    void aMissingYearListedAsExcludedStaysNullUnderZeroFill() {
+        var base = resultWithPeriods(Map.of("2020", 10, "2022", 20));
+        var result = new IndicatorResult(base.metadata(), base.dimensions(), base.data(), base.execution(),
+            List.of(), List.of(IndicatorExclusion.questionPaused(2021, "investmentArea", "SERVICES")));
+        var range = new ResolvedTimeRange(2020, 2022, MissingPeriodHandling.ZERO_FILL);
+
+        var normalized = normalizer.normalize(result, range, List.of());
+
+        assertThat(valueFor(normalized, "2021")).isNull();
+        assertThat(normalized.exclusions()).hasSize(1);
+    }
+
+    @Test
+    void anExclusionOnlyKeepsTheGroupItNamesNullUnderZeroFill() {
+        var metadata = new IndicatorMetadata("oa.financial_investment", "label", null, null, null);
+        var data = List.of(
+            new IndicatorDataPoint(Map.of("investmentArea", "OPEN_DATA", "period", "2020"), 5),
+            new IndicatorDataPoint(Map.of("investmentArea", "SERVICES", "period", "2020"), 7));
+        var result = new IndicatorResult(metadata, List.of("investmentArea", "period"), data,
+            new QueryExecutionMetadata(Instant.now(), false), List.of(),
+            List.of(IndicatorExclusion.questionPaused(2021, "investmentArea", "SERVICES")));
+        var range = new ResolvedTimeRange(2020, 2021, MissingPeriodHandling.ZERO_FILL);
+
+        var normalized = normalizer.normalize(result, range, List.of());
+
+        assertThat(valueFor(normalized, "investmentArea", "OPEN_DATA", "2021")).isEqualTo(0);
+        assertThat(valueFor(normalized, "investmentArea", "SERVICES", "2021")).isNull();
+    }
+
+    @Test
+    void aWholeValueExclusionKeepsEveryGroupNullUnderZeroFill() {
+        var metadata = new IndicatorMetadata("count", "label", null, null, null);
+        var data = List.of(new IndicatorDataPoint(Map.of("country", "GR", "period", "2020"), 5));
+        var result = new IndicatorResult(metadata, List.of("country", "period"), data,
+            new QueryExecutionMetadata(Instant.now(), false), List.of(),
+            List.of(IndicatorExclusion.questionPaused(2021)));
+        var range = new ResolvedTimeRange(2020, 2021, MissingPeriodHandling.ZERO_FILL);
+
+        var normalized = normalizer.normalize(result, range, List.of());
+
+        assertThat(valueFor(normalized, "country", "GR", "2021")).isNull();
     }
 
     @Test
@@ -240,5 +285,11 @@ class TimeSeriesNormalizerTest {
             .findFirst()
             .orElseThrow()
             .value();
+    }
+
+    private static Object valueFor(IndicatorResult result, String dimension, String member, String period) {
+        return result.data().stream()
+            .filter(dp -> member.equals(dp.dimensions().get(dimension)) && period.equals(dp.dimensions().get("period")))
+            .findFirst().orElseThrow().value();
     }
 }

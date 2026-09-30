@@ -136,7 +136,7 @@ class SurveyStatsToolLiveBenchmarkTests {
             .setSurveyProfile(SURVEY_PROFILE);
         SurveyStatsToolClient client = new SurveyStatsToolClient(WebClient.builder(), properties);
         SurveyStatsToolQueryBuilder queryBuilder = new SurveyStatsToolQueryBuilder(new ObjectMapper(), properties);
-        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client);
+        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client, PausedSurveyQuestions.none());
     }
 
     private static IndicatorExecutionPlan plan() {

@@ -134,7 +134,7 @@ class SurveyStatsToolBenchmarkTest {
             .setSurveyProfile("eosc-obs");
         SurveyStatsToolClient client = new SurveyStatsToolClient(builder, properties);
         SurveyStatsToolQueryBuilder queryBuilder = new SurveyStatsToolQueryBuilder(new ObjectMapper(), properties);
-        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client);
+        return new SurveyStatsToolIndicatorQueryHandler(queryBuilder, client, PausedSurveyQuestions.none());
     }
 
     // --- local (mocked registry) handler setup ---
@@ -182,7 +182,10 @@ class SurveyStatsToolBenchmarkTest {
             mock(ModelService.class),
             mock(eu.openaire.observatory.service.UserService.class),
             new ObjectMapper(),
-            mock(eu.openaire.observatory.service.CacheService.class)
+            mock(eu.openaire.observatory.service.CacheService.class),
+            mock(eu.openaire.observatory.service.EmailSurveyService.class),
+            mock(eu.openaire.observatory.service.SurveySettingsService.class),
+            mock(eu.openaire.observatory.service.SurveyAnswerLocks.class)
         );
         return new LocalSurveyStatsIndicatorQueryHandler(surveyService);
     }

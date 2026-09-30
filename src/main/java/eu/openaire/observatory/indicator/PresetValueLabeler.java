@@ -27,7 +27,8 @@ public class PresetValueLabeler {
             result.dimensions(),
             relabel(labels, result.data()),
             result.execution(),
-            relabel(labels, result.summary()));
+            relabel(labels, result.summary()),
+            result.exclusions());
     }
 
     private List<IndicatorDataPoint> relabel(PresetValueLabels labels, List<IndicatorDataPoint> points) {
@@ -44,6 +45,6 @@ public class PresetValueLabeler {
         } else {
             relabeled = value; // numbers and the like are never legend categories
         }
-        return relabeled == value ? point : new IndicatorDataPoint(point.dimensions(), relabeled);
+        return relabeled == value ? point : new IndicatorDataPoint(point.dimensions(), relabeled, point.total());
     }
 }

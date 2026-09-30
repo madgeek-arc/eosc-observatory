@@ -53,7 +53,7 @@ public class TimeSeriesAggregationCalculator {
             }
         }
 
-        return new IndicatorResult(result.metadata(), result.dimensions(), result.data(), result.execution(), summary);
+        return new IndicatorResult(result.metadata(), result.dimensions(), result.data(), result.execution(), summary, result.exclusions());
     }
 
     /**
