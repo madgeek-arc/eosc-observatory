@@ -128,12 +128,6 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     );
 
     /**
-     * One survey question per investmentArea member — a separate numeric ("in millions of Euros")
-     * question series from QUESTION_CODE_BY_INITIATIVE_TYPE's Yes/No ones. Confirmed live against
-     * the real m-eosc-sb-2022/2023/2024/2025 registry survey models (same numbering across all 4
-     * years) plus a live raw?json= call per code against both the 2022 and 2023 survey years.
-     */
-    /**
      * The 9 real topic areas (independent of the initiativeType/investmentArea dimension's own
      * finer-grained naming, e.g. "IMMEDIATE_OA_POLICY" is a Publications-topic variant, not its own
      * topic area) — used only by {@link #queryAreasCount} to build each topic's "*_POLICY"/
@@ -145,14 +139,23 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         "REPOSITORIES_CONNECT", "REPOSITORIES_PRESERVATION", "TRAINING", "SOFTWARE"
     );
 
+    /**
+     * One survey question per investmentArea member — a separate numeric ("in millions of Euros")
+     * question series from QUESTION_CODE_BY_INITIATIVE_TYPE's Yes/No ones. Numbering is the same in the
+     * m-eosc-sb-2023/2024/2025 registry survey models.
+     */
     private static final Map<String, String> QUESTION_CODE_BY_INVESTMENT_AREA = Map.ofEntries(
         Map.entry("OA_PUBLICATION", "Question56"),
         Map.entry("OPEN_DATA", "Question68"),
         Map.entry("FAIR_DATA", "Question64"),
         Map.entry("DATA_MANAGEMENT", "Question60"),
         Map.entry("CITIZEN_SCIENCE", "Question100"),
+        Map.entry("SERVICES", "Question76"),
         Map.entry("REPOSITORIES_CONNECT", "Question80"),
+        Map.entry("DATA_STEWARDSHIP", "Question84"),
+        Map.entry("REPOSITORIES_PRESERVATION", "Question88"),
         Map.entry("TRAINING", "Question92"),
+        Map.entry("ASSESSMENT", "Question96"),
         Map.entry("SOFTWARE", "Question72")
     );
 

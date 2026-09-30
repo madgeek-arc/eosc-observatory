@@ -23,8 +23,12 @@ public class InvestmentAreaDimensionMemberProvider implements DimensionMemberPro
         new DimensionMember("FAIR_DATA", "Financial Investment in FAIR Data"),
         new DimensionMember("DATA_MANAGEMENT", "Financial Investment in Data Management"),
         new DimensionMember("CITIZEN_SCIENCE", "Financial Investment in Citizen Science"),
+        new DimensionMember("SERVICES", "Financial Investment in Offering Services through EOSC"),
         new DimensionMember("REPOSITORIES_CONNECT", "Financial Investment in Connecting Repositories to EOSC"),
+        new DimensionMember("DATA_STEWARDSHIP", "Financial Investment in Data Stewardship"),
+        new DimensionMember("REPOSITORIES_PRESERVATION", "Financial Investment in Long-Term Data Preservation"),
         new DimensionMember("TRAINING", "Financial Investment in Skills/Training for Open Science"),
+        new DimensionMember("ASSESSMENT", "Financial Investment in Incentives/Rewards for Open Science"),
         new DimensionMember("SOFTWARE", "Financial Investment in Open-Source Software")
     );
 

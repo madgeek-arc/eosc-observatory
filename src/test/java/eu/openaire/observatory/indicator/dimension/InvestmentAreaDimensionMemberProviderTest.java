@@ -9,12 +9,13 @@ class InvestmentAreaDimensionMemberProviderTest {
     private final InvestmentAreaDimensionMemberProvider provider = new InvestmentAreaDimensionMemberProvider();
 
     @Test
-    void returnsTheEightFixedInvestmentAreas() {
+    void returnsTheTwelveFixedInvestmentAreas() {
         DimensionMembers page = provider.search(null, "", 100);
 
         assertThat(page.members()).extracting("code").containsExactlyInAnyOrder(
             "OA_PUBLICATION", "OPEN_DATA", "FAIR_DATA", "DATA_MANAGEMENT", "CITIZEN_SCIENCE",
-            "REPOSITORIES_CONNECT", "TRAINING", "SOFTWARE"
+            "SERVICES", "REPOSITORIES_CONNECT", "DATA_STEWARDSHIP", "REPOSITORIES_PRESERVATION",
+            "TRAINING", "ASSESSMENT", "SOFTWARE"
         );
     }
 
