@@ -49,7 +49,6 @@ public class SurveyCSVConverter implements CSVConverter {
 
     private final ModelService modelService;
     private final SurveyService surveyService;
-    private final SurveyAnswerCrudService surveyAnswerCrudService;
     private final StakeholderService stakeholderService;
     private final UserService userService;
 
@@ -57,12 +56,10 @@ public class SurveyCSVConverter implements CSVConverter {
 
     public SurveyCSVConverter(ModelService modelService,
                               SurveyService surveyService,
-                              SurveyAnswerCrudService surveyAnswerCrudService,
                               StakeholderService stakeholderService,
                               UserService userService) {
         this.modelService = modelService;
         this.surveyService = surveyService;
-        this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.stakeholderService = stakeholderService;
         this.userService = userService;
     }
@@ -182,21 +179,7 @@ public class SurveyCSVConverter implements CSVConverter {
     }
 
     private List<SurveyAnswer> getSurveyAnswers(Model model, boolean validatedOnly, Date from, Date to) {
-        Set<SurveyAnswer> answerSet = new HashSet<>();
-        if (from == null || to == null) {
-            Set<Stakeholder> stakeholders = stakeholderService.getWithFilter("type", model.getType());
-            for (Stakeholder sh : stakeholders) {
-                answerSet.add(surveyService.getLatest(model.getId(), sh.getId()));
-            }
-        } else {
-            for (SurveyAnswer answer : surveyAnswerCrudService.getWithFilter("surveyId", model.getId())) {
-                if (answer.getMetadata().getCreationDate().after(to)
-                        || answer.getMetadata().getCreationDate().before(from)) {
-                    continue;
-                }
-                answerSet.add(answer);
-            }
-        }
+        boolean withinRange = from != null && to != null;
         Comparator<SurveyAnswer> comparator = Comparator.comparing(a ->
         {
             Date date;
@@ -210,11 +193,19 @@ public class SurveyCSVConverter implements CSVConverter {
             return date;
         });
 
-        return answerSet.stream()
+        // one row per stakeholder: latest answer, then date range (only if both dates given), then validated-only
+        return stakeholderService.getWithFilter("type", model.getType()).stream()
+                .map(sh -> surveyService.getLatest(model.getId(), sh.getId()))
                 .filter(Objects::nonNull)
+                .filter(a -> !withinRange || isWithin(a, from, to))
                 .filter(a -> !validatedOnly || a.isValidated())
                 .sorted(comparator)
                 .toList();
+    }
+
+    private boolean isWithin(SurveyAnswer answer, Date from, Date to) {
+        Date creationDate = answer.getMetadata().getCreationDate();
+        return !creationDate.before(from) && !creationDate.after(to);
     }
 
     private String getContributorsInfo(SurveyAnswer answer) {
