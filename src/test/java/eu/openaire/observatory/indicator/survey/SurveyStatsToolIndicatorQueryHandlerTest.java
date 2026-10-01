@@ -215,6 +215,21 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void countryPolicyStatusRejectsNonPolicyInitiativeTypesWithoutQueryingTheSurvey() {
+        var handler = handlerReturning("{\"datasets\":[]}");
+        for (String type : List.of("OPEN_DATA_FINANCIAL_STRATEGY", "OPEN_DATA_MONITORING_INITIATIVE", "IMMEDIATE_OA_POLICY")) {
+            var filters = List.of(
+                new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of(type)), SURVEY_YEAR_2023);
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                    handler.execute(plan(countryPolicyStatusDefinition(), filters, List.of(), null, AggregationType.NONE)))
+                .isInstanceOf(eu.openaire.observatory.indicator.validation.InvalidFilterShapeException.class)
+                .hasMessageContaining(type);
+        }
+        assertThat(capturedRequests).isEmpty();
+    }
+
+    @Test
     void countryPolicyStatusNarrowsToRequestedCountries() {
         var handler = handlerReturningEachInTurn(List.of(
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}",

@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
@@ -60,6 +61,11 @@ public class SurveyStatsToolClient {
      * <p>A genuine failure — any 5xx, or any 4xx other than 404/422 (e.g. 400/401/403, which point
      * at a malformed request or a misconfigured endpoint/profile) — still throws
      * {@link SurveyStatsToolQueryException}, as does a malformed request URI.
+     *
+     * <p>TODO: no access check is applied here, so questions configured as restricted in the
+     * stats-tool {@code query-access} settings (e.g. {@code eosc.sb.2021.Question6}) are fetched for
+     * any caller. Authorize each {@code eosc.sb.<year>.<question>} against the actor before fetching
+     * once real authorization is enabled.
      */
     public Optional<List<List<String>>> fetchRowsIfAvailable(String json) {
         URI uri = rawUri(json);
@@ -78,6 +84,8 @@ public class SurveyStatsToolClient {
                 }
                 return clientResponse.bodyToMono(SurveyRawResponse.class);
             })
+            .onErrorMap(WebClientRequestException.class, e -> new SurveyStatsToolQueryException(
+                "Survey stats-tool is unreachable: " + e.getMessage(), e))
             .block();
         if (response == null || response.datasets() == null || response.datasets().isEmpty()) {
             return Optional.empty();
@@ -104,7 +112,7 @@ public class SurveyStatsToolClient {
         try {
             return new URI(endpoint + "raw?json=" + URLEncoder.encode(json, StandardCharsets.UTF_8));
         } catch (URISyntaxException e) {
-            throw new SurveyStatsToolQueryException("Failed to build survey stats-tool request URI", e);
+            throw new SurveyStatsToolQueryException("Failed to build survey stats-tool request URI", HttpStatus.INTERNAL_SERVER_ERROR, e);
         }
     }
 }

@@ -20,6 +20,7 @@ import gr.uoa.di.madgik.catalogue.controller.GenericExceptionController;
 import gr.uoa.di.madgik.catalogue.exception.ServerError;
 import gr.uoa.di.madgik.catalogue.exception.ValidationException;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
+import eu.openaire.observatory.indicator.validation.IndicatorNotYetImplementedException;
 import io.sentry.Sentry;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -43,7 +44,7 @@ public class ExceptionControllerAdvice extends GenericExceptionController {
         return super.handleException(req, ex);
     }
 
-    /** True for real client errors (4xx), which should not be forwarded to Sentry as server faults. */
+    /** True for expected outcomes (4xx, or a deliberately unimplemented indicator) that should not be forwarded to Sentry as server faults. */
     private boolean isClientError(Exception ex) {
         ResponseStatus responseStatus = ex.getClass().getAnnotation(ResponseStatus.class);
         if (responseStatus != null && responseStatus.value().is4xxClientError()) {
@@ -52,6 +53,7 @@ public class ExceptionControllerAdvice extends GenericExceptionController {
         // Types GenericExceptionController maps to a 4xx even without a @ResponseStatus annotation.
         return ex instanceof ValidationException
             || ex instanceof ResourceNotFoundException
-            || ex instanceof AccessDeniedException;
+            || ex instanceof AccessDeniedException
+            || ex instanceof IndicatorNotYetImplementedException;
     }
 }

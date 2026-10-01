@@ -10,6 +10,7 @@ import eu.openaire.observatory.indicator.result.IndicatorDataPoint;
 import eu.openaire.observatory.indicator.result.IndicatorExclusion;
 import eu.openaire.observatory.indicator.result.IndicatorResult;
 import eu.openaire.observatory.indicator.validation.IndicatorExecutionPlan;
+import eu.openaire.observatory.indicator.validation.InvalidFilterShapeException;
 import eu.openaire.observatory.indicator.validation.ResolvedDimension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -297,7 +298,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
 
     /**
      * 4-state ("Mandatory policy"/"Policy but not mandatory"/"No policy"/"Awaiting data") counterpart
-     * to queryCountryInitiativeStatus, valid only for "*_POLICY" initiativeType members — combines two
+     * to queryCountryInitiativeStatus, valid only for the 12 "<AREA>_POLICY" initiativeType members (any other member is rejected with a 400) — combines two
      * survey answers per country: the base Yes/No policy question, and (only asked when the base
      * answer was Yes) a nested Yes/No "is this policy mandatory?" question at questionCode + ".1"
      * (see {@link #mandatoryQuestionCode}). A country that answered No to the base question is
@@ -311,6 +312,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
      */
     private IndicatorResult queryCountryPolicyStatus(IndicatorExecutionPlan plan) {
         List<String> types = filterValues(plan, INITIATIVE_TYPE_DIMENSION);
+        requirePolicyTypes(types);
         boolean byType = groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION);
 
         List<IndicatorDataPoint> data = new ArrayList<>();
@@ -351,6 +353,17 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<String> dimensionKeys = byType
             ? List.of(COUNTRY_DIMENSION, INITIATIVE_TYPE_DIMENSION) : List.of(COUNTRY_DIMENSION);
         return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data, exclusions);
+    }
+
+    /** Rejects any initiativeType that isn't one of the 12 "<AREA>_POLICY" members: only those have a mandatory sub-question. */
+    private static void requirePolicyTypes(List<String> types) {
+        List<String> policyTypes = OpenScienceArea.initiativeTypes(OpenScienceArea.InitiativeKind.POLICY);
+        for (String type : types) {
+            if (!policyTypes.contains(type)) {
+                throw new InvalidFilterShapeException(INITIATIVE_TYPE_DIMENSION,
+                    "'%s' is not a policy initiative; expected one of %s".formatted(type, policyTypes));
+            }
+        }
     }
 
     /**

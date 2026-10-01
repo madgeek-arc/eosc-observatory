@@ -92,6 +92,31 @@ class SurveyStatsToolClientTest {
     }
 
     @Test
+    void upstreamFailuresMapToBadGateway() {
+        SurveyStatsToolClient client = clientReturning(HttpStatus.INTERNAL_SERVER_ERROR, "boom");
+
+        assertThatThrownBy(() -> client.fetchRowsIfAvailable("{}"))
+            .isInstanceOfSatisfying(SurveyStatsToolQueryException.class,
+                e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY));
+    }
+
+    @Test
+    void anUnreachableEndpointMapsToBadGateway() {
+        WebClient.Builder builder = WebClient.builder().exchangeFunction(request ->
+            Mono.error(new org.springframework.web.reactive.function.client.WebClientRequestException(
+                new java.net.ConnectException("refused"), org.springframework.http.HttpMethod.GET,
+                request.url(), request.headers())));
+        SurveyStatsToolClient client = new SurveyStatsToolClient(builder, new StatsToolProperties()
+            .setEndpoint("https://survey-stats.test/stats-api/").setSurveyProfile("eosc-obs"));
+
+        assertThatThrownBy(() -> client.fetchRowsIfAvailable("{}"))
+            .isInstanceOfSatisfying(SurveyStatsToolQueryException.class, e -> {
+                assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+                assertThat(e.getMessage()).contains("unreachable");
+            });
+    }
+
+    @Test
     void fetchRowsWrapperThrowsWhenThereIsNoData() {
         SurveyStatsToolClient client = clientReturning(HttpStatus.OK, "{\"datasets\":[]}");
 
