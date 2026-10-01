@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import jakarta.annotation.PostConstruct;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +36,8 @@ public class StatsToolProperties {
     // eu.openaire.observatory.indicator.survey.SurveyStatsToolQueryBuilder, which needs the survey
     // stats-tool's registered profile name ("eosc-obs" in production) on every named query.
     private String surveyProfile;
+    // Longest the survey stats-tool may take to answer one named query.
+    private Duration responseTimeout = Duration.ofSeconds(30);
 
     public List<QueryAccess> getQueryAccess() {
         return queryAccess;
@@ -59,6 +62,15 @@ public class StatsToolProperties {
 
     public StatsToolProperties setSurveyProfile(String surveyProfile) {
         this.surveyProfile = surveyProfile;
+        return this;
+    }
+
+    public Duration getResponseTimeout() {
+        return responseTimeout;
+    }
+
+    public StatsToolProperties setResponseTimeout(Duration responseTimeout) {
+        this.responseTimeout = responseTimeout;
         return this;
     }
 

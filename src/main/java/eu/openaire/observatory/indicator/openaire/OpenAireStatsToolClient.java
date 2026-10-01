@@ -2,6 +2,7 @@ package eu.openaire.observatory.indicator.openaire;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -12,6 +13,8 @@ import org.springframework.web.reactive.function.client.WebClientRequestExceptio
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -29,11 +32,19 @@ public class OpenAireStatsToolClient {
 
     private final String endpoint;
     private final WebClient webClient;
+    private final Duration responseTimeout;
 
+    @Autowired
     public OpenAireStatsToolClient(WebClient.Builder webClientBuilder,
-                                    @Value("${openaire.stats-tool.endpoint}") String endpoint) {
+                                    @Value("${openaire.stats-tool.endpoint}") String endpoint,
+                                    @Value("${openaire.stats-tool.response-timeout:120s}") Duration responseTimeout) {
         this.endpoint = endpoint;
         this.webClient = webClientBuilder.baseUrl(endpoint).build();
+        this.responseTimeout = responseTimeout;
+    }
+
+    public OpenAireStatsToolClient(WebClient.Builder webClientBuilder, String endpoint) {
+        this(webClientBuilder, endpoint, Duration.ofSeconds(120));
     }
 
     public List<List<List<String>>> fetchRaw(String json) {
@@ -47,6 +58,9 @@ public class OpenAireStatsToolClient {
                     "OpenAIRE stats-tool returned an error status [%s]: %s"
                         .formatted(clientResponse.statusCode(), body))))
             .bodyToMono(OpenAireRawResponse.class)
+            .timeout(responseTimeout)
+            .onErrorMap(TimeoutException.class, e -> new OpenAireQueryException(
+                "OpenAIRE stats-tool did not answer within " + responseTimeout, HttpStatus.GATEWAY_TIMEOUT, e))
             .onErrorMap(WebClientRequestException.class, e -> new OpenAireQueryException(
                 "OpenAIRE stats-tool is unreachable: " + e.getMessage(), e))
             .block();

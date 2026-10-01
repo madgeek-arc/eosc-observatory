@@ -62,6 +62,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * No live network: the outbound WebClient call is stubbed, same pattern as
@@ -212,6 +213,48 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("XX");
             assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_AWAITING_DATA);
         });
+    }
+
+    // --- Fan-out bounds ---
+
+    @Test
+    void yearsBeforeTheFirstSurveyAreAnsweredWithoutCallingTheStatsTool() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+        var timeRange = new ResolvedTimeRange(2015, 2023, MissingPeriodHandling.NULL_FILL);
+
+        handler.execute(plan(countryInitiativeStatusDefinition(), List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY),
+            List.of(), timeRange, AggregationType.NONE));
+
+        assertThat(capturedRequests).hasSize(3)
+            .allSatisfy(request -> assertThat(request).doesNotContain("eosc.sb.2020.", "eosc.sb.2015."));
+    }
+
+    @Test
+    void aQueryNeedingMoreCallsThanAllowedIsRejectedBeforeAnyCall() {
+        var handler = handlerReturning("{\"datasets\":[]}");
+        var allTypes = new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.IN,
+            List.<Object>copyOf(eu.openaire.observatory.indicator.dimension.OpenScienceArea.initiativeQuestionCodes().keySet()));
+        var timeRange = new ResolvedTimeRange(2021, 2026, MissingPeriodHandling.NULL_FILL);
+
+        assertThatThrownBy(() -> handler.execute(plan(countryInitiativeStatusDefinition(), List.of(allTypes),
+            List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)), timeRange, AggregationType.NONE)))
+            .isInstanceOf(eu.openaire.observatory.indicator.validation.InvalidFilterShapeException.class)
+            .hasMessageContaining("222");
+        assertThat(capturedRequests).isEmpty();
+    }
+
+    @Test
+    void theTwelveAreaPolicyMatrixOverTheSurveyYearsStaysWithinTheBudget() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"No\"]}]}}]}");
+        var policyTypes = new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.IN,
+            List.<Object>copyOf(eu.openaire.observatory.indicator.dimension.OpenScienceArea.initiativeTypes(
+                eu.openaire.observatory.indicator.dimension.OpenScienceArea.InitiativeKind.POLICY)));
+        var timeRange = new ResolvedTimeRange(2015, 2026, MissingPeriodHandling.NULL_FILL);
+
+        handler.execute(plan(countryPolicyStatusDefinition(), List.of(policyTypes),
+            List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)), timeRange, AggregationType.NONE));
+
+        assertThat(capturedRequests).hasSize(12 * 6 * 2);
     }
 
     @Test
@@ -1314,13 +1357,13 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             var handler = handlerReturning("{\"datasets\":[]}");
             var filters = List.of(
                 INITIATIVE_TYPE_OA_PUBLICATION_POLICY,
-                new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2019"))
+                new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2023"))
             );
             handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
             handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
 
             assertThat(appender.warnings)
-                .filteredOn(message -> message.contains("eosc.sb.2019.Question6"))
+                .filteredOn(message -> message.contains("eosc.sb.2023.Question6"))
                 .hasSize(1);
         } finally {
             logger.removeAppender(appender);

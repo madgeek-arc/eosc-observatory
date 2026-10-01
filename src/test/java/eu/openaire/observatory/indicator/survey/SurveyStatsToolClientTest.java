@@ -117,6 +117,18 @@ class SurveyStatsToolClientTest {
     }
 
     @Test
+    void aStatsToolThatDoesNotAnswerInTimeMapsToGatewayTimeout() {
+        WebClient.Builder builder = WebClient.builder().exchangeFunction(request -> Mono.never());
+        SurveyStatsToolClient client = new SurveyStatsToolClient(builder, new StatsToolProperties()
+            .setEndpoint("https://survey-stats.test/stats-api/").setSurveyProfile("eosc-obs")
+            .setResponseTimeout(java.time.Duration.ofMillis(50)));
+
+        assertThatThrownBy(() -> client.fetchRowsIfAvailable("{}"))
+            .isInstanceOfSatisfying(SurveyStatsToolQueryException.class,
+                e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT));
+    }
+
+    @Test
     void fetchRowsWrapperThrowsWhenThereIsNoData() {
         SurveyStatsToolClient client = clientReturning(HttpStatus.OK, "{\"datasets\":[]}");
 

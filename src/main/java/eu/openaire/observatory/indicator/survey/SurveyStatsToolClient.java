@@ -13,6 +13,8 @@ import reactor.core.publisher.Mono;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -44,10 +46,12 @@ public class SurveyStatsToolClient {
 
     private final String endpoint;
     private final WebClient webClient;
+    private final Duration responseTimeout;
 
     public SurveyStatsToolClient(WebClient.Builder webClientBuilder, StatsToolProperties statsToolProperties) {
         this.endpoint = statsToolProperties.getEndpoint();
         this.webClient = webClientBuilder.baseUrl(this.endpoint).build();
+        this.responseTimeout = statsToolProperties.getResponseTimeout();
     }
 
     /**
@@ -84,6 +88,9 @@ public class SurveyStatsToolClient {
                 }
                 return clientResponse.bodyToMono(SurveyRawResponse.class);
             })
+            .timeout(responseTimeout)
+            .onErrorMap(TimeoutException.class, e -> new SurveyStatsToolQueryException(
+                "Survey stats-tool did not answer within " + responseTimeout, HttpStatus.GATEWAY_TIMEOUT, e))
             .onErrorMap(WebClientRequestException.class, e -> new SurveyStatsToolQueryException(
                 "Survey stats-tool is unreachable: " + e.getMessage(), e))
             .block();

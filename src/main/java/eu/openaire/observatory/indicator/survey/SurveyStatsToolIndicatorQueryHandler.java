@@ -14,6 +14,8 @@ import eu.openaire.observatory.indicator.validation.InvalidFilterShapeException;
 import eu.openaire.observatory.indicator.validation.ResolvedDimension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -114,11 +116,41 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     /** {@code year|questionCode} pairs already logged as paused, so the INFO fires once per process. */
     private final Set<String> loggedPausedQuestions = ConcurrentHashMap.newKeySet();
 
+    /** The first survey year; earlier years have no survey data, so they are answered without a call. */
+    private final int firstSurveyYear;
+
+    /** The most stats-tool calls a single query may make. */
+    private final int maxUpstreamCalls;
+
+    @Autowired
     public SurveyStatsToolIndicatorQueryHandler(SurveyStatsToolQueryBuilder queryBuilder, SurveyStatsToolClient client,
-                                                PausedSurveyQuestions pausedQuestions) {
+                                                PausedSurveyQuestions pausedQuestions,
+                                                @Value("${indicator.survey.first-year:2021}") int firstSurveyYear,
+                                                @Value("${indicator.survey.max-upstream-calls:150}") int maxUpstreamCalls) {
         this.queryBuilder = queryBuilder;
         this.client = client;
         this.pausedQuestions = pausedQuestions;
+        this.firstSurveyYear = firstSurveyYear;
+        this.maxUpstreamCalls = maxUpstreamCalls;
+    }
+
+    public SurveyStatsToolIndicatorQueryHandler(SurveyStatsToolQueryBuilder queryBuilder, SurveyStatsToolClient client,
+                                                PausedSurveyQuestions pausedQuestions) {
+        this(queryBuilder, client, pausedQuestions, 2021, 150);
+    }
+
+    /**
+     * Rejects a query that would need more stats-tool calls than allowed: one per survey year and
+     * item, times {@code callsPerItem}. Years before the first survey cost nothing.
+     */
+    private void requireWithinCallBudget(List<Integer> years, int itemsPerYear, int callsPerItem) {
+        long surveyYears = years.stream().filter(year -> year >= firstSurveyYear).count();
+        long calls = surveyYears * itemsPerYear * callsPerItem;
+        if (calls > maxUpstreamCalls) {
+            throw new InvalidFilterShapeException("scope", ("the query needs %d survey stats-tool calls (%d years x %d values x %d "
+                + "questions) but at most %d are allowed; narrow the year range or the number of values")
+                .formatted(calls, surveyYears, itemsPerYear, callsPerItem, maxUpstreamCalls));
+        }
     }
 
     /**
@@ -126,6 +158,9 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
      * question is paused in that year's survey, or the stats-tool has no data for it.
      */
     private Optional<List<List<String>>> fetchQuestionRows(PausedSurveyQuestions.Snapshot paused, int year, String questionCode, String indicatorCode) {
+        if (year < firstSurveyYear) {
+            return Optional.empty();
+        }
         if (paused.isPaused(year, questionCode)) {
             if (loggedPausedQuestions.add(year + "|" + questionCode)) {
                 logger.info("Skipping paused survey question {} for {} (indicator {})", questionCode, year, indicatorCode);
@@ -203,6 +238,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<IndicatorDataPoint> data = new ArrayList<>();
         List<IndicatorExclusion> exclusions = new ArrayList<>();
         List<Integer> years = resolveYears(plan);
+        requireWithinCallBudget(years, types.size(), 1);
         PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
         for (int year : years) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
@@ -244,6 +280,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<IndicatorDataPoint> data = new ArrayList<>();
         List<IndicatorExclusion> exclusions = new ArrayList<>();
         List<Integer> years = resolveYears(plan);
+        requireWithinCallBudget(years, types.size(), 1);
         PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
         for (int year : years) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
@@ -318,6 +355,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<IndicatorDataPoint> data = new ArrayList<>();
         List<IndicatorExclusion> exclusions = new ArrayList<>();
         List<Integer> years = resolveYears(plan);
+        requireWithinCallBudget(years, types.size(), 2);
         PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
         for (int year : years) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
@@ -382,6 +420,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<IndicatorDataPoint> data = new ArrayList<>();
         List<IndicatorExclusion> exclusions = new ArrayList<>();
         List<Integer> years = resolveYears(plan);
+        requireWithinCallBudget(years, types.size(), 1);
         PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
         for (int year : years) {
             Map<String, Long> countByCountry = new LinkedHashMap<>();
@@ -472,6 +511,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<IndicatorDataPoint> data = new ArrayList<>();
         List<IndicatorExclusion> exclusions = new ArrayList<>();
         List<Integer> years = resolveYears(plan);
+        requireWithinCallBudget(years, areas.size(), 1);
         PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
         for (int year : years) {
             Map<String, Object> periodDimensions = periodDimensions(plan, year);
@@ -570,6 +610,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<IndicatorDataPoint> data = new ArrayList<>();
         List<IndicatorExclusion> exclusions = new ArrayList<>();
         List<Integer> years = resolveYears(plan);
+        requireWithinCallBudget(years, 1, 1);
         PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
         for (int year : years) {
             if (paused.isPaused(year, questionCode)) {
