@@ -261,7 +261,7 @@ public class IndicatorDefinitionCatalog {
             Set.of(
                 new IndicatorDimensionBinding(
                     OA_LICENSE_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
-                    Set.of(FilterOperator.EQ, FilterOperator.IN), false
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false, true
                 ),
                 new IndicatorDimensionBinding(CLASSIFICATION_DIMENSION, Set.of(DimensionUsage.GROUP), Set.of(), false),
                 countryBinding()
@@ -762,7 +762,7 @@ public class IndicatorDefinitionCatalog {
     private static IndicatorDimensionBinding initiativeTypeFilterGroupBinding() {
         return new IndicatorDimensionBinding(
             INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
-            Set.of(FilterOperator.EQ, FilterOperator.IN), true
+            Set.of(FilterOperator.EQ, FilterOperator.IN), true, true
         );
     }
 

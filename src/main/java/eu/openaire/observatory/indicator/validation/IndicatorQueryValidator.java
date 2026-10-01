@@ -76,6 +76,8 @@ public class IndicatorQueryValidator {
             .map(ResolvedDimension::new)
             .toList();
 
+        requireGroupByForMultiValuedFilters(definition, filters, query.groupBy());
+
         ResolvedTimeRange timeRange = resolveTimeRange(definition, query);
         requireTimeScope(definition, query, timeRange);
         ComparisonMode comparisonMode = resolveComparisonMode(definition, query, timeRange);
@@ -158,6 +160,22 @@ public class IndicatorQueryValidator {
                     case IS_NULL, IS_NOT_NULL -> "no values";
                 };
                 throw new InvalidFilterShapeException(label, filter.operator() + " requires " + expected);
+            }
+        }
+    }
+
+    private void requireGroupByForMultiValuedFilters(
+            IndicatorDefinition definition, List<ResolvedFilter> filters, List<String> groupBy) {
+        for (ResolvedFilter filter : filters) {
+            if (filter.operator() != FilterOperator.IN || filter.values().size() < 2 || groupBy.contains(filter.dimensionCode())) {
+                continue;
+            }
+            boolean required = definition.dimensionBindings().stream()
+                .anyMatch(binding -> binding.dimensionCode().equals(filter.dimensionCode())
+                    && binding.groupByRequiredForMultipleValues());
+            if (required) {
+                throw new InvalidFilterShapeException(filter.dimensionCode(),
+                    "several values require grouping by " + filter.dimensionCode());
             }
         }
     }

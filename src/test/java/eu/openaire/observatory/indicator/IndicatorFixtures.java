@@ -168,6 +168,22 @@ public final class IndicatorFixtures {
         );
     }
 
+    /** A count indicator whose status dimension is filterable and groupable, and must be grouped by when several values are filtered. */
+    public static IndicatorDefinition groupRequiredStatusIndicator(String code) {
+        IndicatorDefinition base = statusFilterableIndicator(code);
+        return new IndicatorDefinition(
+            base.id(), base.code(), base.label(), base.description(), base.valueType(), base.semanticType(),
+            base.unit(), base.format(), base.renderHint(), base.aggregationPolicy(), base.ratioPolicy(),
+            Set.of(new IndicatorDimensionBinding(
+                STATUS_DIMENSION,
+                Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                Set.of(FilterOperator.EQ, FilterOperator.IN),
+                false,
+                true
+            )),
+            base.timePolicy(), base.executionBinding(), base.accessLevel(), base.status(), base.version());
+    }
+
     /** A RATIO indicator — allowedAggregations deliberately excludes anything the query might ask for. */
     public static IndicatorDefinition ratioIndicator(String code) {
         return new IndicatorDefinition(

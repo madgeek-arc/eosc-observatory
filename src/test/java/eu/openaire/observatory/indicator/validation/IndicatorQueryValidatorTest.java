@@ -50,6 +50,7 @@ class IndicatorQueryValidatorTest {
     private static final String NON_COMPARABLE_COUNT_CODE = "publications.count.no_comparison_handler";
     private static final String STATUS_FILTERABLE_CODE = "publications.count.status_filterable";
     private static final String SURVEY_YEAR_FILTERABLE_CODE = "survey.backed_measure";
+    private static final String GROUP_REQUIRED_CODE = "publications.count.group_required";
 
     private final IndicatorDefinition countIndicator = IndicatorFixtures.countIndicator(COUNT_CODE);
     private final IndicatorDefinition ratioIndicator = IndicatorFixtures.ratioIndicator(RATIO_CODE);
@@ -63,12 +64,13 @@ class IndicatorQueryValidatorTest {
     private final IndicatorDefinition statusFilterableIndicator = IndicatorFixtures.statusFilterableIndicator(STATUS_FILTERABLE_CODE);
     private final IndicatorDefinition surveyYearFilterableIndicator =
         IndicatorFixtures.surveyYearFilterableIndicator(SURVEY_YEAR_FILTERABLE_CODE);
+    private final IndicatorDefinition groupRequiredIndicator = IndicatorFixtures.groupRequiredStatusIndicator(GROUP_REQUIRED_CODE);
     private final DimensionDefinition countryDimension = IndicatorFixtures.countryDimension();
 
     private final Map<String, IndicatorDefinition> definitionsByCode = List.of(
         countIndicator, ratioIndicator, nonTimeSeriesIndicator, restrictedIndicator, requiredFilterIndicator,
         comparableRatioIndicator, comparableAttributeIndicator, nonComparableCountIndicator, statusFilterableIndicator,
-        surveyYearFilterableIndicator
+        surveyYearFilterableIndicator, groupRequiredIndicator
     ).stream().collect(Collectors.toMap(IndicatorDefinition::code, d -> d));
 
     private final IndicatorDefinitionLookup definitionLookup = code -> {
@@ -365,6 +367,36 @@ class IndicatorQueryValidatorTest {
 
         assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
             .isInstanceOf(InvalidFilterValueException.class);
+    }
+
+    @Test
+    void compileRejectsSeveralFilterValuesWithoutGroupingWhenTheBindingRequiresIt() {
+        var query = IndicatorQueryBuilder.forIndicator(GROUP_REQUIRED_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.STATUS_DIMENSION, FilterOperator.IN, List.of("ACTIVE", "INACTIVE")))
+            .build();
+
+        assertThatThrownBy(() -> validator.compile(query, ALLOW_ALL))
+            .isInstanceOf(InvalidFilterShapeException.class)
+            .hasMessageContaining(IndicatorFixtures.STATUS_DIMENSION);
+    }
+
+    @Test
+    void compileAcceptsSeveralFilterValuesWhenTheDimensionIsGroupedBy() {
+        var query = IndicatorQueryBuilder.forIndicator(GROUP_REQUIRED_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.STATUS_DIMENSION, FilterOperator.IN, List.of("ACTIVE", "INACTIVE")))
+            .withGroupBy(IndicatorFixtures.STATUS_DIMENSION)
+            .build();
+
+        assertThat(validator.compile(query, ALLOW_ALL).groupBy()).hasSize(1);
+    }
+
+    @Test
+    void compileAcceptsASingleFilterValueWithoutGroupingWhenTheBindingRequiresGroupingForSeveral() {
+        var query = IndicatorQueryBuilder.forIndicator(GROUP_REQUIRED_CODE)
+            .withFilters(new IndicatorFilter(IndicatorFixtures.STATUS_DIMENSION, FilterOperator.IN, List.of("ACTIVE")))
+            .build();
+
+        assertThat(validator.compile(query, ALLOW_ALL).filters()).hasSize(1);
     }
 
     @Test
