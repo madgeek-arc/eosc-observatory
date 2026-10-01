@@ -15,6 +15,7 @@ import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
 import eu.openaire.observatory.indicator.validation.InvalidPresetScopeException;
 import eu.openaire.observatory.indicator.validation.SeriesAggregationNotAllowedException;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -32,8 +33,8 @@ class IndicatorPresetCatalogTest {
     private final IndicatorPresetCatalog catalog = new IndicatorPresetCatalog(definitionCatalog);
 
     @Test
-    void containsEightyPresets() {
-        assertThat(catalog.getAll()).hasSize(80);
+    void containsSeventyOnePresets() {
+        assertThat(catalog.getAll()).hasSize(71);
     }
 
     @Test
@@ -153,7 +154,7 @@ class IndicatorPresetCatalogTest {
     void firstAndLastPresetIndicatorsAreStable() {
         List<IndicatorPreset> all = catalog.getAll();
         assertThat(all.getFirst().id()).isEqualTo("oa-1");
-        assertThat(all.getLast().id()).isEqualTo("osp-6");
+        assertThat(all.getLast().id()).isEqualTo("osp-5");
     }
 
     @Test
@@ -188,11 +189,11 @@ class IndicatorPresetCatalogTest {
     @Test
     void everyOtherPresetIsNotFullWidth() {
         Set<String> fullWidthIds = Set.of(
-            "oa-9", "od-8", "sw-1", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1", "nm-2",
-            "osp-1", "osp-2", "osp-3", "osp-4", "osp-5", "osp-6");
+            "oa-9", "od-8", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1", "nm-2",
+            "osp-1", "osp-2", "osp-3", "osp-4", "osp-5");
         for (IndicatorPreset preset : catalog.getAll()) {
-            if (preset.id().equals("cs-1")) {
-                continue; // asserted separately in cs1OnlyChoroplethMapViewIsFullWidth()
+            if (preset.id().equals("cs-1") || preset.id().equals("sw-1")) {
+                continue; // cs-1 asserted in cs1OnlyChoroplethMapViewIsFullWidth(); sw-1 only has its EU map view full-width
             }
             boolean expectedFullWidth = fullWidthIds.contains(preset.id());
             for (PresetView view : preset.views()) {
@@ -452,7 +453,7 @@ class IndicatorPresetCatalogTest {
         assertThat(idsInGroup(IndicatorGroup.OPEN_SCIENCE_TRENDS)).containsExactly("ost-1", "ost-2", "ost-3", "ost-4");
         assertThat(idsInGroup(IndicatorGroup.NATIONAL_MONITORING)).containsExactly("nm-1", "nm-2");
         assertThat(idsInGroup(IndicatorGroup.OPEN_SCIENCE_POLICIES))
-            .containsExactly("osp-1", "osp-2", "osp-3", "osp-4", "osp-5", "osp-6");
+            .containsExactly("osp-1", "osp-2", "osp-3", "osp-4", "osp-5");
     }
 
     @Test
@@ -473,6 +474,7 @@ class IndicatorPresetCatalogTest {
     }
 
     @Test
+    @Disabled("osp-6 is commented out of IndicatorPresetCatalog")
     void byCountriesAndAreasMatrixPresetGroupsByInitiativeType() {
         IndicatorQuery query = catalog.toIndicatorQuery(catalog.get("osp-6"), List.of(), 2023, 2023, List.of());
         assertThat(query.groupBy()).contains(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
