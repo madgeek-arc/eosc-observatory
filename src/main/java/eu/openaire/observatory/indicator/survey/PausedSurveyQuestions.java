@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Resolves which survey questions are paused for a survey year. A question is paused when its field
@@ -28,9 +30,10 @@ import java.util.function.IntFunction;
  * paused question is reported by the name of that field (e.g. {@code Question76}), which is also the
  * question code used in the survey stats-tool's named queries.
  *
- * <p>The survey model for a year is the "eosc-sb" model whose name ends with that year. When it
- * can't be found or read, no question is reported as paused. Results are cached briefly so edits to
- * a model are picked up without a restart.
+ * <p>The survey model for a year is the "eosc-sb" model whose name ends with that year. When models
+ * can't be read, the last known answer keeps being served and the read is retried shortly; with no
+ * previous answer, no question is reported as paused and nothing is cached. Successful answers are
+ * cached briefly so edits to a model are picked up without a restart.
  */
 @Component
 public class PausedSurveyQuestions {
@@ -40,17 +43,30 @@ public class PausedSurveyQuestions {
     private static final Logger logger = LoggerFactory.getLogger(PausedSurveyQuestions.class);
     private static final String EOSC_SB_SURVEY_TYPE = "eosc-sb";
     private static final Duration CACHE_TTL = Duration.ofMinutes(5);
+    private static final Duration RETRY_AFTER_FAILURE = Duration.ofSeconds(15);
+    private static final Pattern TRAILING_YEAR = Pattern.compile("(?<!\\d)(\\d{4})\\s*$");
 
-    private final IntFunction<Set<String>> loader;
+    /** Reads the paused question codes of every given year in one go; throws when they can't be read. */
+    private interface Loader {
+        Map<Integer, Set<String>> load(Set<Integer> years);
+    }
+
+    private final Loader loader;
     private final Map<Integer, CachedEntry> cache = new ConcurrentHashMap<>();
+    private long retryNotBeforeNanos;
+    private boolean retryScheduled;
 
     @Autowired
     public PausedSurveyQuestions(SurveyService surveyService) {
-        this.loader = year -> loadFromSurveyModels(surveyService, year);
+        this.loader = years -> loadFromSurveyModels(surveyService, years);
     }
 
-    PausedSurveyQuestions(IntFunction<Set<String>> loader) {
-        this.loader = loader;
+    PausedSurveyQuestions(IntFunction<Set<String>> perYearLoader) {
+        this.loader = years -> {
+            Map<Integer, Set<String>> byYear = new HashMap<>();
+            years.forEach(year -> byYear.put(year, perYearLoader.apply(year)));
+            return byYear;
+        };
     }
 
     /** An instance that never reports a paused question. */
@@ -64,21 +80,13 @@ public class PausedSurveyQuestions {
     }
 
     public Set<String> pausedQuestionCodes(int year) {
-        long now = System.nanoTime();
-        CachedEntry entry = cache.get(year);
-        if (entry == null || now - entry.loadedAtNanos() > CACHE_TTL.toNanos()) {
-            entry = new CachedEntry(loader.apply(year), now);
-            cache.put(year, entry);
-        }
-        return entry.codes();
+        return refreshed(List.of(year)).getOrDefault(year, Set.of());
     }
 
     /** The paused questions of each given year, read once so a caller sees one consistent answer. */
     public Snapshot snapshot(Collection<Integer> years) {
         Map<Integer, Set<String>> byYear = new HashMap<>();
-        for (int year : years) {
-            byYear.put(year, Set.copyOf(pausedQuestionCodes(year)));
-        }
+        refreshed(years).forEach((year, codes) -> byYear.put(year, Set.copyOf(codes)));
         return new Snapshot(Map.copyOf(byYear));
     }
 
@@ -89,6 +97,34 @@ public class PausedSurveyQuestions {
         public boolean isPaused(int year, String questionCode) {
             return pausedByYear.getOrDefault(year, Set.of()).contains(parentCode(questionCode));
         }
+    }
+
+    private synchronized Map<Integer, Set<String>> refreshed(Collection<Integer> years) {
+        long now = System.nanoTime();
+        Set<Integer> stale = new HashSet<>();
+        for (int year : years) {
+            CachedEntry entry = cache.get(year);
+            if (entry == null || now - entry.loadedAtNanos() > CACHE_TTL.toNanos()) {
+                stale.add(year);
+            }
+        }
+        if (!stale.isEmpty() && (!retryScheduled || now - retryNotBeforeNanos >= 0)) {
+            try {
+                loader.load(stale).forEach((year, codes) -> cache.put(year, new CachedEntry(codes, now)));
+                retryScheduled = false;
+            } catch (RuntimeException e) {
+                logger.warn("Could not read the {} survey models for {}; keeping the last known paused questions",
+                    EOSC_SB_SURVEY_TYPE, stale, e);
+                retryScheduled = true;
+                retryNotBeforeNanos = now + RETRY_AFTER_FAILURE.toNanos();
+            }
+        }
+        Map<Integer, Set<String>> result = new HashMap<>();
+        for (int year : years) {
+            CachedEntry entry = cache.get(year);
+            result.put(year, entry == null ? Set.of() : entry.codes());
+        }
+        return result;
     }
 
     private static String parentCode(String questionCode) {
@@ -102,23 +138,33 @@ public class PausedSurveyQuestions {
         return paused;
     }
 
-    private static Set<String> loadFromSurveyModels(SurveyService surveyService, int year) {
-        try {
-            FacetFilter filter = new FacetFilter();
-            filter.setQuantity(10000);
-            String yearSuffix = String.valueOf(year);
-            return surveyService.getByType(filter, EOSC_SB_SURVEY_TYPE).getResults().stream()
-                .filter(model -> model.getName() != null && model.getName().trim().endsWith(yearSuffix))
-                .findFirst()
-                .map(PausedSurveyQuestions::pausedQuestionCodes)
-                .orElseGet(() -> {
-                    logger.warn("No {} survey model found for {}; no question is treated as paused", EOSC_SB_SURVEY_TYPE, year);
-                    return Set.of();
-                });
-        } catch (RuntimeException e) {
-            logger.warn("Could not read the {} survey model for {}; no question is treated as paused", EOSC_SB_SURVEY_TYPE, year, e);
-            return Set.of();
+    private static Map<Integer, Set<String>> loadFromSurveyModels(SurveyService surveyService, Set<Integer> years) {
+        FacetFilter filter = new FacetFilter();
+        filter.setQuantity(10000);
+        Map<Integer, Model> modelsByYear = new HashMap<>();
+        for (Model model : surveyService.getByType(filter, EOSC_SB_SURVEY_TYPE).getResults()) {
+            Integer year = yearInName(model.getName());
+            if (year != null) {
+                modelsByYear.putIfAbsent(year, model);
+            }
         }
+        Map<Integer, Set<String>> byYear = new HashMap<>();
+        for (int year : years) {
+            Model model = modelsByYear.get(year);
+            if (model == null) {
+                logger.debug("No {} survey model found for {}; no question is treated as paused", EOSC_SB_SURVEY_TYPE, year);
+            }
+            byYear.put(year, model == null ? Set.of() : pausedQuestionCodes(model));
+        }
+        return byYear;
+    }
+
+    private static Integer yearInName(String name) {
+        if (name == null) {
+            return null;
+        }
+        Matcher matcher = TRAILING_YEAR.matcher(name.trim());
+        return matcher.find() ? Integer.valueOf(matcher.group(1)) : null;
     }
 
     private static void collect(List<Section> sections, Set<String> paused) {
