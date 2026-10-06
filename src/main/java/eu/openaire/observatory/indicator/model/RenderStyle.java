@@ -125,20 +125,25 @@ public enum RenderStyle {
     PIE_WITH_PROGRESS_BARS,
 
     /**
-     * Composite: a per-year / cumulative toggle over multi-series line charts.
+     * {@link #MULTI_SERIES_LINE_CHART} drawn as a running total: one line per country, each point
+     * the sum of that country's values from the first year of the selected range up to that year.
+     * Computed client-side from the same per-year response; a gap-filled null year adds 0 but is
+     * still drawn.
      */
-    COMPOSITE_PER_YEAR_AND_CUMULATIVE_LINES,
+    CUMULATIVE_MULTI_SERIES_LINE_CHART,
 
     /**
-     * Composite: an "amount" and a "share" view, each a column chart with the number printed on top.
+     * {@link #COLUMN_CHART_WITH_VALUE_LABELS} where each column is a category's percentage share of
+     * the total in that year, computed client-side from the same per-year response, with the
+     * percentage printed on top.
      */
-    COMPOSITE_AMOUNT_AND_SHARE_COLUMNS,
+    SHARE_COLUMN_CHART_WITH_VALUE_LABELS,
 
     /**
-     * Composite: a "composition" view (multiple column charts) and a "per area" view (a tab per
-     * area, each with multi-series line charts).
+     * One tab per area (the selector's dimension), each holding a {@link #MULTI_SERIES_LINE_CHART}
+     * with one line per country across the year range.
      */
-    COMPOSITE_COMPOSITION_AND_PER_AREA;
+    TABBED_MULTI_SERIES_LINE_CHARTS;
 
     /**
      * Whether drawing this style needs one value per country. It's what decides whether a preset
@@ -159,7 +164,7 @@ public enum RenderStyle {
             case SCALAR, LINE_CHART, STACKED_COLUMN,
                  BAR_CHART, MULTI_SERIES_BAR_CHART, COUNT_BY_AREA_WITH_AVERAGE,
                  COLUMN_CHART_WITH_VALUE_LABELS, STACKED_BAR_WITH_PROGRESS, PIE_WITH_PROGRESS_BARS,
-                 COMPOSITE_AMOUNT_AND_SHARE_COLUMNS -> false;
+                 SHARE_COLUMN_CHART_WITH_VALUE_LABELS -> false;
             default -> true;
         };
     }

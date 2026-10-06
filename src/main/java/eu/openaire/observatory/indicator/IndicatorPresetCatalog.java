@@ -232,13 +232,21 @@ public class IndicatorPresetCatalog {
                 selector, false));
     }
 
-    /** "Total amount of investments in EOSC and Open Science" ({@code inv-1}). No selector — one summed figure. */
+    /**
+     * "Total amount of investments in EOSC and Open Science" ({@code inv-1}). No selector — one
+     * summed figure. The {@code SELECTED_COUNTRIES}/{@code TIME_RANGE} cell is one per-country,
+     * per-year query offered as per-year lines or as cumulative lines.
+     */
     private static List<PresetView> totalInvestmentViews() {
         return List.of(
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.SCALAR),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_BARS_NUM_PERCENTAGE),
-            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_PER_YEAR_AND_CUMULATIVE_LINES));
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE,
+                List.of(
+                    new RenderStyleOption(RenderStyle.MULTI_SERIES_LINE_CHART, "Per Year"),
+                    new RenderStyleOption(RenderStyle.CUMULATIVE_MULTI_SERIES_LINE_CHART, "Cumulative")),
+                null, false));
     }
 
     /**
@@ -247,12 +255,20 @@ public class IndicatorPresetCatalog {
      * {@code investmentArea} and one series comes back per area.
      */
     private static List<PresetView> investmentByAreaViews() {
-        ViewSelector selector = new ViewSelector(INVESTMENT_AREA_DIMENSION, "Open Science area", List.of());
+        ViewSelector selector = new ViewSelector(INVESTMENT_AREA_DIMENSION, "Open Science Area", List.of());
         return List.of(
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PIE_WITH_PROGRESS_BARS, selector),
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_AMOUNT_AND_SHARE_COLUMNS, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE,
+                List.of(
+                    new RenderStyleOption(RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS, "Amount"),
+                    new RenderStyleOption(RenderStyle.SHARE_COLUMN_CHART_WITH_VALUE_LABELS, "Share")),
+                selector, false),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MULTI_STACKED_BARS, selector),
-            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COMPOSITE_COMPOSITION_AND_PER_AREA, selector));
+                new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE,
+                        List.of(
+                                new RenderStyleOption(RenderStyle.MULTI_STACKED_COLUMNS, "Composition"),
+                                new RenderStyleOption(RenderStyle.TABBED_MULTI_SERIES_LINE_CHARTS, "Single Area")),
+                        selector, false));
     }
 
     private static final List<String> POLICY_AREA_TYPES = OpenScienceArea.initiativeTypes(OpenScienceArea.InitiativeKind.POLICY);
