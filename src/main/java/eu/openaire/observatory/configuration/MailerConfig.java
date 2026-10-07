@@ -19,12 +19,13 @@ package eu.openaire.observatory.configuration;
 import eu.openaire.observatory.messaging.mailer.ResilientMailer;
 import gr.athenarc.messaging.mailer.service.Mailer;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 
@@ -45,15 +46,18 @@ public class MailerConfig {
     @Bean
     @Primary
     public Mailer resilientMailer(
-            RestTemplateBuilder restTemplateBuilder,
+            RestClient.Builder restClientBuilder,
             @Value("${mailer.client.host:}") String host,
             @Value("${mailer.client.connect-timeout:3s}") Duration connectTimeout,
             @Value("${mailer.client.read-timeout:30s}") Duration readTimeout,
             @Value("${mailer.retry.max-attempts:5}") int maxAttempts,
             @Value("${mailer.retry.delay:1s}") Duration retryDelay) {
-        RestTemplate restTemplate = restTemplateBuilder
-                .requestFactorySettings(settings -> settings.withTimeouts(connectTimeout, readTimeout))
+        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.defaults()
+                .withConnectTimeout(connectTimeout)
+                .withReadTimeout(readTimeout);
+        RestClient restClient = restClientBuilder
+                .requestFactory(ClientHttpRequestFactoryBuilder.jdk().build(settings))
                 .build();
-        return new ResilientMailer(restTemplate, host, maxAttempts, retryDelay);
+        return new ResilientMailer(restClient, host, maxAttempts, retryDelay);
     }
 }

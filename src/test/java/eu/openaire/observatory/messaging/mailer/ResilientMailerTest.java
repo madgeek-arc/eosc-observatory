@@ -27,7 +27,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -78,7 +78,7 @@ class ResilientMailerTest {
 
     /** Spy so the retry loop can be driven without real HTTP; retryDelay 0 keeps it instant. */
     private ResilientMailer spyMailer(int maxAttempts) {
-        return spy(new ResilientMailer(new RestTemplate(), HOST, maxAttempts, Duration.ZERO));
+        return spy(new ResilientMailer(RestClient.create(), HOST, maxAttempts, Duration.ZERO));
     }
 
     // ── retry loop ──────────────────────────────────────────────────────────
@@ -190,47 +190,50 @@ class ResilientMailerTest {
         assertFalse(ResilientMailer.isRetryable(new IllegalArgumentException("URI is not absolute")));
     }
 
-    // ── integration with a real RestTemplate (URL, payload, exception wrapping) ──
+    // ── integration with a real RestClient (URL, payload, exception wrapping) ──
 
     @Test
     void postsBodyAsJsonToTheMailsEndpoint() {
-        RestTemplate restTemplate = new RestTemplate();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        RestClient restClient = builder.build();
         server.expect(ExpectedCount.once(), requestTo(MAILS_URI))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE))
                 .andExpect(jsonPath("$.subject").value("Answer validated"))
                 .andRespond(withSuccess());
 
-        new ResilientMailer(restTemplate, HOST, 5, Duration.ZERO).sendMail(sampleEmail());
+        new ResilientMailer(restClient, HOST, 5, Duration.ZERO).sendMail(sampleEmail());
 
         server.verify();
     }
 
     @Test
     void wrapsRealIoErrorAsRetryable() {
-        RestTemplate restTemplate = new RestTemplate();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        RestClient restClient = builder.build();
         server.expect(ExpectedCount.times(2), requestTo(MAILS_URI))
                 .andRespond(withException(new ConnectException("refused")));
         server.expect(ExpectedCount.once(), requestTo(MAILS_URI))
                 .andRespond(withSuccess());
 
         assertDoesNotThrow(() ->
-                new ResilientMailer(restTemplate, HOST, 5, Duration.ZERO).sendMail(sampleEmail()));
+                new ResilientMailer(restClient, HOST, 5, Duration.ZERO).sendMail(sampleEmail()));
 
         server.verify();
     }
 
     @Test
     void failsFastOnRealClientError() {
-        RestTemplate restTemplate = new RestTemplate();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        RestClient restClient = builder.build();
         server.expect(ExpectedCount.once(), requestTo(MAILS_URI))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
         assertThrows(MailDeliveryException.class, () ->
-                new ResilientMailer(restTemplate, HOST, 5, Duration.ZERO).sendMail(sampleEmail()));
+                new ResilientMailer(restClient, HOST, 5, Duration.ZERO).sendMail(sampleEmail()));
 
         server.verify();
     }

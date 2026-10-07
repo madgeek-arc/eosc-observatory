@@ -21,13 +21,11 @@ import gr.athenarc.messaging.mailer.domain.EmailMessage;
 import gr.athenarc.messaging.mailer.service.Mailer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.ConnectException;
@@ -39,7 +37,7 @@ import java.util.Locale;
 
 /**
  * {@link Mailer} that hands each message to the mailer service over one HTTP POST, wrapped in a
- * bounded retry. Replaces the library's {@code MailClient}, whose {@code RestTemplate} has no
+ * bounded retry. Replaces the library's {@code MailClient}, whose HTTP client has no
  * connect/read timeout and no retry, so a hung mailer would block the calling thread forever and a
  * single transient blip would abort a whole batch of notifications.
  *
@@ -57,13 +55,13 @@ public class ResilientMailer implements Mailer {
 
     private static final Logger logger = LoggerFactory.getLogger(ResilientMailer.class);
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final String mailsUri;
     private final int maxAttempts;
     private final Duration retryDelay;
 
-    public ResilientMailer(RestTemplate restTemplate, String host, int maxAttempts, Duration retryDelay) {
-        this.restTemplate = restTemplate;
+    public ResilientMailer(RestClient restClient, String host, int maxAttempts, Duration retryDelay) {
+        this.restClient = restClient;
         this.maxAttempts = Math.max(1, maxAttempts);
         this.retryDelay = retryDelay != null ? retryDelay : Duration.ZERO;
         this.mailsUri = UriComponentsBuilder.fromUriString(host == null ? "" : host)
@@ -108,9 +106,12 @@ public class ResilientMailer implements Mailer {
 
     /** One POST to the mailer. Package-private so the retry loop can be unit-tested via a spy. */
     void postOnce(EmailMessage email) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        restTemplate.postForObject(mailsUri, new HttpEntity<>(email, headers), Void.class);
+        restClient.post()
+                .uri(mailsUri)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(email)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     /**
