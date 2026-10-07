@@ -36,6 +36,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -55,8 +56,6 @@ class SurveyCSVConverterTest {
     @Mock
     private SurveyService surveyService;
     @Mock
-    private SurveyAnswerCrudService surveyAnswerCrudService;
-    @Mock
     private StakeholderService stakeholderService;
     @Mock
     private UserService userService;
@@ -67,7 +66,7 @@ class SurveyCSVConverterTest {
     private static final Date TO = new Date(Long.MAX_VALUE / 2);
 
     private void setUp() {
-        converter = new SurveyCSVConverter(modelService, surveyService, surveyAnswerCrudService, stakeholderService, userService);
+        converter = new SurveyCSVConverter(modelService, surveyService, stakeholderService, userService);
     }
 
     /** Builds a leaf/composite {@link UiField} with the plumbing (typeInfo, form/display) createValues() relies on. */
@@ -113,12 +112,16 @@ class SurveyCSVConverterTest {
 
     private void mockAnswers(Model model, SurveyAnswer... answers) {
         when(modelService.get(model.getId())).thenReturn(model);
-        when(surveyAnswerCrudService.getWithFilter("surveyId", model.getId())).thenReturn(Set.of(answers));
+        Set<Stakeholder> stakeholders = new HashSet<>();
         for (SurveyAnswer answer : answers) {
             Stakeholder stakeholder = new Stakeholder();
+            stakeholder.setId(answer.getStakeholderId());
             stakeholder.setName("Stakeholder " + answer.getStakeholderId());
-            when(stakeholderService.get(answer.getStakeholderId())).thenReturn(stakeholder);
+            stakeholders.add(stakeholder);
+            when(stakeholderService.get(stakeholder.getId())).thenReturn(stakeholder);
+            when(surveyService.getLatest(model.getId(), answer.getStakeholderId())).thenReturn(answer);
         }
+        when(stakeholderService.getWithFilter("type", model.getType())).thenReturn(stakeholders);
     }
 
     @Test
