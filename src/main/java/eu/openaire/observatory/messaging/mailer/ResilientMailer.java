@@ -30,9 +30,12 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * {@link Mailer} that hands each message to the mailer service over one HTTP POST, wrapped in a
@@ -43,7 +46,9 @@ import java.util.List;
  * <p>Applied centrally: this is the {@code @Primary Mailer} (see {@code MailerConfig}), so every
  * mail-sending service picks it up by type with no code change.
  *
- * <p>Only transient failures are retried (mailer unreachable / overloaded / erroring). A 4xx
+ * <p>Only failures where the mailer provably did not accept the message are retried: connection
+ * failures (refused, connect timeout) and 5xx responses. A read timeout is never retried, because
+ * the mailer may already have accepted the POST and retrying would deliver the mail again. A 4xx
  * response means we sent a malformed request, so it fails immediately. After the last failed
  * attempt one ERROR is logged (subject + recipient count, never addresses) and a
  * {@link MailDeliveryException} is thrown for the caller's existing {@code catch (Exception)} guard.
@@ -76,9 +81,8 @@ public class ResilientMailer implements Mailer {
      * (see {@code eu.openaire.observatory.configuration.AsyncConfig}) so the round-trip plus retries
      * no longer add latency to the user request.
      *
-     * <p>A retry after a read timeout can double-deliver if the mailer actually processed the first
-     * POST (there is no server-side dedupe key). A duplicate notification is accepted as the lesser
-     * evil compared with a dropped one.
+     * <p>A read timeout fails without retry: the mailer may have processed the POST, and there is no
+     * server-side dedupe key to make a repeat safe.
      */
     @Override
     public void sendMail(EmailMessage email) {
@@ -110,20 +114,33 @@ public class ResilientMailer implements Mailer {
     }
 
     /**
-     * Retry only failures that are the mailer service having a bad moment; fail fast on anything that
-     * says our request was wrong.
+     * Retry only failures where the mailer did not accept the request: connection failures and 5xx
+     * responses. Read timeouts and other I/O errors after the request was sent are not retried, as
+     * the message may already have been delivered.
      */
     static boolean isRetryable(RuntimeException ex) {
         if (ex instanceof HttpServerErrorException) {
             return true;                                   // 5xx — mailer-side, transient
         }
-        if (ex instanceof HttpClientErrorException) {
-            return false;                                  // 4xx — we sent a malformed request
+        if (ex instanceof ResourceAccessException) {
+            return isConnectFailure(ex.getCause());
         }
-        if (ex instanceof ResourceAccessException) {       // I/O: connect refused, socket reset, read timeout
-            return !(ex.getCause() instanceof UnknownHostException);   // bad host is misconfig, not transient
+        return false;                                      // 4xx, blank-host IllegalArgumentException, anything unrecognised
+    }
+
+    /** True for failures that occur while establishing the connection, before any bytes are sent. */
+    private static boolean isConnectFailure(Throwable cause) {
+        if (cause instanceof UnknownHostException) {
+            return false;                                  // bad host is misconfig, not transient
         }
-        return false;                                      // blank-host IllegalArgumentException, anything unrecognised
+        if (cause instanceof ConnectException) {
+            return true;
+        }
+        if (cause instanceof SocketTimeoutException) {
+            String message = cause.getMessage();
+            return message != null && message.toLowerCase(Locale.ROOT).startsWith("connect");
+        }
+        return cause != null && cause.getClass().getSimpleName().contains("ConnectTimeout");
     }
 
     private void sleepBeforeRetry() {

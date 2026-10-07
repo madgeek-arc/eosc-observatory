@@ -96,7 +96,7 @@ class ResilientMailerTest {
     @Test
     void retriesTransientFailureThenSucceeds() {
         ResilientMailer mailer = spyMailer(5);
-        doThrow(new ResourceAccessException("io", new SocketTimeoutException("read timed out")))
+        doThrow(new ResourceAccessException("io", new SocketTimeoutException("connect timed out")))
                 .doThrow(new ResourceAccessException("io", new ConnectException("refused")))
                 .doNothing()
                 .when(mailer).postOnce(any());
@@ -142,6 +142,17 @@ class ResilientMailerTest {
     }
 
     @Test
+    void doesNotRetryReadTimeout() {
+        ResilientMailer mailer = spyMailer(5);
+        doThrow(new ResourceAccessException("io", new SocketTimeoutException("Read timed out")))
+                .when(mailer).postOnce(any());
+
+        assertThrows(MailDeliveryException.class, () -> mailer.sendMail(sampleEmail()));
+
+        verify(mailer, times(1)).postOnce(any());
+    }
+
+    @Test
     void doesNotRetryUnknownHost() {
         ResilientMailer mailer = spyMailer(5);
         doThrow(new ResourceAccessException("io", new UnknownHostException("mailer.test")))
@@ -169,7 +180,10 @@ class ResilientMailerTest {
     void isRetryableClassification() {
         assertTrue(ResilientMailer.isRetryable(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)));
         assertTrue(ResilientMailer.isRetryable(new ResourceAccessException("io", new ConnectException())));
-        assertTrue(ResilientMailer.isRetryable(new ResourceAccessException("io", new SocketTimeoutException())));
+        assertTrue(ResilientMailer.isRetryable(new ResourceAccessException("io", new SocketTimeoutException("Connect timed out"))));
+
+        assertFalse(ResilientMailer.isRetryable(new ResourceAccessException("io", new SocketTimeoutException("Read timed out"))));
+        assertFalse(ResilientMailer.isRetryable(new ResourceAccessException("io", new SocketTimeoutException())));
 
         assertFalse(ResilientMailer.isRetryable(new HttpClientErrorException(HttpStatus.BAD_REQUEST)));
         assertFalse(ResilientMailer.isRetryable(new ResourceAccessException("io", new UnknownHostException())));
@@ -198,7 +212,7 @@ class ResilientMailerTest {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
         server.expect(ExpectedCount.times(2), requestTo(MAILS_URI))
-                .andRespond(withException(new SocketTimeoutException("read timed out")));
+                .andRespond(withException(new ConnectException("refused")));
         server.expect(ExpectedCount.once(), requestTo(MAILS_URI))
                 .andRespond(withSuccess());
 

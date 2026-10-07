@@ -48,7 +48,7 @@ public class MailerConfig {
             RestTemplateBuilder restTemplateBuilder,
             @Value("${mailer.client.host:}") String host,
             @Value("${mailer.client.connect-timeout:3s}") Duration connectTimeout,
-            @Value("${mailer.client.read-timeout:3s}") Duration readTimeout,
+            @Value("${mailer.client.read-timeout:30s}") Duration readTimeout,
             @Value("${mailer.retry.max-attempts:5}") int maxAttempts,
             @Value("${mailer.retry.delay:1s}") Duration retryDelay) {
         RestTemplate restTemplate = restTemplateBuilder
