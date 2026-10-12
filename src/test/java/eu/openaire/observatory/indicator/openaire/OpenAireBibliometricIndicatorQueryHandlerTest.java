@@ -372,6 +372,82 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void publicationsCountGroupedByCountryTreatsNullCountCellAsZero() {
+        var handler = handlerReturning("{\"data\":[[[null,\"GR\"],[\"5\",\"DE\"]]]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(countDefinition(), List.of(), groupBy, null));
+
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+            assertThat(dp.value()).isEqualTo(0L);
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("DE");
+            assertThat(dp.value()).isEqualTo(5L);
+        });
+    }
+
+    @Test
+    void publicationsCountTreatsNullAndBlankCellsAsZero() {
+        for (String cell : List.of("null", "\"null\"", "\"\"")) {
+            var handler = handlerReturning("{\"data\":[[[" + cell + "]]]}");
+
+            var result = handler.execute(plan(countDefinition(), List.of(), List.of(), null));
+
+            assertThat(result.data().get(0).value()).isEqualTo(0L);
+        }
+    }
+
+    @Test
+    void accessStatusShareGroupedByCountryTreatsNullNumeratorCellAsZero() {
+        var handler = handlerReturning(
+            "{\"data\":[[[null,\"GR\"]],[[\"40\",\"GR\"]]]}"
+        );
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(accessStatusShareDefinition(), filters, groupBy, null));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).value()).isEqualTo(0.0);
+    }
+
+    @Test
+    void accessStatusShareGroupedByCountryReturnsNullRatioForNullDenominatorCell() {
+        var handler = handlerReturning(
+            "{\"data\":[[[\"10\",\"GR\"]],[[null,\"GR\"]]]}"
+        );
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")));
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        var result = handler.execute(plan(accessStatusShareDefinition(), filters, groupBy, null));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).value()).isNull();
+    }
+
+    @Test
+    void accessStatusShareTreatsNullCellsAsZeroAndYieldsNullRatio() {
+        var handler = handlerReturning("{\"data\":[[[null]],[[null]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.ACCESS_STATUS_DIMENSION, FilterOperator.EQ, List.of("OA")));
+
+        var result = handler.execute(plan(accessStatusShareDefinition(), filters, List.of(), null));
+
+        assertThat(result.data().get(0).value()).isNull();
+    }
+
+    @Test
+    void oaLicenseStatusCountTreatsNullCountCellAsZero() {
+        var handler = handlerReturning("{\"data\":[[[null,\"Article\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, FilterOperator.EQ, List.of("CLOSED")));
+
+        var result = handler.execute(plan(oaLicenseStatusCountDefinition(), filters, List.of(), null));
+
+        assertThat(result.data().get(0).value()).isEqualTo(0L);
+    }
+
+    @Test
     void publicationsCountFilteredByCountryGroupedByCountryCombinesBoth() {
         var handler = handlerReturning("{\"data\":[[[\"18400\",\"BE\"],[\"4210\",\"GR\"]]]}");
         var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("BE", "GR")));

@@ -260,7 +260,7 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
                         dimensions.put(COUNTRY_DIMENSION, row.get(2));
                     }
                     dimensions.putAll(periods.get(p).dimensions());
-                    data.add(new IndicatorDataPoint(dimensions, Long.parseLong(row.get(0))));
+                    data.add(new IndicatorDataPoint(dimensions, parseCountCell(row.get(0))));
                 }
             }
         }
@@ -349,7 +349,7 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
     private Map<String, Long> countsByBreakdownValue(List<List<String>> rows) {
         Map<String, Long> counts = new LinkedHashMap<>();
         for (List<String> row : rows) {
-            counts.put(row.get(1), Long.parseLong(row.get(0)));
+            counts.put(row.get(1), parseCountCell(row.get(0)));
         }
         return counts;
     }
@@ -359,7 +359,15 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
         if (rows.isEmpty() || rows.get(0).isEmpty()) {
             return 0L;
         }
-        return Long.parseLong(rows.get(0).get(0));
+        return parseCountCell(rows.get(0).get(0));
+    }
+
+    /** Parses one count cell; a missing, blank, or "null" cell means nothing was counted and yields 0. */
+    private static long parseCountCell(String cell) {
+        if (cell == null || cell.isBlank() || "null".equalsIgnoreCase(cell.trim())) {
+            return 0L;
+        }
+        return Long.parseLong(cell.trim());
     }
 
     private record Period(int year, Map<String, Object> dimensions) {
