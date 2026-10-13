@@ -2,6 +2,7 @@ package eu.openaire.observatory.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openaire.observatory.domain.History;
+import eu.openaire.observatory.domain.HistoryEntry;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.SurveyAnswerRevisionsAggregation;
@@ -15,7 +16,12 @@ import eu.openaire.observatory.utils.OidcTestUtils;
 import gr.uoa.di.madgik.catalogue.service.GenericResourceService;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
+import gr.uoa.di.madgik.catalogue.ui.domain.ModelConfiguration;
+import gr.uoa.di.madgik.catalogue.ui.domain.Section;
+import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -266,6 +272,205 @@ class SurveyServiceImplTest {
         HistoryDTO result = service.getHistory("sa-1");
 
         assertThat(result.getEntries().getFirst().getEditors().getFirst().getFullname()).isEqualTo("unknown");
+    }
+
+    // ── import answers from a previous survey ────────────────────────────────
+
+    /**
+     * Last year's answer used by the import tests. Against {@link #currentModel()}:
+     * Q1 is active with a deprecated sub-field (Q1-2) inside a repeatable group, Q2 and Q5 are paused,
+     * Q3 and the whole "Old" section are deleted, Q4 is active with a deprecated sub-field (Q4-1),
+     * Q6 is new, and "Unknown" is not described by any model.
+     */
+    private static final String PREVIOUS_ANSWER = """
+            {
+              "Policies": {
+                "Q1": {
+                  "Q1-0": "Yes",
+                  "Q1-1-0": [
+                    {"Q1-1": "a", "Q1-2": "Yes", "Q1-2-1": ["https://a.org"]},
+                    {"Q1-1": "b", "Q1-2": "No"}
+                  ]
+                },
+                "Q2": {"Q2-0": "Yes", "Q2-1": "paused text"},
+                "Q3": {"Q3-0": "deleted"},
+                "Q4": {"Q4-0": "No", "Q4-1": "deprecated text"},
+                "Q5": {},
+                "Unknown": "keep me"
+              },
+              "Old": {"Q8": {"Q8-0": "gone"}},
+              "Feedback": {"Q9": null}
+            }""";
+
+    private static Model previousModel() {
+        Model model = new Model();
+        model.setId("m-2024");
+        model.setName("Survey 2024");
+        model.setSections(List.of(
+                section("Policies", section("Data",
+                        field("Q1", "question",
+                                field("Q1-0"),
+                                field("Q1-1-0", null, field("Q1-1"), field("Q1-2"), field("Q1-2-1"))),
+                        field("Q2", "question", field("Q2-0"), field("Q2-1")),
+                        field("Q3", "question", field("Q3-0")),
+                        field("Q4", "question", field("Q4-0"), field("Q4-1")),
+                        field("Q5", "external"))),
+                section("Old", section("Old questions", field("Q8", "question", field("Q8-0")))),
+                section("Feedback", section("Feedback", field("Q9", "question")))));
+        return model;
+    }
+
+    private static Model currentModel() {
+        Model model = new Model();
+        model.setId("m-2025");
+        model.setName("Survey 2025");
+        model.setConfiguration(new ModelConfiguration().setPrefillable(true).setImportFrom(List.of("m-2024")));
+        model.setSections(List.of(
+                section("Policies", section("Data",
+                        field("Q1", "question",
+                                field("Q1-0"),
+                                field("Q1-1-0", null, field("Q1-1"), deprecated(field("Q1-2")), field("Q1-2-1"))),
+                        field("Q2", "paused", field("Q2-0"), field("Q2-1")),
+                        field("Q4", "question", field("Q4-0"), deprecated(field("Q4-1"))),
+                        field("Q5", "paused"),
+                        field("Q6", "question", field("Q6-0")))),
+                section("Feedback", section("Feedback", field("Q9", "question")))));
+        return model;
+    }
+
+    private static UiField field(String name) {
+        return field(name, null);
+    }
+
+    private static UiField field(String name, String kind, UiField... subFields) {
+        UiField field = new UiField();
+        field.setName(name);
+        field.setKind(kind);
+        field.setSubFields(List.of(subFields));
+        return field;
+    }
+
+    private static UiField deprecated(UiField field) {
+        field.setDeprecated(true);
+        return field;
+    }
+
+    private static Section section(String name, UiField... fields) {
+        Section section = new Section();
+        section.setName(name);
+        section.setFields(List.of(fields));
+        return section;
+    }
+
+    private static Section section(String name, Section... subSections) {
+        Section section = new Section();
+        section.setName(name);
+        section.setSubSections(List.of(subSections));
+        return section;
+    }
+
+    /** Runs an import of {@code previous} into a 2025 answer and returns what gets saved. */
+    private SurveyAnswer importAnswer(SurveyAnswer previous) throws ResourceNotFoundException {
+        SurveyAnswer current = new SurveyAnswer();
+        current.setId("sa-2025");
+        current.setSurveyId("m-2025");
+        current.setStakeholderId("sh-1");
+
+        when(modelService.get("m-2024")).thenReturn(previousModel());
+        when(modelService.get("m-2025")).thenReturn(currentModel());
+        when(surveyAnswerCrudService.get("sa-2025")).thenReturn(current);
+        when(surveyAnswerCrudService.update(eq("sa-2025"), any(SurveyAnswer.class)))
+                .thenAnswer(invocation -> invocation.getArgument(1));
+        doReturn(previous).when(service).getLatest("m-2024", "sh-1");
+        doReturn("manager").when(service).getUserRole(any(Authentication.class), eq("sh-1"));
+
+        return service.importAnswer("sa-2025", "m-2024", oidcAuthentication());
+    }
+
+    private static SurveyAnswer previousAnswer() {
+        SurveyAnswer previous = new SurveyAnswer();
+        previous.setId("sa-2024");
+        previous.setSurveyId("m-2024");
+        previous.setStakeholderId("sh-1");
+        previous.setAnswer(json(PREVIOUS_ANSWER));
+        return previous;
+    }
+
+    private static JSONObject json(String json) {
+        return (JSONObject) JSONValue.parse(json);
+    }
+
+    private JSONObject importedPolicies() throws ResourceNotFoundException {
+        return (JSONObject) importAnswer(previousAnswer()).getAnswer().get("Policies");
+    }
+
+    @Test
+    void importKeepsActiveAnswers() throws ResourceNotFoundException {
+        JSONObject policies = importedPolicies();
+
+        assertEquals("Yes", ((JSONObject) policies.get("Q1")).get("Q1-0"));
+        assertEquals("No", ((JSONObject) policies.get("Q4")).get("Q4-0"));
+    }
+
+    @Test
+    void importRemovesPausedQuestionWithAllItsSubQuestions() throws ResourceNotFoundException {
+        JSONObject policies = importedPolicies();
+
+        assertFalse(policies.containsKey("Q2"));
+        assertFalse(policies.containsKey("Q5"));
+    }
+
+    @Test
+    void importRemovesDeprecatedSubQuestionAndKeepsItsSiblings() throws ResourceNotFoundException {
+        JSONObject q4 = (JSONObject) importedPolicies().get("Q4");
+
+        assertEquals(json("{\"Q4-0\": \"No\"}"), q4);
+    }
+
+    @Test
+    void importRemovesDeprecatedSubQuestionFromEveryRepeatableEntry() throws ResourceNotFoundException {
+        JSONObject q1 = (JSONObject) importedPolicies().get("Q1");
+
+        assertEquals(JSONValue.parse("""
+                [
+                  {"Q1-1": "a", "Q1-2-1": ["https://a.org"]},
+                  {"Q1-1": "b"}
+                ]"""), q1.get("Q1-1-0"));
+    }
+
+    @Test
+    void importRemovesDeletedQuestionsAndSections() throws ResourceNotFoundException {
+        JSONObject answer = importAnswer(previousAnswer()).getAnswer();
+
+        assertFalse(((JSONObject) answer.get("Policies")).containsKey("Q3"));
+        assertFalse(answer.containsKey("Old"));
+    }
+
+    @Test
+    void importLeavesNewQuestionsEmptyAndKeepsUnknownKeys() throws ResourceNotFoundException {
+        JSONObject answer = importAnswer(previousAnswer()).getAnswer();
+
+        assertFalse(((JSONObject) answer.get("Policies")).containsKey("Q6"));
+        assertEquals("keep me", ((JSONObject) answer.get("Policies")).get("Unknown"));
+        assertEquals(json("{\"Q9\": null}"), answer.get("Feedback"));
+    }
+
+    @Test
+    void importDoesNotModifyThePreviousAnswer() throws ResourceNotFoundException {
+        SurveyAnswer previous = previousAnswer();
+
+        importAnswer(previous);
+
+        assertEquals(json(PREVIOUS_ANSWER), previous.getAnswer());
+    }
+
+    @Test
+    void importAddsImportedHistoryEntry() throws ResourceNotFoundException {
+        SurveyAnswer result = importAnswer(previousAnswer());
+
+        HistoryEntry last = result.getHistory().getEntries().getLast();
+        assertEquals(History.HistoryAction.IMPORTED, last.getAction());
+        assertEquals("Imported data from 'Survey 2024'", last.getComment());
     }
 
     private static HistoryDTO historyWithEditors(EditorDTO... editors) {

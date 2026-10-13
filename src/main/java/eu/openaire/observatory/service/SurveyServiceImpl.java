@@ -19,8 +19,9 @@ package eu.openaire.observatory.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.PathNotFoundException;
+// TODO: clean up comments that are old code
+//import com.jayway.jsonpath.JsonPath;
+//import com.jayway.jsonpath.PathNotFoundException;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.dto.Diff;
 import eu.openaire.observatory.dto.EditorDTO;
@@ -47,6 +48,7 @@ import gr.uoa.di.madgik.catalogue.ui.domain.Section;
 import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -63,6 +65,7 @@ import java.util.stream.Collectors;
 public class SurveyServiceImpl implements SurveyService {
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyServiceImpl.class);
+    private static final String PAUSED_KIND = "paused";
 
     private final CrudService<Stakeholder> stakeholderCrudService;
     private final CrudService<SurveyAnswer> surveyAnswerCrudService;
@@ -233,65 +236,151 @@ public class SurveyServiceImpl implements SurveyService {
     private void prefill(Model previousModel, SurveyAnswer surveyAnswer) {
         SurveyAnswer previous = getLatest(previousModel.getId(), surveyAnswer.getStakeholderId());
         Model model = modelService.get(surveyAnswer.getSurveyId());
-        JSONObject toImport = removeDeprecatedFields(model, previous.getAnswer());
+        JSONObject toImport = removeInactiveAnswers(previous.getAnswer(), previousModel, model);
         surveyAnswer.setAnswer(toImport);
     }
 
     /**
-     * Creates a new json from an existing, with its deprecated fields removed.
+     * Creates a copy of a previous answer without the answers of questions that are paused, deprecated
+     * or deleted in the new model. The previous answer is not modified.
      *
-     * @param model the model to use
-     * @param obj the original json object
-     * @return the json object without deprecated fields
+     * @param previousAnswer the answer to import
+     * @param previousModel the model the previous answer belongs to
+     * @param model the model the answer is imported to
+     * @return the cleaned copy of the previous answer
      */
-    private JSONObject removeDeprecatedFields(Model model, JSONObject obj) {
-        JSONObject json = new JSONObject(obj);
-        for (Section section : model.getSections()) {
-            removeDeprecatedFieldsFromSection(section, ".", json);
+    private JSONObject removeInactiveAnswers(JSONObject previousAnswer, Model previousModel, Model model) {
+        JSONObject answer = (JSONObject) JSONValue.parse(previousAnswer.toJSONString());
+        Map<String, Section> sections = new HashMap<>();
+        for (Section section : nonNull(model.getSections())) {
+            sections.putIfAbsent(section.getName(), section);
         }
-        return obj;
+        for (Section previousSection : nonNull(previousModel.getSections())) {
+            String name = previousSection.getName();
+            if (!answer.containsKey(name)) {
+                continue;
+            }
+            Section section = sections.get(name);
+            if (section == null) {
+                answer.remove(name);
+            } else {
+                cleanAnswers(answer.get(name), questionsOf(previousSection), questionsOf(section));
+            }
+        }
+        return answer;
     }
 
     /**
-     * Removes deprecated fields from Section and its subsections (recursive).
+     * Removes from the answers of a level the ones whose question is deleted or inactive in the new model.
+     * Inactive questions are removed together with all their sub-questions (recursive).
      *
-     * @param section the section to use
-     * @param path the current path of the field
-     * @param obj the json to modify
+     * @param answers the answers of the current level (object, or list of objects for repeatable groups)
+     * @param previousFields the fields of the current level in the previous model
+     * @param fields the fields of the current level in the new model
      */
-    private void removeDeprecatedFieldsFromSection(Section section, String path, JSONObject obj) {
-        if (section.getFields() != null) {
-            for (UiField field : section.getFields()) {
-                removeDeprecatedFields(field, String.join(".", path, field.getName()), obj);
+    private void cleanAnswers(Object answers, List<UiField> previousFields, List<UiField> fields) {
+        if (answers instanceof List<?> list) {
+            for (Object element : list) {
+                cleanAnswers(element, previousFields, fields);
             }
-        }
-        if (section.getSubSections() != null) {
-            for (Section s : section.getSubSections()) {
-                removeDeprecatedFieldsFromSection(s, "." + section.getName(), obj);
+        } else if (answers instanceof Map<?, ?> map) {
+            Map<String, UiField> fieldsByName = new HashMap<>();
+            for (UiField field : fields) {
+                fieldsByName.putIfAbsent(field.getName(), field);
             }
-        }
-    }
-
-    /**
-     * Removes deprecated fields from a UiField and its subfields (recursive).
-     *
-     * @param field the current field to check
-     * @param path the current path of the field
-     * @param json the json object to modify
-     */
-    private void removeDeprecatedFields(UiField field, String path, JSONObject json) {
-        if (field.isDeprecated()) {
-            try {
-                JsonPath.parse(json).delete(path).json();
-            } catch (PathNotFoundException ignored) {}
-        } else {
-            if (field.getSubFields() != null) {
-                for (UiField f : field.getSubFields()) {
-                    removeDeprecatedFields(f, String.join(".", path, f.getName()), json);
+            for (UiField previousField : previousFields) {
+                String name = previousField.getName();
+                if (!map.containsKey(name)) {
+                    continue;
+                }
+                UiField field = fieldsByName.get(name);
+                if (field == null || isInactive(field)) {
+                    map.remove(name);
+                } else if (!nonNull(previousField.getSubFields()).isEmpty()) {
+                    cleanAnswers(map.get(name), previousField.getSubFields(), nonNull(field.getSubFields()));
                 }
             }
         }
     }
+
+    /**
+     * Returns the fields of a section and of all its subsections (recursive).
+     *
+     * @param section the section to use
+     * @return the fields of the section, flattened
+     */
+    private List<UiField> questionsOf(Section section) {
+        List<UiField> fields = new ArrayList<>(nonNull(section.getFields()));
+        for (Section subSection : nonNull(section.getSubSections())) {
+            fields.addAll(questionsOf(subSection));
+        }
+        return fields;
+    }
+
+    private boolean isInactive(UiField field) {
+        return field.isDeprecated() || PAUSED_KIND.equals(field.getKind());
+    }
+
+    private static <T> List<T> nonNull(List<T> list) {
+        return list != null ? list : List.of();
+    }
+
+    // TODO: clean up comments that are old code
+//    /**
+//     * Creates a new json from an existing, with its deprecated fields removed.
+//     *
+//     * @param model the model to use
+//     * @param obj the original json object
+//     * @return the json object without deprecated fields
+//     */
+//    private JSONObject removeDeprecatedFields(Model model, JSONObject obj) {
+//        JSONObject json = new JSONObject(obj);
+//        for (Section section : model.getSections()) {
+//            removeDeprecatedFieldsFromSection(section, ".", json);
+//        }
+//        return obj;
+//    }
+//
+//    /**
+//     * Removes deprecated fields from Section and its subsections (recursive).
+//     *
+//     * @param section the section to use
+//     * @param path the current path of the field
+//     * @param obj the json to modify
+//     */
+//    private void removeDeprecatedFieldsFromSection(Section section, String path, JSONObject obj) {
+//        if (section.getFields() != null) {
+//            for (UiField field : section.getFields()) {
+//                removeDeprecatedFields(field, String.join(".", path, field.getName()), obj);
+//            }
+//        }
+//        if (section.getSubSections() != null) {
+//            for (Section s : section.getSubSections()) {
+//                removeDeprecatedFieldsFromSection(s, "." + section.getName(), obj);
+//            }
+//        }
+//    }
+//
+//    /**
+//     * Removes deprecated fields from a UiField and its subfields (recursive).
+//     *
+//     * @param field the current field to check
+//     * @param path the current path of the field
+//     * @param json the json object to modify
+//     */
+//    private void removeDeprecatedFields(UiField field, String path, JSONObject json) {
+//        if (field.isDeprecated()) {
+//            try {
+//                JsonPath.parse(json).delete(path).json();
+//            } catch (PathNotFoundException ignored) {}
+//        } else {
+//            if (field.getSubFields() != null) {
+//                for (UiField f : field.getSubFields()) {
+//                    removeDeprecatedFields(f, String.join(".", path, f.getName()), json);
+//                }
+//            }
+//        }
+//    }
 
     /**
      * Ensure whether a previous model is <b>compatible</b> to be imported in a new model.
