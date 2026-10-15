@@ -357,7 +357,7 @@ class UserDashboardServiceTest {
         var selector = new ViewSelector(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, "Access type", List.of());
         IndicatorPreset distributionPreset = new IndicatorPreset(
                 "widget-distribution", "Distribution Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS,
-                List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, selector)
+                List.of(new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.SHARE_STACKED_COLUMN_CHART, selector)
                         .withFullWidth(true)),
                 null, List.of(), "indicator.distribution", Map.of(), PresetValueLabels.NONE, 40);
         IndicatorDefinition distributionIndicator = indicatorDefinition("indicator.distribution", true, Set.of(

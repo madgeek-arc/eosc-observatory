@@ -509,9 +509,9 @@ class IndicatorPresetCatalogTest {
                 .findFirst().orElseThrow();
 
             assertThat(switcherView.renderStyles()).as(id).extracting(RenderStyleOption::style).containsExactly(
-                RenderStyle.MULTI_STACKED_COLUMNS, RenderStyle.MULTI_SERIES_LINE_CHART);
+                RenderStyle.SHARE_MULTI_STACKED_COLUMN_CHARTS, RenderStyle.MULTI_SERIES_LINE_CHART);
             assertThat(switcherView.renderStyles()).as(id).extracting(RenderStyleOption::label).containsExactly(
-                "By access type", "Open Access share");
+                "Composition", "Open Access share");
 
             // groupBy stays [accessStatus, country] regardless of which switcher option is on screen.
             IndicatorQuery query = catalog.toIndicatorQuery(preset, List.of("GR", "IT"), 2019, 2023, List.of());

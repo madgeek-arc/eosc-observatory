@@ -132,7 +132,7 @@ public class IndicatorPresetCatalog {
     private static List<PresetView> categoryDistributionViews(String selectorDimension, String selectorLabel) {
         ViewSelector selector = new ViewSelector(selectorDimension, selectorLabel, List.of());
         return List.of(
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_COLUMN, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.SHARE_STACKED_COLUMN_CHART, selector),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_SERIES_LINE_CHART, selector),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_LINE_CHART, selector),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.MULTI_LINE_CHARTS, selector));
@@ -210,24 +210,24 @@ public class IndicatorPresetCatalog {
      * series per access type (and adds {@code country} for the selected-countries cells).
      *
      * <p>The {@code SELECTED_COUNTRIES}/{@code TIME_RANGE} cell offers a switcher over that same
-     * {@code [accessStatus, country]}-grouped response: {@code MULTI_STACKED_COLUMNS} ("By access
-     * type") draws every access-type series stacked per country, while {@code
+     * {@code [accessStatus, country]}-grouped response: {@code SHARE_MULTI_STACKED_COLUMN_CHARTS}
+     * ("Composition") draws every access-type series stacked to 100% per country, while {@code
      * MULTI_SERIES_LINE_CHART} ("Open Access share") draws one line per country computed
      * client-side as {@code OA count ÷ sum of all accessStatus counts} for that country/year — a
      * percentage, unlike the preset's own {@code COUNT} format, and never re-queried when the
-     * actor switches tabs. {@code MULTI_STACKED_COLUMNS} (not {@code STACKED_COLUMN}) is
-     * deliberate: {@code STACKED_COLUMN} as the default style would trigger {@code groupByFor}'s
-     * classification add-on for indicators that bind it, which this cell doesn't want.
+     * actor switches tabs. A multi-stacked style is used as the default because
+     * {@code SHARE_STACKED_COLUMN_CHART} as the default would add {@code classification} to the
+     * grouping for indicators that bind it, which this cell doesn't want.
      */
     private static List<PresetView> accessTypeTrendViews() {
         ViewSelector selector = new ViewSelector(ACCESS_STATUS_DIMENSION, "Access type", List.of());
         return List.of(
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_BAR_WITH_PROGRESS, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_BAR_CHART_WITH_PROGRESS_BARS, selector),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS, selector),
-            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MULTI_STACKED_BARS, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MULTI_STACKED_BAR_CHARTS, selector),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE,
                 List.of(
-                    new RenderStyleOption(RenderStyle.MULTI_STACKED_COLUMNS, "By access type"),
+                    new RenderStyleOption(RenderStyle.SHARE_MULTI_STACKED_COLUMN_CHARTS, "Composition"),
                     new RenderStyleOption(RenderStyle.MULTI_SERIES_LINE_CHART, "Open Access share")),
                 selector, false));
     }
@@ -257,16 +257,16 @@ public class IndicatorPresetCatalog {
     private static List<PresetView> investmentByAreaViews() {
         ViewSelector selector = new ViewSelector(INVESTMENT_AREA_DIMENSION, "Open Science Area", List.of());
         return List.of(
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PIE_WITH_PROGRESS_BARS, selector),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PIE_CHART_WITH_PROGRESS_BARS, selector),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE,
                 List.of(
-                    new RenderStyleOption(RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS, "Amount"),
-                    new RenderStyleOption(RenderStyle.SHARE_COLUMN_CHART_WITH_VALUE_LABELS, "Share")),
+                    new RenderStyleOption(RenderStyle.STACKED_COLUMN_CHART, "Amount"),
+                    new RenderStyleOption(RenderStyle.SHARE_STACKED_COLUMN_CHART, "Share")),
                 selector, false),
-            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MULTI_STACKED_BARS, selector),
+            new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.MULTI_STACKED_BAR_CHARTS, selector),
                 new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE,
                         List.of(
-                                new RenderStyleOption(RenderStyle.MULTI_STACKED_COLUMNS, "Composition"),
+                                new RenderStyleOption(RenderStyle.SHARE_MULTI_STACKED_COLUMN_CHARTS, "Composition"),
                                 new RenderStyleOption(RenderStyle.TABBED_MULTI_SERIES_LINE_CHARTS, "Single Area")),
                         selector, false));
     }
@@ -624,7 +624,7 @@ public class IndicatorPresetCatalog {
                 .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES_WITHOUT_COVERAGE_TREND))
                 .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(MONITORING_AREA_TYPES)).fullWidth().order(10).build(),
             IndicatorPreset.builder("nm-2", "National Monitoring (number of monitored areas per country)", NATIONAL_MONITORING)
-                .views(areaCountViews()).indicatorCode(MONITORED_AREAS_COUNT).fullWidth().order(20).build(),
+                .views(areaCountViews()).indicatorCode(MONITORED_AREAS_COUNT).order(20).build(),
 
             // ---- Open Science Policies (inventory rows 70-75) ----------------------------------------
             IndicatorPreset.builder("osp-1", "National Open Science Policies by Areas", OPEN_SCIENCE_POLICIES)
@@ -634,7 +634,7 @@ public class IndicatorPresetCatalog {
                 .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES))
                 .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES)).fullWidth().order(20).build(),
             IndicatorPreset.builder("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES)
-                .views(areaCountViews()).indicatorCode(POLICY_AREAS_COUNT).fullWidth().order(30).build(),
+                .views(areaCountViews()).indicatorCode(POLICY_AREAS_COUNT).order(30).build(),
             // Pinned to a single initiativeType value, so no selector — grouping by initiativeType
             // here would return one no-op series; groupByFor falls back to grouping by country.
             IndicatorPreset.builder("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES)

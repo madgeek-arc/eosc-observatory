@@ -211,7 +211,7 @@ public record IndicatorPreset(
      *   <li>if that view carries a {@link PresetView#selector()} (the "distribution" presets), it
      *       groups by the selector's dimension so one series comes back per member; the UI shows the
      *       member the actor picked. {@code country} is added only for the selected-countries cells,
-     *       and {@code classification} only for the stacked-column cell (and only when the backing
+     *       and {@code classification} only for a {@link RenderStyle#SHARE_STACKED_COLUMN_CHART} cell (and only when the backing
      *       indicator binds it for grouping — the other cells aggregate it away client-side);
      *   <li>otherwise it groups by country exactly when that view's
      *       {@link eu.openaire.observatory.indicator.model.RenderStyle#perCountryBreakdown()}.
@@ -253,7 +253,7 @@ public record IndicatorPreset(
         if (matched.selector() != null) {
             List<String> groupBy = new ArrayList<>();
             groupBy.add(matched.selector().dimension());
-            if (matched.renderStyle() == RenderStyle.STACKED_COLUMN
+            if (matched.renderStyle() == RenderStyle.SHARE_STACKED_COLUMN_CHART
                     && bindsForGrouping(indicator, IndicatorCodes.CLASSIFICATION_DIMENSION)) {
                 groupBy.add(IndicatorCodes.CLASSIFICATION_DIMENSION);
             }

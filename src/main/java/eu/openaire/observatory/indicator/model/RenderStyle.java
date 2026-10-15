@@ -26,7 +26,7 @@ public enum RenderStyle {
     /** One bar per country with the value printed on the right. */
     PROGRESS_BARS,
 
-    /** One bar per country with the value printed on the right. */
+    /** One bar per country with both the number and its percentage printed on the right. */
     PROGRESS_BARS_NUM_PERCENTAGE,
 
     /** One line series per selected country over the year range. */
@@ -43,9 +43,6 @@ public enum RenderStyle {
 
     /** Per-country choropleth plus a count of how many countries changed since {@code yearFrom}. */
     MAP_WITH_CHANGE_COUNT,
-
-    /** Stacked column, as rendered on the Explore dashboard. */
-    STACKED_COLUMN,
 
     /** Progress line chart across several countries. */
     PROGRESS_LINE_CHART,
@@ -102,27 +99,33 @@ public enum RenderStyle {
     COLUMN_CHART_WITH_VALUE_LABELS,
 
     /**
-     * A stacked bar with a progress bar per category beneath it and the value/percentage on the
-     * right, for a single year.
+     * A stacked bar chart with a progress bar per category beneath it and the value/percentage on
+     * the right, for a single year.
      */
-    STACKED_BAR_WITH_PROGRESS,
+    STACKED_BAR_CHART_WITH_PROGRESS_BARS,
 
-    /** One stacked bar per country, for a single year. */
-    MULTI_STACKED_BARS,
+    /** One stacked bar chart per country, for a single year. */
+    MULTI_STACKED_BAR_CHARTS,
 
     /**
-     * One stacked column chart per country, across the year range — {@link #MULTI_STACKED_BARS}'s
-     * time-range counterpart. Deliberately distinct from {@link #STACKED_COLUMN}: unlike that
-     * style, this one does not trigger {@code groupByFor}'s classification add-on, since here the
-     * stack is the selector's dimension, not a classification breakdown.
+     * One stacked column chart per country, across the year range — {@link #MULTI_STACKED_BAR_CHARTS}'s
+     * time-range counterpart. The stack is the selector's dimension; it never adds a classification
+     * breakdown to {@code groupBy}.
      */
-    MULTI_STACKED_COLUMNS,
+    MULTI_STACKED_COLUMN_CHARTS,
+
+    /**
+     * {@link #MULTI_STACKED_COLUMN_CHARTS} normalised so every column is filled to 100%, each
+     * sub-component taking its share of the whole as a percentage. Computed client-side from the
+     * same per-year response.
+     */
+    SHARE_MULTI_STACKED_COLUMN_CHARTS,
 
     /**
      * Pie chart paired with a companion list of progress bars carrying both the percentages and the
      * absolute numbers, for a single year.
      */
-    PIE_WITH_PROGRESS_BARS,
+    PIE_CHART_WITH_PROGRESS_BARS,
 
     /**
      * {@link #MULTI_SERIES_LINE_CHART} drawn as a running total: one line per country, each point
@@ -133,11 +136,21 @@ public enum RenderStyle {
     CUMULATIVE_MULTI_SERIES_LINE_CHART,
 
     /**
-     * {@link #COLUMN_CHART_WITH_VALUE_LABELS} where each column is a category's percentage share of
-     * the total in that year, computed client-side from the same per-year response, with the
-     * percentage printed on top.
+     * One stacked column per year, stacked by the selector's dimension, across the year range.
+     * The stack is the selector's dimension only; no classification breakdown is added to
+     * {@code groupBy}.
      */
-    SHARE_COLUMN_CHART_WITH_VALUE_LABELS,
+    STACKED_COLUMN_CHART,
+
+    /**
+     * {@link #STACKED_COLUMN_CHART} normalised so each column sums to 100%, with each segment's
+     * percentage printed on it. Computed client-side from the same response.
+     *
+     * <p>When the backing indicator binds {@code classification} for grouping, the preset query for
+     * this style as a view's default also groups by classification, giving one 100% column per
+     * classification (the "Distribution of … Types" single-year cell).
+     */
+    SHARE_STACKED_COLUMN_CHART,
 
     /**
      * One tab per area (the selector's dimension), each holding a {@link #MULTI_SERIES_LINE_CHART}
@@ -154,17 +167,18 @@ public enum RenderStyle {
      * rows, so it must be computed without the grouping).
      *
      * <p>{@code COLUMN_CHART} counts as per-country — {@code OUTPUT_COUNT_VIEWS} uses it for
-     * "most-active-countries" charts. {@code STACKED_COLUMN} is category-over-time, not per-country;
-     * so are the EU-aggregate / by-area styles ({@code BAR_CHART}, {@code STACKED_BAR_WITH_PROGRESS},
-     * {@code PIE_WITH_PROGRESS_BARS}, {@code COUNT_BY_AREA_WITH_AVERAGE}, …) that draw one mark per
+     * "most-active-countries" charts. The stacked-column styles ({@code STACKED_COLUMN_CHART},
+     * {@code SHARE_STACKED_COLUMN_CHART}) are category-over-time, not per-country; so are the
+     * EU-aggregate / by-area styles ({@code BAR_CHART}, {@code STACKED_BAR_CHART_WITH_PROGRESS_BARS},
+     * {@code PIE_CHART_WITH_PROGRESS_BARS}, {@code COUNT_BY_AREA_WITH_AVERAGE}, …) that draw one mark per
      * area or category rather than one per country.
      */
     public boolean perCountryBreakdown() {
         return switch (this) {
-            case SCALAR, LINE_CHART, STACKED_COLUMN,
+            case SCALAR, LINE_CHART,
                  BAR_CHART, MULTI_SERIES_BAR_CHART, COUNT_BY_AREA_WITH_AVERAGE,
-                 COLUMN_CHART_WITH_VALUE_LABELS, STACKED_BAR_WITH_PROGRESS, PIE_WITH_PROGRESS_BARS,
-                 SHARE_COLUMN_CHART_WITH_VALUE_LABELS -> false;
+                 COLUMN_CHART_WITH_VALUE_LABELS, STACKED_BAR_CHART_WITH_PROGRESS_BARS, PIE_CHART_WITH_PROGRESS_BARS,
+                 STACKED_COLUMN_CHART, SHARE_STACKED_COLUMN_CHART -> false;
             default -> true;
         };
     }
