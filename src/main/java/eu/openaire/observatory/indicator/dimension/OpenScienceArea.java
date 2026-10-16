@@ -79,7 +79,8 @@ public enum OpenScienceArea {
     }
 
     public String initiativeTypeLabel(InitiativeKind kind) {
-        return kind.labelPattern.formatted(label);
+//        return kind.labelPattern.formatted(label);
+        return label;
     }
 
     /** The initiativeType member codes of one kind across every area, in area order. */
