@@ -189,15 +189,14 @@ public class IndicatorPresetCatalog {
     }
 
     /**
-     * "Number of monitored/policy areas per country" views ({@code nm-2}, {@code osp-3}). No
-     * selector — {@code oa.monitored_areas_count} / {@code oa.policy_areas_count} bind only
-     * {@code country} + {@code surveyYear}, so the EU/single-year
-     * {@link RenderStyle#COUNT_BY_AREA_WITH_AVERAGE} "countries with Yes by area" breakdown is
-     * nominal against these indicators (see {@code docs/INDICATOR_TODO.md}).
+     * "Number of monitored/policy areas per country" views ({@code nm-2}, {@code osp-3}). Only the
+     * EU/single-year {@link RenderStyle#COUNT_BY_AREA_WITH_AVERAGE} cell carries an area selector,
+     * grouping the count indicator by {@code initiativeType} into countries-with-Yes per area; the
+     * other cells stay per-country.
      */
     private static List<PresetView> areaCountViews() {
         return List.of(
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.COUNT_BY_AREA_WITH_AVERAGE),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.COUNT_BY_AREA_WITH_AVERAGE, openScienceAreaSelector()).withFullWidth(true),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_BARS_NUM_PERCENTAGE),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COVERAGE_TREND));

@@ -80,7 +80,8 @@ class IndicatorDefinitionCatalogTest {
     void areaCountIndicatorsHaveAnOptionalSurveyYearFilterAndAreOptionallyCountryFilterable(String indicatorCode) {
         var bindings = catalog.get(indicatorCode).dimensionBindings();
         assertThat(bindings).extracting("dimensionCode")
-            .containsExactlyInAnyOrder(IndicatorCodes.SURVEY_YEAR_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+            .containsExactlyInAnyOrder(IndicatorCodes.SURVEY_YEAR_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION,
+                IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.SURVEY_YEAR_DIMENSION))
             .extracting("requiredFilter")

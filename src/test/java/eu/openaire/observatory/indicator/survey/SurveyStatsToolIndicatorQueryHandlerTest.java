@@ -1140,6 +1140,33 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void monitoredAreasCountGroupedByInitiativeTypeCountsYesCountriesPerArea() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]},{\"row\":[\"FR\",\"Yes\"]}]}}]}");
+
+        var result = handler.execute(plan(monitoredAreasCountDefinition(), List.of(SURVEY_YEAR_2023),
+            List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(12).allSatisfy(dp -> {
+            assertThat(dp.dimensions()).containsKey(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)
+                .doesNotContainKey(IndicatorCodes.COUNTRY_DIMENSION);
+            assertThat(dp.value()).isEqualTo(2L);
+            assertThat(dp.total()).isEqualTo(3L);
+        });
+    }
+
+    @Test
+    void areasCountGroupedByInitiativeTypeOmitsPausedAreas() {
+        var handler = handlerWithPausedQuestions(year -> Set.of("Question74", "Question78"),
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+
+        var result = handler.execute(plan(monitoredAreasCountDefinition(), List.of(SURVEY_YEAR_2023),
+            List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(10);
+        assertThat(result.exclusions()).hasSize(2);
+    }
+
+    @Test
     void policyAreasCountSumsYesAnswersAcrossEveryPolicyMember() {
         var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}");
 

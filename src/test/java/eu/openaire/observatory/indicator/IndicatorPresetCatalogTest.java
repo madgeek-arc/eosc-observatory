@@ -457,6 +457,17 @@ class IndicatorPresetCatalogTest {
     }
 
     @Test
+    void areaCountPresetsGroupTheEuSingleYearCellByAreaAndOtherCellsByCountry() {
+        for (String id : List.of("nm-2", "osp-3")) {
+            IndicatorPreset preset = catalog.get(id);
+            assertThat(catalog.toIndicatorQuery(preset, List.of(), 2023, 2023, List.of()).groupBy())
+                .containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+            assertThat(catalog.toIndicatorQuery(preset, List.of("GR"), 2023, 2023, List.of()).groupBy())
+                .containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+        }
+    }
+
+    @Test
     void byAreaPresetsPinEveryTopicAreaAndDeriveAnInitiativeTypeGroupBy() {
         // nm-1 ("… by Areas"): EU-wide single year -> group by initiativeType only, one series per area.
         IndicatorQuery euSingle = catalog.toIndicatorQuery(catalog.get("nm-1"), List.of(), 2023, 2023, List.of());

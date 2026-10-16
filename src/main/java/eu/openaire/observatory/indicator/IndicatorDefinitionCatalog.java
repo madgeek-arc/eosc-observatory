@@ -554,11 +554,12 @@ public class IndicatorDefinitionCatalog {
             "Per-country count of topic areas (out of every \"*_MONITORING_INITIATIVE\" "
                 + "initiativeType member) with a Yes national-monitoring-initiative answer that "
                 + "year. No aggregation — always one count per country. Optionally filterable by "
-                + "country to narrow the rows returned.",
+                + "country to narrow the rows returned. Grouped by initiativeType instead, returns one point "
+                + "per area: the number of countries with a Yes answer.",
             IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
-            Set.of(filterOnlyBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
+            Set.of(filterOnlyBinding(SURVEY_YEAR_DIMENSION), countryBinding(), initiativeTypeGroupOnlyBinding()),
             TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
@@ -576,11 +577,13 @@ public class IndicatorDefinitionCatalog {
             POLICY_AREAS_COUNT, "Policy Areas Count",
             "Per-country count of topic areas (out of every \"*_POLICY\" initiativeType member) "
                 + "with a Yes national-policy answer that year. No aggregation — always one count "
-                + "per country. Optionally filterable by country to narrow the rows returned.",
+                + "per country. Optionally filterable by country to narrow the rows returned. "
+                + "Grouped by initiativeType instead, returns one point per area: the number of "
+                + "countries with a Yes answer.",
             IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.ENTITY_MAP,
             NO_AGGREGATION_POLICY,
             null,
-            Set.of(filterOnlyBinding(SURVEY_YEAR_DIMENSION), countryBinding()),
+            Set.of(filterOnlyBinding(SURVEY_YEAR_DIMENSION), countryBinding(), initiativeTypeGroupOnlyBinding()),
             TIME_POLICY, SurveyStatsToolIndicatorQueryHandler.HANDLER_KEY
         );
     }
@@ -763,6 +766,13 @@ public class IndicatorDefinitionCatalog {
         return new IndicatorDimensionBinding(
             INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
             Set.of(FilterOperator.EQ, FilterOperator.IN), true, true
+        );
+    }
+
+    /** Optional initiativeType grouping with no filtering: fans a per-country count out into one count per area. */
+    private static IndicatorDimensionBinding initiativeTypeGroupOnlyBinding() {
+        return new IndicatorDimensionBinding(
+            INITIATIVE_TYPE_DIMENSION, Set.of(DimensionUsage.GROUP), Set.of(), false
         );
     }
 

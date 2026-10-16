@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -413,6 +414,12 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
      * be a meaningful number. A country not answering a given area's question simply doesn't
      * contribute a Yes for that area (same "no answer" handling as everywhere else in this handler)
      * rather than being excluded from the result outright.
+     *
+     * <p>When the plan groups by {@code initiativeType} the shape flips to one point per
+     * (year, area): {@code value} is the number of countries answering Yes for that area and
+     * {@code total} the number of countries that took part in the survey that year (any
+     * country present in at least one area's response), the same for every area. Areas whose question is paused are
+     * reported in the exclusions and emit no point.
      */
     private IndicatorResult queryAreasCount(IndicatorExecutionPlan plan, OpenScienceArea.InitiativeKind kind) {
         List<String> types = OpenScienceArea.initiativeTypes(kind);
@@ -422,6 +429,29 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         List<Integer> years = resolveYears(plan);
         requireWithinCallBudget(years, types.size(), 1);
         PausedSurveyQuestions.Snapshot paused = pausedQuestions.snapshot(years);
+        if (groupByCodes(plan).contains(INITIATIVE_TYPE_DIMENSION)) {
+            for (int year : years) {
+                Map<String, Object> periodDimensions = periodDimensions(plan, year);
+                Map<String, Long> yesByType = new LinkedHashMap<>();
+                Set<String> participants = new HashSet<>();
+                for (String type : types) {
+                    String questionCode = questionCodeForInitiativeType(type);
+                    if (excludeIfPaused(paused, exclusions, year, INITIATIVE_TYPE_DIMENSION, type, questionCode)) {
+                        continue;
+                    }
+                    Map<String, String> statusByCountry = narrowToRequestedCountries(plan,
+                        fetchInitiativeStatusByCountry(paused, year, questionCode, plan.definition().code()).byCountry());
+                    participants.addAll(statusByCountry.keySet());
+                    yesByType.put(type, statusByCountry.values().stream().filter(STATUS_YES::equals).count());
+                }
+                yesByType.forEach((type, yes) -> {
+                    Map<String, Object> dimensions = new LinkedHashMap<>(periodDimensions);
+                    dimensions.put(INITIATIVE_TYPE_DIMENSION, type);
+                    data.add(new IndicatorDataPoint(dimensions, yes, (long) participants.size()));
+                });
+            }
+            return buildResult(plan, dimensionKeysFor(List.of(INITIATIVE_TYPE_DIMENSION), plan), data, exclusions);
+        }
         for (int year : years) {
             Map<String, Long> countByCountry = new LinkedHashMap<>();
             int totalAreas = 0;
