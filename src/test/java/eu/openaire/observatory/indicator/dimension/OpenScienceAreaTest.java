@@ -50,9 +50,10 @@ class OpenScienceAreaTest {
     }
 
     @Test
-    void initiativeTypeLabelNamesTheAreaAndTheKind() {
-        assertThat(OpenScienceArea.OPEN_DATA.initiativeTypeLabel(OpenScienceArea.InitiativeKind.POLICY)).isEqualTo("Policy on Open Data");
-        assertThat(OpenScienceArea.SERVICES.initiativeTypeLabel(OpenScienceArea.InitiativeKind.MONITORING_INITIATIVE))
-            .isEqualTo("National Monitoring on Services");
+    void initiativeTypeLabelIsTheAreaLabelForEveryKind() {
+        for (OpenScienceArea.InitiativeKind kind : OpenScienceArea.InitiativeKind.values()) {
+            assertThat(OpenScienceArea.OPEN_DATA.initiativeTypeLabel(kind)).isEqualTo("Open Data");
+            assertThat(OpenScienceArea.SERVICES.initiativeTypeLabel(kind)).isEqualTo("Services");
+        }
     }
 }

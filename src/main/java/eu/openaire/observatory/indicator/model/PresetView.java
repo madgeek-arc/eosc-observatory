@@ -27,19 +27,30 @@ import java.util.List;
  * the whole dashboard width rather than sharing a row with another widget; {@code false} for
  * every other view. Most presets set it the same on every one of their views, but nothing
  * requires that — a preset can mix full-width and non-full-width views.
+ *
+ * <p>{@code viewQuery} is optional: when set, this cell runs that {@link ViewQuery} (its own
+ * indicator, pinned filters and {@code groupBy}) instead of the preset's, and carries no
+ * {@code selector}. A {@code null} viewQuery is omitted from the wire.
  */
 public record PresetView(
     CountryScope countryScope,
     TimeScope timeScope,
     List<RenderStyleOption> renderStyles,
     @JsonInclude(JsonInclude.Include.NON_NULL) ViewSelector selector,
-    boolean fullWidth
+    boolean fullWidth,
+    @JsonInclude(JsonInclude.Include.NON_NULL) ViewQuery viewQuery
 ) {
     public PresetView {
         if (renderStyles == null || renderStyles.isEmpty()) {
             throw new IllegalArgumentException("renderStyles cannot be empty");
         }
         renderStyles = List.copyOf(renderStyles);
+    }
+
+    /** A view with its own render styles and selector that runs its preset's query. */
+    public PresetView(CountryScope countryScope, TimeScope timeScope, List<RenderStyleOption> renderStyles,
+                      ViewSelector selector, boolean fullWidth) {
+        this(countryScope, timeScope, renderStyles, selector, fullWidth, null);
     }
 
     /** A single-style view with no selector, not full-width — the common case. */
@@ -54,12 +65,17 @@ public record PresetView(
 
     /** A copy with {@code fullWidth} set — used by the catalog to mark every view of a full-width preset. */
     public PresetView withFullWidth(boolean fullWidth) {
-        return new PresetView(countryScope, timeScope, renderStyles, selector, fullWidth);
+        return new PresetView(countryScope, timeScope, renderStyles, selector, fullWidth, viewQuery);
     }
 
     /** A copy carrying a different set of switchable render styles — the cell and selector stay the same. */
     public PresetView withRenderStyles(List<RenderStyleOption> renderStyles) {
-        return new PresetView(countryScope, timeScope, renderStyles, selector, fullWidth);
+        return new PresetView(countryScope, timeScope, renderStyles, selector, fullWidth, viewQuery);
+    }
+
+    /** A copy that runs {@code viewQuery} instead of its preset's query; the selector is dropped. */
+    public PresetView withViewQuery(ViewQuery viewQuery) {
+        return new PresetView(countryScope, timeScope, renderStyles, null, fullWidth, viewQuery);
     }
 
     /** The default style — the first entry of {@link #renderStyles()}, drawn before the actor picks a switcher tab. */

@@ -11,7 +11,9 @@ import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.RenderStyleOption;
 import eu.openaire.observatory.indicator.model.TimeScope;
+import eu.openaire.observatory.indicator.model.ViewQuery;
 import eu.openaire.observatory.indicator.model.ViewSelector;
+import org.springframework.beans.factory.annotation.Autowired;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.survey.SurveyStatsToolIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.validation.PresetScopeValidation;
@@ -26,6 +28,7 @@ import java.util.Set;
 
 import static eu.openaire.observatory.indicator.IndicatorCodes.ACCESS_STATUS_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.CITIZEN_SCIENCE_NEW_PROJECTS_COUNT;
+import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_DIMENSION;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_INITIATIVE_STATUS;
 import static eu.openaire.observatory.indicator.IndicatorCodes.COUNTRY_POLICY_STATUS;
 import static eu.openaire.observatory.indicator.IndicatorCodes.DATASETS_ACCESS_STATUS_SHARE;
@@ -189,14 +192,23 @@ public class IndicatorPresetCatalog {
     }
 
     /**
-     * "Number of monitored/policy areas per country" views ({@code nm-2}, {@code osp-3}). Only the
-     * EU/single-year {@link RenderStyle#COUNT_BY_AREA_WITH_AVERAGE} cell carries an area selector,
-     * grouping the count indicator by {@code initiativeType} into countries-with-Yes per area; the
-     * other cells stay per-country.
+     * "Number of monitored/policy areas per country" views ({@code nm-2}, {@code osp-3}). The
+     * EU/single-year {@link RenderStyle#COUNT_BY_AREA_WITH_AVERAGE} cell runs its own
+     * {@link ViewQuery} over {@code oa.country_initiative_status}, returning the
+     * {@code YES}/{@code NO}/{@code AWAITING_DATA} status of every country for each of {@code areaTypes}
+     * (the preset's {@code initiativeType} members); the other cells stay per-country counts.
+     *
+     * <p>That cell's payload is a status matrix, not counts, and its values are text although the
+     * preset's own indicator is numeric (so the preset-level {@code format} does not describe it).
+     * Both the per-area counts (Yes per column) and the per-country counts (Yes per row, e.g. for
+     * threshold statistics) are derived from it by the caller.
      */
-    private static List<PresetView> areaCountViews() {
+    private static List<PresetView> areaCountViews(List<String> areaTypes) {
+        ViewQuery statusMatrix = new ViewQuery(
+            COUNTRY_INITIATIVE_STATUS, initiativeTypes(areaTypes), List.of(COUNTRY_DIMENSION, INITIATIVE_TYPE_DIMENSION));
         return List.of(
-            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.COUNT_BY_AREA_WITH_AVERAGE, openScienceAreaSelector()).withFullWidth(true),
+            new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.COUNT_BY_AREA_WITH_AVERAGE)
+                .withViewQuery(statusMatrix).withFullWidth(true),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.PROGRESS_BARS_NUM_PERCENTAGE),
             new PresetView(CountryScope.SELECTED_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COVERAGE_TREND));
@@ -283,11 +295,17 @@ public class IndicatorPresetCatalog {
     private final List<IndicatorPreset> ordered;
     private final IndicatorDefinitionCatalog definitionCatalog;
 
+    @Autowired
     public IndicatorPresetCatalog(IndicatorDefinitionCatalog definitionCatalog) {
+        this(definitionCatalog, allPresets());
+    }
+
+    /** Builds and validates a catalog over {@code presets}; the public constructor passes the built-in ones. */
+    IndicatorPresetCatalog(IndicatorDefinitionCatalog definitionCatalog, List<IndicatorPreset> presets) {
         this.definitionCatalog = definitionCatalog;
         Map<String, IndicatorPreset> byId = new LinkedHashMap<>();
         Set<String> slots = new HashSet<>();
-        for (IndicatorPreset preset : allPresets()) {
+        for (IndicatorPreset preset : presets) {
             IndicatorDefinition definition = definitionCatalog.get(preset.indicatorCode());
             if (definition == null) {
                 throw new IllegalStateException(
@@ -329,14 +347,14 @@ public class IndicatorPresetCatalog {
      */
     public IndicatorQuery toIndicatorQuery(IndicatorPreset preset, List<String> countries,
             Integer yearFrom, Integer yearTo, List<AggregationType> seriesAggregations) {
-        IndicatorDefinition definition = definitionCatalog.get(preset.indicatorCode());
+        IndicatorDefinition definition = definitionCatalog.get(preset.indicatorCodeFor(countries, yearFrom, yearTo));
         PresetScopeValidation.validate(
             preset, definition.timePolicy().supported(), yearFrom, yearTo, seriesAggregations);
         List<AggregationType> requested = seriesAggregations == null ? List.of() : seriesAggregations;
         return preset.toIndicatorQuery(definition, countries, yearFrom, yearTo, requested);
     }
 
-    private static void validateViews(IndicatorPreset preset, IndicatorDefinition definition) {
+    private void validateViews(IndicatorPreset preset, IndicatorDefinition definition) {
         if (preset.views() == null || preset.views().isEmpty()) {
             throw new IllegalStateException("Preset indicator '" + preset.id() + "' has no views");
         }
@@ -348,6 +366,7 @@ public class IndicatorPresetCatalog {
                         + view.countryScope() + "/" + view.timeScope() + " cell");
             }
             validateSelector(preset, definition, view.selector());
+            validateViewQuery(preset, view);
             validateRenderStyles(preset, view);
         }
     }
@@ -395,6 +414,46 @@ public class IndicatorPresetCatalog {
             throw new IllegalStateException(
                 "Preset indicator '" + preset.id() + "' declares value labels but its format is "
                     + definition.format() + " (only YES_NO / CATEGORY carry per-country status values)");
+        }
+    }
+
+    /**
+     * A view's own query must name a known indicator that binds every grouped dimension for grouping
+     * and every pinned dimension for filtering, and cannot also carry a selector (its {@code groupBy}
+     * is already explicit).
+     */
+    private void validateViewQuery(IndicatorPreset preset, PresetView view) {
+        ViewQuery viewQuery = view.viewQuery();
+        if (viewQuery == null) {
+            return;
+        }
+        String cell = view.countryScope() + "/" + view.timeScope();
+        IndicatorDefinition definition = definitionCatalog.get(viewQuery.indicatorCode());
+        if (definition == null) {
+            throw new IllegalStateException(
+                "Preset indicator '" + preset.id() + "' view " + cell + " references unknown indicatorCode: "
+                    + viewQuery.indicatorCode());
+        }
+        if (view.selector() != null) {
+            throw new IllegalStateException(
+                "Preset indicator '" + preset.id() + "' view " + cell + " has both a viewQuery and a selector");
+        }
+        for (String dimension : viewQuery.groupBy()) {
+            requireBinding(preset, cell, definition, dimension, DimensionUsage.GROUP);
+        }
+        for (String dimension : viewQuery.presetFilters().keySet()) {
+            requireBinding(preset, cell, definition, dimension, DimensionUsage.FILTER);
+        }
+    }
+
+    private static void requireBinding(
+            IndicatorPreset preset, String cell, IndicatorDefinition definition, String dimension, DimensionUsage usage) {
+        boolean bound = definition.dimensionBindings().stream()
+            .anyMatch(binding -> binding.dimensionCode().equals(dimension) && binding.usages().contains(usage));
+        if (!bound) {
+            throw new IllegalStateException(
+                "Preset indicator '" + preset.id() + "' view " + cell + " uses dimension '" + dimension
+                    + "' which " + definition.code() + " does not bind for " + usage);
         }
     }
 
@@ -623,7 +682,7 @@ public class IndicatorPresetCatalog {
                 .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES_WITHOUT_COVERAGE_TREND))
                 .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(MONITORING_AREA_TYPES)).fullWidth().order(10).build(),
             IndicatorPreset.builder("nm-2", "National Monitoring (number of monitored areas per country)", NATIONAL_MONITORING)
-                .views(areaCountViews()).indicatorCode(MONITORED_AREAS_COUNT).order(20).build(),
+                .views(areaCountViews(MONITORING_AREA_TYPES)).indicatorCode(MONITORED_AREAS_COUNT).order(20).build(),
 
             // ---- Open Science Policies (inventory rows 70-75) ----------------------------------------
             IndicatorPreset.builder("osp-1", "National Open Science Policies by Areas", OPEN_SCIENCE_POLICIES)
@@ -633,7 +692,7 @@ public class IndicatorPresetCatalog {
                 .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES))
                 .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES)).fullWidth().order(20).build(),
             IndicatorPreset.builder("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES)
-                .views(areaCountViews()).indicatorCode(POLICY_AREAS_COUNT).order(30).build(),
+                .views(areaCountViews(POLICY_AREA_TYPES)).indicatorCode(POLICY_AREAS_COUNT).order(30).build(),
             // Pinned to a single initiativeType value, so no selector — grouping by initiativeType
             // here would return one no-op series; groupByFor falls back to grouping by country.
             IndicatorPreset.builder("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES)

@@ -13,6 +13,7 @@ import eu.openaire.observatory.indicator.model.IndicatorGroup;
 import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.TimeScope;
+import eu.openaire.observatory.indicator.model.ViewQuery;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
@@ -180,20 +181,25 @@ public record IndicatorPreset(
      * @throws PresetFilterConflictException if request.filters() names an already-preset dimension.
      */
     IndicatorQuery toIndicatorQuery(IndicatorQuery request) {
+        return toIndicatorQuery(request, indicatorCode, presetFilters);
+    }
+
+    private IndicatorQuery toIndicatorQuery(
+            IndicatorQuery request, String code, Map<String, List<String>> pinnedFilters) {
         List<IndicatorFilter> merged = new ArrayList<>();
-        presetFilters.forEach((dimensionCode, values) -> {
+        pinnedFilters.forEach((dimensionCode, values) -> {
             FilterOperator operator = values.size() == 1 ? FilterOperator.EQ : FilterOperator.IN;
             merged.add(new IndicatorFilter(dimensionCode, operator, List.copyOf(values)));
         });
         for (IndicatorFilter filter : request.filters()) {
-            if (presetFilters.containsKey(filter.dimension())) {
+            if (pinnedFilters.containsKey(filter.dimension())) {
                 throw new PresetFilterConflictException(id, filter.dimension());
             }
             merged.add(filter);
         }
 
         return new IndicatorQuery(
-            indicatorCode, request.aggregation(), merged, request.groupBy(), request.timeSeries(),
+            code, request.aggregation(), merged, request.groupBy(), request.timeSeries(),
             request.comparisonMode(), request.sort(), request.limit(), request.seriesAggregations()
         );
     }
@@ -232,21 +238,43 @@ public record IndicatorPreset(
             filters.add(new IndicatorFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of(yearTo)));
         }
         List<AggregationType> resolvedSeriesAggregations = seriesAggregations == null ? List.of() : seriesAggregations;
+        PresetView matched = viewFor(countries, yearFrom, yearTo);
+        if (matched != null && matched.viewQuery() != null) {
+            ViewQuery viewQuery = matched.viewQuery();
+            return toIndicatorQuery(new IndicatorQuery(
+                viewQuery.indicatorCode(), null, filters, viewQuery.groupBy(), timeSeries, null,
+                List.of(), null, resolvedSeriesAggregations), viewQuery.indicatorCode(), viewQuery.presetFilters());
+        }
         return toIndicatorQuery(new IndicatorQuery(
-            indicatorCode, null, filters, groupByFor(indicator, countries, yearFrom, yearTo), timeSeries, null,
+            indicatorCode, null, filters, groupByFor(indicator, matched, countries), timeSeries, null,
             List.of(), null, resolvedSeriesAggregations));
     }
 
-    private List<String> groupByFor(IndicatorDefinition indicator, List<String> countries, Integer yearFrom, Integer yearTo) {
+    /**
+     * The view whose {@code (countryScope, timeScope)} cell the given filter state falls into, or
+     * {@code null} if the preset has none.
+     */
+    PresetView viewFor(List<String> countries, Integer yearFrom, Integer yearTo) {
         CountryScope countryScope = (countries == null || countries.isEmpty())
             ? CountryScope.ALL_COUNTRIES : CountryScope.SELECTED_COUNTRIES;
         TimeScope timeScope = (yearFrom == null || yearFrom.equals(yearTo))
             ? TimeScope.SINGLE_YEAR : TimeScope.TIME_RANGE;
-        PresetView matched = views.stream()
+        return views.stream()
             .filter(view -> (view.countryScope() == null || view.countryScope() == countryScope)
                 && (view.timeScope() == null || view.timeScope() == timeScope))
             .findFirst()
             .orElse(null);
+    }
+
+    /** The indicator the matched cell queries: its {@link ViewQuery}'s if it has one, else the preset's. */
+    public String indicatorCodeFor(List<String> countries, Integer yearFrom, Integer yearTo) {
+        PresetView matched = viewFor(countries, yearFrom, yearTo);
+        return matched != null && matched.viewQuery() != null ? matched.viewQuery().indicatorCode() : indicatorCode;
+    }
+
+    private List<String> groupByFor(IndicatorDefinition indicator, PresetView matched, List<String> countries) {
+        CountryScope countryScope = (countries == null || countries.isEmpty())
+            ? CountryScope.ALL_COUNTRIES : CountryScope.SELECTED_COUNTRIES;
         if (matched == null) {
             return List.of();
         }

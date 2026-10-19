@@ -132,7 +132,7 @@ public class UserDashboardService extends AbstractCrudService<UserDashboard> {
                 throw new ValidationException("Unknown indicator id: " + item.getIndicatorId());
             }
             resolvedItems.add(item);
-            resolvedIndicators.add(definitionCatalog.get(preset.indicatorCode()));
+            resolvedIndicators.add(definitionCatalog.get(preset.indicatorCodeFor(countries, yearFrom, yearTo)));
         }
 
         Set<String> seenIds = new HashSet<>();

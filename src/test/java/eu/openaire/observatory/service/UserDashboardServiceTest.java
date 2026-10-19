@@ -24,6 +24,7 @@ import eu.openaire.observatory.indicator.model.RenderHint;
 import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.TimeScope;
 import eu.openaire.observatory.indicator.model.TimePolicy;
+import eu.openaire.observatory.indicator.model.ViewQuery;
 import eu.openaire.observatory.indicator.model.ViewSelector;
 import eu.openaire.observatory.indicator.model.UnitType;
 import eu.openaire.observatory.indicator.IndicatorPreset;
@@ -348,6 +349,31 @@ class UserDashboardServiceTest {
         var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
         verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
         assertEquals(List.of(IndicatorCodes.COUNTRY_DIMENSION), captor.getValue().groupBy());
+    }
+
+    @Test
+    void save_compilesTheMatchedViewsOwnQueryWhenTheViewCarriesAViewQuery() {
+        doThrow(new ResourceNotFoundException(EMAIL, "user_dashboard")).when(service).get(EMAIL);
+        doReturn(new UserDashboard()).when(service).add(any());
+        PresetView matrixView = new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.COUNT_BY_AREA_WITH_AVERAGE)
+                .withViewQuery(new ViewQuery("indicator.matrix", Map.of(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, List.of("A_POLICY", "B_POLICY")),
+                        List.of(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.INITIATIVE_TYPE_DIMENSION)));
+        IndicatorPreset preset = new IndicatorPreset(
+                "widget-matrix", "Matrix Widget", IndicatorGroup.OPEN_ACCESS_PUBLICATIONS, List.of(matrixView),
+                null, List.of(), "indicator.non-trend", Map.of(), PresetValueLabels.NONE, 40);
+        lenient().when(presetCatalog.get("widget-matrix")).thenReturn(preset);
+        lenient().when(definitionCatalog.get("indicator.matrix")).thenReturn(indicatorDefinition("indicator.matrix", false, Set.of()));
+        UserDashboard request = dashboardRequest(List.of(dashboardItem("i-1", "widget-matrix")), null, 2023, 2023, null);
+
+        service.save(authentication, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(IndicatorQuery.class);
+        verify(indicatorQueryValidator).compile(captor.capture(), eq(actorContext));
+        IndicatorQuery query = captor.getValue();
+        assertEquals("indicator.matrix", query.indicatorCode());
+        assertEquals(List.of(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.INITIATIVE_TYPE_DIMENSION), query.groupBy());
+        assertTrue(query.filters().stream().anyMatch(f -> f.dimension().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)
+                && f.values().equals(List.of("A_POLICY", "B_POLICY"))));
     }
 
     @Test

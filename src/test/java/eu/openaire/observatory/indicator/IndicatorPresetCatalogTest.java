@@ -10,6 +10,8 @@ import eu.openaire.observatory.indicator.model.PresetView;
 import eu.openaire.observatory.indicator.model.RenderStyle;
 import eu.openaire.observatory.indicator.model.RenderStyleOption;
 import eu.openaire.observatory.indicator.model.TimeScope;
+import eu.openaire.observatory.indicator.model.ViewQuery;
+import eu.openaire.observatory.indicator.model.ViewSelector;
 import eu.openaire.observatory.indicator.query.IndicatorFilter;
 import eu.openaire.observatory.indicator.query.IndicatorQuery;
 import eu.openaire.observatory.indicator.query.TimeSeriesRequest;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -189,17 +192,29 @@ class IndicatorPresetCatalogTest {
     @Test
     void everyOtherPresetIsNotFullWidth() {
         Set<String> fullWidthIds = Set.of(
-            "oa-9", "od-8", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1", "nm-2",
-            "osp-1", "osp-2", "osp-3", "osp-4", "osp-5");
+            "oa-9", "od-8", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1",
+            "osp-1", "osp-2", "osp-4", "osp-5");
         for (IndicatorPreset preset : catalog.getAll()) {
-            if (preset.id().equals("cs-1") || preset.id().equals("sw-1")) {
-                continue; // cs-1 asserted in cs1OnlyChoroplethMapViewIsFullWidth(); sw-1 only has its EU map view full-width
+            if (preset.id().equals("cs-1") || preset.id().equals("sw-1")
+                    || preset.id().equals("nm-2") || preset.id().equals("osp-3")) {
+                continue; // cs-1 asserted in cs1OnlyChoroplethMapViewIsFullWidth(); sw-1 only has its EU map view full-width; nm-2/osp-3 in areaCountPresetsOnlyMakeTheEuSingleYearCellFullWidth()
             }
             boolean expectedFullWidth = fullWidthIds.contains(preset.id());
             for (PresetView view : preset.views()) {
                 assertThat(view.fullWidth())
                     .as(preset.id() + " " + view.renderStyle() + " fullWidth")
                     .isEqualTo(expectedFullWidth);
+            }
+        }
+    }
+
+    @Test
+    void areaCountPresetsOnlyMakeTheEuSingleYearCellFullWidth() {
+        for (String id : List.of("nm-2", "osp-3")) {
+            for (PresetView view : catalog.get(id).views()) {
+                assertThat(view.fullWidth())
+                    .as(id + " " + view.countryScope() + "/" + view.timeScope())
+                    .isEqualTo(view.countryScope() == CountryScope.ALL_COUNTRIES && view.timeScope() == TimeScope.SINGLE_YEAR);
             }
         }
     }
@@ -457,14 +472,79 @@ class IndicatorPresetCatalogTest {
     }
 
     @Test
-    void areaCountPresetsGroupTheEuSingleYearCellByAreaAndOtherCellsByCountry() {
+    void areaCountPresetsQueryTheStatusMatrixForTheEuSingleYearCellAndCountsForTheOthers() {
         for (String id : List.of("nm-2", "osp-3")) {
             IndicatorPreset preset = catalog.get(id);
-            assertThat(catalog.toIndicatorQuery(preset, List.of(), 2023, 2023, List.of()).groupBy())
+            IndicatorQuery matrix = catalog.toIndicatorQuery(preset, List.of(), 2023, 2023, List.of());
+            assertThat(matrix.indicatorCode()).isEqualTo(IndicatorCodes.COUNTRY_INITIATIVE_STATUS);
+            assertThat(matrix.groupBy())
+                .containsExactly(IndicatorCodes.COUNTRY_DIMENSION, IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
+            assertThat(matrix.filters()).extracting(IndicatorFilter::dimension)
                 .containsExactly(IndicatorCodes.INITIATIVE_TYPE_DIMENSION);
-            assertThat(catalog.toIndicatorQuery(preset, List.of("GR"), 2023, 2023, List.of()).groupBy())
-                .containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+            assertThat(matrix.timeSeries()).isEqualTo(new TimeSeriesRequest(2023, 2023, null));
+            IndicatorFilter types = matrix.filters().stream()
+                .filter(filter -> filter.dimension().equals(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)).findFirst().orElseThrow();
+            assertThat(types.operator()).isEqualTo(FilterOperator.IN);
+            assertThat(types.values()).hasSize(12)
+                .allSatisfy(type -> assertThat((String) type).endsWith(id.equals("nm-2") ? "_MONITORING_INITIATIVE" : "_POLICY"));
+
+            IndicatorQuery selected = catalog.toIndicatorQuery(preset, List.of("GR"), 2023, 2023, List.of());
+            assertThat(selected.indicatorCode()).isEqualTo(preset.indicatorCode());
+            assertThat(selected.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
+            IndicatorQuery range = catalog.toIndicatorQuery(preset, List.of(), 2019, 2023, List.of());
+            assertThat(range.indicatorCode()).isEqualTo(preset.indicatorCode());
+            assertThat(range.groupBy()).isEmpty();
         }
+    }
+
+    private IndicatorPreset presetWithViewQuery(ViewQuery viewQuery, ViewSelector selector) {
+        PresetView view = new PresetView(
+            CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR,
+            List.of(new RenderStyleOption(RenderStyle.COUNT_BY_AREA_WITH_AVERAGE, null)), selector, false, viewQuery);
+        return IndicatorPreset.builder("test-1", "Test", IndicatorGroup.NATIONAL_MONITORING)
+            .views(List.of(view)).indicatorCode(IndicatorCodes.MONITORED_AREAS_COUNT).order(1).build();
+    }
+
+    private void assertCatalogRejects(IndicatorPreset preset, String messagePart) {
+        assertThatThrownBy(() -> new IndicatorPresetCatalog(definitionCatalog, List.of(preset)))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining(messagePart);
+    }
+
+    @Test
+    void aViewQueryMustNameAKnownIndicator() {
+        assertCatalogRejects(presetWithViewQuery(
+            new ViewQuery("no.such_indicator", Map.of(), List.of()), null), "unknown indicatorCode: no.such_indicator");
+    }
+
+    @Test
+    void aViewQueryMayOnlyGroupByDimensionsTheIndicatorBindsForGrouping() {
+        assertCatalogRejects(presetWithViewQuery(
+            new ViewQuery(IndicatorCodes.COUNTRY_INITIATIVE_STATUS, Map.of(), List.of(IndicatorCodes.ACCESS_STATUS_DIMENSION)), null),
+            "does not bind for GROUP");
+    }
+
+    @Test
+    void aViewQueryMayOnlyPinDimensionsTheIndicatorBindsForFiltering() {
+        assertCatalogRejects(presetWithViewQuery(
+            new ViewQuery(IndicatorCodes.COUNTRY_INITIATIVE_STATUS,
+                Map.of(IndicatorCodes.ACCESS_STATUS_DIMENSION, List.of("OA")), List.of()), null),
+            "does not bind for FILTER");
+    }
+
+    @Test
+    void aViewCannotCarryBothAViewQueryAndASelector() {
+        assertCatalogRejects(presetWithViewQuery(
+            new ViewQuery(IndicatorCodes.COUNTRY_INITIATIVE_STATUS, Map.of(), List.of(IndicatorCodes.COUNTRY_DIMENSION)),
+            new ViewSelector(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, null, List.of())), "both a viewQuery and a selector");
+    }
+
+    @Test
+    void indicatorCodeForFollowsTheMatchedViewsQuery() {
+        IndicatorPreset preset = catalog.get("nm-2");
+        assertThat(preset.indicatorCodeFor(List.of(), 2023, 2023)).isEqualTo(IndicatorCodes.COUNTRY_INITIATIVE_STATUS);
+        assertThat(preset.indicatorCodeFor(List.of("GR"), 2023, 2023)).isEqualTo(IndicatorCodes.MONITORED_AREAS_COUNT);
+        assertThat(catalog.get("oa-1").indicatorCodeFor(List.of(), 2023, 2023)).isEqualTo(catalog.get("oa-1").indicatorCode());
     }
 
     @Test
