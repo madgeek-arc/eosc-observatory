@@ -260,7 +260,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
     @Test
     void countryPolicyStatusRejectsNonPolicyInitiativeTypesWithoutQueryingTheSurvey() {
         var handler = handlerReturning("{\"datasets\":[]}");
-        for (String type : List.of("OPEN_DATA_FINANCIAL_STRATEGY", "OPEN_DATA_MONITORING_INITIATIVE", "IMMEDIATE_OA_POLICY")) {
+        for (String type : List.of("OPEN_DATA_FINANCIAL_STRATEGY", "OPEN_DATA_MONITORING_INITIATIVE")) {
             var filters = List.of(
                 new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of(type)), SURVEY_YEAR_2023);
 
@@ -270,6 +270,30 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
                 .hasMessageContaining(type);
         }
         assertThat(capturedRequests).isEmpty();
+    }
+
+    @Test
+    void countryPolicyStatusCombinesImmediateOaPolicyWithItsMandatorySubQuestion() {
+        var handler = handlerReturningEachInTurn(List.of(
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]},{\"row\":[\"DE\",\"No\"]}]}}]}",
+            "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"No\"]}]}}]}"
+        ));
+        var filters = List.of(
+            new ResolvedFilter(IndicatorCodes.INITIATIVE_TYPE_DIMENSION, FilterOperator.EQ, List.of("IMMEDIATE_OA_POLICY")),
+            SURVEY_YEAR_2023);
+
+        var result = handler.execute(plan(countryPolicyStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question6.3\"");
+        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.2023.Question6.3.1\"");
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NON_MANDATORY);
+        });
+        assertThat(result.data()).anySatisfy(dp -> {
+            assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("DE");
+            assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NO_POLICY);
+        });
     }
 
     @Test

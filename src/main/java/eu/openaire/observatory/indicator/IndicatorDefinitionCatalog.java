@@ -503,9 +503,9 @@ public class IndicatorDefinitionCatalog {
      * policy questions), every "*_POLICY" initiativeType member does carry a nested "Is this policy
      * mandatory?" sub-question, live-verified against both the 2022 and 2023 survey years — see
      * SurveyStatsToolIndicatorQueryHandler.queryCountryPolicyStatus. Only valid for the 12
-     * "<AREA>_POLICY" members — any other member (e.g. "*_FINANCIAL_STRATEGY",
-     * "*_MONITORING_INITIATIVE", IMMEDIATE_OA_POLICY) has no mandatory sub-question to combine with
-     * and is rejected with a 400.
+     * "<AREA>_POLICY" members and IMMEDIATE_OA_POLICY — any other member (e.g.
+     * "*_FINANCIAL_STRATEGY", "*_MONITORING_INITIATIVE") has no mandatory sub-question to combine
+     * with and is rejected with a 400.
      *
      * <p>initiativeType is EQ (one policy area) or IN (several), and — like
      * countryInitiativeStatus() — also GROUP-usable: an IN filter plus a groupBy on initiativeType

@@ -394,9 +394,13 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
         return buildResult(plan, dimensionKeysFor(dimensionKeys, plan), data, exclusions);
     }
 
-    /** Rejects any initiativeType that isn't one of the 12 "<AREA>_POLICY" members: only those have a mandatory sub-question. */
+    /**
+     * Rejects any initiativeType other than the 12 "<AREA>_POLICY" members and
+     * {@link OpenScienceArea#IMMEDIATE_OA_POLICY}, the only ones with a mandatory sub-question.
+     */
     private static void requirePolicyTypes(List<String> types) {
-        List<String> policyTypes = OpenScienceArea.initiativeTypes(OpenScienceArea.InitiativeKind.POLICY);
+        List<String> policyTypes = new ArrayList<>(OpenScienceArea.initiativeTypes(OpenScienceArea.InitiativeKind.POLICY));
+        policyTypes.add(OpenScienceArea.IMMEDIATE_OA_POLICY);
         for (String type : types) {
             if (!policyTypes.contains(type)) {
                 throw new InvalidFilterShapeException(INITIATIVE_TYPE_DIMENSION,
@@ -781,10 +785,12 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
     }
 
     /**
-     * A "*_POLICY" initiativeType member's nested "Is this policy mandatory?" sub-question is always
-     * questionCode + ".1" (e.g. Question18 -> Question18.1, Question6 -> Question6.1) — confirmed
-     * live for every "*_POLICY" member against both the 2022 and 2023 survey years. Only meaningful
-     * for policy questions — callers are expected to only pass a "*_POLICY" member's questionCode.
+     * A policy initiativeType member's nested "Is this policy mandatory?" sub-question is always
+     * questionCode + ".1" (e.g. Question18 -> Question18.1, Question6 -> Question6.1,
+     * Question6.3 -> Question6.3.1) — confirmed live for every "*_POLICY" member against both the
+     * 2022 and 2023 survey years, and for IMMEDIATE_OA_POLICY against 2023 and 2024. Only
+     * meaningful for policy questions — callers are expected to only pass a policy member's
+     * questionCode.
      */
     private static String mandatoryQuestionCode(String policyQuestionCode) {
         return policyQuestionCode + ".1";
