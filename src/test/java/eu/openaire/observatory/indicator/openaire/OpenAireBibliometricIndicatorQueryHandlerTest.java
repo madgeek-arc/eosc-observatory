@@ -343,7 +343,7 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
-    void publicationsCountWithMultipleCountriesOrsThemTogether() {
+    void publicationsCountWithMultipleCountriesPutsThemInOneLeaf() {
         var handler = handlerReturning("{\"data\":[[[\"999\"]]]}");
         var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "DE")));
 
@@ -352,8 +352,26 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
         assertThat(result.data().get(0).value()).isEqualTo(999L);
         String request = capturedRequests.get(0);
         assertThat(request).contains("\"field\":\"result.organization.country.code\"");
-        assertThat(request).contains("\"GR\"").contains("\"DE\"");
-        assertThat(request).contains("\"op\":\"OR\"");
+        assertThat(request).contains("\"values\":[\"GR\",\"DE\"]");
+        assertThat(request).doesNotContain("\"op\":\"OR\"");
+    }
+
+    @Test
+    void publicationsCountFilteredByCountriesAndGroupedByAccessStatusAndCountryNarrowsEveryAccessStatusQuery() {
+        var handler = handlerReturning("{\"data\":[[[\"10\",\"GR\"],[\"5\",\"DE\"]],[[\"1\",\"GR\"]],[[\"1\",\"GR\"]],[[\"1\",\"GR\"]]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "DE")));
+        var groupBy = List.of(
+            new ResolvedDimension(IndicatorCodes.ACCESS_STATUS_DIMENSION), new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        handler.execute(plan(countDefinition(), filters, groupBy, null));
+
+        // The stats tool ignores an OR block of per-country leaves when also grouping by country,
+        // so the filter must reach it as a single multi-value leaf.
+        assertThat(capturedRequests).isNotEmpty();
+        assertThat(capturedRequests.get(0))
+            .contains("\"field\":\"result.organization.country\"")
+            .contains("\"values\":[\"GR\",\"DE\"]")
+            .doesNotContain("\"op\":\"OR\"");
     }
 
     @Test

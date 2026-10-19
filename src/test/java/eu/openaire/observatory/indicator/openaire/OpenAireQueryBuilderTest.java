@@ -85,12 +85,13 @@ class OpenAireQueryBuilderTest {
     }
 
     @Test
-    void publicationCountSubQueryWithMultipleCountryCodesOrsThemTogether() {
+    void publicationCountSubQueryWithMultipleCountryCodesPutsThemInOneLeaf() {
         ObjectNode subQuery = builder.publicationCountSubQuery(2023, List.of(), List.of("GR", "DE"));
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(opForField(filters, "result.organization.country.code")).isEqualTo("OR");
-        assertThat(leafValues(filters, "result.organization.country.code")).containsExactlyInAnyOrder("GR", "DE");
+        assertThat(opForField(filters, "result.organization.country.code")).isEqualTo("AND");
+        assertThat(allLeafValues(filters, "result.organization.country.code")).containsExactly("GR", "DE");
+        assertThat(filters).noneMatch(block -> "OR".equals(block.path("op").asText()));
     }
 
     @Test
@@ -434,8 +435,8 @@ class OpenAireQueryBuilderTest {
         ObjectNode subQuery = builder.oaLicenseStatusSubQuery(2022, OpenAireOaLicenseStatus.CLOSED, List.of("GR", "DE"), false);
 
         List<JsonNode> filters = toList(subQuery.path("query").path("filters"));
-        assertThat(opForField(filters, "result.organization.country.code")).isEqualTo("OR");
-        assertThat(leafValues(filters, "result.organization.country.code")).containsExactlyInAnyOrder("GR", "DE");
+        assertThat(opForField(filters, "result.organization.country.code")).isEqualTo("AND");
+        assertThat(allLeafValues(filters, "result.organization.country.code")).containsExactly("GR", "DE");
         // Country given still keeps the continent scope — narrowing, not replacing it.
         assertThat(leafValues(filters, "result.organization.country.continent")).containsExactly("Europe");
     }
@@ -511,6 +512,16 @@ class OpenAireQueryBuilderTest {
             .flatMap(block -> toList(block.path("groupFilters")).stream())
             .filter(leaf -> field.equals(leaf.path("field").asText()))
             .map(leaf -> leaf.path("values").get(0).asText())
+            .toList();
+    }
+
+    /** Every value of every leaf for the given field, across all blocks. */
+    private List<String> allLeafValues(List<JsonNode> filters, String field) {
+        return filters.stream()
+            .flatMap(block -> toList(block.path("groupFilters")).stream())
+            .filter(leaf -> field.equals(leaf.path("field").asText()))
+            .flatMap(leaf -> toList(leaf.path("values")).stream())
+            .map(JsonNode::asText)
             .toList();
     }
 }

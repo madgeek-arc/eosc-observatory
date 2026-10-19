@@ -274,10 +274,20 @@ public class OpenAireQueryBuilder {
         return multiLeafGroupFilter("result.access mode", "=", literals, op);
     }
 
-    /** One leaf per country code, OR'd together when there's more than one (e.g. "France or Germany"). */
+    /**
+     * One leaf carrying every country code in its {@code values} (e.g. "France or Germany"). It is
+     * not split into an OR block of single-value leaves: the stats tool ignores such a block when
+     * the query also groups by country, returning every country.
+     */
     private ObjectNode countryFilter(List<String> countryCodes) {
-        String op = countryCodes.size() > 1 ? "OR" : "AND";
-        return multiLeafGroupFilter("result.organization.country.code", "=", countryCodes, op);
+        ObjectNode block = objectMapper.createObjectNode();
+        ObjectNode leaf = block.putArray("groupFilters").addObject();
+        leaf.put("field", "result.organization.country.code");
+        leaf.put("type", "=");
+        ArrayNode values = leaf.putArray("values");
+        countryCodes.forEach(values::add);
+        block.put("op", "AND");
+        return block;
     }
 
     /** One leaf per classification, OR'd together when there's more than one — same field as its GROUP breakdown (unlike country, no separate filter-only field). */
