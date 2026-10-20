@@ -27,6 +27,7 @@ import gr.uoa.di.madgik.catalogue.controller.FormsController;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.registry.domain.Browsing;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
+import gr.uoa.di.madgik.registry.exception.ResourceException;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.json.simple.JSONObject;
@@ -243,28 +244,38 @@ public class SurveyController {
 
     @GetMapping("answers/info")
     @PreAuthorize("hasAuthority('ADMIN') or isAdministrator(#groupId) or isCoordinator(#groupId) or isStakeholderManager(#groupId)")
-    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(name = "groupId", required = false)
-                                                                    String groupId,
+    public ResponseEntity<Browsing<SurveyAnswerInfo>> getSurveyInfo(@RequestParam(name = "groupId") String groupId,
                                                                     @Parameter(hidden = true) @RequestParam
                                                                     MultiValueMap<String, Object> allRequestParams) {
         allRequestParams.remove("groupId");
         FacetFilter filter = FacetFilter.from(allRequestParams);
-        String type = null;
-
-        if (groupId != null) {
-            if (groupId.startsWith("co-")) {
-                type = coordinatorService.get(groupId).getType();
-            } else if (groupId.startsWith("sh-")) {
-                type = stakeholderService.get(groupId).getType();
-            } else if (groupId.startsWith("admin-")) {
-                type = administratorService.get(groupId).getType();
-            } else {
-                throw new UnsupportedOperationException("unrecognized group id");
-            }
-        }
-
-        filter.addFilter("type", type);
+        filter.addFilter("type", getGroupType(groupId));
         return new ResponseEntity<>(surveyService.browseSurveyAnswersInfo(filter), HttpStatus.OK);
+    }
+
+    /**
+     * Returns the type of the group with the given id.
+     *
+     * @param groupId the id of a coordinator, stakeholder or administrator group
+     * @return the type of the group
+     * @throws ResourceException with status 400 if the id is blank, or 404 if no such group exists
+     */
+    private String getGroupType(String groupId) {
+        if (!StringUtils.hasText(groupId)) {
+            throw new ResourceException("groupId is missing", HttpStatus.BAD_REQUEST);
+        }
+        try {
+            if (groupId.startsWith("co-")) {
+                return coordinatorService.get(groupId).getType();
+            } else if (groupId.startsWith("sh-")) {
+                return stakeholderService.get(groupId).getType();
+            } else if (groupId.startsWith("admin-")) {
+                return administratorService.get(groupId).getType();
+            }
+        } catch (ResourceNotFoundException e) {
+            // handled below
+        }
+        throw new ResourceException("no such groupId", HttpStatus.NOT_FOUND);
     }
 
     @GetMapping("answers/{id}/history")
