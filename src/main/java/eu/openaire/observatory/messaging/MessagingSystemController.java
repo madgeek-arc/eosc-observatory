@@ -27,6 +27,7 @@ import gr.athenarc.messaging.dto.ThreadDTO;
 import gr.athenarc.messaging.dto.UnreadThreads;
 import gr.athenarc.recaptcha.annotation.ReCaptcha;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +42,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -60,9 +62,10 @@ public class MessagingSystemController extends MessagingController {
     private final EmailOperations emailOperations;
 
     public MessagingSystemController(MessagingClientProperties messagingClientProperties,
+                                     ObjectProvider<WebClient.Builder> webClientBuilder,
                                      MessagingService messagingService,
                                      EmailOperations emailOperations) {
-        super(messagingClientProperties);
+        super(messagingClientProperties, webClientBuilder.getIfAvailable(WebClient::builder));
         this.messagingService = messagingService;
         this.emailOperations = emailOperations;
     }
