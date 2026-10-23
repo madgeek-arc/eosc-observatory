@@ -16,7 +16,7 @@
 
 package eu.openaire.observatory.configuration.security;
 
-import eu.openaire.observatory.configuration.ApplicationProperties;
+import eu.openaire.observatory.service.ErasureSubjectReference;
 import eu.openaire.observatory.service.SecurityService;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +47,7 @@ public class CustomMethodSecurityExpressionHandler extends DefaultMethodSecurity
         CustomMethodSecurityExpressionRoot root = new CustomMethodSecurityExpressionRoot(authentication.get(),
                 applicationContext.getBean(MethodSecurityExpressions.class),
                 applicationContext.getBean(SecurityService.class),
-                applicationContext.getBean(ApplicationProperties.class));
+                applicationContext.getBean(ErasureSubjectReference.class));
         root.setTrustResolver(this.trustResolver);
         root.setRoleHierarchy(getRoleHierarchy());
         ctx.setRootObject(root);

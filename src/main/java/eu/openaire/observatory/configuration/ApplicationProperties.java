@@ -25,7 +25,7 @@ import java.util.Set;
 @ConfigurationProperties(prefix = "observatory")
 public class ApplicationProperties {
 
-    private Set<Object> admins;
+    private Set<Object> admins = new HashSet<>();
 
     private String baseUrl;
 
@@ -38,8 +38,6 @@ public class ApplicationProperties {
      * no CORS headers.
      */
     private Set<String> corsAllowedOrigins = new HashSet<>();
-
-    private String jwsSigningSecret;
 
     /**
      * How long an invitation stays valid after creation.
@@ -56,10 +54,9 @@ public class ApplicationProperties {
      * HMAC key for pseudonymizing user identifiers: the subject reference written to the purge
      * report line, and any user email pseudonymized in general application logs.
      *
-     * <p>Deliberately separate from {@link #jwsSigningSecret}: rotating the signing secret would
-     * otherwise silently make every past erasure reference unmatchable. Losing or changing this key
-     * has the same effect on both uses, so it must be backed up with the same care as the records
-     * and log lines it indexes.
+     * <p>Losing or changing this key makes every past erasure reference and logged pseudonym
+     * unmatchable, so it must be backed up with the same care as the records and log lines it
+     * indexes.
      */
     private String hmacSecret;
 
@@ -102,14 +99,6 @@ public class ApplicationProperties {
 
     public void setCorsAllowedOrigins(Set<String> corsAllowedOrigins) {
         this.corsAllowedOrigins = corsAllowedOrigins;
-    }
-
-    public String getJwsSigningSecret() {
-        return jwsSigningSecret;
-    }
-
-    public void setJwsSigningSecret(String jwsSigningSecret) {
-        this.jwsSigningSecret = jwsSigningSecret;
     }
 
     public Duration getInvitationTtl() {

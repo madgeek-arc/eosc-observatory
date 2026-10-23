@@ -16,11 +16,10 @@
 
 package eu.openaire.observatory.configuration.security;
 
-import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.resources.model.Document;
+import eu.openaire.observatory.service.ErasureSubjectReference;
 import eu.openaire.observatory.service.SecurityService;
-import eu.openaire.observatory.utils.HmacUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +39,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     private final MethodSecurityExpressions securityExpressions;
     private final SecurityService securityService;
-    private final ApplicationProperties applicationProperties;
+    private final ErasureSubjectReference subjectReference;
 
     private Object filterObject;
     private Object returnObject;
@@ -49,12 +48,12 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     public CustomMethodSecurityExpressionRoot(Authentication authentication,
                                               MethodSecurityExpressions securityExpressions,
                                               SecurityService securityService,
-                                              ApplicationProperties applicationProperties) {
+                                              ErasureSubjectReference subjectReference) {
         super(authentication);
         this.setPermissionEvaluator(this);
         this.securityExpressions = securityExpressions;
         this.securityService = securityService;
-        this.applicationProperties = applicationProperties;
+        this.subjectReference = subjectReference;
     }
 
 
@@ -102,7 +101,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
         if (logger.isDebugEnabled()) {
             logger.debug("hasPermission(auth, targetDomainObject, permission)\nUser: {}\nObject: {}\nPermission: {}",
-                    getUserEmailHmac(authentication), targetDomainObject, permission);
+                    getUserPseudonym(authentication), targetDomainObject, permission);
         }
         if ((getAuthentication() == null) || (targetDomainObject == null) || !(permission instanceof String)) {
             return false;
@@ -266,9 +265,9 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
         return SecurityUtils.getResourceId(resource, logger);
     }
 
-    private String getUserEmailHmac(Authentication authentication) {
+    private String getUserPseudonym(Authentication authentication) {
         try {
-            return HmacUtils.hmacSha256Hex(applicationProperties.getJwsSigningSecret(), User.getId(authentication));
+            return subjectReference.forLogging(User.getId(authentication));
         } catch (InsufficientAuthenticationException e) {
             return "unknown";
         }
