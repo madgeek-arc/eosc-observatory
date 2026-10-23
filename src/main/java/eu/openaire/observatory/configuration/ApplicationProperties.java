@@ -19,6 +19,7 @@ package eu.openaire.observatory.configuration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Set;
 
 @ConfigurationProperties(prefix = "observatory")
@@ -31,6 +32,12 @@ public class ApplicationProperties {
     private String loginRedirect;
 
     private String logoutRedirect;
+
+    /**
+     * Origins allowed to make credentialed cross-origin requests. Requests from other origins get
+     * no CORS headers.
+     */
+    private Set<String> corsAllowedOrigins = new HashSet<>();
 
     private String jwsSigningSecret;
 
@@ -87,6 +94,14 @@ public class ApplicationProperties {
 
     public void setLogoutRedirect(String logoutRedirect) {
         this.logoutRedirect = logoutRedirect;
+    }
+
+    public Set<String> getCorsAllowedOrigins() {
+        return corsAllowedOrigins;
+    }
+
+    public void setCorsAllowedOrigins(Set<String> corsAllowedOrigins) {
+        this.corsAllowedOrigins = corsAllowedOrigins;
     }
 
     public String getJwsSigningSecret() {

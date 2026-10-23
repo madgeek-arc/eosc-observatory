@@ -24,14 +24,20 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Set;
 
 @Component
 public class SimpleCORSFilter implements Filter {
 
     private final Logger log = LoggerFactory.getLogger(SimpleCORSFilter.class);
 
-    public SimpleCORSFilter() {
-        log.info("SimpleCORSFilter init");
+    private final Set<String> allowedOrigins;
+
+    public SimpleCORSFilter(ApplicationProperties applicationProperties) {
+        this.allowedOrigins = applicationProperties.getCorsAllowedOrigins() == null
+                ? Set.of()
+                : Set.copyOf(applicationProperties.getCorsAllowedOrigins());
+        log.info("SimpleCORSFilter allows origins: {}", allowedOrigins);
     }
 
     @Override
@@ -40,11 +46,15 @@ public class SimpleCORSFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest) req;
         HttpServletResponse response = (HttpServletResponse) res;
 
-        response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"));
-        response.setHeader("Access-Control-Allow-Credentials", "true");
-        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE");
-        response.setHeader("Access-Control-Max-Age", "3600");
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me");
+        response.addHeader("Vary", "Origin");
+        String origin = request.getHeader("Origin");
+        if (origin != null && allowedOrigins.contains(origin)) {
+            response.setHeader("Access-Control-Allow-Origin", origin);
+            response.setHeader("Access-Control-Allow-Credentials", "true");
+            response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE");
+            response.setHeader("Access-Control-Max-Age", "3600");
+            response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With, remember-me");
+        }
 
         chain.doFilter(req, res);
     }
