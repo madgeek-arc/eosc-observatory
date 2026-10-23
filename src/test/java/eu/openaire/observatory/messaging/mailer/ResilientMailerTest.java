@@ -164,6 +164,17 @@ class ResilientMailerTest {
     }
 
     @Test
+    void doesNotRetryBadGateway() {
+        ResilientMailer mailer = spyMailer(5);
+        doThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY))
+                .when(mailer).postOnce(any());
+
+        assertThrows(MailDeliveryException.class, () -> mailer.sendMail(sampleEmail()));
+
+        verify(mailer, times(1)).postOnce(any());
+    }
+
+    @Test
     void respectsMaxAttemptsOfOne() {
         ResilientMailer mailer = spyMailer(1);
         doThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY))
@@ -185,6 +196,8 @@ class ResilientMailerTest {
         assertFalse(ResilientMailer.isRetryable(new ResourceAccessException("io", new SocketTimeoutException("Read timed out"))));
         assertFalse(ResilientMailer.isRetryable(new ResourceAccessException("io", new SocketTimeoutException())));
 
+        assertTrue(ResilientMailer.isRetryable(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE)));
+        assertFalse(ResilientMailer.isRetryable(new HttpServerErrorException(HttpStatus.BAD_GATEWAY)));
         assertFalse(ResilientMailer.isRetryable(new HttpClientErrorException(HttpStatus.BAD_REQUEST)));
         assertFalse(ResilientMailer.isRetryable(new ResourceAccessException("io", new UnknownHostException())));
         assertFalse(ResilientMailer.isRetryable(new IllegalArgumentException("URI is not absolute")));
