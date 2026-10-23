@@ -45,7 +45,7 @@ import java.util.Locale;
  * mail-sending service picks it up by type with no code change.
  *
  * <p>Only failures where the mailer provably did not accept the message are retried: connection
- * failures (refused, connect timeout) and 5xx responses. A read timeout is never retried, because
+ * failures (refused, connect timeout) and 5xx responses other than 502. A read timeout is never retried, because
  * the mailer may already have accepted the POST and retrying would deliver the mail again. A 4xx
  * response means we sent a malformed request, so it fails immediately. After the last failed
  * attempt one ERROR is logged (subject + recipient count, never addresses) and a
@@ -116,12 +116,13 @@ public class ResilientMailer implements Mailer {
 
     /**
      * Retry only failures where the mailer did not accept the request: connection failures and 5xx
-     * responses. Read timeouts and other I/O errors after the request was sent are not retried, as
-     * the message may already have been delivered.
+     * responses other than 502. A 502 means the SMTP delivery failed, possibly after some recipients
+     * received the message. Read timeouts and other I/O errors after the request was sent are not
+     * retried, as the message may already have been delivered.
      */
     static boolean isRetryable(RuntimeException ex) {
-        if (ex instanceof HttpServerErrorException) {
-            return true;                                   // 5xx — mailer-side, transient
+        if (ex instanceof HttpServerErrorException serverError) {
+            return serverError.getStatusCode().value() != 502;  // 5xx — mailer-side, transient
         }
         if (ex instanceof ResourceAccessException) {
             return isConnectFailure(ex.getCause());
