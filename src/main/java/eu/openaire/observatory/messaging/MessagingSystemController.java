@@ -94,19 +94,20 @@ public class MessagingSystemController extends MessagingController {
     }
 
     @Override
-    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
+    @PreAuthorize("isAuthenticated() and authentication.principal.getAttribute('email') == #thread.from.email " +
+            "and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
     public Mono<ThreadDTO> add(ThreadDTO thread) {
         return withNewMessageEmailNotifications(super.add(thread));
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public Mono<ThreadDTO> update(String threadId, TopicThread topicThread) {
         return super.update(threadId, topicThread);
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public Mono<Void> delete(String threadId) {
         return super.delete(threadId);
     }
@@ -180,13 +181,31 @@ public class MessagingSystemController extends MessagingController {
     @Override
     @PreAuthorize("isFullyAuthenticated()")
     public Mono<ThreadDTO> readMessage(String threadId, String messageId, boolean read, String userId) {
-        userId = User.getId(SecurityContextHolder.getContext().getAuthentication());
-        return super.readMessage(threadId, messageId, read, userId).doOnNext(t ->
+        String user = User.getId(SecurityContextHolder.getContext().getAuthentication());
+        return requireParticipant(threadId, user)
+                .then(Mono.defer(() -> super.readMessage(threadId, messageId, read, user))).doOnNext(t ->
                 Mono.fromRunnable(() -> {
                             messagingService.updateUnread(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe(v -> {}, error -> logger.error("Failed to update unread state for thread {}", t.getId(), error)));
+    }
+
+    /**
+     * Completes when the user, or one of the user's groups, takes part in the thread, and errors
+     * with {@link AccessDeniedException} otherwise.
+     */
+    private Mono<Void> requireParticipant(String threadId, String email) {
+        List<String> groupIds = messagingService.userGroupIds(email);
+        if (groupIds.isEmpty()) {
+            // matches no group, so only the email can match
+            groupIds = List.of("");
+        }
+        return Flux.fromIterable(groupIds)
+                .concatMap(groupId -> super.get(threadId, email, groupId))
+                .next()
+                .switchIfEmpty(Mono.error(new AccessDeniedException("Not a participant of thread " + threadId)))
+                .then();
     }
 
     private Mono<ThreadDTO> withNewMessageEmailNotifications(Mono<ThreadDTO> upstream) {
