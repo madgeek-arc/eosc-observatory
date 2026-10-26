@@ -11,7 +11,6 @@ extraction of documents referenced in survey answers.
 |---|---|
 | Component | EOSC Observatory Backend (`eu.openaire:observatory`) |
 | Type | Backend service |
-| Status | Released (`4.5.0`, see [CHANGELOG](CHANGELOG.md)). `develop` is `4.5.1-SNAPSHOT` |
 | Technology | Java 21 / Spring Boot 3.5 (MVC, Security, OAuth2 Client, WebSocket/STOMP, Data JPA, Spring Session Redis) / Maven |
 | API | Yes (REST + STOMP over SockJS) |
 | Swagger | `/api/swagger-ui/index.html` on a running instance (spec at `/api/v3/api-docs`) |
