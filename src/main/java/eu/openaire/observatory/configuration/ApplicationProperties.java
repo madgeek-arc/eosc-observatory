@@ -19,12 +19,13 @@ package eu.openaire.observatory.configuration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Set;
 
 @ConfigurationProperties(prefix = "observatory")
 public class ApplicationProperties {
 
-    private Set<Object> admins;
+    private Set<Object> admins = new HashSet<>();
 
     private String baseUrl;
 
@@ -32,7 +33,11 @@ public class ApplicationProperties {
 
     private String logoutRedirect;
 
-    private String jwsSigningSecret;
+    /**
+     * Origins allowed to make credentialed cross-origin requests. Requests from other origins get
+     * no CORS headers.
+     */
+    private Set<String> corsAllowedOrigins = new HashSet<>();
 
     /**
      * How long an invitation stays valid after creation.
@@ -49,10 +54,9 @@ public class ApplicationProperties {
      * HMAC key for pseudonymizing user identifiers: the subject reference written to the purge
      * report line, and any user email pseudonymized in general application logs.
      *
-     * <p>Deliberately separate from {@link #jwsSigningSecret}: rotating the signing secret would
-     * otherwise silently make every past erasure reference unmatchable. Losing or changing this key
-     * has the same effect on both uses, so it must be backed up with the same care as the records
-     * and log lines it indexes.
+     * <p>Losing or changing this key makes every past erasure reference and logged pseudonym
+     * unmatchable, so it must be backed up with the same care as the records and log lines it
+     * indexes.
      */
     private String hmacSecret;
 
@@ -89,12 +93,12 @@ public class ApplicationProperties {
         this.logoutRedirect = logoutRedirect;
     }
 
-    public String getJwsSigningSecret() {
-        return jwsSigningSecret;
+    public Set<String> getCorsAllowedOrigins() {
+        return corsAllowedOrigins;
     }
 
-    public void setJwsSigningSecret(String jwsSigningSecret) {
-        this.jwsSigningSecret = jwsSigningSecret;
+    public void setCorsAllowedOrigins(Set<String> corsAllowedOrigins) {
+        this.corsAllowedOrigins = corsAllowedOrigins;
     }
 
     public Duration getInvitationTtl() {
