@@ -5,18 +5,6 @@ stakeholder/coordinator/administrator organisation model, user accounts and perm
 collaboration (comments and messaging), dashboards, news, GDPR user erasure, and AI-assisted
 extraction of documents referenced in survey answers.
 
-## Component metadata
-
-| Field | Value |
-|---|---|
-| Component | EOSC Observatory Backend (`eu.openaire:observatory`) |
-| Type | Backend service |
-| Technology | Java 21 / Spring Boot 3.5 (MVC, Security, OAuth2 Client, WebSocket/STOMP, Data JPA, Spring Session Redis) / Maven |
-| API | Yes (REST + STOMP over SockJS) |
-| Swagger | `/api/swagger-ui/index.html` on a running instance (spec at `/api/v3/api-docs`) |
-| Deployment | Docker image built and pushed by Jenkins ([Dockerfile](Dockerfile), [Jenkinsfile](Jenkinsfile)). Run exactly one instance |
-| Documentation | [docs/](docs/) |
-
 ## Role within the EOSC Observatory
 
 The service is the single backend consumed by the Observatory web frontend. It embeds the
@@ -81,6 +69,9 @@ To build the runnable jar:
 ./mvnw -B package -DskipTests
 java -jar target/observatory-*.jar
 ```
+
+Deployed environments run a Docker image built and pushed by Jenkins ([Dockerfile](Dockerfile),
+[Jenkinsfile](Jenkinsfile)), as a single instance. See [docs/deployment.md](docs/deployment.md).
 
 ## Documentation
 
