@@ -162,7 +162,7 @@ result as a `document` resource with status `PENDING` for review. Generation run
   `/search/**`, `/items/**`, `/forms/**` except `GET`, `/dump/`, `/restore/`, `/logs/**`,
   `/version/**`, `/schemaService/**`, `/resourcesync/**`) to `ADMIN`. It requires login for
   `/websocket` and the catalogue data proxy `/request/**`, and permits everything else, relying on
-  method security (see [security.md](security.md)).
+  method security (see [security-model.md](security-model.md)).
 - **CSRF:** enabled with a session-backed token, header `X-XSRF-TOKEN`, mirrored to an `XSRF-TOKEN`
   cookie. The WebSocket handshake also validates the token.
 - **CORS:** `SimpleCORSFilter` sends credentialed CORS headers only to the origins in

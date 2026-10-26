@@ -1,4 +1,4 @@
-# EOSC Observatory Backend — Security
+# EOSC Observatory Backend — Security model
 
 ## Authentication
 

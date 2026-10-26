@@ -179,7 +179,7 @@ pinned here, checked against this application's code and configuration.
 
 | Dependency | Pinned here | Analysed there | Observation from this side |
 |---|---|---|---|
-| registry | 4.3.1 | 4.3.2-SNAPSHOT | Embedded with the Elasticsearch starter, without JMS. The registry REST controllers are exposed under `/api`, with `/version/**`, `/schemaService/**`, `/resourcesync/**` and the admin paths restricted to `ADMIN` (see [security.md](security.md)) |
+| registry | 4.3.1 | 4.3.2-SNAPSHOT | Embedded with the Elasticsearch starter, without JMS. The registry REST controllers are exposed under `/api`, with `/version/**`, `/schemaService/**`, `/resourcesync/**` and the admin paths restricted to `ADMIN` (see [security-model.md](security-model.md)) |
 | catalogue | 9.1.0 | 9.1.2-SNAPSHOT | `/logs/**`, `/forms/**` (non-GET) and `/items/**` are `ADMIN`. `POST /request/default` needs login |
 | authorization | 2.1.0-SNAPSHOT | 2.1.0-SNAPSHOT | Separate `permissions` database configured explicitly (`authorization.datasource.*`), `hbm2ddl.auto=update`. The host's other datasources are declared as explicit named beans |
 | mailer-client | 0.0.2-SNAPSHOT (no matching tag) | 0.1.1-SNAPSHOT | Only the API types are used. `ResilientMailer` posts to `/mails` and sends the mailer's optional `X-API-Key`. The mailer answers `502` when SMTP delivery fails |

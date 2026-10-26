@@ -10,7 +10,7 @@ overview.
 | OpenAPI JSON | `/api/v3/api-docs` (or `/api/v3/api-docs/<group>`). Generated at runtime, not version-controlled. The version comes from `@project.version@` |
 | Authentication | Session cookie from the OIDC login flow (`/api/oauth2/authorization/<registration>`, Spring Security defaults). Logout at `GET`/`POST /api/logout` |
 | CSRF | `X-XSRF-TOKEN` header on state-changing requests. Token from the `XSRF-TOKEN` cookie or `GET /api/csrf`. Swagger UI sends it automatically |
-| Authorisation | `@PreAuthorize` per endpoint, plus the URL rules in [security.md](security.md#url-rules) |
+| Authorisation | `@PreAuthorize` per endpoint, plus the URL rules in [security-model.md](security-model.md#url-rules) |
 | Errors | JSON from `ExceptionControllerAdvice` (extends catalogue's `GenericExceptionController`) |
 | Versioning | None in paths. The API version equals the application version |
 
@@ -25,5 +25,5 @@ overview.
 | Integrations | `messaging/MessagingSystemController` (threads, inbox/outbox, `POST /threads/public` with reCAPTCHA), `statistics/StatsToolWrapperController`, `controller/AnalyticsController` |
 | Realtime | STOMP destinations in [integration.md](integration.md#frontend-websocket) |
 
-Embedded registry and catalogue controllers also appear under `/api` (see [security.md](security.md)
+Embedded registry and catalogue controllers also appear under `/api` (see [security-model.md](security-model.md)
 for their access rules).

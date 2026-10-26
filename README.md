@@ -78,7 +78,7 @@ Deployed environments run a Docker image built and pushed by Jenkins ([Dockerfil
 - [Architecture](docs/architecture.md) · [Integration](docs/integration.md) · [API](docs/api.md)
 - [Configuration](docs/configuration.md) · [Example configuration](application-example.properties)
 - [Deployment](docs/deployment.md) · [Operations](docs/operations.md) · [Troubleshooting](docs/troubleshooting.md)
-- [Security](docs/security.md) · [User erasure](docs/user-erasure.md) · [Development](docs/development.md) · [Testing](docs/testing.md)
+- [Security model](docs/security-model.md) · [Security policy](SECURITY.md) · [User erasure](docs/user-erasure.md) · [Development](docs/development.md) · [Testing](docs/testing.md)
 - API: Swagger UI at `/api/swagger-ui/index.html`, with groups *EOSC Observatory*, *Dynamic Catalogue*
   and *Registry Core*. The OpenAPI document is generated at runtime from the controllers, so there is
   no version-controlled copy.

@@ -8,6 +8,8 @@ Use [GitHub Issues](https://github.com/madgeek-arc/eosc-observatory/issues) for 
 questions. For bugs, include the version, the environment, the steps to reproduce, and the expected
 and actual behaviour.
 
+Don't report security vulnerabilities in public issues; follow [SECURITY.md](SECURITY.md) instead.
+
 ## Branching
 
 - `main` is the release branch. `develop` is used for integration builds (Jenkins pushes the
