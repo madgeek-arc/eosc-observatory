@@ -249,9 +249,9 @@ public class SurveyController {
                                                                     MultiValueMap<String, Object> allRequestParams) {
         allRequestParams.remove("groupId");
         FacetFilter filter = FacetFilter.from(allRequestParams);
-        String type = null;
 
         if (groupId != null) {
+            String type;
             if (groupId.startsWith("co-")) {
                 type = coordinatorService.get(groupId).getType();
             } else if (groupId.startsWith("sh-")) {
@@ -261,9 +261,9 @@ public class SurveyController {
             } else {
                 throw new UnsupportedOperationException("unrecognized group id");
             }
+            filter.addFilter("type", type);
         }
 
-        filter.addFilter("type", type);
         return new ResponseEntity<>(surveyService.browseSurveyAnswersInfo(filter), HttpStatus.OK);
     }
 
