@@ -204,7 +204,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             user = userBrowsing.getResults().get(0);
 
         } else if (userBrowsing.getTotal() > 1) {
-            logger.error(String.format("More than one user with [id=%s] was found.", user.getId()));
+            logger.error("More than one user with id [{}] was found.", userPseudonymizer.forLogging(user.getId()));
             user = null;
         } else {
             //
@@ -231,12 +231,13 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                 this.update(existing.getId(), existing); // save previous user object with updated name/surname
             }
             if (!existing.getSub().equals(user.getSub())) {
-                logger.warn("User sub has been changed: '{}' -> '{}'", existing.getSub(), user.getSub());
+                logger.warn("User sub has been changed: '{}' -> '{}'", userPseudonymizer.forLogging(existing.getSub()),
+                        user.getSub() == null ? null : userPseudonymizer.forLogging(user.getSub()));
                 existing.setSub(user.getSub());
                 this.update(existing.getId(), existing); // save previous user object with updated sub
             }
         } catch (ResourceNotFoundException e) {
-            logger.debug(String.format("User not found! Adding User to database [user=%s]", user));
+            logger.debug("User not found, adding user [{}]", userPseudonymizer.forLogging(user.getId()));
             this.add(user);
         }
     }
