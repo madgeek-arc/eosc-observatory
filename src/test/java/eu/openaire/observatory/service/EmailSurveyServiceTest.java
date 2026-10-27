@@ -53,7 +53,7 @@ class EmailSurveyServiceTest {
     @Mock private Configuration freemarkerConfig;
     @Mock private Template template;
     @Mock private ApplicationProperties applicationProperties;
-    @Mock private ErasureSubjectReference erasureSubjectReference;
+    @Mock private UserPseudonymizer userPseudonymizer;
 
     private EmailSurveyService service;
 
@@ -71,7 +71,7 @@ class EmailSurveyServiceTest {
                 freemarkerConfig,
                 "no-reply@test.com",
                 applicationProperties,
-                erasureSubjectReference
+                userPseudonymizer
         );
 
         when(freemarkerConfig.getTemplate(anyString())).thenReturn(template);
@@ -453,7 +453,7 @@ class EmailSurveyServiceTest {
         EmailSurveyService svc = new EmailSurveyService(flaky, stakeholderCrudService, modelService,
                 surveyService, userService, surveyNotificationSettingsService, coordinatorService,
                 administratorService, freemarkerConfig, "no-reply@test.com", applicationProperties,
-                erasureSubjectReference);
+                userPseudonymizer);
 
         SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
         stubValidationContext(a, "National Survey", "Greece",
@@ -482,7 +482,7 @@ class EmailSurveyServiceTest {
         EmailSurveyService svc = new EmailSurveyService(flaky, stakeholderCrudService, modelService,
                 surveyService, userService, surveyNotificationSettingsService, coordinatorService,
                 administratorService, freemarkerConfig, "no-reply@test.com", applicationProperties,
-                erasureSubjectReference);
+                userPseudonymizer);
 
         SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
         stubValidationContext(a, "National Survey", "Greece",
@@ -556,7 +556,7 @@ class EmailSurveyServiceTest {
         EmailSurveyService realTemplateService = new EmailSurveyService(
                 mailDebugConfig.mailer("no-reply@test.com"), stakeholderCrudService, modelService, surveyService, userService,
                 surveyNotificationSettingsService, coordinatorService, administratorService,
-                realConfig, "no-reply@test.com", applicationProperties, erasureSubjectReference);
+                realConfig, "no-reply@test.com", applicationProperties, userPseudonymizer);
 
         SurveyAnswer a = answer("sa-1", "s1", "sh-country-gr", "country");
         stubValidationContext(a, "National Survey", "Greece",

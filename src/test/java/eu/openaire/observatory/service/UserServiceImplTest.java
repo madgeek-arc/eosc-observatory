@@ -128,7 +128,7 @@ class UserServiceImplTest {
     @Mock
     private GenericResourceService genericResourceService;
     @Mock
-    private ErasureSubjectReference erasureSubjectReference;
+    private UserPseudonymizer userPseudonymizer;
     @Mock
     private MessagingService messagingClient;
     @Mock
@@ -165,7 +165,7 @@ class UserServiceImplTest {
                 newsItemService,
                 modelService,
                 genericResourceService,
-                erasureSubjectReference,
+                userPseudonymizer,
                 messagingClient,
                 applicationProperties,
                 erasureRegisterService,
@@ -537,7 +537,7 @@ class UserServiceImplTest {
      */
     @Test
     void purgeRecordsPendingBeforeDeletingAndSuccessAfterwards() throws ResourceNotFoundException {
-        when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
+        when(userPseudonymizer.of(USER_ID)).thenReturn("subject-hmac");
 
         Stakeholder stakeholder = new Stakeholder();
         stakeholder.setId("sh-1");
@@ -621,7 +621,7 @@ class UserServiceImplTest {
     @Test
     void staleIndexCannotCompletePendingErasureWhilePrimaryUserSurvives() {
         when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
-        when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
+        when(userPseudonymizer.of(USER_ID)).thenReturn("subject-hmac");
         when(erasureRegisterService.isPending("subject-hmac")).thenReturn(true);
         doThrow(new ResourceNotFoundException(USER_ID, "user")).when(service).getResource(USER_ID);
         ResourceType type = new ResourceType();
@@ -642,7 +642,7 @@ class UserServiceImplTest {
     @Test
     void primaryStoreFailureCannotCompletePendingErasure() {
         when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
-        when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
+        when(userPseudonymizer.of(USER_ID)).thenReturn("subject-hmac");
         when(erasureRegisterService.isPending("subject-hmac")).thenReturn(true);
         doThrow(new ResourceNotFoundException(USER_ID, "user")).when(service).getResource(USER_ID);
         ResourceType type = new ResourceType();
@@ -657,7 +657,7 @@ class UserServiceImplTest {
     @Test
     void retryCompletesPendingErasureWhenDeletionAlreadySucceeded() {
         when(surveyAnswerCrudService.getAllPersisted(any())).thenReturn(browsing());
-        when(erasureSubjectReference.of(USER_ID)).thenReturn("subject-hmac");
+        when(userPseudonymizer.of(USER_ID)).thenReturn("subject-hmac");
         doReturn(new User()).when(service).delete(USER_ID);
         doThrow(new IllegalStateException("register unavailable")).doNothing()
                 .when(erasureRegisterService).complete(ATTEMPT_ID);

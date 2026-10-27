@@ -87,7 +87,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private final NewsItemService newsItemService;
     private final ModelService modelService;
     private final GenericResourceService genericResourceService;
-    private final ErasureSubjectReference erasureSubjectReference;
+    private final UserPseudonymizer userPseudonymizer;
     // Named 'messagingClient' rather than 'messagingService' to keep it distinct from
     // eu.openaire.observatory.messaging.MessagingService, a different class entirely.
     private final MessagingService messagingClient;
@@ -112,7 +112,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy NewsItemService newsItemService,
                               @Lazy ModelService modelService,
                               @Lazy GenericResourceService genericResourceService,
-                              ErasureSubjectReference erasureSubjectReference,
+                              UserPseudonymizer userPseudonymizer,
                               MessagingService messagingClient,
                               ApplicationProperties applicationProperties,
                               ErasureRegisterService erasureRegisterService,
@@ -135,7 +135,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         this.newsItemService = newsItemService;
         this.modelService = modelService;
         this.genericResourceService = genericResourceService;
-        this.erasureSubjectReference = erasureSubjectReference;
+        this.userPseudonymizer = userPseudonymizer;
         this.messagingClient = messagingClient;
         this.applicationProperties = applicationProperties;
         this.erasureRegisterService = erasureRegisterService;
@@ -264,7 +264,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
 
         // Resolve the register reference before anything is mutated: a misconfigured secret must fail here —
         // not two thirds of the way through, after the scrubs have run but before delete(id).
-        String subjectRef = erasureSubjectReference.of(userId);
+        String subjectRef = userPseudonymizer.of(userId);
 
 
         // --- Live removal from the groups the user is CURRENTLY a member/admin of ---

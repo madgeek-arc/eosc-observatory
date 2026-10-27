@@ -59,7 +59,7 @@ public class EmailSurveyService {
     private final Configuration freemarkerConfig;
     private final String emailFrom;
     private final ApplicationProperties applicationProperties;
-    private final ErasureSubjectReference erasureSubjectReference;
+    private final UserPseudonymizer userPseudonymizer;
 
     public EmailSurveyService(Mailer mailClient,
                               CrudService<Stakeholder> stakeholderCrudService,
@@ -72,7 +72,7 @@ public class EmailSurveyService {
                               Configuration freemarkerConfig,
                               @Value("${mailer.from}") String emailFrom,
                               ApplicationProperties applicationProperties,
-                              ErasureSubjectReference erasureSubjectReference) {
+                              UserPseudonymizer userPseudonymizer) {
         this.mailClient = mailClient;
         this.stakeholderCrudService = stakeholderCrudService;
         this.modelService = modelService;
@@ -84,7 +84,7 @@ public class EmailSurveyService {
         this.freemarkerConfig = freemarkerConfig;
         this.emailFrom = emailFrom;
         this.applicationProperties = applicationProperties;
-        this.erasureSubjectReference = erasureSubjectReference;
+        this.userPseudonymizer = userPseudonymizer;
     }
 
     public void notifySurveyStart(String surveyId) {
@@ -340,7 +340,7 @@ public class EmailSurveyService {
                 return user.getFullname();
             }
         } catch (Exception e) {
-            logger.warn("Could not resolve display name for [{}]: {}", erasureSubjectReference.forLogging(userId), e.getMessage());
+            logger.warn("Could not resolve display name for [{}]: {}", userPseudonymizer.forLogging(userId), e.getMessage());
         }
         return userId;
     }
@@ -352,7 +352,7 @@ public class EmailSurveyService {
             try {
                 user = userService.getUser(email);
             } catch (Exception e) {
-                logger.warn("Could not load user preferences for [{}]: {}", erasureSubjectReference.forLogging(email), e.getMessage());
+                logger.warn("Could not load user preferences for [{}]: {}", userPseudonymizer.forLogging(email), e.getMessage());
             }
             if (user != null && user.getSettings() != null && user.getSettings().getNotificationPreferences() != null) {
                 NotificationPreferences prefs = user.getSettings().getNotificationPreferences();

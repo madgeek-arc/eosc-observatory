@@ -4,24 +4,25 @@ import eu.openaire.observatory.configuration.ApplicationProperties;
 import gr.uoa.di.madgik.registry.service.ServiceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.Authentication;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ErasureSubjectReferenceTest {
+class UserPseudonymizerTest {
 
     private static final String USER_ID = "jane.doe@example.org";
 
     private ApplicationProperties properties;
-    private ErasureSubjectReference reference;
+    private UserPseudonymizer reference;
 
     @BeforeEach
     void setUp() {
         properties = new ApplicationProperties();
         properties.setHmacSecret("test-erasure-secret");
-        reference = new ErasureSubjectReference(properties);
+        reference = new UserPseudonymizer(properties);
     }
 
     @Test
@@ -86,5 +87,10 @@ class ErasureSubjectReferenceTest {
         properties.setHmacSecret("  ");
 
         assertEquals("j*****@example.org", reference.forLogging(USER_ID));
+    }
+
+    @Test
+    void forLoggingWithoutAnAuthenticatedUserReturnsUnknown() {
+        assertEquals("unknown", reference.forLogging((Authentication) null));
     }
 }

@@ -16,7 +16,7 @@
 
 package eu.openaire.observatory.configuration.logging;
 
-import eu.openaire.observatory.service.ErasureSubjectReference;
+import eu.openaire.observatory.service.UserPseudonymizer;
 import eu.openaire.observatory.utils.UserIds;
 
 import java.util.Collection;
@@ -65,7 +65,7 @@ public final class ErasureLogMasking {
         if (currentSecret == null || userValue == null || userValue.isBlank()) {
             return null;
         }
-        String ref = ErasureSubjectReference.hmacHex(currentSecret, UserIds.normalize(userValue));
+        String ref = UserPseudonymizer.hmacHex(currentSecret, UserIds.normalize(userValue));
         return ERASED_SUBJECT_REFS.contains(ref) ? "erased:" + ref : null;
     }
 
