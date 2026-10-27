@@ -3,7 +3,7 @@ package eu.openaire.observatory.configuration.logging;
 import eu.openaire.observatory.configuration.ApplicationProperties;
 import eu.openaire.observatory.erasure.domain.ErasureRecord;
 import eu.openaire.observatory.erasure.repository.ErasureRecordRepository;
-import eu.openaire.observatory.service.ErasureSubjectReference;
+import eu.openaire.observatory.service.UserPseudonymizer;
 import eu.openaire.observatory.utils.UserIds;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ class ErasureLogMaskingTest {
     }
 
     private static String refFor(String userId) {
-        return ErasureSubjectReference.hmacHex(SECRET, UserIds.normalize(userId));
+        return UserPseudonymizer.hmacHex(SECRET, UserIds.normalize(userId));
     }
 
     @Test

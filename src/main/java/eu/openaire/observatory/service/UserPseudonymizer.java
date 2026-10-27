@@ -17,9 +17,12 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.configuration.ApplicationProperties;
+import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.utils.EmailMasking;
 import eu.openaire.observatory.utils.UserIds;
 import gr.uoa.di.madgik.registry.service.ServiceException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -29,46 +32,39 @@ import java.security.GeneralSecurityException;
 import java.util.HexFormat;
 
 /**
- * Produces a stable, non-reversible reference to a data subject: for the purge report line, and
- * for a user identifier written to a general application log statement.
- *
- * <p>Art. 17 gives the erasure right, but Art. 5(2) and Art. 24 require the controller to be able to
- * <em>demonstrate</em> compliance — so erasing every trace of the erasure itself defeats the purpose.
- * This lets a report answer "was this person purged?" without retaining a readable address. The same
- * reference, computed from the same key, also lets a log line be correlated to a specific user without
- * that user's address ever being written to the log.
+ * Produces a stable, non-reversible pseudonym for a user id, so a user can be identified or
+ * correlated without exposing their address.
  *
  * <p>It is a keyed HMAC rather than a plain digest on purpose. Email addresses are low-entropy, so an
  * unsalted SHA-256 falls to a dictionary attack in seconds — that would be plaintext with extra
- * steps. With a stable key the same address always yields the same reference, so lookup still works,
- * while a reader of the log file cannot reverse it.
+ * steps. With a stable key the same address always yields the same pseudonym, so lookup still works,
+ * while anyone without the key cannot reverse it.
  *
  * <p><b>State plainly to the DPO:</b> even keyed, this is <em>pseudonymous, not anonymous</em>. GDPR
  * still applies to it. The gain is reduced exposure, not exemption.
  */
 @Component
-public class ErasureSubjectReference {
+public class UserPseudonymizer {
 
     private static final String ALGORITHM = "HmacSHA256";
 
     private final ApplicationProperties applicationProperties;
 
-    public ErasureSubjectReference(ApplicationProperties applicationProperties) {
+    public UserPseudonymizer(ApplicationProperties applicationProperties) {
         this.applicationProperties = applicationProperties;
     }
 
     /**
      * Returns the hex-encoded HMAC-SHA256 of the normalized user id.
      *
-     * <p>Normalizing first means the reference is stable regardless of casing or the quote-wrapping
-     * seen in stored ids, and that re-running {@code purge()} logs an identical reference — the
-     * idempotent behaviour the purge is designed for.
+     * <p>Normalizing first means the pseudonym is stable regardless of casing or the quote-wrapping
+     * seen in stored ids, so one person always maps to one pseudonym.
      */
     public String of(String userId) {
         String secret = applicationProperties.getHmacSecret();
         if (secret == null || secret.isBlank()) {
             throw new ServiceException("observatory.hmacSecret is not configured; "
-                    + "a purge cannot be recorded without it.");
+                    + "user ids cannot be pseudonymized without it.");
         }
         return hmacHex(secret, UserIds.normalize(userId));
     }
@@ -87,9 +83,21 @@ public class ErasureSubjectReference {
     }
 
     /**
-     * The raw keyed HMAC used by {@link #of}, exposed so the log-masking layer can produce the same
-     * reference for an arbitrary {@code user} value without going through the {@link ApplicationProperties}
-     * lookup. {@code value} is hashed as-is — callers normalize first (see {@link #of}).
+     * Same as {@link #forLogging(String)} for the user behind {@code auth}; returns {@code "unknown"}
+     * when no user id can be obtained from it.
+     */
+    public String forLogging(Authentication auth) {
+        try {
+            return forLogging(User.getId(auth));
+        } catch (InsufficientAuthenticationException e) {
+            return "unknown";
+        }
+    }
+
+    /**
+     * The raw keyed HMAC used by {@link #of}, for callers that already hold the secret and need the
+     * same pseudonym without an {@link ApplicationProperties} lookup. {@code value} is hashed as-is —
+     * callers normalize first (see {@link #of}).
      */
     public static String hmacHex(String secret, String value) {
         try {
@@ -97,7 +105,7 @@ public class ErasureSubjectReference {
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), ALGORITHM));
             return HexFormat.of().formatHex(mac.doFinal(value.getBytes(StandardCharsets.UTF_8)));
         } catch (GeneralSecurityException e) {
-            throw new ServiceException("Could not compute the erasure subject reference.", e);
+            throw new ServiceException("Could not compute the user pseudonym.", e);
         }
     }
 }

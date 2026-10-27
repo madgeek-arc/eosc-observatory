@@ -16,17 +16,15 @@
 
 package eu.openaire.observatory.configuration.security;
 
-import eu.openaire.observatory.domain.User;
 import eu.openaire.observatory.resources.model.Document;
-import eu.openaire.observatory.service.ErasureSubjectReference;
 import eu.openaire.observatory.service.SecurityService;
+import eu.openaire.observatory.service.UserPseudonymizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.access.expression.SecurityExpressionRoot;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
-import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 
 import java.io.Serializable;
@@ -39,7 +37,7 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     private final MethodSecurityExpressions securityExpressions;
     private final SecurityService securityService;
-    private final ErasureSubjectReference subjectReference;
+    private final UserPseudonymizer userPseudonymizer;
 
     private Object filterObject;
     private Object returnObject;
@@ -48,12 +46,12 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
     public CustomMethodSecurityExpressionRoot(Authentication authentication,
                                               MethodSecurityExpressions securityExpressions,
                                               SecurityService securityService,
-                                              ErasureSubjectReference subjectReference) {
+                                              UserPseudonymizer userPseudonymizer) {
         super(authentication);
         this.setPermissionEvaluator(this);
         this.securityExpressions = securityExpressions;
         this.securityService = securityService;
-        this.subjectReference = subjectReference;
+        this.userPseudonymizer = userPseudonymizer;
     }
 
 
@@ -99,14 +97,15 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     @Override
     public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
-        if (logger.isDebugEnabled()) {
-            logger.debug("hasPermission(auth, targetDomainObject, permission)\nUser: {}\nObject: {}\nPermission: {}",
-                    getUserPseudonym(authentication), targetDomainObject, permission);
-        }
         if ((getAuthentication() == null) || (targetDomainObject == null) || !(permission instanceof String)) {
             return false;
         }
         String resourceId = getResourceId(targetDomainObject);
+        if (logger.isDebugEnabled()) {
+            logger.debug("hasPermission: user [{}] resource [{}] ({}) permission [{}]",
+                    userPseudonymizer.forLogging(authentication), resourceId,
+                    targetDomainObject.getClass().getSimpleName(), permission);
+        }
         return securityExpressions.isAdmin(authentication) ||
                 securityService.hasPermission(authentication, ((String) permission).toLowerCase(), resourceId);
     }
@@ -263,13 +262,5 @@ public class CustomMethodSecurityExpressionRoot extends SecurityExpressionRoot
 
     private String getResourceId(Object resource) {
         return SecurityUtils.getResourceId(resource, logger);
-    }
-
-    private String getUserPseudonym(Authentication authentication) {
-        try {
-            return subjectReference.forLogging(User.getId(authentication));
-        } catch (InsufficientAuthenticationException e) {
-            return "unknown";
-        }
     }
 }

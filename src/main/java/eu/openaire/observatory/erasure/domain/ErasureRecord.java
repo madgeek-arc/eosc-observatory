@@ -34,7 +34,7 @@ import java.util.UUID;
  * retention. This table is that evidence.
  *
  * <p>The subject is represented by pseudonymous data: {@link #subjectRef} is the keyed HMAC produced
- * by {@code ErasureSubjectReference}, alongside attempt identifiers, timestamps, and cleanup counts.
+ * by {@code UserPseudonymizer}, alongside attempt identifiers, timestamps, and cleanup counts.
  * {@link #executedBy} is the administrator who ran the erasure, retained as accountability data.
  *
  * <p>Wired by {@code ErasureDatasourceConfig} onto its own {@code erasure} datasource and schema on

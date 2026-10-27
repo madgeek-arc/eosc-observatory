@@ -167,12 +167,7 @@ public class User implements Identifiable<String> {
     @Override
     public String toString() {
         return "User{" +
-                "sub='" + sub + '\'' +
-                ", email='" + email + '\'' +
-                ", name='" + name + '\'' +
-                ", surname='" + surname + '\'' +
-                ", fullname='" + fullname + '\'' +
-                ", policiesAccepted=" + policiesAccepted +
+                "policiesAccepted=" + policiesAccepted +
                 '}';
     }
 }

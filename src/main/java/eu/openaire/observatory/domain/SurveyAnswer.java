@@ -121,8 +121,6 @@ public class SurveyAnswer implements Identifiable<String>, Serializable {
                 ", stakeholderId='" + stakeholderId + '\'' +
                 ", type='" + type + '\'' +
                 ", answer=" + answer +
-                ", metadata=" + metadata +
-                ", history=" + history +
                 ", validated=" + validated +
                 ", published=" + published +
                 '}';

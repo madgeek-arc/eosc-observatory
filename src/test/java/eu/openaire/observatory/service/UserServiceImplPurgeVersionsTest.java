@@ -79,7 +79,7 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
     private ErasureRecordRepository erasureRecordRepository;
 
     @Autowired
-    private ErasureSubjectReference erasureSubjectReference;
+    private UserPseudonymizer userPseudonymizer;
 
     @Autowired
     private ErasureRegisterService erasureRegisterService;
@@ -278,7 +278,7 @@ class UserServiceImplPurgeVersionsTest extends IntegrationTestConfig {
         stakeholder.setMembers(new TreeSet<>(Set.of(userId)));
         stakeholderCrudService.update(stakeholder.getId(), stakeholder);
 
-        String subjectRef = erasureSubjectReference.of(userId);
+        String subjectRef = userPseudonymizer.of(userId);
         assertTrue(erasureRecordRepository.findAllBySubjectRefOrderByStartedAtAsc(subjectRef).isEmpty(),
                 "no register row should exist before the purge");
 
