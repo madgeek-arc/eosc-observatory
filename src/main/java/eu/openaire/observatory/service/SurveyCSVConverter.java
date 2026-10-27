@@ -46,6 +46,10 @@ public class SurveyCSVConverter implements CSVConverter {
     private static final String DELIMITER_SECONDARY = ";";
     private static final String JOINING_SYMBOL = "->";
     private static final String DOUBLE_QUOTE_ENCODED = "%22";
+    private static final String PAUSED_KIND = "paused";
+    private static final String EXTERNAL_KIND = "external";
+    private static final String PAUSED_TAG = "(Paused) ";
+    private static final String EXTERNAL_TAG = "(External) ";
 
     private final ModelService modelService;
     private final SurveyService surveyService;
@@ -170,7 +174,7 @@ public class SurveyCSVConverter implements CSVConverter {
         for (SurveyAnswer surveyAnswer : answerSet) {
             JSONObject answer = surveyAnswer.getAnswer();
             for (List<UiField> fieldsToLeaf : fieldHierarchy) {
-                createValues(null, fieldsToLeaf, answer, index);
+                createValues(null, fieldsToLeaf, answer, index, null);
             }
             index++;
         }
@@ -303,7 +307,18 @@ public class SurveyCSVConverter implements CSVConverter {
         return key;
     }
 
-    private void createValues(String key, List<UiField> fieldsToLeaf, JSONObject answer, int index) {
+    /**
+     * Adds the answer values of a column to the csv. The column header is the labels of the fields joined,
+     * with a "(Paused) " or "(External) " tag before the last label when the question or any of its parents
+     * is paused or external.
+     *
+     * @param key the header built so far
+     * @param fieldsToLeaf the fields from the current level down to the answered question
+     * @param answer the answer of the current level
+     * @param index the row of the answer
+     * @param kind the paused or external kind inherited from the parents, or null
+     */
+    private void createValues(String key, List<UiField> fieldsToLeaf, JSONObject answer, int index, String kind) {
         List values = new LinkedList<>();
         if (key == null) {
             key = "";
@@ -312,14 +327,19 @@ public class SurveyCSVConverter implements CSVConverter {
         if (answer != null) {
             temp = JSONValue.parse(answer.toJSONString());
         }
+        UiField leaf = fieldsToLeaf.get(fieldsToLeaf.size() - 1);
         for (UiField field : fieldsToLeaf) {
             if (field.isDeprecated())
                 return;
+            kind = inactiveKind(kind, field);
             String label;
             if (field.getLabel() != null && field.getLabel().getText() != null) {
                 label = field.getLabel().getText();
             } else {
                 label = field.getName();
+            }
+            if (field == leaf) {
+                label = tagOf(kind) + label;
             }
             key = String.format("%s%s%s", key, JOINING_SYMBOL, label);
 
@@ -327,7 +347,7 @@ public class SurveyCSVConverter implements CSVConverter {
                 temp = ((JSONObject) temp).get(field.getName());
                 if (field.getTypeInfo().isMultiplicity() && field.getTypeInfo().getType() == FieldType.composite && temp != null) {
                     for (Object item : (JSONArray) temp) {
-                        createValues(key, fieldsToLeaf.subList(fieldsToLeaf.indexOf(field) + 1, fieldsToLeaf.size()), (JSONObject) item, index);
+                        createValues(key, fieldsToLeaf.subList(fieldsToLeaf.indexOf(field) + 1, fieldsToLeaf.size()), (JSONObject) item, index, kind);
                     }
                     return;
                 }
@@ -353,5 +373,18 @@ public class SurveyCSVConverter implements CSVConverter {
             key = key.replaceFirst(JOINING_SYMBOL, "");
         }
         this.csvBuilder.addValue(key, index, values.isEmpty() ? null : values);
+    }
+
+    // paused wins over external
+    private static String inactiveKind(String current, UiField field) {
+        if (PAUSED_KIND.equals(current) || PAUSED_KIND.equals(field.getKind())) return PAUSED_KIND;
+        if (EXTERNAL_KIND.equals(current) || EXTERNAL_KIND.equals(field.getKind())) return EXTERNAL_KIND;
+        return null;
+    }
+
+    private static String tagOf(String kind) {
+        if (PAUSED_KIND.equals(kind)) return PAUSED_TAG;
+        if (EXTERNAL_KIND.equals(kind)) return EXTERNAL_TAG;
+        return "";
     }
 }
