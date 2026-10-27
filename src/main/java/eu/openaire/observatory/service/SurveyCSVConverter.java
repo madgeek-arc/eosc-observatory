@@ -132,7 +132,7 @@ public class SurveyCSVConverter implements CSVConverter {
                 }
             }
             surveyAnswers.add(surveyAnswer);
-            logger.info("Importing survey answer: {}", surveyAnswer);
+            logger.info("Importing survey answer for stakeholder [{}]", surveyAnswer.getStakeholderId());
 
             // TODO: create metadata and history entries
             surveyAnswer.setMetadata(new Metadata());

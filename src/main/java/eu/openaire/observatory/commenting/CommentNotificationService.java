@@ -22,8 +22,8 @@ import eu.openaire.observatory.domain.NotificationPreferences;
 import eu.openaire.observatory.domain.Settings;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.User;
-import eu.openaire.observatory.service.ErasureSubjectReference;
 import eu.openaire.observatory.service.SurveyAnswerCrudService;
+import eu.openaire.observatory.service.UserPseudonymizer;
 import eu.openaire.observatory.service.UserService;
 import freemarker.template.Configuration;
 import gr.athenarc.messaging.mailer.domain.EmailMessage;
@@ -62,7 +62,7 @@ public class CommentNotificationService {
     private final SurveyAnswerCrudService surveyAnswerCrudService;
     private final ApplicationProperties applicationProperties;
     private final ModelService modelService;
-    private final ErasureSubjectReference erasureSubjectReference;
+    private final UserPseudonymizer userPseudonymizer;
 
     public CommentNotificationService(UserService userService,
                                       Configuration freemarkerConfig,
@@ -71,7 +71,7 @@ public class CommentNotificationService {
                                       SurveyAnswerCrudService surveyAnswerCrudService,
                                       ApplicationProperties applicationProperties,
                                       ModelService modelService,
-                                      ErasureSubjectReference erasureSubjectReference) {
+                                      UserPseudonymizer userPseudonymizer) {
         this.userService = userService;
         this.freemarkerConfig = freemarkerConfig;
         this.mailClient = mailClient;
@@ -79,7 +79,7 @@ public class CommentNotificationService {
         this.surveyAnswerCrudService = surveyAnswerCrudService;
         this.applicationProperties = applicationProperties;
         this.modelService = modelService;
-        this.erasureSubjectReference = erasureSubjectReference;
+        this.userPseudonymizer = userPseudonymizer;
     }
 
     public void notifyMentions(CommentMessage message) {
@@ -114,7 +114,7 @@ public class CommentNotificationService {
             try {
                 sendMentionEmail(mentionedEmail, authorName, authorEmail, message.getBody(), chapterPath, baseUrl, stakeholderId, surveyId, message);
             } catch (Exception e) {
-                logger.warn("Failed to send mention notification to {}: {}", erasureSubjectReference.forLogging(mentionedEmail), e.getMessage());
+                logger.warn("Failed to send mention notification to {}: {}", userPseudonymizer.forLogging(mentionedEmail), e.getMessage());
             }
         }
     }
@@ -125,7 +125,7 @@ public class CommentNotificationService {
         try {
             recipient = userService.getUser(toEmail);
         } catch (Exception e) {
-            logger.warn("Could not fetch recipient {} for mention notification: {}", erasureSubjectReference.forLogging(toEmail), e.getMessage());
+            logger.warn("Could not fetch recipient {} for mention notification: {}", userPseudonymizer.forLogging(toEmail), e.getMessage());
         }
 
         if (!shouldSendEmail(recipient)) {

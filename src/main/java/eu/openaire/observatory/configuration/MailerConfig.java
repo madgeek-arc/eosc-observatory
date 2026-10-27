@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -48,6 +49,7 @@ public class MailerConfig {
     public Mailer resilientMailer(
             RestClient.Builder restClientBuilder,
             @Value("${mailer.client.host:}") String host,
+            @Value("${mailer.client.api-key:}") String apiKey,
             @Value("${mailer.client.connect-timeout:3s}") Duration connectTimeout,
             @Value("${mailer.client.read-timeout:30s}") Duration readTimeout,
             @Value("${mailer.retry.max-attempts:5}") int maxAttempts,
@@ -55,9 +57,11 @@ public class MailerConfig {
         ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.defaults()
                 .withConnectTimeout(connectTimeout)
                 .withReadTimeout(readTimeout);
-        RestClient restClient = restClientBuilder
-                .requestFactory(ClientHttpRequestFactoryBuilder.jdk().build(settings))
-                .build();
+        restClientBuilder.requestFactory(ClientHttpRequestFactoryBuilder.jdk().build(settings));
+        if (StringUtils.hasText(apiKey)) {
+            restClientBuilder.defaultHeader("X-API-Key", apiKey);
+        }
+        RestClient restClient = restClientBuilder.build();
         return new ResilientMailer(restClient, host, maxAttempts, retryDelay);
     }
 }

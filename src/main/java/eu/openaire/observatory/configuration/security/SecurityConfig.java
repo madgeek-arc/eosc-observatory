@@ -90,8 +90,11 @@ public class SecurityConfig {
                                 "/resources/**",
                                 "/resourceType/**",
                                 "/search/**",
-                                "/items/**").hasAuthority("ADMIN")
-                        .requestMatchers("/websocket").authenticated()
+                                "/items/**",
+                                "/version/**",
+                                "/schemaService/**",
+                                "/resourcesync/**").hasAuthority("ADMIN")
+                        .requestMatchers("/websocket", "/request/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth2login -> oauth2login

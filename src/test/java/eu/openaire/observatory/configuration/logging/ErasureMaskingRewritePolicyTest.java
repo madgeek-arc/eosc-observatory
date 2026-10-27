@@ -1,6 +1,6 @@
 package eu.openaire.observatory.configuration.logging;
 
-import eu.openaire.observatory.service.ErasureSubjectReference;
+import eu.openaire.observatory.service.UserPseudonymizer;
 import eu.openaire.observatory.utils.UserIds;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
@@ -25,7 +25,7 @@ class ErasureMaskingRewritePolicyTest {
     private final ErasureMaskingRewritePolicy policy = ErasureMaskingRewritePolicy.createPolicy();
 
     private static String refFor(String userId) {
-        return ErasureSubjectReference.hmacHex(SECRET, UserIds.normalize(userId));
+        return UserPseudonymizer.hmacHex(SECRET, UserIds.normalize(userId));
     }
 
     @BeforeEach

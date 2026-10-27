@@ -87,7 +87,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
     private final NewsItemService newsItemService;
     private final ModelService modelService;
     private final GenericResourceService genericResourceService;
-    private final ErasureSubjectReference erasureSubjectReference;
+    private final UserPseudonymizer userPseudonymizer;
     // Named 'messagingClient' rather than 'messagingService' to keep it distinct from
     // eu.openaire.observatory.messaging.MessagingService, a different class entirely.
     private final MessagingService messagingClient;
@@ -112,7 +112,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                               @Lazy NewsItemService newsItemService,
                               @Lazy ModelService modelService,
                               @Lazy GenericResourceService genericResourceService,
-                              ErasureSubjectReference erasureSubjectReference,
+                              UserPseudonymizer userPseudonymizer,
                               MessagingService messagingClient,
                               ApplicationProperties applicationProperties,
                               ErasureRegisterService erasureRegisterService,
@@ -135,7 +135,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
         this.newsItemService = newsItemService;
         this.modelService = modelService;
         this.genericResourceService = genericResourceService;
-        this.erasureSubjectReference = erasureSubjectReference;
+        this.userPseudonymizer = userPseudonymizer;
         this.messagingClient = messagingClient;
         this.applicationProperties = applicationProperties;
         this.erasureRegisterService = erasureRegisterService;
@@ -204,7 +204,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
             user = userBrowsing.getResults().get(0);
 
         } else if (userBrowsing.getTotal() > 1) {
-            logger.error(String.format("More than one user with [id=%s] was found.", user.getId()));
+            logger.error("More than one user with id [{}] was found.", userPseudonymizer.forLogging(user.getId()));
             user = null;
         } else {
             //
@@ -231,12 +231,13 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
                 this.update(existing.getId(), existing); // save previous user object with updated name/surname
             }
             if (!existing.getSub().equals(user.getSub())) {
-                logger.warn("User sub has been changed: '{}' -> '{}'", existing.getSub(), user.getSub());
+                logger.warn("User sub has been changed: '{}' -> '{}'", userPseudonymizer.forLogging(existing.getSub()),
+                        user.getSub() == null ? null : userPseudonymizer.forLogging(user.getSub()));
                 existing.setSub(user.getSub());
                 this.update(existing.getId(), existing); // save previous user object with updated sub
             }
         } catch (ResourceNotFoundException e) {
-            logger.debug(String.format("User not found! Adding User to database [user=%s]", user));
+            logger.debug("User not found, adding user [{}]", userPseudonymizer.forLogging(user.getId()));
             this.add(user);
         }
     }
@@ -264,7 +265,7 @@ public class UserServiceImpl extends AbstractCrudService<User> implements UserSe
 
         // Resolve the register reference before anything is mutated: a misconfigured secret must fail here —
         // not two thirds of the way through, after the scrubs have run but before delete(id).
-        String subjectRef = erasureSubjectReference.of(userId);
+        String subjectRef = userPseudonymizer.of(userId);
 
 
         // --- Live removal from the groups the user is CURRENTLY a member/admin of ---
