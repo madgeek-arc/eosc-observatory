@@ -117,7 +117,12 @@ public class MethodSecurityExpressionsService implements MethodSecurityExpressio
         if (stakeholderId == null || userId == null) {
             return false;
         }
-        Stakeholder stakeholder = stakeholderService.get(stakeholderId);
+        Stakeholder stakeholder;
+        try {
+            stakeholder = stakeholderService.get(stakeholderId);
+        } catch (ResourceNotFoundException e) {
+            return false;
+        }
         return stakeholder.getAdmins() != null && stakeholder.getAdmins().contains(userId);
     }
 

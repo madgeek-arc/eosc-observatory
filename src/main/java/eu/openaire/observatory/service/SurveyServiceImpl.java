@@ -19,8 +19,6 @@ package eu.openaire.observatory.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.PathNotFoundException;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.dto.Diff;
 import eu.openaire.observatory.dto.EditorDTO;
@@ -35,6 +33,7 @@ import eu.openaire.observatory.dto.SurveyAnswerMetadataDTO;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
+import eu.openaire.observatory.utils.FieldKinds;
 import eu.openaire.observatory.utils.JSONObjectUtils;
 import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.registry.domain.Browsing;
@@ -47,6 +46,7 @@ import gr.uoa.di.madgik.catalogue.ui.domain.Section;
 import gr.uoa.di.madgik.catalogue.ui.domain.UiField;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
 import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -226,71 +226,146 @@ public class SurveyServiceImpl implements SurveyService {
 
     /**
      * Prefills a survey answer based on a previous model's response.
+     * When the stakeholder has no answer for the previous model, the survey answer is set to an empty answer.
      *
      * @param previousModel the previous model to check for compatibility
      * @param surveyAnswer the survey answer to prefill
      */
     private void prefill(Model previousModel, SurveyAnswer surveyAnswer) {
         SurveyAnswer previous = getLatest(previousModel.getId(), surveyAnswer.getStakeholderId());
+        JSONObject previousAnswer = previous != null && previous.getAnswer() != null ? previous.getAnswer() : new JSONObject();
         Model model = modelService.get(surveyAnswer.getSurveyId());
-        JSONObject toImport = removeDeprecatedFields(model, previous.getAnswer());
+        JSONObject toImport = removeInactiveAnswers(previousAnswer, previousModel, model);
         surveyAnswer.setAnswer(toImport);
     }
 
     /**
-     * Creates a new json from an existing, with its deprecated fields removed.
+     * Creates a copy of a previous answer without the answers of questions that are paused, deprecated
+     * or deleted in the new model, or whose question changed between having and not having sub-questions.
+     * The previous answer is not modified.
      *
-     * @param model the model to use
-     * @param obj the original json object
-     * @return the json object without deprecated fields
+     * @param previousAnswer the answer to import
+     * @param previousModel the model the previous answer belongs to
+     * @param model the model the answer is imported to
+     * @return the cleaned copy of the previous answer
      */
-    private JSONObject removeDeprecatedFields(Model model, JSONObject obj) {
-        JSONObject json = new JSONObject(obj);
-        for (Section section : model.getSections()) {
-            removeDeprecatedFieldsFromSection(section, ".", json);
-        }
-        return obj;
+    private JSONObject removeInactiveAnswers(JSONObject previousAnswer, Model previousModel, Model model) {
+        JSONObject answer = (JSONObject) JSONValue.parse(previousAnswer.toJSONString());
+        cleanAnswers(answer, answerLevelOf(nonNull(previousModel.getSections()), List.of()),
+                answerLevelOf(nonNull(model.getSections()), List.of()));
+        return answer;
     }
 
     /**
-     * Removes deprecated fields from Section and its subsections (recursive).
+     * Removes from the answers of a level the ones whose section or question is deleted or inactive in the new
+     * model, together with everything under them, and cleans the remaining ones (recursive).
      *
-     * @param section the section to use
-     * @param path the current path of the field
-     * @param obj the json to modify
+     * @param answers the answers of the current level (object, or list of objects for repeatable groups)
+     * @param previousLevel the current level in the previous model
+     * @param level the current level in the new model
      */
-    private void removeDeprecatedFieldsFromSection(Section section, String path, JSONObject obj) {
-        if (section.getFields() != null) {
-            for (UiField field : section.getFields()) {
-                removeDeprecatedFields(field, String.join(".", path, field.getName()), obj);
+    private void cleanAnswers(Object answers, AnswerLevel previousLevel, AnswerLevel level) {
+        if (answers instanceof List<?> list) {
+            for (Object element : list) {
+                cleanAnswers(element, previousLevel, level);
             }
-        }
-        if (section.getSubSections() != null) {
-            for (Section s : section.getSubSections()) {
-                removeDeprecatedFieldsFromSection(s, "." + section.getName(), obj);
+        } else if (answers instanceof Map<?, ?> map) {
+            for (Map.Entry<String, AnswerLevel> previousSection : previousLevel.sections().entrySet()) {
+                String name = previousSection.getKey();
+                if (!map.containsKey(name)) {
+                    continue;
+                }
+                AnswerLevel section = level.sections().get(name);
+                if (section == null) {
+                    map.remove(name);
+                } else {
+                    cleanAnswers(map.get(name), previousSection.getValue(), section);
+                }
             }
-        }
-    }
-
-    /**
-     * Removes deprecated fields from a UiField and its subfields (recursive).
-     *
-     * @param field the current field to check
-     * @param path the current path of the field
-     * @param json the json object to modify
-     */
-    private void removeDeprecatedFields(UiField field, String path, JSONObject json) {
-        if (field.isDeprecated()) {
-            try {
-                JsonPath.parse(json).delete(path).json();
-            } catch (PathNotFoundException ignored) {}
-        } else {
-            if (field.getSubFields() != null) {
-                for (UiField f : field.getSubFields()) {
-                    removeDeprecatedFields(f, String.join(".", path, f.getName()), json);
+            for (Map.Entry<String, Question> previousQuestion : previousLevel.questions().entrySet()) {
+                String name = previousQuestion.getKey();
+                if (!map.containsKey(name)) {
+                    continue;
+                }
+                Question question = level.questions().get(name);
+                if (question == null || !question.active()
+                        || question.hasSubQuestions() != previousQuestion.getValue().hasSubQuestions()) {
+                    map.remove(name);
+                } else if (question.hasSubQuestions()) {
+                    cleanAnswers(map.get(name), previousQuestion.getValue().subQuestions(), question.subQuestions());
                 }
             }
         }
+    }
+
+    /**
+     * Builds one level of the answer structure of a model. The given fields and the fields of the given sections
+     * are questions of this level. A section with subsections also gets a nested level under its name, containing
+     * its subsections (recursive). Same-named fields or sections of a level are merged, as they share one key in
+     * the answer.
+     *
+     * @param sections the sections of the level
+     * @param fields the fields of the level
+     * @return the level
+     */
+    private static AnswerLevel answerLevelOf(List<Section> sections, List<UiField> fields) {
+        Map<String, List<UiField>> fieldsByName = new HashMap<>();
+        Map<String, List<Section>> subSectionsByName = new HashMap<>();
+        List<UiField> allFields = new ArrayList<>(fields);
+        for (Section section : sections) {
+            allFields.addAll(nonNull(section.getFields()));
+            if (section.getSubSections() != null) {
+                subSectionsByName.computeIfAbsent(section.getName(), k -> new ArrayList<>()).addAll(section.getSubSections());
+            }
+        }
+        for (UiField field : allFields) {
+            fieldsByName.computeIfAbsent(field.getName(), k -> new ArrayList<>()).add(field);
+        }
+
+        Map<String, AnswerLevel> levels = new HashMap<>();
+        subSectionsByName.forEach((name, subSections) -> levels.put(name, answerLevelOf(subSections, List.of())));
+        Map<String, Question> questions = new HashMap<>();
+        fieldsByName.forEach((name, sameNamed) -> questions.put(name, questionOf(sameNamed)));
+        return new AnswerLevel(levels, questions);
+    }
+
+    /**
+     * Merges same-named fields into one question. The question is active if any of the fields is active,
+     * and its sub-questions are the sub-fields of all the fields.
+     *
+     * @param fields the fields sharing a name in one level
+     * @return the question
+     */
+    private static Question questionOf(List<UiField> fields) {
+        boolean active = fields.stream().anyMatch(field -> !isInactive(field));
+        List<UiField> subFields = fields.stream().flatMap(field -> nonNull(field.getSubFields()).stream()).toList();
+        return new Question(active, subFields.isEmpty() ? null : answerLevelOf(List.of(), subFields));
+    }
+
+    private static boolean isInactive(UiField field) {
+        return field.isDeprecated() || FieldKinds.PAUSED.equals(field.getKind());
+    }
+
+    /**
+     * A level of an answer: the nested section levels and the questions it contains, by their key in the answer.
+     */
+    private record AnswerLevel(Map<String, AnswerLevel> sections, Map<String, Question> questions) {
+    }
+
+    /**
+     * A question of an answer level.
+     *
+     * @param active whether the question is asked
+     * @param subQuestions the level of its sub-questions, or null if it has none
+     */
+    private record Question(boolean active, AnswerLevel subQuestions) {
+        boolean hasSubQuestions() {
+            return subQuestions != null;
+        }
+    }
+
+    private static <T> List<T> nonNull(List<T> list) {
+        return list != null ? list : List.of();
     }
 
     /**
