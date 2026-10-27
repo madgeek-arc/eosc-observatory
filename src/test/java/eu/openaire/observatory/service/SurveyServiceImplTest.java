@@ -371,13 +371,19 @@ class SurveyServiceImplTest {
 
     /** Runs an import of {@code previous} into a 2025 answer and returns what gets saved. */
     private SurveyAnswer importAnswer(SurveyAnswer previous) throws ResourceNotFoundException {
+        return importAnswer(previous, previousModel(), currentModel());
+    }
+
+    /** Runs an import of {@code previous} from {@code previousModel} into a 2025 answer of {@code currentModel}. */
+    private SurveyAnswer importAnswer(SurveyAnswer previous, Model previousModel, Model currentModel)
+            throws ResourceNotFoundException {
         SurveyAnswer current = new SurveyAnswer();
         current.setId("sa-2025");
         current.setSurveyId("m-2025");
         current.setStakeholderId("sh-1");
 
-        when(modelService.get("m-2024")).thenReturn(previousModel());
-        when(modelService.get("m-2025")).thenReturn(currentModel());
+        when(modelService.get("m-2024")).thenReturn(previousModel);
+        when(modelService.get("m-2025")).thenReturn(currentModel);
         when(surveyAnswerCrudService.get("sa-2025")).thenReturn(current);
         when(surveyAnswerCrudService.update(eq("sa-2025"), any(SurveyAnswer.class)))
                 .thenAnswer(invocation -> invocation.getArgument(1));
@@ -462,6 +468,63 @@ class SurveyServiceImplTest {
         importAnswer(previous);
 
         assertEquals(json(PREVIOUS_ANSWER), previous.getAnswer());
+    }
+
+    /**
+     * Models whose questions share names across subsections, nest a third section level ("Nested")
+     * and change between having and not having sub-questions (Q12, Q13).
+     */
+    private static Model[] structuralModels() {
+        Model previous = previousModel();
+        previous.setSections(List.of(
+                section("Policies",
+                        section("Data", field("Q1"), field("comments")),
+                        section("Extra", field("comments")),
+                        section("Nested", section("Deep", field("Q10"), field("Q11"))),
+                        section("Shapes", field("Q12", "question", field("Q12-0")), field("Q13")))));
+        Model current = currentModel();
+        current.setSections(List.of(
+                section("Policies",
+                        section("Extra", field("comments", "paused")),
+                        section("Data", field("Q1"), field("comments")),
+                        section("Nested", section("Deep", field("Q10"), field("Q11", "paused"))),
+                        section("Shapes", field("Q12"), field("Q13", "question", field("Q13-0"))))));
+        return new Model[]{previous, current};
+    }
+
+    private JSONObject importStructural() throws ResourceNotFoundException {
+        Model[] models = structuralModels();
+        SurveyAnswer previous = previousAnswer();
+        previous.setAnswer(json("""
+                {
+                  "Policies": {
+                    "Q1": "z",
+                    "comments": "c",
+                    "Nested": {"Q10": "a", "Q11": "b"},
+                    "Q12": {"Q12-0": "x"},
+                    "Q13": "y"
+                  }
+                }"""));
+        return (JSONObject) importAnswer(previous, models[0], models[1]).getAnswer().get("Policies");
+    }
+
+    @Test
+    void importCleansQuestionsOfNestedSectionLevels() throws ResourceNotFoundException {
+        assertEquals(json("{\"Q10\": \"a\"}"), importStructural().get("Nested"));
+    }
+
+    @Test
+    void importKeepsSameNamedQuestionWhenAnyOfThemIsActive() throws ResourceNotFoundException {
+        assertEquals("c", importStructural().get("comments"));
+    }
+
+    @Test
+    void importRemovesQuestionsThatChangedBetweenHavingAndNotHavingSubQuestions() throws ResourceNotFoundException {
+        JSONObject policies = importStructural();
+
+        assertFalse(policies.containsKey("Q12"));
+        assertFalse(policies.containsKey("Q13"));
+        assertEquals("z", policies.get("Q1"));
     }
 
     @Test

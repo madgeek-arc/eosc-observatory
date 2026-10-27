@@ -18,6 +18,7 @@ package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.CsvBuilder;
 import eu.openaire.observatory.domain.*;
+import eu.openaire.observatory.utils.FieldKinds;
 import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.catalogue.ui.domain.Section;
@@ -46,8 +47,6 @@ public class SurveyCSVConverter implements CSVConverter {
     private static final String DELIMITER_SECONDARY = ";";
     private static final String JOINING_SYMBOL = "->";
     private static final String DOUBLE_QUOTE_ENCODED = "%22";
-    private static final String PAUSED_KIND = "paused";
-    private static final String EXTERNAL_KIND = "external";
     private static final String PAUSED_TAG = "(Paused) ";
     private static final String EXTERNAL_TAG = "(External) ";
 
@@ -377,14 +376,14 @@ public class SurveyCSVConverter implements CSVConverter {
 
     // paused wins over external
     private static String inactiveKind(String current, UiField field) {
-        if (PAUSED_KIND.equals(current) || PAUSED_KIND.equals(field.getKind())) return PAUSED_KIND;
-        if (EXTERNAL_KIND.equals(current) || EXTERNAL_KIND.equals(field.getKind())) return EXTERNAL_KIND;
+        if (FieldKinds.PAUSED.equals(current) || FieldKinds.PAUSED.equals(field.getKind())) return FieldKinds.PAUSED;
+        if (FieldKinds.EXTERNAL.equals(current) || FieldKinds.EXTERNAL.equals(field.getKind())) return FieldKinds.EXTERNAL;
         return null;
     }
 
     private static String tagOf(String kind) {
-        if (PAUSED_KIND.equals(kind)) return PAUSED_TAG;
-        if (EXTERNAL_KIND.equals(kind)) return EXTERNAL_TAG;
+        if (FieldKinds.PAUSED.equals(kind)) return PAUSED_TAG;
+        if (FieldKinds.EXTERNAL.equals(kind)) return EXTERNAL_TAG;
         return "";
     }
 }

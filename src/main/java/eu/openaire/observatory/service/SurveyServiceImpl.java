@@ -33,6 +33,7 @@ import eu.openaire.observatory.dto.SurveyAnswerMetadataDTO;
 import eu.openaire.observatory.permissions.Groups;
 import eu.openaire.observatory.permissions.PermissionService;
 import eu.openaire.observatory.permissions.Permissions;
+import eu.openaire.observatory.utils.FieldKinds;
 import eu.openaire.observatory.utils.JSONObjectUtils;
 import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
 import gr.uoa.di.madgik.registry.domain.Browsing;
@@ -62,7 +63,6 @@ import java.util.stream.Collectors;
 public class SurveyServiceImpl implements SurveyService {
 
     private static final Logger logger = LoggerFactory.getLogger(SurveyServiceImpl.class);
-    private static final String PAUSED_KIND = "paused";
 
     private final CrudService<Stakeholder> stakeholderCrudService;
     private final CrudService<SurveyAnswer> surveyAnswerCrudService;
@@ -241,7 +241,8 @@ public class SurveyServiceImpl implements SurveyService {
 
     /**
      * Creates a copy of a previous answer without the answers of questions that are paused, deprecated
-     * or deleted in the new model. The previous answer is not modified.
+     * or deleted in the new model, or whose question changed between having and not having sub-questions.
+     * The previous answer is not modified.
      *
      * @param previousAnswer the answer to import
      * @param previousModel the model the previous answer belongs to
@@ -250,74 +251,117 @@ public class SurveyServiceImpl implements SurveyService {
      */
     private JSONObject removeInactiveAnswers(JSONObject previousAnswer, Model previousModel, Model model) {
         JSONObject answer = (JSONObject) JSONValue.parse(previousAnswer.toJSONString());
-        Map<String, Section> sections = new HashMap<>();
-        for (Section section : nonNull(model.getSections())) {
-            sections.putIfAbsent(section.getName(), section);
-        }
-        for (Section previousSection : nonNull(previousModel.getSections())) {
-            String name = previousSection.getName();
-            if (!answer.containsKey(name)) {
-                continue;
-            }
-            Section section = sections.get(name);
-            if (section == null) {
-                answer.remove(name);
-            } else {
-                cleanAnswers(answer.get(name), questionsOf(previousSection), questionsOf(section));
-            }
-        }
+        cleanAnswers(answer, answerLevelOf(nonNull(previousModel.getSections()), List.of()),
+                answerLevelOf(nonNull(model.getSections()), List.of()));
         return answer;
     }
 
     /**
-     * Removes from the answers of a level the ones whose question is deleted or inactive in the new model.
-     * Inactive questions are removed together with all their sub-questions (recursive).
+     * Removes from the answers of a level the ones whose section or question is deleted or inactive in the new
+     * model, together with everything under them, and cleans the remaining ones (recursive).
      *
      * @param answers the answers of the current level (object, or list of objects for repeatable groups)
-     * @param previousFields the fields of the current level in the previous model
-     * @param fields the fields of the current level in the new model
+     * @param previousLevel the current level in the previous model
+     * @param level the current level in the new model
      */
-    private void cleanAnswers(Object answers, List<UiField> previousFields, List<UiField> fields) {
+    private void cleanAnswers(Object answers, AnswerLevel previousLevel, AnswerLevel level) {
         if (answers instanceof List<?> list) {
             for (Object element : list) {
-                cleanAnswers(element, previousFields, fields);
+                cleanAnswers(element, previousLevel, level);
             }
         } else if (answers instanceof Map<?, ?> map) {
-            Map<String, UiField> fieldsByName = new HashMap<>();
-            for (UiField field : fields) {
-                fieldsByName.putIfAbsent(field.getName(), field);
-            }
-            for (UiField previousField : previousFields) {
-                String name = previousField.getName();
+            for (Map.Entry<String, AnswerLevel> previousSection : previousLevel.sections().entrySet()) {
+                String name = previousSection.getKey();
                 if (!map.containsKey(name)) {
                     continue;
                 }
-                UiField field = fieldsByName.get(name);
-                if (field == null || isInactive(field)) {
+                AnswerLevel section = level.sections().get(name);
+                if (section == null) {
                     map.remove(name);
-                } else if (!nonNull(previousField.getSubFields()).isEmpty()) {
-                    cleanAnswers(map.get(name), previousField.getSubFields(), nonNull(field.getSubFields()));
+                } else {
+                    cleanAnswers(map.get(name), previousSection.getValue(), section);
+                }
+            }
+            for (Map.Entry<String, Question> previousQuestion : previousLevel.questions().entrySet()) {
+                String name = previousQuestion.getKey();
+                if (!map.containsKey(name)) {
+                    continue;
+                }
+                Question question = level.questions().get(name);
+                if (question == null || !question.active()
+                        || question.hasSubQuestions() != previousQuestion.getValue().hasSubQuestions()) {
+                    map.remove(name);
+                } else if (question.hasSubQuestions()) {
+                    cleanAnswers(map.get(name), previousQuestion.getValue().subQuestions(), question.subQuestions());
                 }
             }
         }
     }
 
     /**
-     * Returns the fields of a section and of all its subsections (recursive).
+     * Builds one level of the answer structure of a model. The given fields and the fields of the given sections
+     * are questions of this level. A section with subsections also gets a nested level under its name, containing
+     * its subsections (recursive). Same-named fields or sections of a level are merged, as they share one key in
+     * the answer.
      *
-     * @param section the section to use
-     * @return the fields of the section, flattened
+     * @param sections the sections of the level
+     * @param fields the fields of the level
+     * @return the level
      */
-    private List<UiField> questionsOf(Section section) {
-        List<UiField> fields = new ArrayList<>(nonNull(section.getFields()));
-        for (Section subSection : nonNull(section.getSubSections())) {
-            fields.addAll(questionsOf(subSection));
+    private static AnswerLevel answerLevelOf(List<Section> sections, List<UiField> fields) {
+        Map<String, List<UiField>> fieldsByName = new HashMap<>();
+        Map<String, List<Section>> subSectionsByName = new HashMap<>();
+        List<UiField> allFields = new ArrayList<>(fields);
+        for (Section section : sections) {
+            allFields.addAll(nonNull(section.getFields()));
+            if (section.getSubSections() != null) {
+                subSectionsByName.computeIfAbsent(section.getName(), k -> new ArrayList<>()).addAll(section.getSubSections());
+            }
         }
-        return fields;
+        for (UiField field : allFields) {
+            fieldsByName.computeIfAbsent(field.getName(), k -> new ArrayList<>()).add(field);
+        }
+
+        Map<String, AnswerLevel> levels = new HashMap<>();
+        subSectionsByName.forEach((name, subSections) -> levels.put(name, answerLevelOf(subSections, List.of())));
+        Map<String, Question> questions = new HashMap<>();
+        fieldsByName.forEach((name, sameNamed) -> questions.put(name, questionOf(sameNamed)));
+        return new AnswerLevel(levels, questions);
     }
 
-    private boolean isInactive(UiField field) {
-        return field.isDeprecated() || PAUSED_KIND.equals(field.getKind());
+    /**
+     * Merges same-named fields into one question. The question is active if any of the fields is active,
+     * and its sub-questions are the sub-fields of all the fields.
+     *
+     * @param fields the fields sharing a name in one level
+     * @return the question
+     */
+    private static Question questionOf(List<UiField> fields) {
+        boolean active = fields.stream().anyMatch(field -> !isInactive(field));
+        List<UiField> subFields = fields.stream().flatMap(field -> nonNull(field.getSubFields()).stream()).toList();
+        return new Question(active, subFields.isEmpty() ? null : answerLevelOf(List.of(), subFields));
+    }
+
+    private static boolean isInactive(UiField field) {
+        return field.isDeprecated() || FieldKinds.PAUSED.equals(field.getKind());
+    }
+
+    /**
+     * A level of an answer: the nested section levels and the questions it contains, by their key in the answer.
+     */
+    private record AnswerLevel(Map<String, AnswerLevel> sections, Map<String, Question> questions) {
+    }
+
+    /**
+     * A question of an answer level.
+     *
+     * @param active whether the question is asked
+     * @param subQuestions the level of its sub-questions, or null if it has none
+     */
+    private record Question(boolean active, AnswerLevel subQuestions) {
+        boolean hasSubQuestions() {
+            return subQuestions != null;
+        }
     }
 
     private static <T> List<T> nonNull(List<T> list) {
