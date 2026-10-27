@@ -18,6 +18,7 @@ package eu.openaire.observatory.controller;
 
 import eu.openaire.observatory.domain.SurveyAnswer;
 import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.domain.UserGroup;
 import eu.openaire.observatory.dto.Diff;
 import eu.openaire.observatory.dto.HistoryDTO;
 import eu.openaire.observatory.dto.SurveyAnswerInfo;
@@ -258,24 +259,42 @@ public class SurveyController {
      *
      * @param groupId the id of a coordinator, stakeholder or administrator group
      * @return the type of the group
-     * @throws ResourceException with status 400 if the id is blank, or 404 if no such group exists
+     * @throws ResourceException with status 400 if the id is blank, 404 if no such group exists,
+     *                           or 500 if the group has no type
      */
     private String getGroupType(String groupId) {
         if (!StringUtils.hasText(groupId)) {
             throw new ResourceException("groupId is missing", HttpStatus.BAD_REQUEST);
         }
+        UserGroup group = getGroup(groupId);
+        if (group == null) {
+            throw new ResourceException("no such groupId", HttpStatus.NOT_FOUND);
+        }
+        if (!StringUtils.hasText(group.getType())) {
+            throw new ResourceException("group has no type", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return group.getType();
+    }
+
+    /**
+     * Returns the coordinator, stakeholder or administrator group with the given id.
+     *
+     * @param groupId the id of the group
+     * @return the group, or null if the id has an unrecognized prefix or no such group exists
+     */
+    private UserGroup getGroup(String groupId) {
         try {
             if (groupId.startsWith("co-")) {
-                return coordinatorService.get(groupId).getType();
+                return coordinatorService.get(groupId);
             } else if (groupId.startsWith("sh-")) {
-                return stakeholderService.get(groupId).getType();
+                return stakeholderService.get(groupId);
             } else if (groupId.startsWith("admin-")) {
-                return administratorService.get(groupId).getType();
+                return administratorService.get(groupId);
             }
         } catch (ResourceNotFoundException e) {
-            // handled below
+            // no such group
         }
-        throw new ResourceException("no such groupId", HttpStatus.NOT_FOUND);
+        return null;
     }
 
     @GetMapping("answers/{id}/history")

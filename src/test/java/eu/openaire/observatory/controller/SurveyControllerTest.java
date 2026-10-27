@@ -85,6 +85,17 @@ class SurveyControllerTest {
     }
 
     @Test
+    void getSurveyInfo_groupWithoutType_isServerError() {
+        when(administratorService.get("admin-1")).thenReturn(new Administrator());
+
+        ResourceException ex = assertThrows(ResourceException.class, () -> controller.getSurveyInfo("admin-1", params("admin-1")));
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, ex.getStatus());
+        assertEquals("group has no type", ex.getMessage());
+        verifyNoInteractions(surveyService);
+    }
+
+    @Test
     void getSurveyInfo_groupIdIsNotPassedAsFilter() {
         Stakeholder stakeholder = new Stakeholder();
         stakeholder.setType("eosc-sb");
