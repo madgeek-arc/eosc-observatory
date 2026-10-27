@@ -465,6 +465,13 @@ class SurveyServiceImplTest {
     }
 
     @Test
+    void importWithoutPreviousAnswerSetsEmptyAnswer() throws ResourceNotFoundException {
+        SurveyAnswer result = importAnswer(null);
+
+        assertEquals(new JSONObject(), result.getAnswer());
+    }
+
+    @Test
     void importAddsImportedHistoryEntry() throws ResourceNotFoundException {
         SurveyAnswer result = importAnswer(previousAnswer());
 

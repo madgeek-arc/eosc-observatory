@@ -19,9 +19,6 @@ package eu.openaire.observatory.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-// TODO: clean up comments that are old code
-//import com.jayway.jsonpath.JsonPath;
-//import com.jayway.jsonpath.PathNotFoundException;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.dto.Diff;
 import eu.openaire.observatory.dto.EditorDTO;
@@ -229,14 +226,16 @@ public class SurveyServiceImpl implements SurveyService {
 
     /**
      * Prefills a survey answer based on a previous model's response.
+     * When the stakeholder has no answer for the previous model, the survey answer is set to an empty answer.
      *
      * @param previousModel the previous model to check for compatibility
      * @param surveyAnswer the survey answer to prefill
      */
     private void prefill(Model previousModel, SurveyAnswer surveyAnswer) {
         SurveyAnswer previous = getLatest(previousModel.getId(), surveyAnswer.getStakeholderId());
+        JSONObject previousAnswer = previous != null && previous.getAnswer() != null ? previous.getAnswer() : new JSONObject();
         Model model = modelService.get(surveyAnswer.getSurveyId());
-        JSONObject toImport = removeInactiveAnswers(previous.getAnswer(), previousModel, model);
+        JSONObject toImport = removeInactiveAnswers(previousAnswer, previousModel, model);
         surveyAnswer.setAnswer(toImport);
     }
 
@@ -324,63 +323,6 @@ public class SurveyServiceImpl implements SurveyService {
     private static <T> List<T> nonNull(List<T> list) {
         return list != null ? list : List.of();
     }
-
-    // TODO: clean up comments that are old code
-//    /**
-//     * Creates a new json from an existing, with its deprecated fields removed.
-//     *
-//     * @param model the model to use
-//     * @param obj the original json object
-//     * @return the json object without deprecated fields
-//     */
-//    private JSONObject removeDeprecatedFields(Model model, JSONObject obj) {
-//        JSONObject json = new JSONObject(obj);
-//        for (Section section : model.getSections()) {
-//            removeDeprecatedFieldsFromSection(section, ".", json);
-//        }
-//        return obj;
-//    }
-//
-//    /**
-//     * Removes deprecated fields from Section and its subsections (recursive).
-//     *
-//     * @param section the section to use
-//     * @param path the current path of the field
-//     * @param obj the json to modify
-//     */
-//    private void removeDeprecatedFieldsFromSection(Section section, String path, JSONObject obj) {
-//        if (section.getFields() != null) {
-//            for (UiField field : section.getFields()) {
-//                removeDeprecatedFields(field, String.join(".", path, field.getName()), obj);
-//            }
-//        }
-//        if (section.getSubSections() != null) {
-//            for (Section s : section.getSubSections()) {
-//                removeDeprecatedFieldsFromSection(s, "." + section.getName(), obj);
-//            }
-//        }
-//    }
-//
-//    /**
-//     * Removes deprecated fields from a UiField and its subfields (recursive).
-//     *
-//     * @param field the current field to check
-//     * @param path the current path of the field
-//     * @param json the json object to modify
-//     */
-//    private void removeDeprecatedFields(UiField field, String path, JSONObject json) {
-//        if (field.isDeprecated()) {
-//            try {
-//                JsonPath.parse(json).delete(path).json();
-//            } catch (PathNotFoundException ignored) {}
-//        } else {
-//            if (field.getSubFields() != null) {
-//                for (UiField f : field.getSubFields()) {
-//                    removeDeprecatedFields(f, String.join(".", path, f.getName()), json);
-//                }
-//            }
-//        }
-//    }
 
     /**
      * Ensure whether a previous model is <b>compatible</b> to be imported in a new model.
