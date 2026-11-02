@@ -2,6 +2,10 @@ def DOCKER_IMAGE = null
 def DOCKER_TAG = ''
 def DOCKER_IMAGE_SHA = ''
 
+def shouldPublishImage() {
+  return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
+}
+
 pipeline {
   agent { label 'master' }
 
@@ -132,23 +136,25 @@ pipeline {
           }
         }
 
-        stage('Build Image') {
-          steps {
-            script {
-              DOCKER_IMAGE = docker.build("${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG}", "--label job=${env.JOB_NAME} -f Dockerfile .")
-              DOCKER_IMAGE_SHA = sh(script: "docker inspect --format='{{.Id}}' ${DOCKER_IMAGE.id}", returnStdout: true).trim()
-            }
-          }
-        }
+      }
+    }
 
+    // Runs after the parallel block to avoid competing for the Docker daemon with Testcontainers and MegaLinter
+    stage('Build Image') {
+      when { // images are only built for branches that upload them
+        expression { return shouldPublishImage() }
+      }
+      steps {
+        script {
+          DOCKER_IMAGE = docker.build("${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG}", "--label job=${env.JOB_NAME} -f Dockerfile .")
+          DOCKER_IMAGE_SHA = sh(script: "docker inspect --format='{{.Id}}' ${DOCKER_IMAGE.id}", returnStdout: true).trim()
+        }
       }
     }
 
     stage('Upload Image') {
       when { // upload images only from 'develop', 'main' or tags
-        expression {
-          return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
-        }
+        expression { return shouldPublishImage() }
       }
       steps{
         script {
