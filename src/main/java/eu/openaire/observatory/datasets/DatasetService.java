@@ -26,6 +26,11 @@ public interface DatasetService {
 
     List<DatasetEntry> getAll();
 
+    /**
+     * Returns the entries whose fields equal the non-null fields of the filter, ignoring case.
+     */
+    List<DatasetEntry> getAll(DatasetEntry filter);
+
     void delete(Long id);
 
 }

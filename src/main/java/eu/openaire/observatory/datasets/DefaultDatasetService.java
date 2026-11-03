@@ -16,6 +16,8 @@
 
 package eu.openaire.observatory.datasets;
 
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,6 +25,9 @@ import java.util.Optional;
 
 @Service
 public class DefaultDatasetService implements DatasetService {
+
+    // null fields of the filter are left out, the rest must match whole values in any case
+    private static final ExampleMatcher FILTER_MATCHER = ExampleMatcher.matching().withIgnoreCase();
 
     private final DatasetRepository datasetRepository;
 
@@ -46,6 +51,11 @@ public class DefaultDatasetService implements DatasetService {
     @Override
     public List<DatasetEntry> getAll() {
         return datasetRepository.findAll();
+    }
+
+    @Override
+    public List<DatasetEntry> getAll(DatasetEntry filter) {
+        return datasetRepository.findAll(Example.of(filter, FILTER_MATCHER));
     }
 
     @Override

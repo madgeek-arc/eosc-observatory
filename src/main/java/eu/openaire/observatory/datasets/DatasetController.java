@@ -49,8 +49,25 @@ public class DatasetController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DatasetEntry>> getAll() {
-        return ResponseEntity.ok(datasetService.getAll());
+    public ResponseEntity<List<DatasetEntry>> getAll(@RequestParam(value = "year", required = false) String year,
+                                                     @RequestParam(value = "country", required = false) String country,
+                                                     @RequestParam(value = "name", required = false) String name,
+                                                     @RequestParam(value = "authority", required = false) String authority,
+                                                     @RequestParam(value = "value", required = false) String value,
+                                                     @RequestParam(value = "comment", required = false) String comment) {
+        return ResponseEntity.ok(datasetService.getAll(toFilter(year, country, name, authority, value, comment)));
+    }
+
+    /**
+     * Creates the filter of the entries, where a missing or blank parameter does not filter.
+     */
+    static DatasetEntry toFilter(String year, String country, String name, String authority, String value, String comment) {
+        return new DatasetEntry(blankToNull(year), blankToNull(country), blankToNull(name),
+                blankToNull(authority), blankToNull(value), blankToNull(comment));
+    }
+
+    private static String blankToNull(String parameter) {
+        return parameter == null || parameter.isBlank() ? null : parameter.trim();
     }
 
     @DeleteMapping("{id}")

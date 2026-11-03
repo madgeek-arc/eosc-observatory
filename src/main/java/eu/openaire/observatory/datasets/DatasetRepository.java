@@ -17,13 +17,14 @@
 package eu.openaire.observatory.datasets;
 
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.ListQueryByExampleExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface DatasetRepository extends CrudRepository<DatasetEntry, Long> {
+public interface DatasetRepository extends CrudRepository<DatasetEntry, Long>, ListQueryByExampleExecutor<DatasetEntry> {
 
     List<DatasetEntry> findAll();
 
