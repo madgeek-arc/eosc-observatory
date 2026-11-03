@@ -19,7 +19,7 @@ overview.
 | Area | Controllers (`src/main/java/eu/openaire/observatory/...`) |
 |---|---|
 | Organisation | `controller/AdministratorController`, `CoordinatorController`, `StakeholderController`, `GroupsController`, `InvitationController` (`POST /invitation` creates and emails an invitation, `POST /invitation/accept` accepts one) |
-| Surveys | `controller/SurveyController`, `SurveySettingsController`, `SurveyAnswerCommentController`, `CsvController` |
+| Surveys | `controller/SurveyController`, `SurveySettingsController`, `SurveyAnswerCommentController`, `CsvController` (`GET /csv/export/external/{id}?year=`, `ADMIN`: only the external questions, filled from `datasets/ExternalValueProvider`; until a source is set, `NoExternalValueProvider` leaves the values empty) |
 | Users and policy | `controller/UserController` (including `DELETE /users/{id}`, the `ADMIN` user purge), `PrivacyPolicyController`, `PermissionController`, `CsrfController` |
 | Content | `controller/DashboardController` (`/dashboards/{code}/types/...`: widget defaults per stakeholder type and per-stakeholder overrides), `NewsItemController`, `datasets/DatasetController`, `resources/ResourcesController`, `resources/analyzer/DocumentAnalyzerController` |
 | Integrations | `messaging/MessagingSystemController` (threads, inbox/outbox, `POST /threads/public` with reCAPTCHA), `statistics/StatsToolWrapperController`, `controller/AnalyticsController` |

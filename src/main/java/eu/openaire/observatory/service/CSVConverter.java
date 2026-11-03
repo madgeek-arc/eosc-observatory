@@ -23,6 +23,14 @@ public interface CSVConverter {
 
     String convertToCSV(String modelId, boolean includeSensitiveData, boolean validatedOnly, Date from, Date to);
 
+    /**
+     * Creates a csv with only the external questions of a model, filled with the values of their external source.
+     *
+     * @param modelId the survey model
+     * @param year    the data year of the values
+     */
+    String convertExternalToCSV(String modelId, String year);
+
     List<?> ingestFromCSV(String modelId, String data);
 
 }

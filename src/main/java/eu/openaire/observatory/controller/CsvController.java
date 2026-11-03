@@ -34,12 +34,16 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping(path = "csv", produces = MediaType.APPLICATION_JSON_VALUE)
 public class CsvController {
 
     private static final Logger logger = LoggerFactory.getLogger(CsvController.class);
+    private static final Pattern YEAR = Pattern.compile("\\d{4}");
+    private static final Pattern MODEL_YEAR = Pattern.compile("-(\\d{4})$");
 
     private final CSVConverter csvConverter;
 
@@ -90,6 +94,40 @@ public class CsvController {
         response.setHeader("Content-disposition", "attachment; filename=" + filename);
 
         return ResponseEntity.ok(csvConverter.convertToCSV(modelId, includeUsers, validatedOnly, dates[0], dates[1]).getBytes());
+    }
+
+    @GetMapping(
+            value = "/export/external/{id}",
+            produces = {MediaType.APPLICATION_OCTET_STREAM_VALUE}
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<byte[]> exportExternalQuestionsToCsv(@PathVariable("id") String modelId,
+                                                               @RequestParam(value = "year", required = false) String year,
+                                                               HttpServletResponse response) {
+        String dataYear = resolveDataYear(modelId, year);
+
+        String filename = String.format("%s_external_%s.tsv", modelId, dataYear);
+        response.setHeader("Content-disposition", "attachment; filename=" + filename);
+
+        return ResponseEntity.ok(csvConverter.convertExternalToCSV(modelId, dataYear).getBytes());
+    }
+
+    /**
+     * Returns the given year, or else the year before the one at the end of the model id
+     * (e.g. 2024 for "m-eosc-sb-2025"), since the questions of a survey ask about the previous year.
+     */
+    static String resolveDataYear(String modelId, String year) {
+        if (year != null && !year.isBlank()) {
+            if (!YEAR.matcher(year).matches()) {
+                throw new ResourceException("year must have four digits.", HttpStatus.BAD_REQUEST);
+            }
+            return year;
+        }
+        Matcher matcher = MODEL_YEAR.matcher(modelId);
+        if (!matcher.find()) {
+            throw new ResourceException("The model id has no year, please provide the year.", HttpStatus.BAD_REQUEST);
+        }
+        return String.valueOf(Integer.parseInt(matcher.group(1)) - 1);
     }
 
     private Date[] parseDateRange(String dateFrom, String dateTo) throws ParseException {

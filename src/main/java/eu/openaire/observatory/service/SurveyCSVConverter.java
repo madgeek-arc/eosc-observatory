@@ -17,6 +17,7 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.CsvBuilder;
+import eu.openaire.observatory.datasets.ExternalValueProvider;
 import eu.openaire.observatory.domain.*;
 import eu.openaire.observatory.utils.FieldKinds;
 import gr.uoa.di.madgik.catalogue.ui.domain.FieldType;
@@ -54,17 +55,20 @@ public class SurveyCSVConverter implements CSVConverter {
     private final SurveyService surveyService;
     private final StakeholderService stakeholderService;
     private final UserService userService;
+    private final ExternalValueProvider externalValueProvider;
 
     private CsvBuilder csvBuilder;
 
     public SurveyCSVConverter(ModelService modelService,
                               SurveyService surveyService,
                               StakeholderService stakeholderService,
-                              UserService userService) {
+                              UserService userService,
+                              ExternalValueProvider externalValueProvider) {
         this.modelService = modelService;
         this.surveyService = surveyService;
         this.stakeholderService = stakeholderService;
         this.userService = userService;
+        this.externalValueProvider = externalValueProvider;
     }
 
     private String[][] csvToTable(String data) {
@@ -179,6 +183,70 @@ public class SurveyCSVConverter implements CSVConverter {
         }
 
         return this.csvBuilder.toCsv();
+    }
+
+    @Override
+    public String convertExternalToCSV(String modelId, String year) {
+        Model model = modelService.get(modelId);
+        List<List<UiField>> externalFields = getFieldHierarchy(model)
+                .stream()
+                .filter(SurveyCSVConverter::isExternal)
+                .toList();
+
+        // one row per stakeholder, answered or not: the values come from the external source, not the answers
+        List<Stakeholder> stakeholders = stakeholderService.getWithFilter("type", model.getType())
+                .stream()
+                .sorted(Comparator.comparing(Stakeholder::getName, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        // a local builder, so that concurrent exports do not share it
+        CsvBuilder builder = new CsvBuilder();
+        builder.addColumn("Stakeholder Id", stakeholders.stream().map(sh -> orEmpty(sh.getId())).toList());
+        builder.addColumn("Stakeholder Names", stakeholders.stream().map(sh -> orEmpty(sh.getName())).toList());
+        builder.addColumn("Country", stakeholders.stream().map(sh -> orEmpty(sh.getCountry())).toList());
+
+        Set<String> headers = new HashSet<>();
+        for (List<UiField> fieldsToLeaf : externalFields) {
+            UiField leaf = fieldsToLeaf.get(fieldsToLeaf.size() - 1);
+            Map<String, String> values = externalValueProvider.getValues(leaf.getName(), year);
+            if (values.isEmpty()) {
+                logger.debug("No external values for '{}' of model [{}] in year {}.", leaf.getName(), modelId, year);
+            }
+            String header = externalHeader(fieldsToLeaf);
+            // labels are not unique, the field name keeps the column apart
+            if (!headers.add(header)) {
+                header = String.format("%s (%s)", header, leaf.getName());
+                headers.add(header);
+            }
+            builder.addColumn(header, stakeholders.stream()
+                    .map(sh -> sh.getCountry() == null ? "" : orEmpty(values.get(sh.getCountry())))
+                    .toList());
+        }
+        return builder.toCsv();
+    }
+
+    // a question is external when it or any of its parents is, even when paused or deprecated
+    private static boolean isExternal(List<UiField> fieldsToLeaf) {
+        return fieldsToLeaf.stream().anyMatch(field -> FieldKinds.EXTERNAL.equals(field.getKind()));
+    }
+
+    // same header as the full export, so that the two files can be compared
+    private static String externalHeader(List<UiField> fieldsToLeaf) {
+        String kind = null;
+        List<String> labels = new ArrayList<>();
+        for (UiField field : fieldsToLeaf) {
+            kind = inactiveKind(kind, field);
+            labels.add(field.getLabel() != null && field.getLabel().getText() != null
+                    ? field.getLabel().getText()
+                    : field.getName());
+        }
+        int last = labels.size() - 1;
+        labels.set(last, tagOf(kind) + labels.get(last));
+        return String.join(JOINING_SYMBOL, labels);
+    }
+
+    private static String orEmpty(String value) {
+        return value != null ? value : "";
     }
 
     private List<SurveyAnswer> getSurveyAnswers(Model model, boolean validatedOnly, Date from, Date to) {

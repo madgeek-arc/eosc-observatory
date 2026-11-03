@@ -16,6 +16,8 @@
 
 package eu.openaire.observatory.service;
 
+import eu.openaire.observatory.datasets.ExternalValueProvider;
+import eu.openaire.observatory.datasets.NoExternalValueProvider;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
@@ -38,9 +40,13 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -66,7 +72,11 @@ class SurveyCSVConverterTest {
     private static final Date TO = new Date(Long.MAX_VALUE / 2);
 
     private void setUp() {
-        converter = new SurveyCSVConverter(modelService, surveyService, stakeholderService, userService);
+        setUp((fieldName, year) -> Map.of());
+    }
+
+    private void setUp(ExternalValueProvider externalValueProvider) {
+        converter = new SurveyCSVConverter(modelService, surveyService, stakeholderService, userService, externalValueProvider);
     }
 
     /** Builds a leaf/composite {@link UiField} with the plumbing (typeInfo, form/display) createValues() relies on. */
@@ -386,6 +396,144 @@ class SurveyCSVConverterTest {
 
         assertThat(headerRow(csv)).contains("Practices->Question68->63. How much did your country invest?");
         assertThat(csv).doesNotContain("(Paused)").doesNotContain("(External)");
+    }
+
+    private static Stakeholder stakeholder(String id, String name, String country) {
+        Stakeholder stakeholder = new Stakeholder();
+        stakeholder.setId(id);
+        stakeholder.setName(name);
+        stakeholder.setCountry(country);
+        return stakeholder;
+    }
+
+    private void mockStakeholders(Model model, Stakeholder... stakeholders) {
+        when(modelService.get(model.getId())).thenReturn(model);
+        when(stakeholderService.getWithFilter("type", model.getType())).thenReturn(new HashSet<>(Arrays.asList(stakeholders)));
+    }
+
+    /** Mirrors Question57 and Question77: an external question and an external question inside a paused one. */
+    private static Model externalModel() {
+        UiField publications = field("Question57-0", "52. How many open access publications?", FieldType.number, false, null);
+        UiField question57 = field("Question57", "52. How many open access publications?", "external", FieldType.composite, false, List.of(publications));
+        UiField services = field("Question77-0", "72. How many services?", "external", FieldType.number, false, null);
+        UiField question77 = field("Question77", "72. How many services?", "paused", FieldType.composite, false, List.of(services));
+        UiField policy = field("Question26-0", "21. Is there a national policy?", FieldType.radio, false, null);
+        UiField question26 = field("Question26", "21. Is there a national policy?", FieldType.composite, false, List.of(policy));
+
+        Section fieldsSection = new Section();
+        fieldsSection.setFields(List.of(question57, question77, question26));
+        Section practicesSection = new Section();
+        practicesSection.setName("Practices");
+        practicesSection.setSubSections(List.of(fieldsSection));
+
+        Model model = new Model();
+        model.setId("m-eosc-sb-2025");
+        model.setSections(List.of(practicesSection));
+        return model;
+    }
+
+    private static final String PUBLICATIONS_HEADER =
+            "Practices->52. How many open access publications?->(External) 52. How many open access publications?";
+    private static final String SERVICES_HEADER = "Practices->72. How many services?->(Paused) 72. How many services?";
+
+    private static String cellValue(String csv, String header, int row) {
+        int columnIndex = headerRow(csv).indexOf(header);
+        assertThat(columnIndex).as("header '%s' not found in CSV output", header).isGreaterThanOrEqualTo(0);
+        return csv.split("\n")[row].split("\t", -1)[columnIndex];
+    }
+
+    @Test
+    void convertExternalToCSVKeepsOnlyExternalQuestionsFilledByCountry() {
+        setUp((fieldName, year) -> "Question57-0".equals(fieldName) && "2024".equals(year)
+                ? Map.of("GR", "1200", "FR", "5300")
+                : Map.of());
+        Model model = externalModel();
+        mockStakeholders(model, stakeholder("sh-country-GR", "Greece", "GR"), stakeholder("sh-country-FR", "France", "FR"));
+
+        String csv = converter.convertExternalToCSV(model.getId(), "2024");
+
+        assertThat(headerRow(csv)).contains("Stakeholder Id", "Stakeholder Names", "Country", PUBLICATIONS_HEADER, SERVICES_HEADER);
+        assertThat(csv).doesNotContain("21. Is there a national policy?");
+        // rows are sorted by stakeholder name
+        assertThat(cellValue(csv, "Stakeholder Names", 1)).isEqualTo("France");
+        assertThat(cellValue(csv, PUBLICATIONS_HEADER, 1)).isEqualTo("5300");
+        assertThat(cellValue(csv, "Stakeholder Names", 2)).isEqualTo("Greece");
+        assertThat(cellValue(csv, PUBLICATIONS_HEADER, 2)).isEqualTo("1200");
+        assertThat(cellValue(csv, SERVICES_HEADER, 2)).isEmpty();
+        // the values come from the external source, the answers are never read
+        verify(surveyService, never()).getLatest(any(), any());
+    }
+
+    @Test
+    void convertExternalToCSVLeavesCellsEmptyWithoutValueOrCountry() {
+        setUp((fieldName, year) -> Map.of("GR", "1200"));
+        Model model = externalModel();
+        mockStakeholders(model, stakeholder("sh-country-IT", "Italy", "IT"), stakeholder("sh-other", "Other", null));
+
+        String csv = converter.convertExternalToCSV(model.getId(), "2024");
+
+        assertThat(cellValue(csv, PUBLICATIONS_HEADER, 1)).isEmpty();
+        assertThat(cellValue(csv, "Country", 2)).isEmpty();
+        assertThat(cellValue(csv, PUBLICATIONS_HEADER, 2)).isEmpty();
+        assertThat(csv).doesNotContain("null");
+    }
+
+    @Test
+    void convertExternalToCSVHasHeadersAndEmptyCellsWithThePlaceholderProvider() {
+        setUp(new NoExternalValueProvider());
+        Model model = externalModel();
+        mockStakeholders(model, stakeholder("sh-country-GR", "Greece", "GR"));
+
+        String csv = converter.convertExternalToCSV(model.getId(), "2024");
+
+        assertThat(csv.split("\n")).hasSize(2);
+        assertThat(cellValue(csv, "Country", 1)).isEqualTo("GR");
+        assertThat(cellValue(csv, PUBLICATIONS_HEADER, 1)).isEmpty();
+        assertThat(cellValue(csv, SERVICES_HEADER, 1)).isEmpty();
+    }
+
+    @Test
+    void convertExternalToCSVKeepsDeprecatedExternalQuestions() {
+        setUp((fieldName, year) -> Map.of("GR", "35000"));
+        // mirrors Question1: deprecated in the 2025 model, but its value still comes from Eurostat
+        UiField researchers = field("Question1-0", "1. How many researchers (FTE)?", "external", FieldType.string, false, null);
+        researchers.setDeprecated(true);
+        UiField question1 = field("Question1", "1. How many researchers (FTE)?", FieldType.composite, false, List.of(researchers));
+        question1.setDeprecated(true);
+        Model model = model(question1);
+        mockStakeholders(model, stakeholder("sh-country-GR", "Greece", "GR"));
+
+        String csv = converter.convertExternalToCSV(model.getId(), "2024");
+
+        assertThat(cellValue(csv, "Practices->1. How many researchers (FTE)?->(External) 1. How many researchers (FTE)?", 1))
+                .isEqualTo("35000");
+    }
+
+    @Test
+    void convertExternalToCSVKeepsColumnsWithTheSameLabelApart() {
+        setUp((fieldName, year) -> Map.of("GR", fieldName));
+        UiField first = field("Question10-0", "How many?", "external", FieldType.number, false, null);
+        UiField second = field("Question10-1", "How many?", "external", FieldType.number, false, null);
+        UiField question10 = field("Question10", "Question10", FieldType.composite, false, List.of(first, second));
+        Model model = model(question10);
+        mockStakeholders(model, stakeholder("sh-country-GR", "Greece", "GR"));
+
+        String csv = converter.convertExternalToCSV(model.getId(), "2024");
+
+        assertThat(cellValue(csv, "Practices->Question10->(External) How many?", 1)).isEqualTo("Question10-0");
+        assertThat(cellValue(csv, "Practices->Question10->(External) How many? (Question10-1)", 1)).isEqualTo("Question10-1");
+    }
+
+    @Test
+    void convertExternalToCSVHasOnlyHeadersWithoutStakeholders() {
+        setUp();
+        Model model = externalModel();
+        mockStakeholders(model);
+
+        String csv = converter.convertExternalToCSV(model.getId(), "2024");
+
+        assertThat(csv.split("\n")).hasSize(1);
+        assertThat(headerRow(csv)).contains(PUBLICATIONS_HEADER);
     }
 
     private static List<String> headerRow(String csv) {
