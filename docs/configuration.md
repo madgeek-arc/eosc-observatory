@@ -19,7 +19,7 @@ a core feature fails.
 | `server.servlet.context-path` | No | `/api` | All endpoints are under it |
 | `server.servlet.session.timeout` | No | `120m` | Session lifetime (sessions stored in Redis) |
 | `server.servlet.session.cookie.domain` | No | empty | Set when the frontend runs on a sibling domain |
-| `spring.profiles.active` | No | `mail-debug` | `mail-debug` replaces the mailer with a logging stub (`configuration/MailDebugConfig.java`). **Override it in deployed environments to send real email** |
+| `spring.profiles.active` | No | none | `mail-debug` replaces the mailer with a logging stub (`configuration/MailDebugConfig.java`). Set it locally and in environments that must not send real email |
 | `spring.servlet.multipart.max-file-size` / `max-request-size` | No | `100MB` | Upload limits (CSV, datasets, restore) |
 | `management.endpoint.health.show-details` / `.roles` | No | `when-authorized` / `ADMIN` | Health component details only for `ADMIN` users |
 
@@ -97,9 +97,9 @@ a core feature fails.
 
 | Environment | Notes |
 |---|---|
-| Local | Override credentials, OIDC registration, `observatory.*` (including `invitationKey` and `hmacSecret`), `analytics.*`, `mailer.from`, `stats-tool.endpoint`, `google.recaptcha.secret`. Keep `mail-debug` |
+| Local | Override credentials, OIDC registration, `observatory.*` (including `invitationKey` and `hmacSecret`), `analytics.*`, `mailer.from`, `stats-tool.endpoint`, `google.recaptcha.secret`. Set `spring.profiles.active=mail-debug` |
 | Tests | `src/test/resources/application.properties`: HSQLDB for authorization and erasure, dummy secrets, Flyway on. Integration tests use Testcontainers PostgreSQL and Elasticsearch |
-| Production | Real values for all secrets, `spring.profiles.active` without `mail-debug`, `observatory.surveySchedulerCron` if needed, the mailer and messaging API keys if those services set them. One instance only. Values are set per deployment through environment variables or an external configuration, not stored in the repository |
+| Production | Real values for all secrets, no `mail-debug` profile, `observatory.surveySchedulerCron` if needed, the mailer and messaging API keys if those services set them. One instance only. Values are set per deployment through environment variables or an external configuration, not stored in the repository |
 
 ## Secrets management
 

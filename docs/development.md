@@ -25,7 +25,7 @@ API at `http://localhost:8280/api`. Swagger UI at `/api/swagger-ui/index.html`.
 
 ## Local setup notes
 
-- Start from [`application-example.properties`](../application-example.properties). Keep the default
+- Start from [`application-example.properties`](../application-example.properties). Keep its
   `mail-debug` profile so no real email is sent. Set `observatory.invitationKey` (startup fails
   without it) and `observatory.hmacSecret` (user purge fails without it).
 - The registry schema is validated at startup. Point `registry.datasource.*` at a database that

@@ -79,7 +79,7 @@ built from FreeMarker templates and posted to `{mailer.client.host}/mails` by `R
   are not retried, since the mail may already have reached some recipients.
 - After the last attempt it throws `MailDeliveryException`. Every caller catches it and logs.
 - When `mailer.client.api-key` is set, it's sent as `X-API-Key`.
-- With the default `mail-debug` profile, a stub replaces the mailer. It logs masked addresses and
+- With the `mail-debug` profile, a stub replaces the mailer. It logs masked addresses and
   keeps the messages in memory.
 
 ### Messaging system

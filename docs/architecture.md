@@ -191,8 +191,8 @@ result as a `document` resource with status `PENDING` for review. Generation run
   answer is created and removed when it is deleted, so checks are a lookup rather than a computation.
 - **Cache-then-flush for answers.** Frequent autosaves go to Redis to avoid creating a registry
   version for every keystroke.
-- **Mail debugging by default.** The `mail-debug` profile replaces the mailer with a logging stub
-  that masks addresses. It must be removed for real delivery.
+- **Opt-in mail debugging.** The `mail-debug` profile replaces the mailer with a logging stub
+  that masks addresses. No profile is active by default, so emails are delivered.
 - **Single instance.** Schedulers, survey-answer locks (`SurveyAnswerLocks`) and the purge lock
   (`ErasureCoordinationAspect`) are in-memory, so exactly one backend instance must run.
 - **No registry JMS.** `registry-starter-jms` isn't a dependency, so registry change events aren't

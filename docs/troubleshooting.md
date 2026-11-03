@@ -10,7 +10,7 @@
 | Startup fails on registry schema validation | `hbm2ddl.auto=validate` against an empty or old database | Hibernate validation error | Bootstrap or migrate the registry schema first |
 | Startup fails launching Chromium | Running outside the Docker image without Playwright browsers or OS libraries | Stack trace from `WebPageContentExtractor` | Use the image, or install Playwright Chromium (`install --with-deps chromium`) |
 | Login works but the user has no admin rights | `observatory.admins` unset or the email isn't listed | The configured emails | Set `observatory.admins` |
-| No emails sent | `mail-debug` profile active (default) | Startup profiles, `MailDebugConfig` logs | Set `spring.profiles.active` without `mail-debug` |
+| No emails sent | `mail-debug` profile active | Startup profiles, `MailDebugConfig` logs | Set `spring.profiles.active` without `mail-debug` |
 | Emails not received, `Mail delivery failed after n attempt(s)` in the logs | Mailer unreachable or slow, wrong `mailer.client.host`, `401` (API key), or `502` (SMTP delivery failed in the mailer) | The logged root cause, mailer logs | Fix the host, set `mailer.client.api-key` to the mailer's `mail.api-key`, or fix the mailer's SMTP settings |
 | Requests are slow while mail is sent | Mail is sent synchronously, with up to 5 attempts | `Mail delivery attempt n/m failed` warnings | Fix the mailer, or lower `mailer.retry.*` / `mailer.client.*-timeout` |
 | `403` on POST/PUT/DELETE | Missing or stale CSRF token | `X-XSRF-TOKEN` header vs the `XSRF-TOKEN` cookie | Fetch `GET /api/csrf` and resend |

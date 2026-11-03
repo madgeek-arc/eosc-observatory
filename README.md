@@ -60,8 +60,8 @@ See [docs/configuration.md](docs/configuration.md). Then:
 ./mvnw spring-boot:run
 ```
 
-The API is served at `http://localhost:8280/api`. Note that `spring.profiles.active=mail-debug` is the
-default, so outgoing emails are logged instead of sent.
+The API is served at `http://localhost:8280/api`. Outgoing emails are sent through the mailer. Start with
+`--spring.profiles.active=mail-debug` to log them instead.
 
 To build the runnable jar:
 
