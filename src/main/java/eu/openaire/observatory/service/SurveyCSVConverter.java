@@ -218,8 +218,9 @@ public class SurveyCSVConverter implements CSVConverter {
                 header = String.format("%s (%s)", header, leaf.getName());
                 headers.add(header);
             }
+            // the values are keyed by upper case country codes, the stakeholders' codes are not normalised
             builder.addColumn(header, stakeholders.stream()
-                    .map(sh -> sh.getCountry() == null ? "" : orEmpty(values.get(sh.getCountry())))
+                    .map(sh -> sh.getCountry() == null ? "" : orEmpty(values.get(sh.getCountry().toUpperCase(Locale.ROOT))))
                     .toList());
         }
         return builder.toCsv();

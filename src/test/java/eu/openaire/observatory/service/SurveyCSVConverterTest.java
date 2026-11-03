@@ -17,7 +17,6 @@
 package eu.openaire.observatory.service;
 
 import eu.openaire.observatory.datasets.ExternalValueProvider;
-import eu.openaire.observatory.datasets.NoExternalValueProvider;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.SurveyAnswer;
 import gr.uoa.di.madgik.catalogue.service.ModelService;
@@ -479,8 +478,8 @@ class SurveyCSVConverterTest {
     }
 
     @Test
-    void convertExternalToCSVHasHeadersAndEmptyCellsWithThePlaceholderProvider() {
-        setUp(new NoExternalValueProvider());
+    void convertExternalToCSVHasHeadersAndEmptyCellsWithoutExternalValues() {
+        setUp();
         Model model = externalModel();
         mockStakeholders(model, stakeholder("sh-country-GR", "Greece", "GR"));
 
@@ -490,6 +489,18 @@ class SurveyCSVConverterTest {
         assertThat(cellValue(csv, "Country", 1)).isEqualTo("GR");
         assertThat(cellValue(csv, PUBLICATIONS_HEADER, 1)).isEmpty();
         assertThat(cellValue(csv, SERVICES_HEADER, 1)).isEmpty();
+    }
+
+    @Test
+    void convertExternalToCSVMatchesLowerCaseStakeholderCountries() {
+        setUp((fieldName, year) -> Map.of("GR", "58"));
+        Model model = externalModel();
+        mockStakeholders(model, stakeholder("sh-country-gr", "Greece", "gr"));
+
+        String csv = converter.convertExternalToCSV(model.getId(), "2024");
+
+        assertThat(cellValue(csv, "Country", 1)).isEqualTo("gr");
+        assertThat(cellValue(csv, SERVICES_HEADER, 1)).isEqualTo("58");
     }
 
     @Test
