@@ -5,6 +5,71 @@
 
 * log errors from fire-and-forget post-thread-update tasks ([d112a52](https://github.com/madgeek-arc/eosc-observatory/commit/d112a527462f6494329c403928f5e4fe0f2cb2ac))
 
+## [4.5.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.2...4.5.0) (2026-11-03)
+
+
+### Features
+
+* **erasure:** serialize group writes against purge via AOP lock ([137921d](https://github.com/madgeek-arc/eosc-observatory/commit/137921d6e56da99a08d5b8ac9932c2366759e7ac))
+* **tsv:** mark paused and external questions in export headers ([9388101](https://github.com/madgeek-arc/eosc-observatory/commit/9388101b8018d19ec2093422d44cd4eac113c575))
+
+
+### Bug Fixes
+
+* **administrators:** let group members add and remove members ([a6b990a](https://github.com/madgeek-arc/eosc-observatory/commit/a6b990a9d7e7695c3b96a744c2bf8e8f4849f6de))
+* **answers:** reject groups without a type on GET /answers/info ([2336bde](https://github.com/madgeek-arc/eosc-observatory/commit/2336bde6923c8b0b78b58c4bea75e0e10f226770))
+* **answers:** require groupId on GET /answers/info ([dfc3073](https://github.com/madgeek-arc/eosc-observatory/commit/dfc3073c6b3191bfadd3bfa6f41f3b07462e9c46))
+* bump registry version including embedding model warmup ([2636880](https://github.com/madgeek-arc/eosc-observatory/commit/2636880908cede1958cea370be87c2a84686d5b1))
+* **cache:** restore package-private access to RedisCacheService.PREFIX ([c2ea8fd](https://github.com/madgeek-arc/eosc-observatory/commit/c2ea8fd34e1231fdc424a406c800e45b833aec52))
+* **changelog:** point 4.4.1/4.4.2 commit links at their current main SHAs ([20ab3c6](https://github.com/madgeek-arc/eosc-observatory/commit/20ab3c6a4d43394296f0501fec9108a70180d368))
+* **config:** default observatory.admins to none and pseudonymise permission debug logs with observatory.hmacSecret ([037c759](https://github.com/madgeek-arc/eosc-observatory/commit/037c759b397d8dedc4a2f95cae6f38e5bf62772f))
+* **erasure:** re-authorize live survey-answer edits over WebSocket per message ([e5b0774](https://github.com/madgeek-arc/eosc-observatory/commit/e5b0774148bce14bcaa1c55b98b1383196c45955))
+* **erasure:** re-authorize live survey-answer edits over WebSocket per message ([2e1a2d2](https://github.com/madgeek-arc/eosc-observatory/commit/2e1a2d20e620c064aef1f58a41c8381ae26874a8))
+* export the latest answer per stakeholder for date ranges ([a58bc84](https://github.com/madgeek-arc/eosc-observatory/commit/a58bc84aef8d7c141de844d67665595fce20559d))
+* export the latest answer per stakeholder for date ranges ([73e88d2](https://github.com/madgeek-arc/eosc-observatory/commit/73e88d2a98932a7849b5b54bdda0416aa52fdd3f))
+* **import:** match answers to questions by their level in the answer ([3148b65](https://github.com/madgeek-arc/eosc-observatory/commit/3148b658b6752f0a7f0d90e43f4894d76cdd52d1))
+* **import:** set an empty answer when there is no previous answer ([321d0dd](https://github.com/madgeek-arc/eosc-observatory/commit/321d0dde4a5e5f4e2a5ff2034894d76e18bfe323))
+* **import:** skip paused, deprecated and deleted answers ([4e0a1e2](https://github.com/madgeek-arc/eosc-observatory/commit/4e0a1e26f077517668ed76bf72fceb112000128a))
+* **invitations:** accept invitation when the user already exists ([a5f8492](https://github.com/madgeek-arc/eosc-observatory/commit/a5f84921ca790ca05e5efb09a7b20b49d1c596a1))
+* list countries by their latest validated answer ([9a28e24](https://github.com/madgeek-arc/eosc-observatory/commit/9a28e24a4963871148079cbdffd428666eae7773))
+* list countries by their latest validated answer ([77ef052](https://github.com/madgeek-arc/eosc-observatory/commit/77ef0528040c5e2c3635c9f086cfdff7956b4723))
+* **logging:** log resource ids instead of whole objects ([8e66f38](https://github.com/madgeek-arc/eosc-observatory/commit/8e66f38e99c08ee36b8439e08c15fce32655115e))
+* **logging:** stop writing user emails to mail-debug and error logs ([cb06bb7](https://github.com/madgeek-arc/eosc-observatory/commit/cb06bb737ec75600ad2b56e2cd426f53fd010f66))
+* **mailer:** send the optional mailer API key and don't retry failed SMTP deliveries ([78f06c4](https://github.com/madgeek-arc/eosc-observatory/commit/78f06c4cb872ccd6d5fb7c580d18229c77c045db))
+* **mailer:** stop retrying read timeouts to avoid duplicate deliveries ([1c30e82](https://github.com/madgeek-arc/eosc-observatory/commit/1c30e82339a6ea76d92456015fd8a684b63abc66))
+* **messaging:** require thread participation for read receipts, the sender's own email for new threads, and the ADMIN authority for thread updates ([a103213](https://github.com/madgeek-arc/eosc-observatory/commit/a103213128e213e240286d2ae03bd5a35fe3309f))
+* **security:** restrict embedded registry endpoints to ADMIN and require login for the catalogue data proxy ([a91246f](https://github.com/madgeek-arc/eosc-observatory/commit/a91246f2f57f72483dfa31687013594395865e78))
+* **security:** send CORS headers only to configured origins ([ee611e1](https://github.com/madgeek-arc/eosc-observatory/commit/ee611e17955c79f544fa981a294cc03903f3a2c8))
+* **security:** show health details to administrators only ([8444cf7](https://github.com/madgeek-arc/eosc-observatory/commit/8444cf7824eb0d56501e9e5342e9a0558a8bed3a))
+* **security:** stop logging raw Authentication objects ([e8f9198](https://github.com/madgeek-arc/eosc-observatory/commit/e8f9198d8db7d76399e9318726f5a5894ac1f7f4))
+* **survey:** don't record 'unknown' editor in history ([405a011](https://github.com/madgeek-arc/eosc-observatory/commit/405a011e2ef8069710ecddd28349c51a8b50e968))
+* **survey:** persist survey answer updates once instead of twice ([a1d2df1](https://github.com/madgeek-arc/eosc-observatory/commit/a1d2df115c75304f88ef29ecf27ddbb12b085f49))
+* **surveys:** skip the type filter when browsing answers without a group ([8c6df16](https://github.com/madgeek-arc/eosc-observatory/commit/8c6df161589fd447b40523102ed11313c26a1b0d))
+* **test:** update stale Redis key prefix fixtures to match the renamed constant ([2de1fab](https://github.com/madgeek-arc/eosc-observatory/commit/2de1fabf2ab080260802cbfec702de59b3a6a732))
+* update registry-core.version to release version ([ce2c211](https://github.com/madgeek-arc/eosc-observatory/commit/ce2c211aab2a667bc12ec0f9caeb16848f0f2667))
+* update schema of survey_settings resource type ([4507ecc](https://github.com/madgeek-arc/eosc-observatory/commit/4507eccbb05a30d5995c0373f123eb9d48a7006f))
+* update SurveyCSVConverterTest for validatedOnly parameter ([58543a8](https://github.com/madgeek-arc/eosc-observatory/commit/58543a84ebb9ebcdd7136c865227bf5ab567c833))
+* **websockets:** log session activity at debug level with pseudonymised users ([6ed624b](https://github.com/madgeek-arc/eosc-observatory/commit/6ed624b25cbd52681c1fea695270a373f27879de))
+
+
+### Refactoring
+
+* **dashboards:** generalize indicator widgets into code-scoped dashboard defaults and overrides ([050a7ee](https://github.com/madgeek-arc/eosc-observatory/commit/050a7ee883d5a97dbad4a1721a3fe5b31c9cc8ed))
+* **erasure:** give erasure its own package and persistence unit ([1595332](https://github.com/madgeek-arc/eosc-observatory/commit/15953327b0a4cd4fc7b051b26393cc0cef0dc015))
+* **invitations:** use encrypted stateless tokens, support any group and email the invitee ([7d8dd8c](https://github.com/madgeek-arc/eosc-observatory/commit/7d8dd8c3f9ae89cfb0ba7cb19884b5044af216a1))
+* **mailer:** replace RestTemplate with RestClient ([0241490](https://github.com/madgeek-arc/eosc-observatory/commit/0241490e3a1a3cdc2fd47c2c09c60f31b5b78abf))
+* rename ErasureSubjectReference to UserPseudonymizer ([a24adc1](https://github.com/madgeek-arc/eosc-observatory/commit/a24adc11a564733e06eb6b8b28c27f09aa9e72f0))
+* **survey:** use FieldType enum instead of string comparison ([c0a2096](https://github.com/madgeek-arc/eosc-observatory/commit/c0a2096e54facfdbb252b74be2e04e7dc741ed33))
+
+
+### Documentation
+
+* add a security policy and rename security.md to security-model.md ([ad9dc4e](https://github.com/madgeek-arc/eosc-observatory/commit/ad9dc4e443bc99add7c195ec36cdea519c74aae4))
+* add README, architecture and integration documentation ([fda8f8b](https://github.com/madgeek-arc/eosc-observatory/commit/fda8f8b10fc281c8baa7822d085ff45185975e82))
+* complete repository documentation ([51ce88b](https://github.com/madgeek-arc/eosc-observatory/commit/51ce88b48bc27c07d53475ae5081582c4fd77270))
+* drop the status field from the README metadata ([1376634](https://github.com/madgeek-arc/eosc-observatory/commit/1376634466955301e1b6f3476be0ea0742180fba))
+* replace the README metadata table with prose ([0303f3a](https://github.com/madgeek-arc/eosc-observatory/commit/0303f3aec1c19598a32dba42362eae3ad60777a8))
+
 ## [4.4.1](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.0...4.4.1) (2026-09-11)
 
 
