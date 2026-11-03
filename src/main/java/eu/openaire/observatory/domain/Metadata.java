@@ -83,9 +83,7 @@ public class Metadata implements Serializable {
     public String toString() {
         return "Metadata{" +
                 "creationDate=" + creationDate +
-                ", createdBy='" + createdBy + '\'' +
                 ", modificationDate=" + modificationDate +
-                ", modifiedBy='" + modifiedBy + '\'' +
                 '}';
     }
 }

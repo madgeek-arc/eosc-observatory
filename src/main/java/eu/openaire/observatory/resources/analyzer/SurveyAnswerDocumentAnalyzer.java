@@ -157,6 +157,7 @@ public class SurveyAnswerDocumentAnalyzer {
         return documents;
     }
 
+    // TODO: revisit provenance — a user's own edit should keep their id in modifiedBy, but an admin-triggered bulk update should be recorded as "system".
     public Document generateDocument(String url) {
         Document document;
         try {

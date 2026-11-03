@@ -80,6 +80,15 @@ class MethodSecurityExpressionsServiceTest {
     }
 
     @Test
+    void userIsStakeholderManagerReturnsFalseWhenStakeholderMissing() {
+        when(stakeholderService.get("sh-1")).thenThrow(new ResourceNotFoundException("missing"));
+
+        boolean result = service.userIsStakeholderManager("user@example.org", "sh-1");
+
+        assertFalse(result);
+    }
+
+    @Test
     void userIsStakeholderMemberChecksBothMembersAndAdmins() {
         Stakeholder stakeholder = new Stakeholder();
         stakeholder.setMembers(Set.of("member@example.org"));

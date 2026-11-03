@@ -19,8 +19,10 @@ package eu.openaire.observatory.controller.advices;
 import gr.uoa.di.madgik.catalogue.controller.GenericExceptionController;
 import gr.uoa.di.madgik.catalogue.exception.ServerError;
 import io.sentry.Sentry;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -29,6 +31,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ExceptionControllerAdvice extends GenericExceptionController {
+
+    /**
+     * Answers 400 with "&lt;name&gt; is missing" when a required request parameter is not sent.
+     * Not forwarded to Sentry, since it is a client error.
+     */
+    @ExceptionHandler(exception = MissingServletRequestParameterException.class, produces = MediaType.APPLICATION_JSON_VALUE)
+    protected ResponseEntity<ServerError> handleMissingParameter(HttpServletRequest req, MissingServletRequestParameterException ex) {
+        String message = ex.getParameterName() + " is missing";
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ServerError(HttpStatus.BAD_REQUEST, req, message));
+    }
 
     @ExceptionHandler(exception = Exception.class, produces = MediaType.APPLICATION_JSON_VALUE)
     protected ResponseEntity<ServerError> handleException(HttpServletRequest req, Exception ex) {

@@ -17,6 +17,7 @@
 package eu.openaire.observatory.websockets;
 
 import eu.openaire.observatory.domain.User;
+import eu.openaire.observatory.service.UserPseudonymizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -35,9 +36,12 @@ public class SessionActivityService {
 
     private final Map<String, Map<String, Set<SessionActivity>>> resourcesMap = Collections.synchronizedMap(new TreeMap<>());
     private final SimpMessagingTemplate simpMessagingTemplate;
+    private final UserPseudonymizer userPseudonymizer;
 
-    public SessionActivityService(SimpMessagingTemplate simpMessagingTemplate) {
+    public SessionActivityService(SimpMessagingTemplate simpMessagingTemplate,
+                                  UserPseudonymizer userPseudonymizer) {
         this.simpMessagingTemplate = simpMessagingTemplate;
+        this.userPseudonymizer = userPseudonymizer;
     }
 
     @Scheduled(fixedRate = 300_000)
@@ -50,7 +54,7 @@ public class SessionActivityService {
                     SessionActivity session = it.next();
                     if ((session.getDate().getTime() + 3_600_000) < now.getTime()) {
                         it.remove();
-                        logger.debug("Removing stale session: {}", session);
+                        logger.debug("Removing stale session [{}] from {} [{}]", session.getSessionId(), type.getKey(), id.getKey());
                         foundStale = true;
                     }
                 }
@@ -63,7 +67,6 @@ public class SessionActivityService {
 
     @EventListener
     private void handleSessionDisconnect(SessionDisconnectEvent event) {
-        logger.debug(event.getSessionId());
         SessionActivity userSession = new SessionActivity(event.getSessionId());
         for (Map.Entry<String, Map<String, Set<SessionActivity>>> resourceEntry : resourcesMap.entrySet()) {
             for (Map.Entry<String, Set<SessionActivity>> idsEntries : resourceEntry.getValue().entrySet()) {
@@ -75,6 +78,14 @@ public class SessionActivityService {
     }
 
     public Collection<SessionActivity> add(String sessionId, String type, String id, String action, Authentication auth) {
+        register(sessionId, type, id, action, auth);
+        if (logger.isDebugEnabled()) {
+            logger.debug("User [{}] joined {} [{}] with action [{}] (session {})", userPseudonymizer.forLogging(auth), type, id, action, sessionId);
+        }
+        return resourcesMap.get(type).get(id);
+    }
+
+    private void register(String sessionId, String type, String id, String action, Authentication auth) {
         resourcesMap.putIfAbsent(type, new TreeMap<>());
         resourcesMap.get(type).putIfAbsent(id, new HashSet<>());
         try {
@@ -82,10 +93,8 @@ public class SessionActivityService {
             SessionActivity session = new SessionActivity(sessionId, user, action);
             resourcesMap.get(type).get(id).add(session);
         } catch (Exception e) {
-            logger.error("User Unauthorized");
+            logger.warn("Unauthenticated websocket activity on {} [{}] (session {})", type, id, sessionId);
         }
-        logger.info("{}: {}", id, action);
-        return resourcesMap.get(type).get(id);
     }
 
     public Collection<SessionActivity> delete(String sessionId, String type, String id, String action, Authentication auth) {
@@ -94,11 +103,17 @@ public class SessionActivityService {
             SessionActivity activity = new SessionActivity(sessionId, User.of(auth).getFullname(), action);
             userActivities.remove(activity);
         }
+        if (logger.isDebugEnabled()) {
+            logger.debug("User [{}] left {} [{}] (session {})", userPseudonymizer.forLogging(auth), type, id, sessionId);
+        }
         return resourcesMap.containsKey(type) ? resourcesMap.get(type).get(id) : Set.of();
     }
 
     public Collection<SessionActivity> focusOnField(String sessionId, String type, String id, String field, Authentication auth) {
-        add(sessionId, type, id, "edit", auth);
+        register(sessionId, type, id, "edit", auth);
+        if (logger.isDebugEnabled()) {
+            logger.debug("User [{}] focused field [{}] on {} [{}] (session {})", userPseudonymizer.forLogging(auth), field, type, id, sessionId);
+        }
         Set<SessionActivity> activities = resourcesMap.get(type).get(id);
         for (SessionActivity activity : activities) {
             if (activity.getSessionId().equals(sessionId)) {

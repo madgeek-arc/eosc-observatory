@@ -27,6 +27,7 @@ import gr.athenarc.messaging.dto.ThreadDTO;
 import gr.athenarc.messaging.dto.UnreadThreads;
 import gr.athenarc.recaptcha.annotation.ReCaptcha;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +42,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -60,9 +62,10 @@ public class MessagingSystemController extends MessagingController {
     private final EmailOperations emailOperations;
 
     public MessagingSystemController(MessagingClientProperties messagingClientProperties,
+                                     ObjectProvider<WebClient.Builder> webClientBuilder,
                                      MessagingService messagingService,
                                      EmailOperations emailOperations) {
-        super(messagingClientProperties);
+        super(messagingClientProperties, webClientBuilder.getIfAvailable(WebClient::builder));
         this.messagingService = messagingService;
         this.emailOperations = emailOperations;
     }
@@ -91,19 +94,20 @@ public class MessagingSystemController extends MessagingController {
     }
 
     @Override
-    @PreAuthorize("isAuthenticated() and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
+    @PreAuthorize("isAuthenticated() and authentication.principal.getAttribute('email') == #thread.from.email " +
+            "and @methodSecurityExpressionsService.userIsMemberOfGroup(authentication.principal.getAttribute('email'), #thread.from.groupId)")
     public Mono<ThreadDTO> add(ThreadDTO thread) {
         return withNewMessageEmailNotifications(super.add(thread));
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public Mono<ThreadDTO> update(String threadId, TopicThread topicThread) {
         return super.update(threadId, topicThread);
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public Mono<Void> delete(String threadId) {
         return super.delete(threadId);
     }
@@ -177,13 +181,31 @@ public class MessagingSystemController extends MessagingController {
     @Override
     @PreAuthorize("isFullyAuthenticated()")
     public Mono<ThreadDTO> readMessage(String threadId, String messageId, boolean read, String userId) {
-        userId = User.getId(SecurityContextHolder.getContext().getAuthentication());
-        return super.readMessage(threadId, messageId, read, userId).doOnNext(t ->
+        String user = User.getId(SecurityContextHolder.getContext().getAuthentication());
+        return requireParticipant(threadId, user)
+                .then(Mono.defer(() -> super.readMessage(threadId, messageId, read, user))).doOnNext(t ->
                 Mono.fromRunnable(() -> {
                             messagingService.updateUnread(t);
                         })
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe(v -> {}, error -> logger.error("Failed to update unread state for thread {}", t.getId(), error)));
+    }
+
+    /**
+     * Completes when the user, or one of the user's groups, takes part in the thread, and errors
+     * with {@link AccessDeniedException} otherwise.
+     */
+    private Mono<Void> requireParticipant(String threadId, String email) {
+        List<String> groupIds = messagingService.userGroupIds(email);
+        if (groupIds.isEmpty()) {
+            // matches no group, so only the email can match
+            groupIds = List.of("");
+        }
+        return Flux.fromIterable(groupIds)
+                .concatMap(groupId -> super.get(threadId, email, groupId))
+                .next()
+                .switchIfEmpty(Mono.error(new AccessDeniedException("Not a participant of thread " + threadId)))
+                .then();
     }
 
     private Mono<ThreadDTO> withNewMessageEmailNotifications(Mono<ThreadDTO> upstream) {

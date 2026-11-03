@@ -17,6 +17,7 @@
 package eu.openaire.observatory.permissions;
 
 import eu.openaire.observatory.dto.ResourcePermissions;
+import eu.openaire.observatory.utils.UserIds;
 import gr.uoa.di.madgik.authorization.domain.Permission;
 import gr.uoa.di.madgik.authorization.repository.PermissionRepository;
 import gr.uoa.di.madgik.authorization.service.Authorization;
@@ -44,20 +45,33 @@ public class AuthorizationServiceBridge implements PermissionService {
         this.permissionRepository = permissionRepository;
     }
 
+    /**
+     * A permission's subject is a user id, and every repository lookup below matches it exactly
+     * ({@code findAllBySubject...}, {@code deleteAllBySubject}). Normalizing here rather than at each
+     * caller keeps writes, reads and deletes agreeing by construction — the group services pass ids
+     * straight through from request bodies, so a non-canonical one would otherwise be written and
+     * then be invisible to both authorization checks and the erasure sweep in
+     * {@code UserServiceImpl#purge}.
+     */
+    private static List<String> normalizeSubjects(Collection<String> users) {
+        return users == null ? List.of() : users.stream().map(UserIds::normalize).toList();
+    }
+
     @Override
     public Set<String> getPermissions(String userId, String resourceId) {
-        Set<String> permissions = this.authorizationService.whatCan(userId, resourceId)
+        String subject = UserIds.normalize(userId);
+        Set<String> permissions = this.authorizationService.whatCan(subject, resourceId)
                 .stream().map(Permission::getAction).collect(Collectors.toSet());
         if (logger.isDebugEnabled()) {
             logger.debug("[user: {}] permissions for resource [resourceId: {}]: [permissions: {}]",
-                    userId, resourceId, String.join(", ", permissions));
+                    subject, resourceId, String.join(", ", permissions));
         }
         return permissions;
     }
 
     @Override
     public Set<Permission> getUserPermissionsByAction(String userId, String action) {
-        return this.authorizationService.whereCan(userId, action);
+        return this.authorizationService.whereCan(UserIds.normalize(userId), action);
     }
 
     @Override
@@ -74,7 +88,7 @@ public class AuthorizationServiceBridge implements PermissionService {
     public Set<Permission> addPermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds, String group) {
         Set<Permission> permissions = new HashSet<>();
         if (users != null && actions != null && resourceIds != null) {
-            for (String id : users) {
+            for (String id : normalizeSubjects(users)) {
                 for (String action : actions) {
                     for (String resourceId : resourceIds) {
                         if (permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId).isEmpty()) {
@@ -91,7 +105,7 @@ public class AuthorizationServiceBridge implements PermissionService {
     @Override
     public void removePermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds) {
         if (users != null && actions != null && resourceIds != null) {
-            for (String id : users) {
+            for (String id : normalizeSubjects(users)) {
                 for (String action : actions) {
                     for (String resourceId : resourceIds) {
                         Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObject(id, action, resourceId);
@@ -109,7 +123,7 @@ public class AuthorizationServiceBridge implements PermissionService {
     public void removePermissions(Collection<String> users, Collection<String> actions, Collection<String> resourceIds, String group) {
         if (users != null && actions != null && resourceIds != null) {
             StringBuilder deletedPermissions = new StringBuilder();
-            for (String id : users) {
+            for (String id : normalizeSubjects(users)) {
                 for (String action : actions) {
                     for (String resourceId : resourceIds) {
                         Set<Permission> permissions = permissionRepository.findAllBySubjectAndActionAndObjectAndSubjectGroup(id, action, resourceId, group);
@@ -126,12 +140,12 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public void removeAll(String user) {
-        permissionRepository.deleteAllBySubject(user);
+        permissionRepository.deleteAllBySubject(UserIds.normalize(user));
     }
 
     @Override
     public void removeAll(String user, String group) {
-        permissionRepository.deleteAllBySubjectAndSubjectGroup(user, group);
+        permissionRepository.deleteAllBySubjectAndSubjectGroup(UserIds.normalize(user), group);
     }
 
     @Override
@@ -154,31 +168,31 @@ public class AuthorizationServiceBridge implements PermissionService {
 
     @Override
     public void remove(String user, String action, String resourceId) {
-        permissionRepository.deleteAllBySubjectAndActionAndObject(user, action, resourceId);
+        permissionRepository.deleteAllBySubjectAndActionAndObject(UserIds.normalize(user), action, resourceId);
     }
 
     @Override
     public boolean hasPermission(String user, String action, String resourceId) {
-        return authorizationService.canDo(user, action, resourceId);
+        return authorizationService.canDo(UserIds.normalize(user), action, resourceId);
     }
 
     @Override
     public boolean canRead(String userId, String resourceId) {
-        return authorizationService.canDo(userId, Permissions.READ.getKey(), resourceId);
+        return authorizationService.canDo(UserIds.normalize(userId), Permissions.READ.getKey(), resourceId);
     }
 
     @Override
     public boolean canWrite(String userId, String resourceId) {
-        return authorizationService.canDo(userId, Permissions.WRITE.getKey(), resourceId);
+        return authorizationService.canDo(UserIds.normalize(userId), Permissions.WRITE.getKey(), resourceId);
     }
 
     @Override
     public boolean canManage(String userId, String resourceId) {
-        return authorizationService.canDo(userId, Permissions.MANAGE.getKey(), resourceId);
+        return authorizationService.canDo(UserIds.normalize(userId), Permissions.MANAGE.getKey(), resourceId);
     }
 
     @Override
     public boolean canPublish(String userId, String resourceId) {
-        return authorizationService.canDo(userId, Permissions.PUBLISH.getKey(), resourceId);
+        return authorizationService.canDo(UserIds.normalize(userId), Permissions.PUBLISH.getKey(), resourceId);
     }
 }

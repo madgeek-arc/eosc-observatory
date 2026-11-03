@@ -84,6 +84,21 @@ class SecurityConfigTest {
     }
 
     @Test
+    void userAuthoritiesMapperGrantsNothingWhenNoAdminsAreConfigured() {
+        ApplicationProperties properties = new ApplicationProperties();
+        SecurityConfig config = new SecurityConfig((request, response, authentication) -> {
+        }, clientRegistrationRepository, properties);
+        OidcIdToken idToken = new OidcIdToken(
+                "token",
+                Instant.now(),
+                Instant.now().plusSeconds(60),
+                Map.of("email", "admin@example.org", "sub", "sub-1")
+        );
+
+        assertTrue(config.userAuthoritiesMapper().mapAuthorities(Set.of(new OidcUserAuthority(idToken))).isEmpty());
+    }
+
+    @Test
     void csrfCookieFilterAddsReadableCookieWhenTokenPresent() throws Exception {
         OncePerRequestFilter filter = (OncePerRequestFilter) ReflectionTestUtils.invokeMethod(securityConfig, "csrfCookieFilter");
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");

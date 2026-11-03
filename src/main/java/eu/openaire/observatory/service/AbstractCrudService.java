@@ -21,7 +21,6 @@ import eu.openaire.observatory.dto.HistoryEntryDTO;
 import gr.uoa.di.madgik.catalogue.service.ModelResponseValidator;
 import gr.uoa.di.madgik.registry.domain.*;
 import gr.uoa.di.madgik.registry.service.*;
-import gr.uoa.di.madgik.catalogue.utils.LoggingUtils;
 import gr.uoa.di.madgik.registry.exception.ResourceAlreadyExistsException;
 import gr.uoa.di.madgik.registry.exception.ResourceException;
 import gr.uoa.di.madgik.registry.exception.ResourceNotFoundException;
@@ -145,7 +144,7 @@ public abstract class AbstractCrudService<T extends Identifiable> extends Generi
         resource.setId(id);
         String payload = parserPool.serialize(resource, ParserService.ParserServiceTypes.fromString(resourceType.getPayloadType()));
         res.setPayload(payload);
-        logger.info(LoggingUtils.addResource(getResourceType(), id, resource));
+        logger.info("Adding {} [{}]", getResourceType(), id);
         resourceService.addResource(res);
 
         return resource;
@@ -162,7 +161,7 @@ public abstract class AbstractCrudService<T extends Identifiable> extends Generi
         Resource res = searchResource(getResourceType(), id, true);
         String payload = parserPool.serialize(resource, ParserService.ParserServiceTypes.fromString(resourceType.getPayloadType()));
         res.setPayload(payload);
-        logger.info(LoggingUtils.updateResource(getResourceType(), id, resource));
+        logger.info("Updating {} [{}]", getResourceType(), id);
         resourceService.updateResource(res);
 
         return resource;

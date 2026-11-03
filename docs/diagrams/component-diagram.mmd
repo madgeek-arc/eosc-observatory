@@ -1,0 +1,33 @@
+flowchart LR
+    FE[Observatory frontend] -- REST + STOMP/SockJS --> API
+
+    subgraph BE[EOSC Observatory Backend]
+        API[Controllers / WebSocket endpoints]
+        SEC[Security and method-level authorisation]
+        SVC[Services]
+        ASP[Aspects]
+        SCH[Schedulers]
+        API --> SEC --> SVC
+        SVC --> ASP
+        SCH --> SVC
+        subgraph LIB[Embedded libraries]
+            REG[registry]
+            CAT[catalogue]
+            AUTHZ[authorization]
+        end
+        SVC --> REG
+        SVC --> CAT
+        SVC --> AUTHZ
+    end
+
+    REG --> PG[(PostgreSQL: registry)]
+    REG --> ES[(Elasticsearch)]
+    AUTHZ --> PGP[(PostgreSQL: permissions)]
+    SVC --> PG
+    SVC --> RD[(Redis)]
+    SEC <--> OIDC[OIDC provider]
+    SVC --> MAIL[Mailer]
+    SVC --> MSG[Messaging system]
+    SVC --> STATS[Statistics tool]
+    SVC --> MATOMO[Matomo]
+    SVC --> OAI[OpenAI]

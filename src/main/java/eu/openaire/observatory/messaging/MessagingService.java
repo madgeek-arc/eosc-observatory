@@ -16,6 +16,7 @@
 
 package eu.openaire.observatory.messaging;
 
+import eu.openaire.observatory.domain.Administrator;
 import eu.openaire.observatory.domain.Coordinator;
 import eu.openaire.observatory.domain.Stakeholder;
 import eu.openaire.observatory.domain.User;
@@ -88,6 +89,18 @@ public class MessagingService {
                 simpMessagingTemplate.convertAndSend("/topic/messages/inbox/notification/" + email, threadDTO);
             }
         }
+    }
+
+    /**
+     * Returns the ids of the administrator, coordinator and stakeholder groups the user belongs to.
+     */
+    public List<String> userGroupIds(String email) {
+        UserInfo info = userService.getUserInfo(email);
+        List<String> groupIds = new ArrayList<>();
+        groupIds.addAll(info.getAdministrators().stream().map(Administrator::getId).toList());
+        groupIds.addAll(info.getCoordinators().stream().map(Coordinator::getId).toList());
+        groupIds.addAll(info.getStakeholders().stream().map(Stakeholder::getId).toList());
+        return groupIds;
     }
 
     public List<String> filterUserGroups(String email, List<String> groups) {

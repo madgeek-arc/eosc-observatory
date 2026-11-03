@@ -18,12 +18,14 @@ package eu.openaire.observatory.configuration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.time.Duration;
+import java.util.HashSet;
 import java.util.Set;
 
 @ConfigurationProperties(prefix = "observatory")
 public class ApplicationProperties {
 
-    private Set<Object> admins;
+    private Set<Object> admins = new HashSet<>();
 
     private String baseUrl;
 
@@ -31,7 +33,32 @@ public class ApplicationProperties {
 
     private String logoutRedirect;
 
-    private String jwsSigningSecret;
+    /**
+     * Origins allowed to make credentialed cross-origin requests. Requests from other origins get
+     * no CORS headers.
+     */
+    private Set<String> corsAllowedOrigins = new HashSet<>();
+
+    /**
+     * How long an invitation stays valid after creation.
+     */
+    private Duration invitationTtl = Duration.ofDays(7);
+
+    /**
+     * Base64-encoded 256-bit key that encrypts invitation tokens. Generate with
+     * {@code openssl rand -base64 32}. Changing it invalidates every outstanding invitation.
+     */
+    private String invitationKey;
+
+    /**
+     * HMAC key for pseudonymizing user identifiers: the subject reference written to the purge
+     * report line, and any user email pseudonymized in general application logs.
+     *
+     * <p>Losing or changing this key makes every past erasure reference and logged pseudonym
+     * unmatchable, so it must be backed up with the same care as the records and log lines it
+     * indexes.
+     */
+    private String hmacSecret;
 
     /**
      * Cron expression for the daily survey lifecycle email notification scheduler
@@ -66,12 +93,36 @@ public class ApplicationProperties {
         this.logoutRedirect = logoutRedirect;
     }
 
-    public String getJwsSigningSecret() {
-        return jwsSigningSecret;
+    public Set<String> getCorsAllowedOrigins() {
+        return corsAllowedOrigins;
     }
 
-    public void setJwsSigningSecret(String jwsSigningSecret) {
-        this.jwsSigningSecret = jwsSigningSecret;
+    public void setCorsAllowedOrigins(Set<String> corsAllowedOrigins) {
+        this.corsAllowedOrigins = corsAllowedOrigins;
+    }
+
+    public Duration getInvitationTtl() {
+        return invitationTtl;
+    }
+
+    public void setInvitationTtl(Duration invitationTtl) {
+        this.invitationTtl = invitationTtl;
+    }
+
+    public String getInvitationKey() {
+        return invitationKey;
+    }
+
+    public void setInvitationKey(String invitationKey) {
+        this.invitationKey = invitationKey;
+    }
+
+    public String getHmacSecret() {
+        return hmacSecret;
+    }
+
+    public void setHmacSecret(String hmacSecret) {
+        this.hmacSecret = hmacSecret;
     }
 
     public String getSurveySchedulerCron() {

@@ -16,13 +16,35 @@
 
 package eu.openaire.observatory.domain;
 
+/**
+ * The claims carried by an invitation token.
+ */
 public class Invitation {
+
+    public enum Group {
+        STAKEHOLDER,
+        COORDINATOR,
+        ADMINISTRATOR;
+
+        public static Group fromString(String s) {
+            try {
+                return valueOf(s.trim().toUpperCase());
+            } catch (IllegalArgumentException | NullPointerException e) {
+                throw new IllegalArgumentException("unknown invitation group: " + s);
+            }
+        }
+
+        public String getKey() {
+            return name().toLowerCase();
+        }
+    }
 
     private String inviter;
     private String invitee;
+    private Group group;
+    private String groupId;
     private String role;
-    private String stakeholderId;
-    private long expiration;
+    private long expiresAt;
 
     public Invitation() {
         // no-arg constructor
@@ -44,6 +66,22 @@ public class Invitation {
         this.invitee = invitee;
     }
 
+    public Group getGroup() {
+        return group;
+    }
+
+    public void setGroup(Group group) {
+        this.group = group;
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
+    }
+
     public String getRole() {
         return role;
     }
@@ -52,19 +90,11 @@ public class Invitation {
         this.role = role;
     }
 
-    public String getStakeholderId() {
-        return stakeholderId;
+    public long getExpiresAt() {
+        return expiresAt;
     }
 
-    public void setStakeholderId(String stakeholderId) {
-        this.stakeholderId = stakeholderId;
-    }
-
-    public long getExpiration() {
-        return expiration;
-    }
-
-    public void setExpiration(long expiration) {
-        this.expiration = expiration;
+    public void setExpiresAt(long expiresAt) {
+        this.expiresAt = expiresAt;
     }
 }

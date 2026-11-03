@@ -164,6 +164,49 @@ class SurveyAnswerRevisionsAggregationTest {
         assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().getFirst().getEditors().size());
     }
 
+    @Test
+    void addEditorTreatsTheSamePersonInADifferentRoleAsADistinctEditor() {
+        SurveyAnswerRevisionsAggregation aggregation = new SurveyAnswerRevisionsAggregation(createSurveyAnswer());
+        aggregation.getEditors().clear();
+
+        aggregation.addEditor(new Editor()
+                .setUser("alice@example.org")
+                .setRole("contributor")
+                .setUpdateDate(new Date(10_000L)));
+        aggregation.addEditor(new Editor()
+                .setUser("alice@example.org")
+                .setRole("manager")
+                .setUpdateDate(new Date(12_000L)));
+
+        assertEquals(2, aggregation.getEditors().size());
+    }
+
+    /**
+     * With more than one editor recorded, {@code updateHistory} joins them into {@code modifiedBy}.
+     */
+    @Test
+    void updateHistoryJoinsMultipleEditorsIntoModifiedBy() {
+        SurveyAnswer surveyAnswer = createSurveyAnswer();
+        SurveyAnswerRevisionsAggregation aggregation = new SurveyAnswerRevisionsAggregation(surveyAnswer);
+
+        Revision revision = new Revision();
+        revision.setField("section.question");
+        revision.setValue("updated");
+        revision.setAction(new Action().setType(Action.Type.ADD));
+
+        aggregation.applyRevision(revision, new Editor()
+                .setUser("alice@example.org")
+                .setRole("manager")
+                .setUpdateDate(new Date(10_000L)));
+        aggregation.applyRevision(revision, new Editor()
+                .setUser("bob@example.org")
+                .setRole("manager")
+                .setUpdateDate(new Date(12_000L)));
+
+        assertEquals("alice@example.org,bob@example.org", surveyAnswer.getMetadata().getModifiedBy());
+        assertEquals(12_000L, surveyAnswer.getHistory().getEntries().getLast().getTime());
+    }
+
     private SurveyAnswer createSurveyAnswer() {
         SurveyAnswer surveyAnswer = new SurveyAnswer();
         surveyAnswer.setMetadata(new Metadata());

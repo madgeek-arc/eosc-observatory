@@ -17,7 +17,7 @@
 package eu.openaire.observatory.domain;
 
 import eu.openaire.observatory.dto.ProfileDTO;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -53,14 +53,13 @@ public class Profile {
 
     public static byte[] imageFromUrl(String url) {
         if (url != null) {
-            RestTemplate restTemplate = new RestTemplate();
             URI uri = null;
             try {
                 uri = new URI(url);
             } catch (URISyntaxException e) {
                 return null;
             }
-            return restTemplate.getForObject(uri.toString(), byte[].class);
+            return RestClient.create().get().uri(uri).retrieve().body(byte[].class);
         }
         return null;
     }

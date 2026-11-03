@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant FE as Frontend
+    participant BE as Backend
+    participant R as Redis
+    participant REG as Registry (PostgreSQL + ES)
+    participant A as Authorization
+
+    FE->>BE: GET /api/answers/{id}
+    BE->>A: can user read?
+    A-->>BE: permissions
+    BE-->>FE: survey answer
+    FE->>BE: STOMP join /app/join/{type}/{id}
+    BE-->>FE: /topic/active-users/{type}/{id}
+    FE->>BE: PUT /api/answers/{id}/answer
+    BE->>A: can user write?
+    BE->>R: cache revision (sa-*)
+    loop every 120 s
+        BE->>R: fetch sa-* entries older than 10 min
+        BE->>REG: update survey answer
+    end
