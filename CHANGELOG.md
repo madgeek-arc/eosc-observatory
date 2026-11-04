@@ -5,6 +5,14 @@
 
 * log errors from fire-and-forget post-thread-update tasks ([d112a52](https://github.com/madgeek-arc/eosc-observatory/commit/d112a527462f6494329c403928f5e4fe0f2cb2ac))
 
+## [4.5.1](https://github.com/madgeek-arc/eosc-observatory/compare/4.5.0...4.5.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **config:** stop activating the mail-debug profile by default ([5b07cc7](https://github.com/madgeek-arc/eosc-observatory/commit/5b07cc7184789413797401eab995b192fcb3db55))
+* **deps:** downgrade Tomcat to 10.1.61 to fix OAuth2 login redirects ([6d956c0](https://github.com/madgeek-arc/eosc-observatory/commit/6d956c0ea44ccdf4c3dbd1a0ebac6755b368b379))
+
 ## [4.5.0](https://github.com/madgeek-arc/eosc-observatory/compare/4.4.2...4.5.0) (2026-11-03)
 
 
