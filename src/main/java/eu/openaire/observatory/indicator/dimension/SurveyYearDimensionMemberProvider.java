@@ -1,5 +1,6 @@
 package eu.openaire.observatory.indicator.dimension;
 
+import eu.openaire.observatory.indicator.survey.SurveyEditions;
 import eu.openaire.observatory.service.SurveyService;
 import gr.uoa.di.madgik.catalogue.ui.domain.Model;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
@@ -7,13 +8,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
-import java.util.stream.IntStream;
 
 /**
- * Members of the "surveyYear" dimension: the calendar years of every <em>concluded</em> "eosc-sb"
- * survey. There is exactly one such survey per calendar year, the first in 2021, so the member list
- * is {@code 2021 .. (2020 + concludedCount)} inclusive — the first concluded survey is 2021, the
- * second 2022, and so on. Empty until at least one survey has concluded.
+ * Members of the "surveyYear" dimension: the reference years (the years the data describes) of
+ * every <em>concluded</em> "eosc-sb" survey listed in {@link SurveyEditions}, in ascending order.
+ * Empty until at least one such survey has concluded.
  *
  * <p>"Concluded" means the survey is no longer collecting answers:
  * {@code !model.isActive() && (model.getSubmissionCloseAt() == null
@@ -28,10 +27,6 @@ import java.util.stream.IntStream;
  * to {@code null} values and is logged (see {@code SurveyStatsToolIndicatorQueryHandler}). The
  * inherited {@link DimensionMemberProvider#validCodes} is therefore effectively unused for this
  * dimension but is left at the default so the contract still holds.
- *
- * <p>The {@code 2020 + concludedCount} formula assumes exactly one "eosc-sb" survey per calendar
- * year with none skipped; if that ever stops holding, derive each concluded survey's year from its
- * id ({@code m-eosc-sb-YYYY}) instead.
  */
 @Service
 public class SurveyYearDimensionMemberProvider implements DimensionMemberProvider {
@@ -39,8 +34,6 @@ public class SurveyYearDimensionMemberProvider implements DimensionMemberProvide
     public static final String DIMENSION_CODE = "surveyYear";
 
     private static final String EOSC_SB_SURVEY_TYPE = "eosc-sb";
-    /** The first "eosc-sb" survey ran in 2021; the Nth concluded survey is year (2020 + N). */
-    private static final int FIRST_SURVEY_YEAR = 2021;
     private static final int FACET_FILTER_QUANTITY = 10_000;
 
     private final SurveyService surveyService;
@@ -56,14 +49,13 @@ public class SurveyYearDimensionMemberProvider implements DimensionMemberProvide
 
     @Override
     public DimensionMembers search(String indicatorCode, String searchText, int limit) {
-        long concluded = fetchEoscSbSurveys().stream()
+        List<DimensionMember> members = fetchEoscSbSurveys().stream()
             .filter(SurveyYearDimensionMemberProvider::isConcluded)
-            .count();
-        int maxYear = FIRST_SURVEY_YEAR - 1 + (int) concluded; // == 2020 + concluded; < 2021 when concluded == 0
-
-        List<DimensionMember> members = IntStream.rangeClosed(FIRST_SURVEY_YEAR, maxYear)
-            .mapToObj(year -> new DimensionMember(Integer.toString(year), Integer.toString(year)))
-            .toList(); // empty when maxYear < 2021
+            .flatMap(model -> SurveyEditions.forSurveyId(model.getId()).stream())
+            .map(SurveyEditions.Edition::referenceYear)
+            .sorted()
+            .map(year -> new DimensionMember(Integer.toString(year), Integer.toString(year)))
+            .toList();
 
         return DimensionMemberSearch.filter(members, searchText, limit, false);
     }

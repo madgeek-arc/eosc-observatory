@@ -37,10 +37,12 @@ class SurveyYearDimensionMemberProviderTest {
     }
 
     @Test
-    void countsConcludedSurveysFrom2021Upwards() {
+    void listsTheReferenceYearsOfConcludedSurveysInAscendingOrder() {
         stubSurveys(
-            concluded(), concluded(), concluded(), // -> 2021, 2022, 2023
-            active()                               // 2024 still collecting
+            concluded("m-eosc-sb-2024"),
+            concluded("m-jlFggsCN"),
+            concluded("m-eosc-sb-2023"),
+            active()
         );
 
         DimensionMembers members = provider.search(null, "", 100);
@@ -53,8 +55,8 @@ class SurveyYearDimensionMemberProviderTest {
     }
 
     @Test
-    void aSingleConcludedSurveyMapsToJust2021() {
-        stubSurveys(concluded());
+    void aSingleConcludedSurveyMapsToItsReferenceYear() {
+        stubSurveys(concluded("m-jlFggsCN"));
 
         assertThat(provider.search(null, "", 100).members())
             .containsExactly(new DimensionMember("2021", "2021"));
@@ -70,6 +72,7 @@ class SurveyYearDimensionMemberProviderTest {
     @Test
     void inactiveSurveyWithNoCloseDateCountsAsConcluded() {
         Model model = new Model();
+        model.setId("m-jlFggsCN");
         model.setActive(false);
         model.setSubmissionCloseAt(null);
         stubSurveys(model);
@@ -100,7 +103,7 @@ class SurveyYearDimensionMemberProviderTest {
 
     @Test
     void filtersByCaseInsensitiveSearchText() {
-        stubSurveys(concluded(), concluded(), concluded(), concluded(), concluded()); // 2021..2025
+        stubSurveys(allConcluded());
 
         assertThat(provider.search(null, "2023", 100).members())
             .containsExactly(new DimensionMember("2023", "2023"));
@@ -108,9 +111,17 @@ class SurveyYearDimensionMemberProviderTest {
 
     @Test
     void truncatesToLimit() {
-        stubSurveys(concluded(), concluded(), concluded(), concluded(), concluded());
+        stubSurveys(allConcluded());
 
         assertThat(provider.search(null, "", 2).members()).hasSize(2);
+    }
+
+    @Test
+    void aConcludedSurveyWithoutAReferenceYearIsNotListed() {
+        stubSurveys(allConcluded());
+
+        assertThat(provider.search(null, "", 100).members()).extracting(DimensionMember::code)
+            .containsExactly("2021", "2022", "2023", "2024");
     }
 
     @Test
@@ -122,8 +133,14 @@ class SurveyYearDimensionMemberProviderTest {
         assertThat(provider.search(null, "", 100).members()).isEmpty();
     }
 
-    private static Model concluded() {
+    private static Model[] allConcluded() {
+        return new Model[] {concluded("s-xcTgCfWO"), concluded("m-jlFggsCN"), concluded("m-eosc-sb-2023"),
+            concluded("m-eosc-sb-2024"), concluded("m-eosc-sb-2025")};
+    }
+
+    private static Model concluded(String id) {
         Model model = new Model();
+        model.setId(id);
         model.setActive(false);
         model.setSubmissionCloseAt(PAST);
         return model;

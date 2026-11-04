@@ -69,7 +69,7 @@ class SurveyStatsToolClientTest {
 
     @Test
     void returnsEmptyForHttp422() {
-        // The live survey stats-tool answers an unavailable eosc.sb.<year>.<question> with 422, not 404.
+        // The live survey stats-tool answers an unavailable eosc.sb.<question> with 422, not 404.
         SurveyStatsToolClient client = clientReturning(HttpStatus.UNPROCESSABLE_ENTITY, "");
 
         assertThat(client.fetchRowsIfAvailable("{}")).isEmpty();

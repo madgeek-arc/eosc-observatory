@@ -37,7 +37,7 @@ public class SurveyStatsToolClient {
 
     /**
      * Statuses that mean "the survey stats-tool has no data for this named query", not a failure.
-     * The tool answers an unregistered/unavailable {@code eosc.sb.<year>.<question>} with a 404 or
+     * The tool answers an unregistered/unavailable {@code eosc.sb.<question>} with a 404 or
      * (observed live) a 422 — the request shape is fixed and always valid, so a 422 here can only
      * mean the named query can't be resolved.
      */
@@ -57,7 +57,7 @@ public class SurveyStatsToolClient {
     /**
      * Rows of the single requested series (e.g. {@code [countryCode, value]}, or {@code [value]} for
      * a {@code .sum} query), or {@link Optional#empty()} when the survey stats-tool has <em>no
-     * data</em> for this named query — an unregistered {@code eosc.sb.<year>.<question>}, surfaced as
+     * data</em> for this named query — an unregistered {@code eosc.sb.<question>}, surfaced as
      * an HTTP 404 or 422, a 200 with an empty/absent {@code datasets} array, or a null
      * {@code series}/{@code result}. An answered survey that produced zero rows returns
      * {@code Optional.of(List.of())} (present but empty).
@@ -68,7 +68,7 @@ public class SurveyStatsToolClient {
      *
      * <p>TODO: no access check is applied here, so questions configured as restricted in the
      * stats-tool {@code query-access} settings (e.g. {@code eosc.sb.2021.Question6}) are fetched for
-     * any caller. Authorize each {@code eosc.sb.<year>.<question>} against the actor before fetching
+     * any caller. Authorize each {@code eosc.sb.<question>} against the actor before fetching
      * once real authorization is enabled.
      */
     public Optional<List<List<String>>> fetchRowsIfAvailable(String json) {

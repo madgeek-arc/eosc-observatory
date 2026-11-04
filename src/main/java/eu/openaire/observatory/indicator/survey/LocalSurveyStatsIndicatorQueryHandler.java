@@ -37,7 +37,6 @@ public class LocalSurveyStatsIndicatorQueryHandler extends AbstractIndicatorQuer
     private static final String INITIATIVE_TYPE_DIMENSION = IndicatorCodes.INITIATIVE_TYPE_DIMENSION;
     private static final String SURVEY_YEAR_DIMENSION = IndicatorCodes.SURVEY_YEAR_DIMENSION;
 
-    private static final String SURVEY_ID_PREFIX = "m-eosc-sb-";
 
     /** One survey question per fixed initiativeType member. */
     private static final Map<String, String> QUESTION_CODE_BY_INITIATIVE_TYPE = OpenScienceArea.initiativeQuestionCodes();
@@ -89,8 +88,9 @@ public class LocalSurveyStatsIndicatorQueryHandler extends AbstractIndicatorQuer
      * SurveyStatsToolIndicatorQueryHandler's own 3-state behavior.
      */
     private InitiativeStatusFetch fetchInitiativeStatusByCountry(int year, String questionCode) {
-        String surveyId = SURVEY_ID_PREFIX + year;
-        List<List<String>> rows = surveyService.getQuestionAnswersByCountry(surveyId, questionCode);
+        List<List<String>> rows = SurveyEditions.forReferenceYear(year)
+            .map(edition -> surveyService.getQuestionAnswersByCountry(edition.surveyId(), questionCode))
+            .orElse(List.of());
 
         Map<String, String> byCountry = new LinkedHashMap<>();
         for (List<String> row : rows) {

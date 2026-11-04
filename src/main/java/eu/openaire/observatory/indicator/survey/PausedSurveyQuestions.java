@@ -21,16 +21,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * Resolves which survey questions are paused for a survey year. A question is paused when its field
+ * Resolves which survey questions are paused for a reference year. A question is paused when its field
  * in the year's "eosc-sb" survey model carries {@value #PAUSED_MARKER} in its form description; a
  * paused question is reported by the name of that field (e.g. {@code Question76}), which is also the
  * question code used in the survey stats-tool's named queries.
  *
- * <p>The survey model for a year is the "eosc-sb" model whose name ends with that year. When models
+ * <p>The survey model for a year is the "eosc-sb" model {@link SurveyEditions} lists for it. When models
  * can't be read, the last known answer keeps being served and the read is retried shortly; with no
  * previous answer, no question is reported as paused and nothing is cached. Successful answers are
  * cached briefly so edits to a model are picked up without a restart.
@@ -44,7 +42,6 @@ public class PausedSurveyQuestions {
     private static final String EOSC_SB_SURVEY_TYPE = "eosc-sb";
     private static final Duration CACHE_TTL = Duration.ofMinutes(5);
     private static final Duration RETRY_AFTER_FAILURE = Duration.ofSeconds(15);
-    private static final Pattern TRAILING_YEAR = Pattern.compile("(?<!\\d)(\\d{4})\\s*$");
 
     /** Reads the paused question codes of every given year in one go; throws when they can't be read. */
     private interface Loader {
@@ -143,10 +140,8 @@ public class PausedSurveyQuestions {
         filter.setQuantity(10000);
         Map<Integer, Model> modelsByYear = new HashMap<>();
         for (Model model : surveyService.getByType(filter, EOSC_SB_SURVEY_TYPE).getResults()) {
-            Integer year = yearInName(model.getName());
-            if (year != null) {
-                modelsByYear.putIfAbsent(year, model);
-            }
+            SurveyEditions.forSurveyId(model.getId())
+                .ifPresent(edition -> modelsByYear.put(edition.referenceYear(), model));
         }
         Map<Integer, Set<String>> byYear = new HashMap<>();
         for (int year : years) {
@@ -157,14 +152,6 @@ public class PausedSurveyQuestions {
             byYear.put(year, model == null ? Set.of() : pausedQuestionCodes(model));
         }
         return byYear;
-    }
-
-    private static Integer yearInName(String name) {
-        if (name == null) {
-            return null;
-        }
-        Matcher matcher = TRAILING_YEAR.matcher(name.trim());
-        return matcher.find() ? Integer.valueOf(matcher.group(1)) : null;
     }
 
     private static void collect(List<Section> sections, Set<String> paused) {

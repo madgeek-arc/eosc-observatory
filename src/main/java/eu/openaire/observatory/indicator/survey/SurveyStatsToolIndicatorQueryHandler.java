@@ -40,12 +40,12 @@ import java.util.stream.IntStream;
  * required investmentArea/initiativeType filters pick which topic's question is queried (see
  * QUESTION_CODE_BY_INVESTMENT_AREA/QUESTION_CODE_BY_INITIATIVE_TYPE below).
  *
- * <p>Any requested survey year is served. When the survey-stats-tool has no data for a given
- * {@code eosc.sb.<year>.<question>} — an unregistered named query, or (as for 2021, whose
- * "Question6"/"Question7" are unrelated numeric funding data and whose "Question54"/"Question6.3"/
- * "Question56" aren't registered at all) a value that can't be read as the expected Yes/No or
- * number — that country/period simply carries no answer, which composes into {@code null} values
- * rather than an error. Each missing {@code (year, question)} is logged once (WARN) per process.
+ * <p>Every year here is a reference year: the year a survey's data describes, which
+ * {@link SurveyEditions} translates to the stats-tool's own year for that survey. Any requested year
+ * is served. When a year has no survey, the survey-stats-tool has no data for a question, or a value
+ * can't be read as the expected Yes/No or number, that country/period simply carries no answer,
+ * which composes into {@code null} values rather than an error. Each missing
+ * {@code (year, question)} is logged once (WARN) per process.
  * A question paused in that year's survey model (see {@link PausedSurveyQuestions}) is treated the
  * same way: it is not fetched and carries no answer.
  *
@@ -168,8 +168,9 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
             }
             return Optional.empty();
         }
-        Optional<List<List<String>>> maybeRows = client.fetchRowsIfAvailable(
-            queryBuilder.surveyQuestionSeriesRequest(year, questionCode));
+        Optional<List<List<String>>> maybeRows = SurveyEditions.forReferenceYear(year)
+            .flatMap(edition -> client.fetchRowsIfAvailable(
+                queryBuilder.surveyQuestionSeriesRequest(edition.statsYear(), questionCode)));
         if (maybeRows.isEmpty()) {
             warnNoData(year, questionCode, indicatorCode);
         }
@@ -188,7 +189,7 @@ public class SurveyStatsToolIndicatorQueryHandler extends AbstractIndicatorQuery
 
     private void warnNoData(int year, String questionCode, String indicatorCode) {
         if (loggedMissingData.add(year + "|" + questionCode)) {
-            logger.warn("survey-stats-tool has no data for eosc.sb.{}.{} (indicator {})", year, questionCode, indicatorCode);
+            logger.warn("survey-stats-tool has no data for reference year {}, question {} (indicator {})", year, questionCode, indicatorCode);
         }
     }
 

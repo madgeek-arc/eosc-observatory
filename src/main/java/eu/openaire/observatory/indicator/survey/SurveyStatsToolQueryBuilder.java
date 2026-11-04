@@ -23,10 +23,11 @@ public class SurveyStatsToolQueryBuilder {
         this.profile = statsToolProperties.getSurveyProfile();
     }
 
-    /** One series requesting a single survey question's per-country (or .sum aggregate) values for a given year. */
-    public String surveyQuestionSeriesRequest(int year, String questionCode) {
+    /** One series requesting a single survey question's per-country (or .sum aggregate) values for a stats-tool year. */
+    public String surveyQuestionSeriesRequest(int statsYear, String questionCode) {
         ObjectNode query = objectMapper.createObjectNode();
-        query.put("name", "eosc.sb." + year + "." + questionCode);
+        query.put("name", "eosc.sb." + questionCode);
+        query.putObject("namedParameters").put("year", statsYear);
         query.put("profile", profile);
 
         ObjectNode series = objectMapper.createObjectNode();

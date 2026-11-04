@@ -2,6 +2,7 @@ package eu.openaire.observatory.indicator.survey;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.openaire.observatory.indicator.CatalogDimensionDefinitionLookup;
+import eu.openaire.observatory.service.SurveyService;
 import eu.openaire.observatory.indicator.ComparisonCalculator;
 import eu.openaire.observatory.indicator.IndicatorCodes;
 import eu.openaire.observatory.indicator.IndicatorDefinitionCatalog;
@@ -63,6 +64,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * No live network: the outbound WebClient call is stubbed, same pattern as
@@ -105,7 +109,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             assertThat(service.execute(query, level -> true).data()).singleElement()
                 .satisfies(point -> assertThat(point.value()).isEqualTo(300_750_000.0));
         }
-        assertThat(capturedRequests).isNotEmpty().allSatisfy(request -> assertThat(request).contains("eosc.sb.2023."));
+        assertThat(capturedRequests).isNotEmpty().allSatisfy(request -> assertThat(request).contains("\"year\":2024"));
     }
 
     @Test
@@ -138,7 +142,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
 
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question7\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question7\"", "\"year\":2024");
     }
 
     @Test
@@ -226,7 +230,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             List.of(), timeRange, AggregationType.NONE));
 
         assertThat(capturedRequests).hasSize(3)
-            .allSatisfy(request -> assertThat(request).doesNotContain("eosc.sb.2020.", "eosc.sb.2015."));
+            .allSatisfy(request -> assertThat(request).doesNotContain("\"year\":2021", "\"year\":2020", "\"year\":2015"));
     }
 
     @Test
@@ -254,7 +258,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         handler.execute(plan(countryPolicyStatusDefinition(), List.of(policyTypes),
             List.of(new ResolvedDimension(IndicatorCodes.INITIATIVE_TYPE_DIMENSION)), timeRange, AggregationType.NONE));
 
-        assertThat(capturedRequests).hasSize(12 * 6 * 2);
+        assertThat(capturedRequests).hasSize(12 * 4 * 2);
     }
 
     @Test
@@ -284,8 +288,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(countryPolicyStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
 
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question6.3\"");
-        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.2023.Question6.3.1\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question6.3\"", "\"year\":2024");
+        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.Question6.3.1\"", "\"year\":2024");
         assertThat(result.data()).anySatisfy(dp -> {
             assertThat(dp.dimensions().get(IndicatorCodes.COUNTRY_DIMENSION)).isEqualTo("GR");
             assertThat(dp.value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NON_MANDATORY);
@@ -450,7 +454,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
 
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2022.Question6\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question6\"", "\"year\":2023");
         assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
         assertThat(result.data().get(0).dimensions()).doesNotContainKey("period");
     }
@@ -465,7 +469,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(financialInvestmentDefinition(), filters, List.of(), null, AggregationType.SUM));
 
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2022.Question56\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question56\"", "\"year\":2023");
         assertThat(result.dimensions()).isEmpty();
         assertThat(result.data().get(0).dimensions()).doesNotContainKey("period");
         assertThat(result.data().get(0).value()).isEqualTo(26_940_000.0);
@@ -588,7 +592,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(longTermPreservationCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
 
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question89\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question89\"", "\"year\":2024");
         assertThat(result.data()).hasSize(1);
         assertThat(result.data().get(0).value()).isEqualTo(186L);
     }
@@ -613,7 +617,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         var result = handler.execute(plan(citizenScienceNewProjectsCountDefinition(), List.of(SURVEY_YEAR_2023), groupBy, null, AggregationType.SUM));
 
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question101\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question101\"", "\"year\":2024");
         assertThat(result.dimensions()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
         assertThat(result.data()).hasSize(2);
         assertThat(result.data()).anySatisfy(dp -> {
@@ -779,13 +783,13 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         return handlerReturningEachInTurn(List.of(responseJson));
     }
 
-    /** Returns HTTP 422 (the live tool's "no such named query" answer) for any {@code eosc.sb.<unavailableYear>.*} request, and 200 + {@code okBody} for every other year. */
+    /** Returns HTTP 422 (the live tool's "no such named query" answer) for any request with that stats-tool {@code year}, and 200 + {@code okBody} for every other year. */
     private SurveyStatsToolIndicatorQueryHandler handlerReturning422ForYear(int unavailableYear, String okBody) {
         WebClient.Builder builder = WebClient.builder().exchangeFunction(request -> {
             String rawJson = URLDecoder.decode(
                 request.url().getRawQuery().substring("json=".length()), StandardCharsets.UTF_8);
             capturedRequests.add(rawJson);
-            ClientResponse response = rawJson.contains("eosc.sb." + unavailableYear + ".")
+            ClientResponse response = rawJson.contains("\"year\":" + unavailableYear)
                 ? ClientResponse.create(HttpStatus.UNPROCESSABLE_ENTITY).body("").build()
                 : ClientResponse.create(HttpStatus.OK)
                     .header("Content-Type", MediaType.APPLICATION_JSON_VALUE).body(okBody).build();
@@ -983,8 +987,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             financialInvestmentDefinition(), List.of(INVESTMENT_AREA_OA_PUBLICATION), List.of(), timeRange, AggregationType.SUM));
 
         assertThat(capturedRequests).hasSize(2);
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2022.Question56\"");
-        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.2023.Question56\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question56\"", "\"year\":2023");
+        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.Question56\"", "\"year\":2024");
         assertThat(result.dimensions()).containsExactly("period");
         assertThat(result.data()).hasSize(2);
         assertThat(result.data()).allSatisfy(dp -> assertThat(dp.value()).isEqualTo(10_000_000.0));
@@ -1107,8 +1111,8 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
         var result = handler.execute(plan(countryPolicyStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
 
         assertThat(capturedRequests).hasSize(2);
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question6\"");
-        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.2023.Question6.1\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question6\"", "\"year\":2024");
+        assertThat(capturedRequests.get(1)).contains("\"name\":\"eosc.sb.Question6.1\"", "\"year\":2024");
         assertThat(result.data()).hasSize(4);
         assertThat(valueFor(result, "GR")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_MANDATORY);
         assertThat(valueFor(result, "DE")).isEqualTo(SurveyStatsToolIndicatorQueryHandler.POLICY_STATUS_NON_MANDATORY);
@@ -1209,7 +1213,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
         handler.execute(plan(softwareOpenSourceSetsCountDefinition(), List.of(SURVEY_YEAR_2023), List.of(), null, AggregationType.SUM));
 
-        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.2023.Question73\"");
+        assertThat(capturedRequests.get(0)).contains("\"name\":\"eosc.sb.Question73\"", "\"year\":2024");
     }
 
     // --- Degradation: a survey year / question the tool has no data for must not fail the query ---
@@ -1305,16 +1309,74 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
 
     @Test
     void countryInitiativeStatusWithTimeSeriesDegradesAnHttp422YearToNoPointsRatherThanFailing() {
-        // The live survey stats-tool answers an unavailable eosc.sb.<year>.<question> with 422.
-        var handler = handlerReturning422ForYear(2020,
+        // The live survey stats-tool answers an unavailable eosc.sb.<question> with 422.
+        var handler = handlerReturning422ForYear(2023,
             "{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
         var filters = List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY);
-        var timeRange = new ResolvedTimeRange(2020, 2021, MissingPeriodHandling.NULL_FILL);
+        var timeRange = new ResolvedTimeRange(2022, 2023, MissingPeriodHandling.NULL_FILL);
 
         var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), timeRange, AggregationType.NONE));
 
         assertThat(result.data()).hasSize(1);
-        assertThat(result.data().get(0).dimensions()).containsEntry("period", "2021");
+        assertThat(result.data().get(0).dimensions()).containsEntry("period", "2023");
+    }
+
+    @Test
+    void eachReferenceYearQueriesItsSurveysStatsToolYearAndKeepsTheReferenceYearAsThePeriod() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+        var timeRange = new ResolvedTimeRange(2021, 2024, MissingPeriodHandling.NULL_FILL);
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY),
+            List.of(), timeRange, AggregationType.NONE));
+
+        assertThat(capturedRequests).hasSize(4);
+        assertThat(capturedRequests.get(0)).contains("\"year\":2022");
+        assertThat(capturedRequests.get(3)).contains("\"year\":2025");
+        assertThat(result.data()).extracting(point -> point.dimensions().get("period"))
+            .containsExactly("2021", "2022", "2023", "2024");
+    }
+
+    @Test
+    void yearsWithoutASurveyMakeNoStatsToolCall() {
+        var handler = handlerReturning("{\"datasets\":[{\"series\":{\"result\":[{\"row\":[\"GR\",\"Yes\"]}]}}]}");
+        var timeRange = new ResolvedTimeRange(2025, 2026, MissingPeriodHandling.NULL_FILL);
+
+        handler.execute(plan(countryInitiativeStatusDefinition(), List.of(INITIATIVE_TYPE_OA_PUBLICATION_POLICY),
+            List.of(), timeRange, AggregationType.NONE));
+
+        assertThat(capturedRequests).isEmpty();
+    }
+
+    @Test
+    void localHandlerReadsTheSurveyListedForTheReferenceYear() {
+        SurveyService surveyService = mock(SurveyService.class);
+        when(surveyService.getQuestionAnswersByCountry("m-jlFggsCN", "Question6"))
+            .thenReturn(List.of(List.of("GR", "Yes")));
+        var handler = new LocalSurveyStatsIndicatorQueryHandler(surveyService);
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY,
+            new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2021"))
+        );
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().get(0).value()).isEqualTo(SurveyStatsToolIndicatorQueryHandler.STATUS_YES);
+    }
+
+    @Test
+    void localHandlerReturnsNoRowsForAYearWithoutASurvey() {
+        SurveyService surveyService = mock(SurveyService.class);
+        var handler = new LocalSurveyStatsIndicatorQueryHandler(surveyService);
+        var filters = List.of(
+            INITIATIVE_TYPE_OA_PUBLICATION_POLICY,
+            new ResolvedFilter(IndicatorCodes.SURVEY_YEAR_DIMENSION, FilterOperator.EQ, List.of("2020"))
+        );
+
+        var result = handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
+
+        assertThat(result.data()).isEmpty();
+        verifyNoInteractions(surveyService);
     }
 
     @Test
@@ -1414,7 +1476,7 @@ class SurveyStatsToolIndicatorQueryHandlerTest {
             handler.execute(plan(countryInitiativeStatusDefinition(), filters, List.of(), null, AggregationType.NONE));
 
             assertThat(appender.warnings)
-                .filteredOn(message -> message.contains("eosc.sb.2023.Question6"))
+                .filteredOn(message -> message.contains("reference year 2023, question Question6"))
                 .hasSize(1);
         } finally {
             logger.removeAppender(appender);

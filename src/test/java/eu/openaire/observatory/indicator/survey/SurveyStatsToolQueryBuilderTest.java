@@ -25,7 +25,8 @@ class SurveyStatsToolQueryBuilderTest {
         JsonNode root = objectMapper.readTree(json);
         assertThat(root.path("verbose").asBoolean()).isTrue();
         JsonNode query = root.path("series").get(0).path("query");
-        assertThat(query.path("name").asText()).isEqualTo("eosc.sb.2023.Question6");
+        assertThat(query.path("name").asText()).isEqualTo("eosc.sb.Question6");
+        assertThat(query.path("namedParameters").path("year").asInt()).isEqualTo(2023);
         assertThat(query.path("profile").asText()).isEqualTo("eosc-obs");
     }
 
@@ -34,7 +35,8 @@ class SurveyStatsToolQueryBuilderTest {
         String json = builder.surveyQuestionSeriesRequest(2022, "Question6.3");
 
         JsonNode query = objectMapper.readTree(json).path("series").get(0).path("query");
-        assertThat(query.path("name").asText()).isEqualTo("eosc.sb.2022.Question6.3");
+        assertThat(query.path("name").asText()).isEqualTo("eosc.sb.Question6.3");
+        assertThat(query.path("namedParameters").path("year").asInt()).isEqualTo(2022);
     }
 
     @Test
