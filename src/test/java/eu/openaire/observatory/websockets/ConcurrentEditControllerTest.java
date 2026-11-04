@@ -16,6 +16,7 @@
 
 package eu.openaire.observatory.websockets;
 
+import eu.openaire.observatory.domain.Action;
 import eu.openaire.observatory.domain.Revision;
 import eu.openaire.observatory.permissions.Permissions;
 import eu.openaire.observatory.service.SecurityService;
@@ -47,6 +48,35 @@ class ConcurrentEditControllerTest {
         assertSame(revision, result);
         assertEquals("session-1", result.getSessionId());
         verify(surveyService).edit("sa-1", revision, auth);
+    }
+
+    @Test
+    void removedFieldMarkerIsAppliedAndBroadcastAsDelete() {
+        Authentication auth = OidcTestUtils.oidcAuthentication("colleague@example.org");
+        Revision revision = new Revision();
+        revision.setField("Section.Question.[2]");
+        revision.setValue("#r3moveField!");
+        when(securityService.hasPermission(auth, Permissions.WRITE.getKey(), "sa-1")).thenReturn(true);
+
+        Revision result = controller.editField("session-1", "survey_answer", "sa-1", revision, auth);
+
+        assertSame(revision, result);
+        assertEquals("Section.Question.[2]", result.getField());
+        assertNull(result.getValue());
+        assertEquals(Action.Type.DELETE, result.getAction().getType());
+        assertEquals("session-1", result.getSessionId());
+        verify(surveyService).edit("sa-1", revision, auth);
+    }
+
+    @Test
+    void removedFieldMarkerStillRequiresWritePermission() {
+        Authentication auth = OidcTestUtils.oidcAuthentication("colleague@example.org");
+        Revision revision = new Revision();
+        revision.setValue("#r3moveField!");
+        when(securityService.hasPermission(auth, Permissions.WRITE.getKey(), "sa-1")).thenReturn(false);
+
+        assertThrows(AccessDeniedException.class,
+                () -> controller.editField("session-1", "survey_answer", "sa-1", revision, auth));
     }
 
     @Test

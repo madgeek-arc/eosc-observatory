@@ -16,6 +16,7 @@
 
 package eu.openaire.observatory.websockets;
 
+import eu.openaire.observatory.domain.Action;
 import eu.openaire.observatory.domain.Revision;
 import eu.openaire.observatory.permissions.Permissions;
 import eu.openaire.observatory.service.SecurityService;
@@ -38,6 +39,8 @@ public class ConcurrentEditController {
 
     private static final Logger logger = LoggerFactory.getLogger(ConcurrentEditController.class);
     private static final String EDIT_TOPIC = "/topic/edit/{type}/{id}";
+    /** Value clients send for a field whose form control was removed. It means "delete this field", not an answer. */
+    private static final String REMOVED_FIELD_MARKER = "#r3moveField!";
 
     private final SurveyService surveyService;
     private final SecurityService securityService;
@@ -55,6 +58,11 @@ public class ConcurrentEditController {
                               Revision revision, @Parameter(hidden = true) Authentication auth) {
         if (!securityService.hasPermission(auth, Permissions.WRITE.getKey(), id)) {
             throw new AccessDeniedException("You are not allowed to edit this survey answer.");
+        }
+        if (REMOVED_FIELD_MARKER.equals(revision.getValue())) {
+            logger.debug("Converting removed field marker for field '{}' to a delete", revision.getField());
+            revision.setValue(null);
+            revision.setAction(new Action(Action.Type.DELETE, null));
         }
         revision.setSessionId(sessionId);
         surveyService.edit(id, revision, auth);
