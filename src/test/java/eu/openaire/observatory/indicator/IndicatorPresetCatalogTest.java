@@ -199,8 +199,9 @@ class IndicatorPresetCatalogTest {
                     || preset.id().equals("nm-2") || preset.id().equals("osp-3")) {
                 continue; // cs-1 asserted in cs1OnlyChoroplethMapViewIsFullWidth(); sw-1 only has its EU map view full-width; nm-2/osp-3 in areaCountPresetsOnlyMakeTheEuSingleYearCellFullWidth()
             }
-            boolean expectedFullWidth = fullWidthIds.contains(preset.id());
             for (PresetView view : preset.views()) {
+                boolean expectedFullWidth = fullWidthIds.contains(preset.id())
+                    || view.renderStyle() == RenderStyle.MAP_WITH_CHANGE_COUNT;
                 assertThat(view.fullWidth())
                     .as(preset.id() + " " + view.renderStyle() + " fullWidth")
                     .isEqualTo(expectedFullWidth);
