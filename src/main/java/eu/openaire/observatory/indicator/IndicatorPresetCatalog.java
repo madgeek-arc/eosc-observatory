@@ -216,22 +216,24 @@ public class IndicatorPresetCatalog {
 
     /**
      * "Trend of Open Access Publications / Open Data" ({@code ost-3} / {@code ost-4}), backed by
-     * {@code publications.count} / {@code datasets.count} grouped by {@code accessStatus}. Every
-     * cell carries an {@code accessStatus} selector so the preset-query endpoint fans out one
-     * series per access type (and adds {@code country} for the selected-countries cells).
+     * {@code publications.count} (grouped by {@code oaLicenseStatus}) / {@code datasets.count}
+     * (grouped by {@code accessStatus}). Every cell carries a selector on that dimension so the
+     * preset-query endpoint fans out one series per access type (and adds {@code country} for the
+     * selected-countries cells).
      *
      * <p>The {@code SELECTED_COUNTRIES}/{@code TIME_RANGE} cell offers a switcher over that same
-     * {@code [accessStatus, country]}-grouped response: {@code SHARE_MULTI_STACKED_COLUMN_CHARTS}
+     * {@code [selectorDimension, country]}-grouped response: {@code SHARE_MULTI_STACKED_COLUMN_CHARTS}
      * ("Composition") draws every access-type series stacked to 100% per country, while {@code
      * MULTI_SERIES_LINE_CHART} ("Open Access share") draws one line per country computed
-     * client-side as {@code OA count ÷ sum of all accessStatus counts} for that country/year — a
-     * percentage, unlike the preset's own {@code COUNT} format, and never re-queried when the
+     * client-side as {@code OA count ÷ sum of all access-type counts} for that country/year, where
+     * the OA count under {@code oaLicenseStatus} is {@code OA_WITH_LICENSE + OA_WITHOUT_LICENSE} —
+     * a percentage, unlike the preset's own {@code COUNT} format, and never re-queried when the
      * actor switches tabs. A multi-stacked style is used as the default because
      * {@code SHARE_STACKED_COLUMN_CHART} as the default would add {@code classification} to the
      * grouping for indicators that bind it, which this cell doesn't want.
      */
-    private static List<PresetView> accessTypeTrendViews() {
-        ViewSelector selector = new ViewSelector(ACCESS_STATUS_DIMENSION, "Access type", List.of());
+    private static List<PresetView> accessTypeTrendViews(String selectorDimension) {
+        ViewSelector selector = new ViewSelector(selectorDimension, "Access type", List.of());
         return List.of(
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.SINGLE_YEAR, RenderStyle.STACKED_BAR_CHART_WITH_PROGRESS_BARS, selector),
             new PresetView(CountryScope.ALL_COUNTRIES, TimeScope.TIME_RANGE, RenderStyle.COLUMN_CHART_WITH_VALUE_LABELS, selector),
@@ -669,13 +671,14 @@ public class IndicatorPresetCatalog {
             IndicatorPreset.builder("ost-2", "Trends in Financial Strategy on EOSC and Open Science by Areas", OPEN_SCIENCE_TRENDS)
                 .views(withTimeRangeSwitcher(areaTrendViews(openScienceAreaSelector()), AREA_TREND_TIME_RANGE_STYLES))
                 .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES)).fullWidth().order(20).build(),
-            // ost-3/ost-4 back on publications.count / datasets.count grouped by accessStatus (the
-            // *_access_status_share indicators can't fan out per access type — accessStatus is a
-            // required filter-only binding there). Every view carries an accessStatus selector.
+            // ost-3/ost-4 back on publications.count / datasets.count (the *_access_status_share
+            // indicators can't fan out per access type — accessStatus is a required filter-only
+            // binding there). Every view carries a selector: oaLicenseStatus for publications (OA
+            // split into with/without licence, five categories), accessStatus for datasets.
             IndicatorPreset.builder("ost-3", "Trend of Open Access Publications", OPEN_SCIENCE_TRENDS)
-                .views(accessTypeTrendViews()).allowedSeriesAggregations(AVG_MEDIAN).indicatorCode(PUBLICATIONS_COUNT).order(30).build(),
+                .views(accessTypeTrendViews(OA_LICENSE_STATUS_DIMENSION)).allowedSeriesAggregations(AVG_MEDIAN).indicatorCode(PUBLICATIONS_COUNT).order(30).build(),
             IndicatorPreset.builder("ost-4", "Trend of Open Data", OPEN_SCIENCE_TRENDS)
-                .views(accessTypeTrendViews()).allowedSeriesAggregations(AVG_MEDIAN).indicatorCode(DATASETS_COUNT).fullWidth().order(40).build(),
+                .views(accessTypeTrendViews(ACCESS_STATUS_DIMENSION)).allowedSeriesAggregations(AVG_MEDIAN).indicatorCode(DATASETS_COUNT).fullWidth().order(40).build(),
 
             // ---- National Monitoring (inventory rows 66-69, merged into 2 presets) ---------------
             IndicatorPreset.builder("nm-1", "National Monitoring of Open Science by Areas", NATIONAL_MONITORING)

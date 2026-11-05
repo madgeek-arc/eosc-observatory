@@ -323,6 +323,48 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
     }
 
     @Test
+    void publicationsCountGroupedByOaLicenseStatusSplitsOpenAccessByLicenceFlag() {
+        var handler = handlerReturning("{\"data\":[[[\"1\"]],[[\"2\"]],[[\"3\"]],[[\"4\"]],[[\"5\"]]]}");
+        var groupBy = List.of(new ResolvedDimension(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION));
+
+        var result = handler.execute(plan(countDefinition(), List.of(), groupBy, null));
+
+        assertThat(result.dimensions()).containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION);
+        assertThat(result.data()).extracting(dp -> dp.dimensions().get(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION))
+            .containsExactly("OA_WITH_LICENSE", "OA_WITHOUT_LICENSE", "EMBARGOED", "RESTRICTED", "CLOSED");
+        List<String> subQueries = subQueries(capturedRequests.get(0));
+        assertThat(subQueries).hasSize(5);
+        assertThat(subQueries.get(0)).contains("result.indi_result_oa_with_license.oa_with_license").contains("Open Access");
+        assertThat(subQueries.get(1)).contains("result.indi_result_oa_without_license.oa_without_license").contains("Open Access");
+        assertThat(subQueries.get(2)).contains("Embargo").doesNotContain("indi_result_oa");
+        assertThat(subQueries.get(3)).contains("Restricted").doesNotContain("indi_result_oa");
+        assertThat(subQueries.get(4)).contains("Closed Access").doesNotContain("indi_result_oa");
+    }
+
+    @Test
+    void publicationsCountByOaLicenseStatusAndCountryKeepsCountryFilterOnEverySubQuery() {
+        var handler = handlerReturning("{\"data\":[[],[],[],[],[]]}");
+        var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.IN, List.of("GR", "DE")));
+        var groupBy = List.of(
+            new ResolvedDimension(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION), new ResolvedDimension(IndicatorCodes.COUNTRY_DIMENSION));
+
+        handler.execute(plan(countDefinition(), filters, groupBy, null));
+
+        assertThat(subQueries(capturedRequests.get(0))).hasSize(5).allSatisfy(query ->
+            assertThat(query).contains("\"values\":[\"GR\",\"DE\"]").contains("result.organization.country.code"));
+    }
+
+    @Test
+    void publicationsCountRejectsAccessStatusCombinedWithOaLicenseStatus() {
+        var handler = handlerReturning("{\"data\":[]}");
+        var groupBy = List.of(
+            new ResolvedDimension(IndicatorCodes.ACCESS_STATUS_DIMENSION), new ResolvedDimension(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> handler.execute(plan(countDefinition(), List.of(), groupBy, null)))
+            .isInstanceOf(eu.openaire.observatory.indicator.validation.IndicatorValidationException.class);
+    }
+
+    @Test
     void publicationsCountWithCountryFilterAddsCountryCodeToRequest() {
         var handler = handlerReturning("{\"data\":[[[\"777\"]]]}");
         var filters = List.of(new ResolvedFilter(IndicatorCodes.COUNTRY_DIMENSION, FilterOperator.EQ, List.of("GR")));
@@ -820,6 +862,10 @@ class OpenAireStatsToolIndicatorQueryHandlerTest {
      * denominator) — isolates the first one's text so assertions about the numerator's filters
      * aren't tripped up by the denominator now deliberately mentioning all 4 access-mode literals.
      */
+    private static List<String> subQueries(String request) {
+        return List.of(request.split("\\},\\{\"query\":"));
+    }
+
     private static String firstSubQuery(String request) {
         return request.substring(0, request.indexOf("}},{\"query\":"));
     }

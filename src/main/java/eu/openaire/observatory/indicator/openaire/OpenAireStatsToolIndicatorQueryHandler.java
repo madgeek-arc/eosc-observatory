@@ -2,6 +2,7 @@ package eu.openaire.observatory.indicator.openaire;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import eu.openaire.observatory.indicator.IndicatorCodes;
+import eu.openaire.observatory.indicator.validation.IndicatorValidationException;
 import eu.openaire.observatory.indicator.handler.AbstractIndicatorQueryHandler;
 import eu.openaire.observatory.indicator.handler.RatioPercentage;
 import eu.openaire.observatory.indicator.handler.RemoteIndicatorClient;
@@ -180,18 +181,28 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
         DimensionFilters filters = new DimensionFilters(countryCodes, classificationCodes, fieldOfScienceCodes, goldOaLiterals, greenOaLiterals);
         List<Period> periods = resolvePeriods(plan);
 
-        record Cell(OpenAireAccessMode accessMode, Period period) {
+        List<OpenAireOaLicenseStatus> licenseStatuses = resolveOaLicenseStatusGroupValues(plan, groupByCodes);
+        boolean byLicenseStatus = licenseStatuses.get(0) != null;
+        if (byLicenseStatus && accessModes.get(0) != null) {
+            throw new IndicatorValidationException(
+                "accessStatus and oaLicenseStatus cannot be combined for indicator " + plan.definition().code());
+        }
+
+        record Cell(OpenAireAccessMode accessMode, OpenAireOaLicenseStatus licenseStatus, Period period) {
         }
 
         List<Cell> cells = new ArrayList<>();
         List<ObjectNode> subQueries = new ArrayList<>();
         for (Period period : periods) {
-            for (OpenAireAccessMode accessMode : accessModes) {
-                cells.add(new Cell(accessMode, period));
+            for (int variant = 0; variant < (byLicenseStatus ? licenseStatuses.size() : accessModes.size()); variant++) {
+                OpenAireOaLicenseStatus licenseStatus = byLicenseStatus ? licenseStatuses.get(variant) : null;
+                OpenAireAccessMode accessMode = byLicenseStatus ? licenseStatus.accessMode() : accessModes.get(variant);
+                cells.add(new Cell(accessMode, licenseStatus, period));
                 List<OpenAireAccessMode> modes = accessMode == null ? List.of() : List.of(accessMode);
+                String licenseField = licenseStatus == null ? null : licenseStatus.licenseField();
                 subQueries.add(breakdownDimension != null
-                    ? queryBuilder.resultCountByGroupSubQuery(period.year(), modes, resultType, breakdownDimension, filters)
-                    : queryBuilder.resultCountSubQuery(period.year(), modes, filters, resultType));
+                    ? queryBuilder.resultCountByGroupSubQuery(period.year(), modes, licenseField, resultType, breakdownDimension, filters)
+                    : queryBuilder.resultCountSubQuery(period.year(), modes, licenseField, filters, resultType));
             }
         }
         List<List<List<String>>> raw = client.fetchRaw(queryBuilder.seriesRequest(subQueries));
@@ -202,6 +213,9 @@ public class OpenAireStatsToolIndicatorQueryHandler extends AbstractIndicatorQue
             Map<String, Object> baseDimensions = new LinkedHashMap<>();
             if (groupByCodes.contains(ACCESS_STATUS_DIMENSION)) {
                 baseDimensions.put(ACCESS_STATUS_DIMENSION, cell.accessMode().name());
+            }
+            if (groupByCodes.contains(OA_LICENSE_STATUS_DIMENSION)) {
+                baseDimensions.put(OA_LICENSE_STATUS_DIMENSION, cell.licenseStatus().name());
             }
             baseDimensions.putAll(cell.period().dimensions());
 

@@ -63,12 +63,18 @@ public class OpenAireQueryBuilder {
     /** Same as {@link #publicationCountSubQuery}, generalized to any entity type (publication or dataset) and any combination of the 3 filterable dimensions. */
     public ObjectNode resultCountSubQuery(
             int year, List<OpenAireAccessMode> accessModes, DimensionFilters filters, String resultType) {
+        return resultCountSubQuery(year, accessModes, null, filters, resultType);
+    }
+
+    /** As above, additionally requiring {@code licenseField} = "1" when non-null (the OA with/without licence split). */
+    public ObjectNode resultCountSubQuery(
+            int year, List<OpenAireAccessMode> accessModes, String licenseField, DimensionFilters filters, String resultType) {
         ObjectNode query = objectMapper.createObjectNode();
         query.putArray("parameters");
         query.putArray("select").addObject().put("field", ENTITY).put("aggregate", "count");
 
         ArrayNode filterArray = objectMapper.createArrayNode();
-        commonFilters(filterArray, year, accessModes, resultType);
+        commonFilters(filterArray, year, accessModes, licenseField, resultType);
         addDimensionFilters(filterArray, filters);
         query.set("filters", foldAndBlocks(filterArray));
 
@@ -102,6 +108,13 @@ public class OpenAireQueryBuilder {
     public ObjectNode resultCountByGroupSubQuery(
             int year, List<OpenAireAccessMode> accessModes, String resultType,
             String groupDimensionCode, DimensionFilters filters) {
+        return resultCountByGroupSubQuery(year, accessModes, null, resultType, groupDimensionCode, filters);
+    }
+
+    /** As above, additionally requiring {@code licenseField} = "1" when non-null (the OA with/without licence split). */
+    public ObjectNode resultCountByGroupSubQuery(
+            int year, List<OpenAireAccessMode> accessModes, String licenseField, String resultType,
+            String groupDimensionCode, DimensionFilters filters) {
         ObjectNode query = objectMapper.createObjectNode();
         query.putArray("parameters");
         ArrayNode select = query.putArray("select");
@@ -111,7 +124,7 @@ public class OpenAireQueryBuilder {
         group.putNull("aggregate");
 
         ArrayNode filterArray = objectMapper.createArrayNode();
-        commonFilters(filterArray, year, accessModes, resultType);
+        commonFilters(filterArray, year, accessModes, licenseField, resultType);
         addDimensionFilters(filterArray, filters);
         query.set("filters", foldAndBlocks(filterArray));
 
@@ -124,10 +137,14 @@ public class OpenAireQueryBuilder {
         return wrapper;
     }
 
-    /** The AND-filters every sub-query shares: optional access-mode, result type, Europe scope, year. */
-    private void commonFilters(ArrayNode filters, int year, List<OpenAireAccessMode> accessModes, String resultType) {
+    /** The AND-filters every sub-query shares: optional access-mode and licence flag, result type, Europe scope, year. */
+    private void commonFilters(
+            ArrayNode filters, int year, List<OpenAireAccessMode> accessModes, String licenseField, String resultType) {
         if (accessModes != null && !accessModes.isEmpty()) {
             filters.add(accessModeFilter(accessModes));
+        }
+        if (licenseField != null) {
+            filters.add(groupFilter(licenseField, "=", "1"));
         }
         filters.add(groupFilter("result.type", "=", resultType));
         filters.add(groupFilter("result.organization.country.continent", "=", "Europe"));

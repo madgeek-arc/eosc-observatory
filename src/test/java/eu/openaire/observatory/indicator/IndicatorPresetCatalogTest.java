@@ -329,15 +329,15 @@ class IndicatorPresetCatalogTest {
     }
 
     @Test
-    void trendOfOpenAccessPresetGroupsByAccessStatus() {
-        // ost-3 backs on publications.count with an accessStatus selector on every view
+    void trendOfOpenAccessPresetGroupsByOaLicenseStatus() {
+        // ost-3 backs on publications.count with an oaLicenseStatus selector on every view (OA split by licence)
         IndicatorQuery euRange = catalog.toIndicatorQuery(catalog.get("ost-3"), List.of(), 2019, 2023, List.of());
-        assertThat(euRange.groupBy()).containsExactly(IndicatorCodes.ACCESS_STATUS_DIMENSION);
+        assertThat(euRange.groupBy()).containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION);
         assertThat(euRange.filters()).isEmpty();
 
         IndicatorQuery selected = catalog.toIndicatorQuery(catalog.get("ost-3"), List.of("GR"), 2019, 2023, List.of());
         assertThat(selected.groupBy())
-            .containsExactly(IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+            .containsExactly(IndicatorCodes.OA_LICENSE_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
     }
 
     @Test
@@ -605,10 +605,11 @@ class IndicatorPresetCatalogTest {
             assertThat(switcherView.renderStyles()).as(id).extracting(RenderStyleOption::label).containsExactly(
                 "Composition", "Open Access share");
 
-            // groupBy stays [accessStatus, country] regardless of which switcher option is on screen.
+            // groupBy stays [<access dimension>, country] regardless of which switcher option is on screen.
+            String accessDimension = id.equals("ost-3")
+                ? IndicatorCodes.OA_LICENSE_STATUS_DIMENSION : IndicatorCodes.ACCESS_STATUS_DIMENSION;
             IndicatorQuery query = catalog.toIndicatorQuery(preset, List.of("GR", "IT"), 2019, 2023, List.of());
-            assertThat(query.groupBy()).as(id).containsExactly(
-                IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION);
+            assertThat(query.groupBy()).as(id).containsExactly(accessDimension, IndicatorCodes.COUNTRY_DIMENSION);
         }
     }
 

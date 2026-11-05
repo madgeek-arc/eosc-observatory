@@ -210,8 +210,9 @@ public class IndicatorDefinitionCatalog {
             "Number of published works, filterable/groupable by a single access status value (OA, "
                 + "Closed, Embargoed, or Restricted — never aggregated, unlike "
                 + "publications.access_status_share), by country, by classification, or by "
-                + "fieldOfScience. Also filterable (not groupable) by goldOA/greenOA, two "
-                + "independent YES/NO flags.",
+                + "fieldOfScience. The oaLicenseStatus dimension is an alternative to accessStatus that "
+                + "splits OA into with/without licence (five values); the two cannot be combined. "
+                + "Also filterable (not groupable) by goldOA/greenOA, two independent YES/NO flags.",
             IndicatorValueType.INTEGER, IndicatorSemanticType.MEASURE, UnitType.COUNT, IndicatorFormat.NUMBER, RenderHint.SCALAR,
             SUM_AGGREGATION_POLICY,
             null,
@@ -219,6 +220,10 @@ public class IndicatorDefinitionCatalog {
                 new IndicatorDimensionBinding(
                     ACCESS_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
                     Set.of(FilterOperator.EQ), false
+                ),
+                new IndicatorDimensionBinding(
+                    OA_LICENSE_STATUS_DIMENSION, Set.of(DimensionUsage.FILTER, DimensionUsage.GROUP),
+                    Set.of(FilterOperator.EQ, FilterOperator.IN), false, true
                 ),
                 countryBinding(),
                 filterableGroupableBinding(CLASSIFICATION_DIMENSION),

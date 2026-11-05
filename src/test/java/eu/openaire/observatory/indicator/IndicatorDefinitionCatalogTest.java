@@ -179,7 +179,8 @@ class IndicatorDefinitionCatalogTest {
             .containsExactlyInAnyOrder(
                 IndicatorCodes.ACCESS_STATUS_DIMENSION, IndicatorCodes.COUNTRY_DIMENSION,
                 IndicatorCodes.CLASSIFICATION_DIMENSION, IndicatorCodes.FIELD_OF_SCIENCE_DIMENSION,
-                IndicatorCodes.GOLD_OA_DIMENSION, IndicatorCodes.GREEN_OA_DIMENSION
+                IndicatorCodes.GOLD_OA_DIMENSION, IndicatorCodes.GREEN_OA_DIMENSION,
+                IndicatorCodes.OA_LICENSE_STATUS_DIMENSION
             );
         assertThat(bindings)
             .filteredOn(binding -> binding.dimensionCode().equals(IndicatorCodes.COUNTRY_DIMENSION))
