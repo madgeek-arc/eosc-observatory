@@ -36,8 +36,8 @@ class IndicatorPresetCatalogTest {
     private final IndicatorPresetCatalog catalog = new IndicatorPresetCatalog(definitionCatalog);
 
     @Test
-    void containsSeventyOnePresets() {
-        assertThat(catalog.getAll()).hasSize(71);
+    void containsSeventyPresets() {
+        assertThat(catalog.getAll()).hasSize(70);
     }
 
     @Test
@@ -193,7 +193,7 @@ class IndicatorPresetCatalogTest {
     void everyOtherPresetIsNotFullWidth() {
         Set<String> fullWidthIds = Set.of(
             "oa-9", "od-8", "ost-1", "ost-2", "ost-4", "inv-1", "inv-2", "nm-1",
-            "osp-1", "osp-2", "osp-4", "osp-5");
+            "osp-1", "osp-2", "osp-5");
         for (IndicatorPreset preset : catalog.getAll()) {
             if (preset.id().equals("cs-1") || preset.id().equals("sw-1")
                     || preset.id().equals("nm-2") || preset.id().equals("osp-3")) {
@@ -468,7 +468,7 @@ class IndicatorPresetCatalogTest {
         assertThat(idsInGroup(IndicatorGroup.OPEN_SCIENCE_TRENDS)).containsExactly("ost-1", "ost-2", "ost-3", "ost-4");
         assertThat(idsInGroup(IndicatorGroup.NATIONAL_MONITORING)).containsExactly("nm-1", "nm-2");
         assertThat(idsInGroup(IndicatorGroup.OPEN_SCIENCE_POLICIES))
-            .containsExactly("osp-1", "osp-2", "osp-3", "osp-4", "osp-5");
+            .containsExactly("osp-1", "osp-2", "osp-3", "osp-5");
     }
 
     @Test
@@ -614,7 +614,7 @@ class IndicatorPresetCatalogTest {
     @Test
     void everyAreaTrendPresetOffersTheSameThreeWaySwitcherAsOst1() {
         // nm-1 is the one exception — see nm1TimeRangeSwitcherOmitsCoverageTrend below.
-        List<String> areaTrendPresetIds = List.of("ost-1", "ost-2", "osp-1", "osp-2", "osp-4", "osp-5");
+        List<String> areaTrendPresetIds = List.of("ost-1", "ost-2", "osp-1", "osp-2", "osp-5");
         for (String id : areaTrendPresetIds) {
             IndicatorPreset preset = catalog.get(id);
             PresetView switcherView = preset.views().stream()
@@ -642,11 +642,8 @@ class IndicatorPresetCatalogTest {
 
     @Test
     void singleAreaPresetsGroupByCountryNotInitiativeType() {
-        // osp-4/osp-5 pin a single area (or have no area breakdown at all), so unlike the "by
-        // Areas" pivots they carry no initiativeType selector and group by country instead.
-        IndicatorQuery osp4Query = catalog.toIndicatorQuery(catalog.get("osp-4"), List.of("GR", "IT"), 2019, 2023, List.of());
-        assertThat(osp4Query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
-
+        // osp-5 has no area breakdown at all, so unlike the "by Areas" pivots it carries no
+        // initiativeType selector and groups by country instead.
         IndicatorQuery osp5Query = catalog.toIndicatorQuery(catalog.get("osp-5"), List.of("GR", "IT"), 2019, 2023, List.of());
         assertThat(osp5Query.groupBy()).containsExactly(IndicatorCodes.COUNTRY_DIMENSION);
     }

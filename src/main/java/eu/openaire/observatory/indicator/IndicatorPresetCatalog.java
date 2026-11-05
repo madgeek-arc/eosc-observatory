@@ -693,12 +693,6 @@ public class IndicatorPresetCatalog {
                 .indicatorCode(EU_COUNTRY_COVERAGE).presetFilters(initiativeTypes(FINANCIAL_STRATEGY_AREA_TYPES)).fullWidth().order(20).build(),
             IndicatorPreset.builder("osp-3", "National Policies (number of policy areas per country)", OPEN_SCIENCE_POLICIES)
                 .views(areaCountViews(POLICY_AREA_TYPES)).indicatorCode(POLICY_AREAS_COUNT).order(30).build(),
-            // Pinned to a single initiativeType value, so no selector — grouping by initiativeType
-            // here would return one no-op series; groupByFor falls back to grouping by country.
-            IndicatorPreset.builder("osp-4", "National Policy on area", OPEN_SCIENCE_POLICIES)
-                .views(withTimeRangeSwitcher(areaTrendViews(null), AREA_TREND_TIME_RANGE_STYLES))
-                .indicatorCode(COUNTRY_POLICY_STATUS).presetFilters(initiativeType("OA_PUBLICATION_POLICY"))
-                .valueLabels(PresetValueLabels.forMissing(NOT_AVAILABLE)).fullWidth().order(40).build(),
             // Registered for catalog completeness — not queryable yet, returns HTTP 501 (see
             // IndicatorDefinitionCatalog.researcherPolicyCoverage() / docs/INDICATOR_TODO.md).
             // researcher_policy_coverage has no initiativeType binding, so areaTrendViews takes no selector.
