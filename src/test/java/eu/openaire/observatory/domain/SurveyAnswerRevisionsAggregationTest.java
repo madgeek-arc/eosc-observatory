@@ -1,9 +1,11 @@
 package eu.openaire.observatory.domain;
 
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.junit.jupiter.api.Test;
 
 import java.util.Date;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -141,6 +143,31 @@ class SurveyAnswerRevisionsAggregationTest {
         assertEquals(1, aggregation.getRevisions().size());
         assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().size());
         assertEquals(1, aggregation.getSurveyAnswer().getHistory().getEntries().getFirst().getEditors().size());
+    }
+
+    @Test
+    void applyRevisionDeleteRemovesArrayElementAtClientFieldPath() {
+        SurveyAnswer surveyAnswer = createSurveyAnswer();
+        JSONArray items = new JSONArray();
+        items.add("a");
+        items.add("b");
+        items.add("c");
+        JSONObject section = new JSONObject();
+        section.put("items", items);
+        surveyAnswer.getAnswer().put("section", section);
+        SurveyAnswerRevisionsAggregation aggregation = new SurveyAnswerRevisionsAggregation(surveyAnswer);
+
+        Revision revision = new Revision();
+        revision.setField("section.items.[2]");
+        revision.setAction(new Action().setType(Action.Type.DELETE));
+
+        aggregation.applyRevision(revision, new Editor()
+                .setUser("editor@example.org")
+                .setRole("manager")
+                .setUpdateDate(new Date(5_000L)));
+
+        JSONObject updated = (JSONObject) aggregation.getSurveyAnswer().getAnswer().get("section");
+        assertEquals(List.of("a", "b"), updated.get("items"));
     }
 
     @Test
